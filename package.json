@@ -9,9 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@math.gl/web-mercator": "^4.1.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@types/three": "^0.182.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.563.0",
+    "maplibre-gl": "^5.17.0",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-map-gl": "^8.1.0",
+    "tailwind-merge": "^3.4.0",
+    "three": "^0.182.0",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
