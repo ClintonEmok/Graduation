@@ -71,7 +71,35 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| [Populated during roadmap creation] | | |
+| **VIS-01** | Phase 1 | Pending |
+| **VIS-02** | Phase 1 | Pending |
+| **VIS-03** | Phase 1 | Pending |
+| **VIS-04** | Phase 6 | Pending |
+| **VIS-05** | Phase 1 | Pending |
+| **TIME-01** | Phase 2 | Pending |
+| **TIME-02** | Phase 2 | Pending |
+| **TIME-03** | Phase 2 | Pending |
+| **TIME-04** | Phase 2 | Pending |
+| **TIME-05** | Phase 2 | Pending |
+| **ADAPT-01** | Phase 3 | Pending |
+| **ADAPT-02** | Phase 3 | Pending |
+| **ADAPT-03** | Phase 3 | Pending |
+| **ADAPT-04** | Phase 4 | Pending |
+| **ADAPT-05** | Phase 4 | Pending |
+| **COORD-01** | Phase 7 | Pending |
+| **COORD-02** | Phase 7 | Pending |
+| **COORD-03** | Phase 7 | Pending |
+| **COORD-04** | Phase 7 | Pending |
+| **DATA-01** | Phase 5 | Pending |
+| **DATA-02** | Phase 6 | Pending |
+| **DATA-03** | Phase 6 | Pending |
+| **DATA-04** | Phase 5 | Pending |
+| **STUDY-01** | Phase 9 | Pending |
+| **STUDY-02** | Phase 8 | Pending |
+| **STUDY-03** | Phase 9 | Pending |
+| **STUDY-04** | Phase 9 | Pending |
+| **STUDY-05** | Phase 9 | Pending |
+| **STUDY-06** | Phase 8 | Pending |
 
 ---
 *Requirements defined: 2025-01-30*
