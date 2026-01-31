@@ -2,7 +2,7 @@
 
 **Project:** Adaptive Space-Time Cube
 **Status:** Planning
-**Total Phases:** 9
+**Total Phases:** 10
 
 ## Overview
 
@@ -68,11 +68,29 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. User sees dense temporal clusters expanded along the Z-axis in Adaptive mode.
 3. User observes a smooth animated transition when switching between modes.
 
-## Phase 4: Adaptive Visualization Aids
+## Phase 4: UI Layout Redesign
+
+**Goal:** Users interact with a polished, research-grade interface with improved layout stability.
+
+**Dependencies:** Phase 3
+**Focus:** Layout Structure, Sidebar, Dashboard styling
+
+| Requirement | Description |
+|-------------|-------------|
+| **UI-01** | System presents a unified layout with collapsible sidebar and main view area |
+| **UI-02** | Controls are grouped logically (Time, Filter, View) |
+| **UI-03** | Layout is responsive and prevents overlap with 3D scene |
+
+**Success Criteria:**
+1. Application loads reliably with no white screen (fixes Phase 3 regression).
+2. Users see a clean layout with controls organized in a sidebar or panel.
+3. 3D view is unobstructed by floating controls.
+
+## Phase 5: Adaptive Visualization Aids
 
 **Goal:** Users can understand the time deformation via visual guides (axis, histogram).
 
-**Dependencies:** Phase 3
+**Dependencies:** Phase 4
 **Focus:** Visual Feedback, D3 Scales
 
 | Requirement | Description |
@@ -85,11 +103,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. User sees a density histogram displayed alongside the axis.
 3. The axis and histogram align visually with the 3D data distribution.
 
-## Phase 5: Data Backend & Loading
+## Phase 6: Data Backend & Loading
 
 **Goal:** System serves and loads real Chicago crime data efficiently.
 
-**Dependencies:** Phase 4
+**Dependencies:** Phase 5
 **Focus:** FastAPI/Next.js API, Performance, progressive loading
 
 | Requirement | Description |
@@ -102,11 +120,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Application remains responsive while loading large datasets (using progression or aggregation).
 3. User sees loading indicators during data fetching states.
 
-## Phase 6: Advanced Filtering
+## Phase 7: Advanced Filtering
 
 **Goal:** Users can slice the data by attributes and geography.
 
-**Dependencies:** Phase 5
+**Dependencies:** Phase 6
 **Focus:** Data Querying, Spatial Filtering
 
 | Requirement | Description |
@@ -120,11 +138,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. User can save a current filter configuration and restore it later.
 3. User can define a geographic boundary to filter shown events.
 
-## Phase 7: Coordinated Views
+## Phase 8: Coordinated Views
 
 **Goal:** Users experience synchronized exploration across Map, Cube, and Timeline.
 
-**Dependencies:** Phase 6
+**Dependencies:** Phase 7
 **Focus:** State Synchronization, D3 Timeline
 
 | Requirement | Description |
@@ -140,11 +158,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Changing a filter (e.g., crime type) updates the Map, Cube, and Timeline simultaneously.
 4. Scrubbing time in the timeline updates the 3D cube state instantly.
 
-## Phase 8: Study Logging Infrastructure
+## Phase 9: Study Logging Infrastructure
 
 **Goal:** System captures all user interactions and manages participant sessions.
 
-**Dependencies:** Phase 7
+**Dependencies:** Phase 8
 **Focus:** Telemetry, Session Management
 
 | Requirement | Description |
@@ -157,11 +175,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. System requires or assigns a participant ID at the start of a session.
 3. Logs are correctly associated with the active participant ID.
 
-## Phase 9: Study Content & Flow
+## Phase 10: Study Content & Flow
 
 **Goal:** Users are guided through the complete study protocol (tutorial -> tasks).
 
-**Dependencies:** Phase 8
+**Dependencies:** Phase 9
 **Focus:** Tutorial, Task State Machine
 
 | Requirement | Description |
@@ -183,10 +201,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 |-------|--------|------------|
 | 1. Core 3D Visualization | **Complete** | 100% |
 | 2. Temporal Controls | **Complete** | 100% |
-| 3. Adaptive Scaling Logic | **In Progress** | 50% |
-| 4. Adaptive Visualization Aids | Pending | 0% |
-| 5. Data Backend & Loading | Pending | 0% |
-| 6. Advanced Filtering | Pending | 0% |
-| 7. Coordinated Views | Pending | 0% |
-| 8. Study Logging Infrastructure | Pending | 0% |
-| 9. Study Content & Flow | Pending | 0% |
+| 3. Adaptive Scaling Logic | **Complete** | 100% |
+| 4. UI Layout Redesign | Pending | 0% |
+| 5. Adaptive Visualization Aids | Pending | 0% |
+| 6. Data Backend & Loading | Pending | 0% |
+| 7. Advanced Filtering | Pending | 0% |
+| 8. Coordinated Views | Pending | 0% |
+| 9. Study Logging Infrastructure | Pending | 0% |
+| 10. Study Content & Flow | Pending | 0% |
