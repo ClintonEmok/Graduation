@@ -7,11 +7,11 @@
 ## Current Position
 
 Phase: 6 of 10 (Data Backend & Loading)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-31 - Completed 06-01-PLAN.md
+Last activity: 2026-01-31 - Completed 06-02-PLAN.md
 
-Progress: █████▌░░░░ 53%
+Progress: █████▋░░░░ 56%
 
 ```
 [x] Phase 1: Core 3D
@@ -75,6 +75,9 @@ Progress: █████▌░░░░ 53%
 | 5 | Linear Slider + Adaptive Viz | Keep interaction simple (linear) while visualizing distortion (adaptive) |
 | 6 | Pre-calculate Viz Coords | Offload client CPU by computing X/Z/Y in ETL |
 | 6 | Use serverComponentsExternalPackages | Fix DuckDB bundling in Next.js |
+| 6 | Used apache-arrow serialization | Fallback when DuckDB native arrow streaming failed |
+| 6 | Updated Next.js config for v16 | Rename serverComponentsExternalPackages to serverExternalPackages |
+| 6 | In-Memory DB for API | Query Parquet file via path without persistent DB |
 
 ## Blockers/Concerns Carried Forward
 
