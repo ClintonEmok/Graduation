@@ -1,18 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
 import { Controls } from './Controls';
 import { Grid } from './Grid';
 import { DataPoints } from './DataPoints';
+import { TimePlane } from './TimePlane';
+import { TimeLoop } from './TimeLoop';
 import MapBase from '../map/MapBase';
 import { generateMockData } from '../../lib/mockData';
 import { CrimeEvent } from '@/types';
+import * as THREE from 'three';
 
 export function MainScene() {
   const mode = useUIStore((state) => state.mode);
   const [data, setData] = useState<CrimeEvent[]>([]);
+  
+  const pointsRef = useRef<THREE.InstancedMesh>(null);
+  const planeRef = useRef<THREE.Mesh>(null);
 
   useEffect(() => {
     // Generate mock data on mount
@@ -37,7 +43,10 @@ export function MainScene() {
              {/* Abstract Mode: Show Grid */}
             {mode === 'abstract' && <Grid />}
             
-            <DataPoints data={data} />
+            <DataPoints data={data} ref={pointsRef} />
+            <TimePlane ref={planeRef} />
+            <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
+            
             <Controls />
           </Scene>
         </div>
