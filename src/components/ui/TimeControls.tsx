@@ -19,11 +19,13 @@ export function TimeControls() {
     timeRange,
     timeWindow,
     speed,
+    timeScaleMode,
     togglePlay,
     setTime,
     stepTime,
     setTimeWindow,
-    setSpeed
+    setSpeed,
+    setTimeScaleMode
   } = useTimeStore();
 
   const handleTimeChange = useCallback((value: number[]) => {
@@ -131,6 +133,17 @@ export function TimeControls() {
           </div>
           <div className="w-12 text-right font-mono">
             {timeWindow}u
+          </div>
+
+          {/* Time Scale Mode Toggle */}
+          <div className="flex items-center gap-2 border-l pl-4">
+            <span>Time Scale:</span>
+            <button
+              onClick={() => setTimeScaleMode(timeScaleMode === 'linear' ? 'adaptive' : 'linear')}
+              className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium transition-colors"
+            >
+              {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
+            </button>
           </div>
         </div>
 
