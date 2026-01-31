@@ -88,7 +88,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 
 **Plans:**
 - [x] 04-01-PLAN.md — Foundation: Layout shell & dependencies
-- [ ] 04-02-PLAN.md — Map Integration: Left panel
+- [x] 04-02-PLAN.md — Map Integration: Left panel
 - [ ] 04-03-PLAN.md — Cube Integration: Right panel
 - [ ] 04-04-PLAN.md — Assembly: Timeline & Final Polish
 
@@ -208,7 +208,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 1. Core 3D Visualization | **Complete** | 100% |
 | 2. Temporal Controls | **Complete** | 100% |
 | 3. Adaptive Scaling Logic | **Complete** | 100% |
-| 4. UI Layout Redesign | In Progress | 25% |
+| 4. UI Layout Redesign | In Progress | 50% |
 | 5. Adaptive Visualization Aids | Pending | 0% |
 | 6. Data Backend & Loading | Pending | 0% |
 | 7. Advanced Filtering | Pending | 0% |
