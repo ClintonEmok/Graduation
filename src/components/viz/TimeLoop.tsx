@@ -3,8 +3,8 @@ import { useTimeStore } from '@/store/useTimeStore';
 import * as THREE from 'three';
 
 interface TimeLoopProps {
-  pointsRef: React.RefObject<THREE.InstancedMesh>;
-  planeRef: React.RefObject<THREE.Mesh>;
+  pointsRef: React.RefObject<THREE.InstancedMesh | null>;
+  planeRef: React.RefObject<THREE.Mesh | null>;
 }
 
 export function TimeLoop({ pointsRef, planeRef }: TimeLoopProps) {
