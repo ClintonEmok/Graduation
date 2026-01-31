@@ -40,15 +40,25 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     // Assuming Y range is 0 to 100 as per project context
     const yRange: [number, number] = [0, 100];
     
-    // Bin count of 100 is default in computeAdaptiveY, which matches the scale roughly
+    // Bin count of 100 is default in computeAdaptiveY
     const adaptive = computeAdaptiveY(data, timeExtent, yRange);
-    return new Float32Array(adaptive);
+    
+    // Ensure no NaNs and valid length
+    const result = new Float32Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+        const val = adaptive[i];
+        result[i] = (val === undefined || isNaN(val)) ? 0 : val;
+    }
+    return result;
   }, [data]);
 
   useLayoutEffect(() => {
     if (!meshRef.current) return;
 
     // Set positions and colors for each instance
+    const tempObject = new THREE.Object3D();
+    const tempColor = new THREE.Color();
+
     data.forEach((point, i) => {
       // Position
       // X and Z are space, Y is time (Y-up)
@@ -62,19 +72,11 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       meshRef.current!.setColorAt(i, tempColor);
     });
 
-    // Add adaptiveY attribute
-    meshRef.current.geometry.setAttribute(
-        'adaptiveY',
-        new THREE.InstancedBufferAttribute(adaptiveYValues, 1)
-    );
-
     meshRef.current.instanceMatrix.needsUpdate = true;
     if (meshRef.current.instanceColor) {
         meshRef.current.instanceColor.needsUpdate = true;
     }
-    meshRef.current.geometry.attributes.adaptiveY.needsUpdate = true;
-
-  }, [data, adaptiveYValues]);
+  }, [data]);
 
   // Animate transition
   useFrame((state, delta) => {
@@ -95,7 +97,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
 
   const onBeforeCompile = (shader: any) => {
     // Store shader reference for updates
-    if (meshRef.current && meshRef.current.material) {
+    if (meshRef.current) {
         (meshRef.current.material as THREE.Material).userData.shader = shader;
     }
 
@@ -113,8 +115,8 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       `
     );
 
-    // We replace project_vertex to handle the position offset
-    // This ensures we modify the world position before projection
+    // Replace project_vertex to handle the position offset
+    // We replicate standard behavior but inject Y-shift before projection
     shader.vertexShader = shader.vertexShader.replace(
       '#include <project_vertex>',
       `
@@ -127,12 +129,13 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       // Custom Adaptive Logic
       #ifdef USE_INSTANCING
         // instanceMatrix[3].y is the translation Y component (linear time Y)
-        float originalY = instanceMatrix[3].y;
+        float instanceY = instanceMatrix[3].y;
         
-        // Interpolate between original Y and adaptive Y
-        // We calculate the shift needed for the instance center
+        // Target is the adaptiveY attribute
         float targetY = adaptiveY;
-        float yShift = (targetY - originalY) * uTransition;
+        
+        // Interpolate: calculate how much to shift
+        float yShift = (targetY - instanceY) * uTransition;
         
         // Apply shift to the world position
         mvPosition.y += yShift;
@@ -176,7 +179,12 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       ref={meshRef}
       args={[undefined, undefined, data.length]}
     >
-      <sphereGeometry args={[0.5, 8, 8]} /> {/* Low poly sphere */}
+      <sphereGeometry args={[0.5, 8, 8]}>
+        <instancedBufferAttribute 
+          attach="attributes-adaptiveY" 
+          args={[adaptiveYValues, 1]} 
+        />
+      </sphereGeometry>
       <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
     </instancedMesh>
   );
