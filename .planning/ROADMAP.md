@@ -86,6 +86,12 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Users see a clean layout with controls organized in a sidebar or panel.
 3. 3D view is unobstructed by floating controls.
 
+**Plans:**
+- [ ] 04-01-PLAN.md — Foundation: Layout shell & dependencies
+- [ ] 04-02-PLAN.md — Map Integration: Left panel
+- [ ] 04-03-PLAN.md — Cube Integration: Right panel
+- [ ] 04-04-PLAN.md — Assembly: Timeline & Final Polish
+
 ## Phase 5: Adaptive Visualization Aids
 
 **Goal:** Users can understand the time deformation via visual guides (axis, histogram).
