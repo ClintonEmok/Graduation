@@ -13,6 +13,7 @@ interface TimeState {
   timeRange: [number, number];
   speed: number;
   timeWindow: number;
+  timeScaleMode: 'linear' | 'adaptive';
   
   setTime: (time: number) => void;
   stepTime: (direction: number) => void;
@@ -21,6 +22,7 @@ interface TimeState {
   setRange: (range: [number, number]) => void;
   setSpeed: (speed: number) => void;
   setTimeWindow: (window: number) => void;
+  setTimeScaleMode: (mode: 'linear' | 'adaptive') => void;
 }
 
 export const useTimeStore = create<TimeState>((set) => ({
@@ -29,6 +31,7 @@ export const useTimeStore = create<TimeState>((set) => ({
   timeRange: [TIME_MIN, TIME_MAX],
   speed: PLAYBACK_SPEED_DEFAULT,
   timeWindow: TIME_WINDOW_DEFAULT,
+  timeScaleMode: 'linear',
 
   setTime: (time) => set((state) => ({ 
     currentTime: Math.max(state.timeRange[0], Math.min(state.timeRange[1], time)) 
@@ -50,4 +53,6 @@ export const useTimeStore = create<TimeState>((set) => ({
   setSpeed: (speed) => set({ speed }),
   
   setTimeWindow: (timeWindow) => set({ timeWindow }),
+
+  setTimeScaleMode: (mode) => set({ timeScaleMode: mode }),
 }));
