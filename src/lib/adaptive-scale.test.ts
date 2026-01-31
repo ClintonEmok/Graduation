@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { computeAdaptiveY } from './adaptive-scale';
+import { computeAdaptiveY, getAdaptiveScaleConfig } from './adaptive-scale';
+
+describe('getAdaptiveScaleConfig', () => {
+  it('returns segmented domain/range for data', () => {
+    // 3 points, 2 dense in first half, 1 in second
+    // Range 0-100.
+    const data = [
+      { timestamp: 10, id: '1' },
+      { timestamp: 20, id: '2' },
+      { timestamp: 90, id: '3' }
+    ];
+    
+    // Low bin count to make it easy to calc
+    const config = getAdaptiveScaleConfig(data, [0, 100], [0, 100], 2);
+    
+    expect(config.domain).toHaveLength(3); // [0, 50, 100]
+    expect(config.range).toHaveLength(3);
+    expect(config.range[1]).toBeGreaterThan(50); // First bin should be expanded
+  });
+});
 
 describe('computeAdaptiveY', () => {
   const timeStart = new Date('2023-01-01T00:00:00Z');
