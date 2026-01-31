@@ -7,11 +7,11 @@
 
 ### Visualization (3D & Spatial)
 
-- [ ] **VIS-01**: User can orbit, zoom, and pan the 3D Space-Time Cube
-- [ ] **VIS-02**: User can reset camera to initial default view
-- [ ] **VIS-03**: System renders crime events as 3D points with color encoding by attribute
+- [x] **VIS-01**: User can orbit, zoom, and pan the 3D Space-Time Cube
+- [x] **VIS-02**: User can reset camera to initial default view
+- [x] **VIS-03**: System renders crime events as 3D points with color encoding by attribute
 - [ ] **VIS-04**: User can filter displayed events by geographic region (spatial filtering)
-- [ ] **VIS-05**: User can toggle 2D view between real Mapbox/Leaflet map and abstract spatial plane
+- [x] **VIS-05**: User can toggle 2D view between real Mapbox/Leaflet map and abstract spatial plane
 
 ### Temporal System
 
