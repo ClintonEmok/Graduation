@@ -1,10 +1,11 @@
-import React from "react";
+import { MainScene } from '@/components/viz/MainScene';
+import { Overlay } from '@/components/ui/Overlay';
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold">Adaptive Space-Time Cube</h1>
-      <p>Visualization initialized.</p>
+    <main className="h-screen w-screen overflow-hidden bg-black text-white relative">
+      <MainScene />
+      <Overlay />
     </main>
   );
 }
