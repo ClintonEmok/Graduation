@@ -23,9 +23,9 @@
 
 ### Adaptive Scaling (Research Core)
 
-- [ ] **ADAPT-01**: System supports Uniform time mapping (linear baseline)
-- [ ] **ADAPT-02**: System supports Adaptive time scaling (density-based expansion)
-- [ ] **ADAPT-03**: User can toggle between Uniform and Adaptive modes with animated transition
+- [x] **ADAPT-01**: System supports Uniform time mapping (linear baseline)
+- [x] **ADAPT-02**: System supports Adaptive time scaling (density-based expansion)
+- [x] **ADAPT-03**: User can toggle between Uniform and Adaptive modes with animated transition
 - [ ] **ADAPT-04**: System visualizes the time scale (axis) to show deformation
 - [ ] **ADAPT-05**: System displays event density indicator (histogram) to explain scaling
 
@@ -71,19 +71,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| **VIS-01** | Phase 1 | Pending |
-| **VIS-02** | Phase 1 | Pending |
-| **VIS-03** | Phase 1 | Pending |
+| **VIS-01** | Phase 1 | Complete |
+| **VIS-02** | Phase 1 | Complete |
+| **VIS-03** | Phase 1 | Complete |
 | **VIS-04** | Phase 6 | Pending |
-| **VIS-05** | Phase 1 | Pending |
-| **TIME-01** | Phase 2 | Pending |
-| **TIME-02** | Phase 2 | Pending |
-| **TIME-03** | Phase 2 | Pending |
-| **TIME-04** | Phase 2 | Pending |
-| **TIME-05** | Phase 2 | Pending |
-| **ADAPT-01** | Phase 3 | Pending |
-| **ADAPT-02** | Phase 3 | Pending |
-| **ADAPT-03** | Phase 3 | Pending |
+| **VIS-05** | Phase 1 | Complete |
+| **TIME-01** | Phase 2 | Complete |
+| **TIME-02** | Phase 2 | Complete |
+| **TIME-03** | Phase 2 | Complete |
+| **TIME-04** | Phase 2 | Complete |
+| **TIME-05** | Phase 2 | Complete |
+| **ADAPT-01** | Phase 3 | Complete |
+| **ADAPT-02** | Phase 3 | Complete |
+| **ADAPT-03** | Phase 3 | Complete |
 | **ADAPT-04** | Phase 4 | Pending |
 | **ADAPT-05** | Phase 4 | Pending |
 | **COORD-01** | Phase 7 | Pending |
