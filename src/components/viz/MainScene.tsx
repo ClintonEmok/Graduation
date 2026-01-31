@@ -13,7 +13,7 @@ import { generateMockData } from '../../lib/mockData';
 import { CrimeEvent } from '@/types';
 import * as THREE from 'three';
 
-export function MainScene() {
+export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   const mode = useUIStore((state) => state.mode);
   const [data, setData] = useState<CrimeEvent[]>([]);
   
@@ -29,7 +29,7 @@ export function MainScene() {
   return (
     <div className="relative h-full w-full">
       {/* Map Layer - Only rendered in map mode, behind canvas */}
-      {mode === 'map' && (
+      {mode === 'map' && showMapBackground && (
         <div className="absolute inset-0 z-0">
           <MapBase />
         </div>
