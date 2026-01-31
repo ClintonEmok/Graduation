@@ -17,6 +17,7 @@ export function Controls() {
   return (
     <CameraControls
       ref={controlsRef}
+      makeDefault
       smoothTime={0.25}
       minDistance={1}
       maxDistance={500}
