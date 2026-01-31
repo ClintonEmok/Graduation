@@ -141,19 +141,8 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       // Capture for fragment shader (before view transform)
       vWorldY = mvPosition.y;
 
-      mvPosition = modelViewMatrix * vec4( transformed, 1.0 ); 
-      // Wait, modelViewMatrix includes modelMatrix * viewMatrix.
-      // But we just did instanceMatrix manually?
-      // Standard project_vertex does:
-      // mvPosition = viewMatrix * modelMatrix * instanceMatrix * vec4( transformed, 1.0 );
-      
-      // Let's reconstruct carefully to match three.js behavior + our mod.
-      // We already applied instanceMatrix.
-      // Now apply modelMatrix (usually identity) and viewMatrix.
-      
-      mvPosition = modelMatrix * mvPosition;
-      mvPosition = viewMatrix * mvPosition;
-      
+      mvPosition = modelViewMatrix * mvPosition;
+
       gl_Position = projectionMatrix * mvPosition;
       `
     );
