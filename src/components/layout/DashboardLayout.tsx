@@ -17,7 +17,7 @@ export default function DashboardLayout({
   bottomRightPanel,
   className = "",
 }: DashboardLayoutProps) {
-  const { mainLayout, rightLayout, setMainLayout, setRightLayout } = useLayoutStore();
+  const { outerLayout, innerLayout, setOuterLayout, setInnerLayout } = useLayoutStore();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -30,35 +30,37 @@ export default function DashboardLayout({
 
   return (
     <div className={`h-screen w-full bg-background text-foreground overflow-hidden ${className}`}>
-      <Group orientation="horizontal" onLayoutChange={setMainLayout} id="main-group">
-        {/* Left Panel: Map */}
-        <Panel id="left" defaultSize={mainLayout.left} minSize={20}>
-          <div className="h-full w-full relative overflow-hidden">
-            {leftPanel}
-          </div>
-        </Panel>
+      {/* Outer Group: Vertical Split (Top vs Bottom) */}
+      <Group orientation="vertical" onLayoutChange={setOuterLayout} id="outer-group">
         
-        <Separator className="w-1 bg-border hover:bg-primary/50 transition-colors flex items-center justify-center z-50 focus:outline-none cursor-col-resize" />
-        
-        {/* Right Panel Group */}
-        <Panel id="right" defaultSize={mainLayout.right} minSize={30}>
-          <Group orientation="vertical" onLayoutChange={setRightLayout} id="right-group">
-            {/* Top Right: Cube */}
-            <Panel id="top" defaultSize={rightLayout.top} minSize={30}>
+        {/* Top Area: Map (Left) and Cube (Right) */}
+        <Panel id="top" defaultSize={outerLayout.top} minSize={30}>
+          <Group orientation="horizontal" onLayoutChange={setInnerLayout} id="inner-group">
+            {/* Left Panel: Map */}
+            <Panel id="top-left" defaultSize={innerLayout.left} minSize={20}>
+              <div className="h-full w-full relative overflow-hidden">
+                {leftPanel}
+              </div>
+            </Panel>
+
+            <Separator className="w-1 bg-border hover:bg-primary/50 transition-colors flex items-center justify-center z-50 focus:outline-none cursor-col-resize" />
+
+            {/* Right Panel: Cube */}
+            <Panel id="top-right" defaultSize={innerLayout.right} minSize={20}>
               <div className="h-full w-full relative overflow-hidden">
                 {topRightPanel}
               </div>
             </Panel>
-            
-            <Separator className="h-1 bg-border hover:bg-primary/50 transition-colors flex items-center justify-center z-50 focus:outline-none cursor-row-resize" />
-            
-            {/* Bottom Right: Timeline */}
-            <Panel id="bottom" defaultSize={rightLayout.bottom} minSize={10}>
-              <div className="h-full w-full relative overflow-hidden">
-                {bottomRightPanel}
-              </div>
-            </Panel>
           </Group>
+        </Panel>
+        
+        <Separator className="h-1 bg-border hover:bg-primary/50 transition-colors flex items-center justify-center z-50 focus:outline-none cursor-row-resize" />
+        
+        {/* Bottom Panel: Timeline */}
+        <Panel id="bottom" defaultSize={outerLayout.bottom} minSize={10}>
+          <div className="h-full w-full relative overflow-hidden">
+            {bottomRightPanel}
+          </div>
         </Panel>
       </Group>
     </div>
