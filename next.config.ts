@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverComponentsExternalPackages: ["duckdb"],
+  serverExternalPackages: ["duckdb"],
   turbopack: {
     root: __dirname,
   },
