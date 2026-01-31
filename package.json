@@ -10,6 +10,8 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@loaders.gl/arrow": "^4.3.4",
+    "@loaders.gl/core": "^4.3.4",
     "@math.gl/web-mercator": "^4.1.0",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slider": "^1.3.6",
@@ -17,10 +19,12 @@
     "@react-three/fiber": "^9.5.0",
     "@types/three": "^0.182.0",
     "@visx/axis": "^3.12.0",
+    "apache-arrow": "^21.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-array": "^3.2.4",
     "d3-scale": "^4.0.2",
+    "duckdb": "^1.4.4",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.563.0",
     "maplibre-gl": "^5.17.0",
