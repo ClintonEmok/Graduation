@@ -7,15 +7,15 @@
 ## Current Position
 
 Phase: 2 of 9 (Temporal Controls)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-01-31 - Completed 02-02-PLAN.md
+Plan: 3 of 3 (Complete)
+Status: Phase complete
+Last activity: 2026-01-31 - Completed 02-03-PLAN.md
 
-Progress: █▓▓░░░░░░ 18%
+Progress: ██░░░░░░░ 22%
 
 ```
 [x] Phase 1: Core 3D
-[>] Phase 2: Temporal
+[x] Phase 2: Temporal
 [ ] Phase 3: Adaptive Logic
 [ ] Phase 4: Adaptive Viz
 [ ] Phase 5: Data Backend
@@ -30,7 +30,7 @@ Progress: █▓▓░░░░░░ 18%
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 1.66/9 | 9/9 |
+| Phase Completion | 2/9 | 9/9 |
 
 ## Context & Decisions
 
@@ -56,9 +56,11 @@ Progress: █▓▓░░░░░░ 18%
 | 2 | Use meshBasicMaterial for TimePlane | Ensure visibility without lighting dependency |
 | 2 | Inject shader logic via onBeforeCompile | Avoid custom shader material complexity while enabling GLSL filtering |
 | 2 | Dim points outside time range | Maintain context instead of discarding completely |
+| 2 | Use useFrame for animation loop | Ensure smooth updates decoupled from React render cycle where possible |
+| 2 | Pass shader uniforms via userData | Allow direct updates without re-compiling the material |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-02-PLAN.md
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
