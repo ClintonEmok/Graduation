@@ -182,7 +182,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | Phase | Status | Completion |
 |-------|--------|------------|
 | 1. Core 3D Visualization | **Complete** | 100% |
-| 2. Temporal Controls | Pending | 0% |
+| 2. Temporal Controls | In Progress | 33% |
 | 3. Adaptive Scaling Logic | Pending | 0% |
 | 4. Adaptive Visualization Aids | Pending | 0% |
 | 5. Data Backend & Loading | Pending | 0% |
