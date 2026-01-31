@@ -128,6 +128,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Application remains responsive while loading large datasets (using progression or aggregation).
 3. User sees loading indicators during data fetching states.
 
+**Plans:**
+- [ ] 06-01-PLAN.md — Infrastructure & Data Prep
+- [ ] 06-02-PLAN.md — Streaming API Endpoint
+- [ ] 06-03-PLAN.md — Frontend Integration & Optimization
+
 ## Phase 7: Advanced Filtering
 
 **Goal:** Users can slice the data by attributes and geography.
