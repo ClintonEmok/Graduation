@@ -11,7 +11,7 @@ interface DensityHistogramProps {
 
 export const DensityHistogram: React.FC<DensityHistogramProps> = ({ width, height }) => {
   const data = useDataStore((state) => state.data);
-  const { timeRange } = useTimeStore();
+  const { timeRange, currentTime } = useTimeStore();
   const scale = useAdaptiveScale(width);
   
   const bins = useMemo(() => {
@@ -28,6 +28,8 @@ export const DensityHistogram: React.FC<DensityHistogramProps> = ({ width, heigh
   }, [data, timeRange]);
 
   const maxCount = useMemo(() => max(bins, (d) => d.length) || 1, [bins]);
+
+  const currentTimeX = useMemo(() => scale(currentTime), [scale, currentTime]);
 
   if (!data || data.length === 0) return null;
 
@@ -55,6 +57,15 @@ export const DensityHistogram: React.FC<DensityHistogramProps> = ({ width, heigh
           );
         })}
       </g>
+      <line
+        x1={currentTimeX}
+        y1={0}
+        x2={currentTimeX}
+        y2={height}
+        stroke="currentColor"
+        strokeWidth={2}
+        className="text-primary"
+      />
     </svg>
   );
 };

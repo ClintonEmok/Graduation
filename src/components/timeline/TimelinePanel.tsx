@@ -12,6 +12,10 @@ import {
   Settings2
 } from 'lucide-react';
 
+import { DensityHistogram } from './DensityHistogram';
+import { AdaptiveAxis } from './AdaptiveAxis';
+import { useMeasure } from '@/hooks/useMeasure';
+
 export function TimelinePanel() {
   const {
     currentTime,
@@ -27,6 +31,8 @@ export function TimelinePanel() {
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
+
+  const [ref, bounds] = useMeasure<HTMLDivElement>();
 
   const handleTimeChange = useCallback((value: number[]) => {
     setTime(value[0]);
@@ -86,7 +92,19 @@ export function TimelinePanel() {
           </div>
 
           {/* Main Time Slider */}
-          <div className="flex-1 px-4">
+          <div className="flex-1 px-4 flex flex-col">
+            <div ref={ref} className="w-full h-24 relative mb-2">
+              {bounds.width > 0 && (
+                <>
+                  <div className="absolute inset-x-0 top-0 bottom-6">
+                    <DensityHistogram width={bounds.width} height={bounds.height - 24} />
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 h-6">
+                    <AdaptiveAxis width={bounds.width} height={24} />
+                  </div>
+                </>
+              )}
+            </div>
             <Slider
               value={[currentTime]}
               min={timeRange[0]}
