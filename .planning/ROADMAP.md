@@ -129,7 +129,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. User sees loading indicators during data fetching states.
 
 **Plans:**
-- [ ] 06-01-PLAN.md — Infrastructure & Data Prep
+- [x] 06-01-PLAN.md — Infrastructure & Data Prep
 - [ ] 06-02-PLAN.md — Streaming API Endpoint
 - [ ] 06-03-PLAN.md — Frontend Integration & Optimization
 
@@ -217,7 +217,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 3. Adaptive Scaling Logic | **Complete** | 100% |
 | 4. UI Layout Redesign | **Complete** | 100% |
 | 5. Adaptive Visualization Aids | **Complete** | 100% |
-| 6. Data Backend & Loading | Pending | 0% |
+| 6. Data Backend & Loading | In Progress | 33% |
 | 7. Advanced Filtering | Pending | 0% |
 | 8. Coordinated Views | Pending | 0% |
 | 9. Study Logging Infrastructure | Pending | 0% |

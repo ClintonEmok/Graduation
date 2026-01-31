@@ -2,16 +2,16 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 5 - Adaptive Visualization Aids
+**Current Phase:** 6 - Data Backend & Loading
 
 ## Current Position
 
-Phase: 5 of 10 (Adaptive Visualization Aids)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-01-31 - Completed 05-03-PLAN.md
+Phase: 6 of 10 (Data Backend & Loading)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-31 - Completed 06-01-PLAN.md
 
-Progress: █████░░░░░ 50%
+Progress: █████▌░░░░ 53%
 
 ```
 [x] Phase 1: Core 3D
@@ -19,7 +19,7 @@ Progress: █████░░░░░ 50%
 [x] Phase 3: Adaptive Logic
 [x] Phase 4: UI Layout
 [x] Phase 5: Adaptive Visualization Aids
-[ ] Phase 6: Data Backend
+[>] Phase 6: Data Backend
 [ ] Phase 7: Filtering
 [ ] Phase 8: Coordinated
 [ ] Phase 9: Logging/Study
@@ -73,6 +73,8 @@ Progress: █████░░░░░ 50%
 | 5 | Used @visx/axis with legacy-peer-deps | Support React 19 while using robust visualization primitives |
 | 5 | Stacked Layout (Histogram/Axis/Slider) | Provide clear vertical hierarchy for time controls |
 | 5 | Linear Slider + Adaptive Viz | Keep interaction simple (linear) while visualizing distortion (adaptive) |
+| 6 | Pre-calculate Viz Coords | Offload client CPU by computing X/Z/Y in ETL |
+| 6 | Use serverComponentsExternalPackages | Fix DuckDB bundling in Next.js |
 
 ## Blockers/Concerns Carried Forward
 
@@ -81,7 +83,7 @@ Progress: █████░░░░░ 50%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 05-03-PLAN.md
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
 
 
