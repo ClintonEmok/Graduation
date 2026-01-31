@@ -210,8 +210,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 1. Core 3D Visualization | **Complete** | 100% |
 | 2. Temporal Controls | **Complete** | 100% |
 | 3. Adaptive Scaling Logic | **Complete** | 100% |
-| 4. UI Layout Redesign | In Progress | 83% |
-| 5. Adaptive Visualization Aids | Pending | 0% |
+| 4. UI Layout Redesign | **Complete** | 100% |
+| 5. Adaptive Visualization Aids | In Progress | 66% |
 | 6. Data Backend & Loading | Pending | 0% |
 | 7. Advanced Filtering | Pending | 0% |
 | 8. Coordinated Views | Pending | 0% |

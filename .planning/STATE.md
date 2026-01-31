@@ -2,27 +2,27 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 4 - UI Layout Redesign
+**Current Phase:** 5 - Adaptive Visualization Aids
 
 ## Current Position
 
-Phase: 4 of 9 (UI Layout Redesign)
-Plan: 6 of 6 in current phase
-Status: Phase complete
-Last activity: 2026-01-31 - Completed 04-06-SUMMARY.md
+Phase: 5 of 9 (Adaptive Visualization Aids)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-31 - Completed 05-02-SUMMARY.md
 
-Progress: ████▌░░░░░ 44%
+Progress: █████░░░░░ 50%
 
 ```
 [x] Phase 1: Core 3D
 [x] Phase 2: Temporal
 [x] Phase 3: Adaptive Logic
 [x] Phase 4: Adaptive Viz
-[ ] Phase 5: Data Backend
-[ ] Phase 6: Filtering
-[ ] Phase 7: Coordinated
-[ ] Phase 8: Logging
-[ ] Phase 9: Study Flow
+[ ] Phase 5: Adaptive Visualization Aids
+[ ] Phase 6: Data Backend
+[ ] Phase 7: Filtering
+[ ] Phase 8: Coordinated
+[ ] Phase 9: Logging/Study
 ```
 
 ## Performance Metrics
@@ -35,7 +35,7 @@ Progress: ████▌░░░░░ 44%
 ## Context & Decisions
 
 - **Roadmap Structure:** 9 phases selected ("Comprehensive" depth) to isolate complex features (Adaptive Scaling, Real Data, Coordinated Views) into manageable work units.
-- **Mock Data First:** Phases 1-4 will use mock data to validate the adaptive algorithm and UI before integrating the complex Chicago crime dataset in Phase 5.
+- **Mock Data First:** Phases 1-5 will use mock data to validate the adaptive algorithm and UI before integrating the complex Chicago crime dataset in Phase 6.
 - **Study-Driven:** The final two phases focus exclusively on the user study infrastructure, ensuring the research goals are met after the technical system is solid.
 
 ## Decisions Made
@@ -67,11 +67,14 @@ Progress: ████▌░░░░░ 44%
 | 4 | Placeholder Cube | Implemented visual structure first to ensure layout stability before WebGL implementation |
 | 4 | Organized Components | Moved viz components to `src/components/viz` and layout to `src/components/layout` |
 | 4 | Renamed Layout Keys | Renamed layout keys to outerLayout/innerLayout for clarity |
+| 5 | Used d3-scale polylinear scale | Map adaptive time domains to screen coordinates seamlessly |
+| 5 | Created useDataStore with mock data | Unblock UI development before Data Backend phase |
+| 5 | Used @visx/axis with legacy-peer-deps | Support React 19 while using robust visualization primitives |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 04-06-SUMMARY.md
+Stopped at: Completed 05-02-SUMMARY.md
 Resume file: None
 
 
