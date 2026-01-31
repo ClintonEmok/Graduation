@@ -7,11 +7,11 @@
 ## Current Position
 
 Phase: 2 of 9 (Temporal Controls)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-31 - Completed 02-01-PLAN.md
+Last activity: 2026-01-31 - Completed 02-02-PLAN.md
 
-Progress: █▓░░░░░░░ 15%
+Progress: █▓▓░░░░░░ 18%
 
 ```
 [x] Phase 1: Core 3D
@@ -30,7 +30,7 @@ Progress: █▓░░░░░░░ 15%
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 1.33/9 | 9/9 |
+| Phase Completion | 1.66/9 | 9/9 |
 
 ## Context & Decisions
 
@@ -53,9 +53,12 @@ Progress: █▓░░░░░░░ 15%
 | 1 | Conditional View Toggle | Manage Abstract/Map modes via transparency and conditional rendering |
 | 2 | Initialized shadcn with defaults | Missing configuration blocked component installation |
 | 2 | Time Range 0-100 | Align with Phase 1 mock data Y-axis mapping |
+| 2 | Use meshBasicMaterial for TimePlane | Ensure visibility without lighting dependency |
+| 2 | Inject shader logic via onBeforeCompile | Avoid custom shader material complexity while enabling GLSL filtering |
+| 2 | Dim points outside time range | Maintain context instead of discarding completely |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-01-PLAN.md
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
