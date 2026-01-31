@@ -3,6 +3,7 @@
 import React from 'react';
 import { RefreshCcw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
+import { MainScene } from './MainScene';
 
 export default function CubeVisualization() {
   const { triggerReset } = useUIStore();
@@ -22,7 +23,7 @@ export default function CubeVisualization() {
       </button>
 
       <div className="flex-1 w-full relative bg-muted/20 flex items-center justify-center overflow-hidden">
-        <p className="text-muted-foreground select-none">3D Scene Area</p>
+        <MainScene showMapBackground={false} />
       </div>
     </div>
   );
