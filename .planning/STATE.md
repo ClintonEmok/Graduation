@@ -2,16 +2,16 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 3 - Adaptive Scaling Logic
+**Current Phase:** 4 - UI Layout Redesign
 
 ## Current Position
 
-Phase: 3 of 9 (Adaptive Scaling Logic)
-Plan: 1 of 2 in current phase
+Phase: 4 of 9 (UI Layout Redesign)
+Plan: 1 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-31 - Completed 03-01-PLAN.md
+Last activity: 2026-01-31 - Completed 04-01-PLAN.md
 
-Progress: ███░░░░░░░ 28%
+Progress: ███▎░░░░░░ 32%
 
 ```
 [x] Phase 1: Core 3D
@@ -60,9 +60,12 @@ Progress: ███░░░░░░░ 28%
 | 2 | Pass shader uniforms via userData | Allow direct updates without re-compiling the material |
 | 3 | Manual Binning | Ensure strict index correspondence for inversion |
 | 3 | Use Vitest | Lightweight TS testing |
+| 4 | Use react-resizable-panels | Robust split-pane behavior |
+| 4 | Persist layout to localStorage | Preserve user preference |
+| 4 | 3-pane layout | Map Left, Cube Top-Right, Timeline Bottom-Right |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-01-PLAN.md
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
