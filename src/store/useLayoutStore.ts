@@ -4,22 +4,22 @@ import { persist } from 'zustand/middleware';
 type Layout = Record<string, number>;
 
 interface LayoutState {
-  mainLayout: Layout;
-  rightLayout: Layout;
-  setMainLayout: (layout: Layout) => void;
-  setRightLayout: (layout: Layout) => void;
+  outerLayout: Layout;
+  innerLayout: Layout;
+  setOuterLayout: (layout: Layout) => void;
+  setInnerLayout: (layout: Layout) => void;
 }
 
 export const useLayoutStore = create<LayoutState>()(
   persist(
     (set) => ({
-      mainLayout: { left: 40, right: 60 },
-      rightLayout: { top: 70, bottom: 30 },
-      setMainLayout: (mainLayout) => set({ mainLayout }),
-      setRightLayout: (rightLayout) => set({ rightLayout }),
+      outerLayout: { top: 70, bottom: 30 },
+      innerLayout: { left: 50, right: 50 },
+      setOuterLayout: (outerLayout) => set({ outerLayout }),
+      setInnerLayout: (innerLayout) => set({ innerLayout }),
     }),
     {
-      name: 'layout-storage',
+      name: 'layout-storage-v2',
     }
   )
 );
