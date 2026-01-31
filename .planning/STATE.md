@@ -2,21 +2,21 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 2 - Temporal Controls
+**Current Phase:** 3 - Adaptive Scaling Logic
 
 ## Current Position
 
-Phase: 2 of 9 (Temporal Controls)
-Plan: 3 of 3 (Complete)
-Status: Phase complete
-Last activity: 2026-01-31 - Completed 02-03-PLAN.md
+Phase: 3 of 9 (Adaptive Scaling Logic)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-31 - Completed 03-01-PLAN.md
 
-Progress: ██░░░░░░░ 22%
+Progress: ███░░░░░░░ 28%
 
 ```
 [x] Phase 1: Core 3D
 [x] Phase 2: Temporal
-[ ] Phase 3: Adaptive Logic
+[>] Phase 3: Adaptive Logic
 [ ] Phase 4: Adaptive Viz
 [ ] Phase 5: Data Backend
 [ ] Phase 6: Filtering
@@ -30,7 +30,7 @@ Progress: ██░░░░░░░ 22%
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 2/9 | 9/9 |
+| Phase Completion | 2.1/9 | 9/9 |
 
 ## Context & Decisions
 
@@ -58,9 +58,11 @@ Progress: ██░░░░░░░ 22%
 | 2 | Dim points outside time range | Maintain context instead of discarding completely |
 | 2 | Use useFrame for animation loop | Ensure smooth updates decoupled from React render cycle where possible |
 | 2 | Pass shader uniforms via userData | Allow direct updates without re-compiling the material |
+| 3 | Manual Binning | Ensure strict index correspondence for inversion |
+| 3 | Use Vitest | Lightweight TS testing |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-03-PLAN.md
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None
