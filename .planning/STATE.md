@@ -7,11 +7,11 @@
 ## Current Position
 
 Phase: 1 of 9 (Core 3D Visualization)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In progress
-Last activity: 2026-01-31 - Completed 01-03-PLAN.md
+Last activity: 2026-01-31 - Completed 01-04-PLAN.md
 
-Progress: ░░░░░░░░░░ 6%
+Progress: ░░░░░░░░░░ 8%
 
 ```
 [>] Phase 1: Core 3D
@@ -47,9 +47,11 @@ Progress: ░░░░░░░░░░ 6%
 | 1 | Use CameraControls from drei | Smooth navigation, better constraint control than OrbitControls |
 | 1 | Use InstancedMesh | Performance for 1000+ points |
 | 1 | Map Y-axis to Time | Standard Three.js Y-up compatibility |
+| 1 | Use @math.gl/web-mercator | Robust projection math |
+| 1 | Center scene at (0,0) | Precision/Jitter avoidance |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-03-PLAN.md
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None

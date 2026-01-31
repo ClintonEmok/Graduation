@@ -11,6 +11,7 @@ Project/
 ├── src/                          # Next.js Application Source
 │   ├── app/                      # Next.js App Router
 │   ├── components/               # React Components
+│   │   ├── map/                  # MapLibre Components
 │   │   └── viz/                  # 3D Visualization Components
 │   └── lib/                      # Utility functions
 ├── datapreprocessing/            # Main project directory
@@ -29,7 +30,7 @@ Project/
 **src/:**
 - Purpose: Next.js application source code
 - Contains: App router, React components, 3D visualization logic
-- Key files: `src/components/viz/Scene.tsx`, `src/components/viz/Controls.tsx`
+- Key files: `src/components/map/MapBase.tsx`, `src/lib/projection.ts`
 
 **datapreprocessing/:**
 - Purpose: Primary project containing all source code and data
