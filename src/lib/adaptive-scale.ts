@@ -127,3 +127,73 @@ export function computeAdaptiveY(
   });
 }
 
+export function computeAdaptiveYColumnar(
+  timestamps: Float32Array | Float64Array,
+  timeRange: [number, number],
+  yRange: [number, number],
+  binCount: number = 100
+): Float32Array {
+  const tStart = timeRange[0];
+  const tEnd = timeRange[1];
+  const tSpan = tEnd - tStart;
+  const count = timestamps.length;
+  
+  // 1. Binning
+  const counts = new Float64Array(binCount);
+  
+  for (let i = 0; i < count; i++) {
+    const t = timestamps[i];
+    const norm = (t - tStart) / tSpan;
+    const idx = Math.floor(norm * binCount);
+    const clampedIdx = Math.max(0, Math.min(idx, binCount - 1));
+    counts[clampedIdx]++;
+  }
+  
+  // 2. Weights
+  const maxDensity = max(counts) || 1;
+  const weights = new Float64Array(binCount);
+  
+  for (let i = 0; i < binCount; i++) {
+    const density = counts[i];
+    weights[i] = 1 + (density / maxDensity) * 5;
+  }
+  
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const totalHeight = yRange[1] - yRange[0];
+  const yMin = yRange[0];
+  
+  // 3. Build Range Arrays (Start Y for each bin)
+  const yStarts = new Float64Array(binCount + 1);
+  let currentY = yMin;
+  
+  for (let i = 0; i < binCount; i++) {
+    yStarts[i] = currentY;
+    const binHeight = (weights[i] / totalWeight) * totalHeight;
+    currentY += binHeight;
+  }
+  yStarts[binCount] = yRange[1];
+  
+  // 4. Map timestamps to Y
+  const result = new Float32Array(count);
+  
+  for (let i = 0; i < count; i++) {
+    const t = timestamps[i];
+    const norm = (t - tStart) / tSpan;
+    const fractionalIdx = norm * binCount;
+    const idx = Math.floor(fractionalIdx);
+    const clampedIdx = Math.max(0, Math.min(idx, binCount - 1));
+    
+    let tInBin = fractionalIdx - idx;
+    if (idx >= binCount) tInBin = 1;
+    if (idx < 0) tInBin = 0;
+    
+    const binStart = yStarts[clampedIdx];
+    const binEnd = yStarts[clampedIdx + 1];
+    
+    result[i] = binStart + tInBin * (binEnd - binStart);
+  }
+  
+  return result;
+}
+
+
