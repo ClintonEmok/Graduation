@@ -11,6 +11,8 @@ import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -29,6 +31,10 @@ export const DualTimeline: React.FC = () => {
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const { currentTime, setTime, setRange } = useTimeStore();
+  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
+  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
+  const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const overviewSvgRef = useRef<SVGSVGElement | null>(null);
@@ -237,7 +243,7 @@ export const DualTimeline: React.FC = () => {
     [scrubFromEvent]
   );
 
-  const handlePointerUp = useCallback((event: React.PointerEvent<SVGRectElement>) => {
+  const handlePointerCancel = useCallback((event: React.PointerEvent<SVGRectElement>) => {
     isScrubbingRef.current = false;
     event.currentTarget.releasePointerCapture(event.pointerId);
   }, []);
@@ -247,6 +253,47 @@ export const DualTimeline: React.FC = () => {
   }, [currentTime, domainStart, domainEnd]);
 
   const cursorX = detailScale(new Date(cursorEpochSeconds * 1000));
+
+  const selectionPoint = useMemo(() => {
+    if (selectedIndex === null) return null;
+    return resolvePointByIndex(selectedIndex);
+  }, [selectedIndex, dataCount]);
+
+  const selectionX = useMemo(() => {
+    if (!selectionPoint || selectionPoint.timestampSec === null) return null;
+    return detailScale(new Date(selectionPoint.timestampSec * 1000));
+  }, [detailScale, selectionPoint]);
+
+  const handleSelectFromEvent = useCallback(
+    (event: React.PointerEvent<SVGRectElement>) => {
+      if (!detailInnerWidth) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
+      const epochSeconds = detailScale.invert(x).getTime() / 1000;
+      const nearest = findNearestIndexByTime(epochSeconds);
+      if (!nearest) {
+        clearSelection();
+        return;
+      }
+      const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
+      const maxDistance = Math.max(rangeSpan * 0.01, 60);
+      if (nearest.distance <= maxDistance) {
+        setSelectedIndex(nearest.index, 'timeline');
+      } else {
+        clearSelection();
+      }
+    },
+    [clearSelection, detailInnerWidth, detailRangeSec, detailScale, setSelectedIndex]
+  );
+
+  const handlePointerUpWithSelection = useCallback(
+    (event: React.PointerEvent<SVGRectElement>) => {
+      isScrubbingRef.current = false;
+      event.currentTarget.releasePointerCapture(event.pointerId);
+      handleSelectFromEvent(event);
+    },
+    [handleSelectFromEvent]
+  );
 
   const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
   const detailTicks = detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
@@ -322,6 +369,17 @@ export const DualTimeline: React.FC = () => {
               className="stroke-primary"
               strokeWidth={2}
             />
+            {selectionX !== null && (
+              <line
+                x1={selectionX}
+                x2={selectionX}
+                y1={0}
+                y2={DETAIL_HEIGHT}
+                className="stroke-sky-400"
+                strokeWidth={2}
+                strokeDasharray="4 2"
+              />
+            )}
             <rect
               ref={zoomRef}
               width={detailInnerWidth}
@@ -330,8 +388,8 @@ export const DualTimeline: React.FC = () => {
               className="cursor-crosshair"
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
+              onPointerUp={handlePointerUpWithSelection}
+              onPointerLeave={handlePointerCancel}
             />
             <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
               {detailTicks.map((tick, index) => {

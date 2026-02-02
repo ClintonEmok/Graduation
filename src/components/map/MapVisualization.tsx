@@ -1,9 +1,15 @@
+"use client";
+
 import React, { useMemo, useRef, useState } from 'react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import MapBase from './MapBase';
 import MapSelectionOverlay, { LatLonBounds } from './MapSelectionOverlay';
+import MapSelectionMarker from './MapSelectionMarker';
 import { Controls } from '../viz/Controls';
 import { project } from '@/lib/projection';
+import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 
 type DragPoint = {
@@ -18,6 +24,10 @@ export default function MapVisualization() {
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
   const clearSpatialBounds = useFilterStore((state) => state.clearSpatialBounds);
+  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
+  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
+  const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -57,6 +67,11 @@ export default function MapVisualization() {
     setDragStart(null);
     setDragCurrent(null);
   };
+
+  const selectionPoint = useMemo(() => {
+    if (selectedIndex === null) return null;
+    return resolvePointByIndex(selectedIndex);
+  }, [selectedIndex, dataCount]);
 
   const finalizeBounds = () => {
     if (!isSelecting || !isDragging || !dragStart || !dragCurrent) {
@@ -109,9 +124,26 @@ export default function MapVisualization() {
     setDragCurrent(point);
   };
 
-  const handleMouseUp = () => {
-    if (!isSelecting) return;
-    finalizeBounds();
+  const handleMouseUp = (event: MapLayerMouseEvent) => {
+    if (isSelecting) {
+      finalizeBounds();
+      return;
+    }
+    if (!event || isDragging) return;
+    const point = getDragPoint(event);
+    if (!point) return;
+    const [x, z] = project(point.lat, point.lon);
+    const nearest = findNearestIndexByScenePosition(x, z);
+    if (!nearest) {
+      clearSelection();
+      return;
+    }
+    const MAX_DISTANCE = 12;
+    if (nearest.distance <= MAX_DISTANCE) {
+      setSelectedIndex(nearest.index, 'map');
+    } else {
+      clearSelection();
+    }
   };
 
   const handleMouseLeave = () => {
@@ -142,6 +174,9 @@ export default function MapVisualization() {
         cursor={isSelecting ? 'crosshair' : undefined}
       >
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
+        {selectionPoint && (
+          <MapSelectionMarker lat={selectionPoint.lat} lon={selectionPoint.lon} />
+        )}
       </MapBase>
       
       {/* Overlay UI can go here */}
