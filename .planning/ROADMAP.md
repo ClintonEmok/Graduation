@@ -147,15 +147,16 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | **VIS-04** | User can filter displayed events by geographic region (spatial filtering) |
 
 **Success Criteria:**
-1. User can filter the dataset by specific crime types and districts.
-2. User can save a current filter configuration and restore it later.
-3. User can define a geographic boundary to filter shown events.
+1. User can filter the dataset by specific crime types, districts, and time ranges (multi-faceted filtering - DATA-02).
+2. User can save a current filter configuration and restore it later with named presets (DATA-03).
+3. User can define a geographic boundary to filter shown events (VIS-04).
 
 **Plans:**
-- [ ] 07-01-PLAN.md — State & Data Prep
+- [ ] 07-01-PLAN.md — State & Data Prep (types, districts, time range)
 - [ ] 07-02-PLAN.md — Backend Facets API
 - [ ] 07-03-PLAN.md — Visual Ghosting (Shader)
-- [ ] 07-04-PLAN.md — Filter UI Overlay
+- [ ] 07-04-PLAN.md — Filter UI Overlay (Controls.tsx integration)
+- [ ] 07-05-PLAN.md — Filter Presets (localStorage persistence)
 
 ## Phase 8: Coordinated Views
 
