@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 type GhostingShaderOptions = {
   useColumns: boolean;
   typeMapSize: number;
@@ -21,6 +23,9 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uUseColumns = { value: useColumns ? 1 : 0 };
   shader.uniforms.uTypeMap = { value: buildUniformArray(typeMapSize) };
   shader.uniforms.uDistrictMap = { value: buildUniformArray(districtMapSize) };
+  shader.uniforms.uBoundsMin = { value: new THREE.Vector2(0, 0) };
+  shader.uniforms.uBoundsMax = { value: new THREE.Vector2(0, 0) };
+  shader.uniforms.uHasBounds = { value: 0 };
 
   shader.vertexShader = shader.vertexShader.replace(
     '#include <common>',
@@ -37,6 +42,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     attribute float filterDistrict;
 
     varying float vWorldY;
+    varying float vWorldX;
+    varying float vWorldZ;
     varying float vLinearY;
     varying float vFilterType;
     varying float vFilterDistrict;
@@ -67,6 +74,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     mvPosition.y += yShift;
 
     vWorldY = mvPosition.y;
+    vWorldX = mvPosition.x;
+    vWorldZ = mvPosition.z;
     vLinearY = currentY;
     vFilterType = filterType;
     vFilterDistrict = filterDistrict;
@@ -87,7 +96,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uTimeMax;
     uniform float uTypeMap[${typeMapSize}];
     uniform float uDistrictMap[${districtMapSize}];
+    uniform vec2 uBoundsMin;
+    uniform vec2 uBoundsMax;
+    uniform float uHasBounds;
     varying float vWorldY;
+    varying float vWorldX;
+    varying float vWorldZ;
     varying float vLinearY;
     varying float vFilterType;
     varying float vFilterDistrict;
@@ -119,6 +133,15 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
       float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
       gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
       gl_FragColor.a *= 0.05;
+    }
+
+    if (uHasBounds > 0.5) {
+      bool outsideBounds = vWorldX < uBoundsMin.x || vWorldX > uBoundsMax.x || vWorldZ < uBoundsMin.y || vWorldZ > uBoundsMax.y;
+      if (outsideBounds) {
+        float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
+        gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
+        gl_FragColor.a *= 0.05;
+      }
     }
     `
   );

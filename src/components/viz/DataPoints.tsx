@@ -74,6 +74,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   
   useImperativeHandle(ref, () => meshRef.current!, []);
 
@@ -191,6 +192,14 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       : [normalizedEnd, normalizedStart];
   }, [selectedTimeRange, minTimestamp, maxTimestamp]);
 
+  const normalizedSpatialBounds = useMemo(() => {
+    if (!selectedSpatialBounds) return null;
+    return {
+      min: [selectedSpatialBounds.minX, selectedSpatialBounds.minZ] as [number, number],
+      max: [selectedSpatialBounds.maxX, selectedSpatialBounds.maxZ] as [number, number]
+    };
+  }, [selectedSpatialBounds]);
+
   useLayoutEffect(() => {
     if (!meshRef.current) return;
 
@@ -263,6 +272,36 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       shader.uniforms.uTimeMax.value = normalizedTimeRange[1];
     }
   }, [normalizedTimeRange]);
+
+  useEffect(() => {
+    if (!meshRef.current || !meshRef.current.material) return;
+    const material = meshRef.current.material as THREE.Material;
+    const shader = material.userData.shader;
+    if (!shader) return;
+
+    if (shader.uniforms.uHasBounds) {
+      shader.uniforms.uHasBounds.value = normalizedSpatialBounds ? 1 : 0;
+    }
+
+    if (normalizedSpatialBounds) {
+      if (shader.uniforms.uBoundsMin) {
+        const value = shader.uniforms.uBoundsMin.value;
+        if (value && typeof value.set === 'function') {
+          value.set(normalizedSpatialBounds.min[0], normalizedSpatialBounds.min[1]);
+        } else {
+          shader.uniforms.uBoundsMin.value = normalizedSpatialBounds.min;
+        }
+      }
+      if (shader.uniforms.uBoundsMax) {
+        const value = shader.uniforms.uBoundsMax.value;
+        if (value && typeof value.set === 'function') {
+          value.set(normalizedSpatialBounds.max[0], normalizedSpatialBounds.max[1]);
+        } else {
+          shader.uniforms.uBoundsMax.value = normalizedSpatialBounds.max;
+        }
+      }
+    }
+  }, [normalizedSpatialBounds]);
 
   // Animate transition
   useFrame((state, delta) => {
