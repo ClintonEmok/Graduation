@@ -151,6 +151,12 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. User can save a current filter configuration and restore it later.
 3. User can define a geographic boundary to filter shown events.
 
+**Plans:**
+- [ ] 07-01-PLAN.md — State & Data Prep
+- [ ] 07-02-PLAN.md — Backend Facets API
+- [ ] 07-03-PLAN.md — Visual Ghosting (Shader)
+- [ ] 07-04-PLAN.md — Filter UI Overlay
+
 ## Phase 8: Coordinated Views
 
 **Goal:** Users experience synchronized exploration across Map, Cube, and Timeline.
