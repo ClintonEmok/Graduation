@@ -89,6 +89,8 @@ async function main() {
           lat,
           lon,
           timestamp,
+          district,
+          district_name,
           (lon + 180.0) / 360.0 AS x,
           (1.0 - (ln(tan(lat * PI() / 180.0) + (1.0 / cos(lat * PI() / 180.0))) / PI())) / 2.0 AS z,
           ((epoch(timestamp) * 1000 - ${minT}) / ${rangeT}) * 100.0 AS y
