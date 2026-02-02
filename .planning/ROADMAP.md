@@ -157,6 +157,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 - [x] 07-03-PLAN.md — Visual Ghosting (Shader)
 - [x] 07-04-PLAN.md — Filter UI Overlay (Controls.tsx integration)
 - [x] 07-05-PLAN.md — Filter Presets (localStorage persistence)
+- [x] 07-06-PLAN.md — Time Range Ghosting (Shader)
+- [x] 07-07-PLAN.md — Spatial Boundary Filtering (Map selection)
 
 ## Phase 8: Coordinated Views
 
