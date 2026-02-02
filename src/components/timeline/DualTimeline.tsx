@@ -1,0 +1,356 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { bin, max } from 'd3-array';
+import { brushX } from 'd3-brush';
+import { select } from 'd3-selection';
+import { scaleUtc } from 'd3-scale';
+import { zoom, zoomIdentity } from 'd3-zoom';
+import { useMeasure } from '@/hooks/useMeasure';
+import { useDataStore } from '@/store/useDataStore';
+import { useFilterStore } from '@/store/useFilterStore';
+import { useTimeStore } from '@/store/useTimeStore';
+import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+
+const OVERVIEW_HEIGHT = 42;
+const DETAIL_HEIGHT = 60;
+const AXIS_HEIGHT = 18;
+
+const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 4, left: 12 };
+const DETAIL_MARGIN = { top: 8, right: 12, bottom: 6, left: 12 };
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+export const DualTimeline: React.FC = () => {
+  const data = useDataStore((state) => state.data);
+  const columns = useDataStore((state) => state.columns);
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const setTimeRange = useFilterStore((state) => state.setTimeRange);
+  const { currentTime, setTime, setRange } = useTimeStore();
+
+  const [containerRef, bounds] = useMeasure<HTMLDivElement>();
+  const overviewSvgRef = useRef<SVGSVGElement | null>(null);
+  const detailSvgRef = useRef<SVGSVGElement | null>(null);
+  const brushRef = useRef<SVGGElement | null>(null);
+  const zoomRef = useRef<SVGRectElement | null>(null);
+  const isSyncingRef = useRef(false);
+  const isScrubbingRef = useRef(false);
+
+  const width = Math.max(0, bounds.width ?? 0);
+  const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
+  const detailInnerWidth = Math.max(0, width - DETAIL_MARGIN.left - DETAIL_MARGIN.right);
+
+  const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
+    if (minTimestampSec !== null && maxTimestampSec !== null) {
+      return [minTimestampSec, maxTimestampSec];
+    }
+    return [0, 100];
+  }, [minTimestampSec, maxTimestampSec]);
+
+  const detailRangeSec = useMemo<[number, number]>(() => {
+    const range = selectedTimeRange ?? [domainStart, domainEnd];
+    return range[0] <= range[1] ? [range[0], range[1]] : [range[1], range[0]];
+  }, [selectedTimeRange, domainStart, domainEnd]);
+
+  const timestampSeconds = useMemo<number[]>(() => {
+    if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
+      const result = new Array<number>(columns.length);
+      for (let i = 0; i < columns.length; i += 1) {
+        result[i] = normalizedToEpochSeconds(columns.timestamp[i], minTimestampSec, maxTimestampSec);
+      }
+      return result;
+    }
+    if (data && data.length > 0) {
+      return data.map((point) => point.timestamp as number);
+    }
+    return [];
+  }, [columns, data, minTimestampSec, maxTimestampSec]);
+
+  const overviewBins = useMemo(() => {
+    if (!timestampSeconds.length) return [];
+    const binner = bin<number, number>()
+      .value((d) => d)
+      .domain([domainStart, domainEnd])
+      .thresholds(50);
+    return binner(timestampSeconds);
+  }, [timestampSeconds, domainStart, domainEnd]);
+
+  const detailBins = useMemo(() => {
+    if (!timestampSeconds.length) return [];
+    const binner = bin<number, number>()
+      .value((d) => d)
+      .domain([detailRangeSec[0], detailRangeSec[1]])
+      .thresholds(40);
+    return binner(timestampSeconds);
+  }, [timestampSeconds, detailRangeSec]);
+
+  const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
+  const detailMax = useMemo(() => max(detailBins, (d) => d.length) || 1, [detailBins]);
+
+  const overviewScale = useMemo(
+    () =>
+      scaleUtc()
+        .domain([new Date(domainStart * 1000), new Date(domainEnd * 1000)])
+        .range([0, overviewInnerWidth]),
+    [domainStart, domainEnd, overviewInnerWidth]
+  );
+
+  const detailScale = useMemo(
+    () =>
+      scaleUtc()
+        .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
+        .range([0, detailInnerWidth]),
+    [detailRangeSec, detailInnerWidth]
+  );
+
+  const applyRangeToStores = useCallback(
+    (startSec: number, endSec: number) => {
+      const safeStart = clamp(startSec, domainStart, domainEnd);
+      const safeEnd = clamp(endSec, domainStart, domainEnd);
+      const normalizedStart = clamp(
+        epochSecondsToNormalized(safeStart, domainStart, domainEnd),
+        0,
+        100
+      );
+      const normalizedEnd = clamp(
+        epochSecondsToNormalized(safeEnd, domainStart, domainEnd),
+        0,
+        100
+      );
+      const nextRange: [number, number] =
+        normalizedStart <= normalizedEnd
+          ? [normalizedStart, normalizedEnd]
+          : [normalizedEnd, normalizedStart];
+
+      setTimeRange([safeStart, safeEnd]);
+      setRange(nextRange);
+
+      const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
+      if (clampedTime !== currentTime) {
+        setTime(clampedTime);
+      }
+    },
+    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange]
+  );
+
+  useEffect(() => {
+    if (!overviewInnerWidth || !detailInnerWidth) return;
+    if (!brushRef.current || !overviewSvgRef.current || !detailSvgRef.current || !zoomRef.current) return;
+
+    const brushSelection: [number, number] = [
+      overviewScale(new Date(detailRangeSec[0] * 1000)),
+      overviewScale(new Date(detailRangeSec[1] * 1000))
+    ];
+
+    const brushBehavior = brushX()
+      .extent([[0, 0], [overviewInnerWidth, OVERVIEW_HEIGHT]])
+      .on('brush end', (event) => {
+        if (isSyncingRef.current) return;
+        if (!event.selection) return;
+        const [x0, x1] = event.selection as [number, number];
+        const startSec = overviewScale.invert(x0).getTime() / 1000;
+        const endSec = overviewScale.invert(x1).getTime() / 1000;
+        applyRangeToStores(startSec, endSec);
+
+        const scale = overviewInnerWidth / Math.max(1, x1 - x0);
+        const translateX = -x0;
+        isSyncingRef.current = true;
+        select(zoomRef.current as SVGRectElement).call(
+          zoomBehavior.transform,
+          zoomIdentity.scale(scale).translate(translateX, 0)
+        );
+        isSyncingRef.current = false;
+      });
+
+    const zoomBehavior = zoom<SVGRectElement, unknown>()
+      .scaleExtent([1, 50])
+      .translateExtent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
+      .extent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
+      .on('zoom', (event) => {
+        if (isSyncingRef.current) return;
+        const rescaled = event.transform.rescaleX(overviewScale);
+        const newDomain = rescaled.domain();
+        const startSec = newDomain[0].getTime() / 1000;
+        const endSec = newDomain[1].getTime() / 1000;
+        applyRangeToStores(startSec, endSec);
+
+        isSyncingRef.current = true;
+        select(brushRef.current as SVGGElement).call(
+          brushBehavior.move,
+          [overviewScale(newDomain[0]), overviewScale(newDomain[1])]
+        );
+        isSyncingRef.current = false;
+      });
+
+    select(brushRef.current as SVGGElement)
+      .call(brushBehavior)
+      .call(brushBehavior.move, brushSelection as [number, number]);
+    select(zoomRef.current as SVGRectElement).call(zoomBehavior);
+
+    return () => {
+      select(brushRef.current as SVGGElement).on('.brush', null);
+      select(zoomRef.current as SVGRectElement).on('.zoom', null);
+    };
+  }, [
+    applyRangeToStores,
+    detailInnerWidth,
+    detailRangeSec,
+    overviewInnerWidth,
+    overviewScale
+  ]);
+
+  const scrubFromEvent = useCallback(
+    (event: React.PointerEvent<SVGRectElement>) => {
+      if (!detailInnerWidth) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
+      const epochSeconds = detailScale.invert(x).getTime() / 1000;
+      const normalized = clamp(
+        epochSecondsToNormalized(epochSeconds, domainStart, domainEnd),
+        0,
+        100
+      );
+      setTime(normalized);
+    },
+    [detailInnerWidth, detailScale, domainEnd, domainStart, setTime]
+  );
+
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<SVGRectElement>) => {
+      isScrubbingRef.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      scrubFromEvent(event);
+    },
+    [scrubFromEvent]
+  );
+
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent<SVGRectElement>) => {
+      if (!isScrubbingRef.current) return;
+      scrubFromEvent(event);
+    },
+    [scrubFromEvent]
+  );
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<SVGRectElement>) => {
+    isScrubbingRef.current = false;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
+
+  const cursorEpochSeconds = useMemo(() => {
+    return normalizedToEpochSeconds(currentTime, domainStart, domainEnd);
+  }, [currentTime, domainStart, domainEnd]);
+
+  const cursorX = detailScale(new Date(cursorEpochSeconds * 1000));
+
+  const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
+  const detailTicks = detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <div className="flex flex-col gap-2">
+        <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
+          <g transform={`translate(${OVERVIEW_MARGIN.left},${OVERVIEW_MARGIN.top})`}>
+            {overviewBins.map((bucket, index) => {
+              if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
+              const x0 = overviewScale(new Date(bucket.x0 * 1000));
+              const x1 = overviewScale(new Date(bucket.x1 * 1000));
+              const barWidth = Math.max(0, x1 - x0 - 1);
+              const barHeight = (bucket.length / overviewMax) * OVERVIEW_HEIGHT;
+              return (
+                <rect
+                  key={`overview-${index}`}
+                  x={x0}
+                  y={OVERVIEW_HEIGHT - barHeight}
+                  width={barWidth}
+                  height={barHeight}
+                  className="fill-primary/20"
+                />
+              );
+            })}
+            <g ref={brushRef} className="text-primary/60" />
+            <g transform={`translate(0, ${OVERVIEW_HEIGHT})`} className="text-muted-foreground">
+              {overviewTicks.map((tick, index) => {
+                const x = overviewScale(tick);
+                return (
+                  <g key={`overview-tick-${index}`} transform={`translate(${x}, 0)`}>
+                    <line y2={6} stroke="currentColor" />
+                    <text
+                      y={14}
+                      textAnchor="middle"
+                      fontSize={10}
+                      fill="currentColor"
+                    >
+                      {tick.toLocaleDateString()}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </g>
+        </svg>
+
+        <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
+          <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
+            {detailBins.map((bucket, index) => {
+              if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
+              const x0 = detailScale(new Date(bucket.x0 * 1000));
+              const x1 = detailScale(new Date(bucket.x1 * 1000));
+              const barWidth = Math.max(0, x1 - x0 - 1);
+              const barHeight = (bucket.length / detailMax) * DETAIL_HEIGHT;
+              return (
+                <rect
+                  key={`detail-${index}`}
+                  x={x0}
+                  y={DETAIL_HEIGHT - barHeight}
+                  width={barWidth}
+                  height={barHeight}
+                  className="fill-primary/35"
+                />
+              );
+            })}
+            <line
+              x1={cursorX}
+              x2={cursorX}
+              y1={0}
+              y2={DETAIL_HEIGHT}
+              className="stroke-primary"
+              strokeWidth={2}
+            />
+            <rect
+              ref={zoomRef}
+              width={detailInnerWidth}
+              height={DETAIL_HEIGHT}
+              fill="transparent"
+              className="cursor-crosshair"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+            />
+            <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
+              {detailTicks.map((tick, index) => {
+                const x = detailScale(tick);
+                return (
+                  <g key={`detail-tick-${index}`} transform={`translate(${x}, 0)`}>
+                    <line y2={6} stroke="currentColor" />
+                    <text
+                      y={14}
+                      textAnchor="middle"
+                      fontSize={10}
+                      fill="currentColor"
+                    >
+                      {tick.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </g>
+        </svg>
+      </div>
+    </div>
+  );
+};

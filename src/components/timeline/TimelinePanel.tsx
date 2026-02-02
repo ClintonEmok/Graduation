@@ -2,7 +2,6 @@
 
 import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
-import { Slider } from '@/components/ui/slider';
 import { 
   Play, 
   Pause, 
@@ -12,31 +11,22 @@ import {
   Settings2
 } from 'lucide-react';
 
-import { DensityHistogram } from './DensityHistogram';
-import { AdaptiveAxis } from './AdaptiveAxis';
-import { useMeasure } from '@/hooks/useMeasure';
+import { Slider } from '@/components/ui/slider';
+import { DualTimeline } from './DualTimeline';
 
 export function TimelinePanel() {
   const {
     currentTime,
     isPlaying,
-    timeRange,
     timeWindow,
     speed,
     timeScaleMode,
     togglePlay,
-    setTime,
     stepTime,
     setTimeWindow,
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
-
-  const [ref, bounds] = useMeasure<HTMLDivElement>();
-
-  const handleTimeChange = useCallback((value: number[]) => {
-    setTime(value[0]);
-  }, [setTime]);
 
   const handleWindowChange = useCallback((value: number[]) => {
     setTimeWindow(value[0]);
@@ -91,28 +81,9 @@ export function TimelinePanel() {
             {formatTime(currentTime)}
           </div>
 
-          {/* Main Time Slider */}
+          {/* Dual Timeline */}
           <div className="flex-1 px-4 flex flex-col">
-            <div ref={ref} className="w-full h-24 relative mb-2">
-              {bounds.width > 0 && (
-                <>
-                  <div className="absolute inset-x-0 top-0 bottom-6">
-                    <DensityHistogram width={bounds.width} height={bounds.height - 24} />
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 h-6">
-                    <AdaptiveAxis width={bounds.width} height={24} />
-                  </div>
-                </>
-              )}
-            </div>
-            <Slider
-              value={[currentTime]}
-              min={timeRange[0]}
-              max={timeRange[1]}
-              step={0.1}
-              onValueChange={handleTimeChange}
-              className="cursor-pointer"
-            />
+            <DualTimeline />
           </div>
 
           {/* Settings Trigger */}
