@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import MapBase from './MapBase';
 import MapEventLayer from './MapEventLayer';
@@ -28,12 +28,20 @@ export default function MapVisualization() {
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const data = useDataStore((state) => state.data);
+  const columns = useDataStore((state) => state.columns);
+  const generateMockData = useDataStore((state) => state.generateMockData);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<DragPoint | null>(null);
   const [dragCurrent, setDragCurrent] = useState<DragPoint | null>(null);
+
+  useEffect(() => {
+    if (columns || data.length > 0) return;
+    generateMockData(1000);
+  }, [columns, data.length, generateMockData]);
 
   const getDragPoint = (event: MapLayerMouseEvent) => {
     const map = mapRef.current;
