@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { TIME_MIN, TIME_MAX } from '@/lib/constants';
 import { RecordBatchReader, Table } from 'apache-arrow';
+import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 
 export interface DataPoint {
   id: string;
@@ -17,23 +18,9 @@ export interface ColumnarData {
   z: Float32Array;
   timestamp: Float32Array;
   type: Uint8Array;
+  district: Uint8Array;
   length: number;
 }
-
-// Map crime types to integer IDs for the Uint8Array
-export const CRIME_TYPE_MAP: Record<string, number> = {
-  'Theft': 1,
-  'Assault': 2,
-  'Burglary': 3,
-  'Robbery': 4,
-  'Vandalism': 5,
-  'Other': 0
-};
-
-export const CRIME_ID_TO_TYPE = Object.entries(CRIME_TYPE_MAP).reduce((acc, [k, v]) => {
-  acc[v] = k;
-  return acc;
-}, {} as Record<number, string>);
 
 interface DataState {
   data: DataPoint[];
@@ -53,13 +40,14 @@ export const useDataStore = create<DataState>((set) => ({
   setData: (data) => set({ data }),
   
   generateMockData: (count) => {
+    const crimeTypes = ['Theft', 'Assault', 'Burglary', 'Robbery', 'Vandalism'];
     const data: DataPoint[] = Array.from({ length: count }).map((_, i) => ({
       id: String(i),
       timestamp: TIME_MIN + Math.random() * (TIME_MAX - TIME_MIN),
       x: (Math.random() - 0.5) * 100,
       y: 0, // Will be computed
       z: (Math.random() - 0.5) * 100,
-      type: Object.keys(CRIME_TYPE_MAP)[Math.floor(Math.random() * 5)],
+      type: crimeTypes[Math.floor(Math.random() * crimeTypes.length)],
       value: Math.random()
     }));
     // Sort by timestamp
@@ -141,7 +129,15 @@ export const useDataStore = create<DataState>((set) => ({
       const typeData = new Uint8Array(count);
       const rawTypes = typeCol ? typeCol.toArray() : [];
       for(let i=0; i<count; i++) {
-          typeData[i] = CRIME_TYPE_MAP[String(rawTypes[i])] || 0;
+          typeData[i] = getCrimeTypeId(String(rawTypes[i]));
+      }
+
+      // District mapping
+      const districtCol = table.getChild('district');
+      const districtData = new Uint8Array(count);
+      const rawDistricts = districtCol ? districtCol.toArray() : [];
+      for(let i=0; i<count; i++) {
+          districtData[i] = getDistrictId(String(rawDistricts[i]));
       }
 
       const columns: ColumnarData = {
@@ -149,6 +145,7 @@ export const useDataStore = create<DataState>((set) => ({
           z: zData,
           timestamp: timestampData,
           type: typeData,
+          district: districtData,
           length: count
       };
 
