@@ -152,8 +152,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. User can define a geographic boundary to filter shown events (VIS-04).
 
 **Plans:**
-- [ ] 07-01-PLAN.md — State & Data Prep (types, districts, time range)
-- [ ] 07-02-PLAN.md — Backend Facets API
+- [x] 07-01-PLAN.md — State & Data Prep (types, districts, time range)
+- [x] 07-02-PLAN.md — Backend Facets API
 - [ ] 07-03-PLAN.md — Visual Ghosting (Shader)
 - [ ] 07-04-PLAN.md — Filter UI Overlay (Controls.tsx integration)
 - [ ] 07-05-PLAN.md — Filter Presets (localStorage persistence)
@@ -225,7 +225,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 4. UI Layout Redesign | **Complete** | 100% |
 | 5. Adaptive Visualization Aids | **Complete** | 100% |
 | 6. Data Backend & Loading | **Complete** | 100% |
-| 7. Advanced Filtering | Pending | 0% |
+| 7. Advanced Filtering | **In progress** | 40% |
 | 8. Coordinated Views | Pending | 0% |
 | 9. Study Logging Infrastructure | Pending | 0% |
 | 10. Study Content & Flow | Pending | 0% |
