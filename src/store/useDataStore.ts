@@ -25,6 +25,8 @@ export interface ColumnarData {
 interface DataState {
   data: DataPoint[];
   columns: ColumnarData | null;
+  minTimestamp: number | null;
+  maxTimestamp: number | null;
   isLoading: boolean;
   
   setData: (data: DataPoint[]) => void;
@@ -35,6 +37,8 @@ interface DataState {
 export const useDataStore = create<DataState>((set) => ({
   data: [],
   columns: null,
+  minTimestamp: null,
+  maxTimestamp: null,
   isLoading: false,
 
   setData: (data) => set({ data }),
@@ -52,7 +56,7 @@ export const useDataStore = create<DataState>((set) => ({
     }));
     // Sort by timestamp
     data.sort((a, b) => a.timestamp - b.timestamp);
-    set({ data, columns: null }); // Clear columns when using mock data
+    set({ data, columns: null, minTimestamp: null, maxTimestamp: null }); // Clear columns when using mock data
   },
 
   loadRealData: async () => {
@@ -149,7 +153,7 @@ export const useDataStore = create<DataState>((set) => ({
           length: count
       };
 
-      set({ columns, isLoading: false });
+      set({ columns, minTimestamp: minTime, maxTimestamp: maxTime, isLoading: false });
 
     } catch (err) {
       console.error('Error loading real data:', err);
