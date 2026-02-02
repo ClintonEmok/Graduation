@@ -13,6 +13,7 @@ import {
 
 import { Slider } from '@/components/ui/slider';
 import { DualTimeline } from './DualTimeline';
+import { useLogger } from '@/hooks/useLogger';
 
 export function TimelinePanel() {
   const {
@@ -27,20 +28,45 @@ export function TimelinePanel() {
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
+  
+  const { log } = useLogger();
 
-  const handleWindowChange = useCallback((value: number[]) => {
-    setTimeWindow(value[0]);
-  }, [setTimeWindow]);
+  const handleWindowChange = useCallback(
+    (value: number[]) => {
+      if (value[0] === timeWindow) return;
+      setTimeWindow(value[0]);
+      log('time_window_changed', { window: value[0] });
+    },
+    [setTimeWindow, timeWindow, log]
+  );
 
   const handleSpeedChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSpeed(Number(e.target.value));
-  }, [setSpeed]);
+    const newSpeed = Number(e.target.value);
+    setSpeed(newSpeed);
+    log('playback_speed_changed', { speed: newSpeed });
+  }, [setSpeed, log]);
+
+  const handleTogglePlay = () => {
+    togglePlay();
+    log(isPlaying ? 'playback_paused' : 'playback_started', { time: currentTime });
+  };
+
+  const handleStep = (direction: number) => {
+    stepTime(direction);
+    log(direction > 0 ? 'time_step_forward' : 'time_step_backward', { time: currentTime });
+  };
+
+  const handleScaleModeToggle = () => {
+    const nextMode = timeScaleMode === 'linear' ? 'adaptive' : 'linear';
+    setTimeScaleMode(nextMode);
+    log('time_scale_mode_changed', { mode: nextMode });
+  };
 
   const formatTime = (t: number) => t.toFixed(1);
 
   return (
     <div className="w-full h-full bg-background border-t p-4 flex flex-col justify-center">
-      <div className="container mx-auto max-w-4xl flex flex-col gap-4">
+      <div className="w-full flex flex-col gap-4">
         
         {/* Main Controls Row */}
         <div className="flex items-center gap-4">
@@ -48,7 +74,7 @@ export function TimelinePanel() {
           {/* Playback Controls */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => stepTime(-1)}
+              onClick={() => handleStep(-1)}
               className="p-2 hover:bg-accent rounded-full transition-colors"
               title="Step Backward"
             >
@@ -56,7 +82,7 @@ export function TimelinePanel() {
             </button>
             
             <button
-              onClick={togglePlay}
+              onClick={handleTogglePlay}
               className="p-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-sm"
               title={isPlaying ? "Pause" : "Play"}
             >
@@ -68,7 +94,7 @@ export function TimelinePanel() {
             </button>
             
             <button
-              onClick={() => stepTime(1)}
+              onClick={() => handleStep(1)}
               className="p-2 hover:bg-accent rounded-full transition-colors"
               title="Step Forward"
             >
@@ -82,7 +108,7 @@ export function TimelinePanel() {
           </div>
 
           {/* Dual Timeline */}
-          <div className="flex-1 px-4 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col">
             <DualTimeline />
           </div>
 
@@ -111,15 +137,7 @@ export function TimelinePanel() {
             <Settings2 className="w-4 h-4" />
             <span>Time Window</span>
           </div>
-          <div className="flex-1 max-w-xs">
-            <Slider
-              value={[timeWindow]}
-              min={1}
-              max={20}
-              step={1}
-              onValueChange={handleWindowChange}
-            />
-          </div>
+          <div className="flex-1 max-w-xs" />
           <div className="w-12 text-right font-mono">
             {timeWindow}u
           </div>
@@ -128,7 +146,7 @@ export function TimelinePanel() {
           <div className="flex items-center gap-2 border-l pl-4">
             <span>Time Scale:</span>
             <button
-              onClick={() => setTimeScaleMode(timeScaleMode === 'linear' ? 'adaptive' : 'linear')}
+              onClick={handleScaleModeToggle}
               className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium transition-colors"
             >
               {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}

@@ -1,14 +1,32 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { RefreshCcw, Database } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import { useDataStore } from '@/store/useDataStore';
 import { MainScene } from './MainScene';
+import { useLogger } from '@/hooks/useLogger';
 
 export default function CubeVisualization() {
   const { triggerReset } = useUIStore();
   const { loadRealData, isLoading, columns } = useDataStore();
+  const { log } = useLogger();
+
+  useEffect(() => {
+    if (!columns && !isLoading) {
+      loadRealData();
+    }
+  }, [columns, isLoading, loadRealData]);
+
+  const handleLoadData = () => {
+    log('data_load_requested');
+    loadRealData();
+  };
+
+  const handleReset = () => {
+    log('view_reset');
+    triggerReset();
+  };
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden relative">
@@ -16,7 +34,7 @@ export default function CubeVisualization() {
         <h2 className="text-lg font-semibold">3D Cube View</h2>
         
         <button
-          onClick={loadRealData}
+          onClick={handleLoadData}
           disabled={isLoading || !!columns}
           className="flex items-center gap-2 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
@@ -26,7 +44,7 @@ export default function CubeVisualization() {
       </div>
       
       <button
-        onClick={triggerReset}
+        onClick={handleReset}
         className="absolute top-16 right-4 z-10 p-2 bg-background/80 backdrop-blur border rounded-md hover:bg-accent transition-colors shadow-sm"
         title="Reset View"
       >

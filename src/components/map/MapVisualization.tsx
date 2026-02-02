@@ -12,6 +12,7 @@ import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/sele
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useLogger } from '@/hooks/useLogger';
 
 type DragPoint = {
   x: number;
@@ -22,6 +23,7 @@ type DragPoint = {
 
 export default function MapVisualization() {
   const mapRef = useRef<MapRef>(null);
+  const { log } = useLogger();
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
   const clearSpatialBounds = useFilterStore((state) => state.clearSpatialBounds);
@@ -30,7 +32,7 @@ export default function MapVisualization() {
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
-  const generateMockData = useDataStore((state) => state.generateMockData);
+  const loadRealData = useDataStore((state) => state.loadRealData);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [isSelecting, setIsSelecting] = useState(false);
@@ -40,8 +42,8 @@ export default function MapVisualization() {
 
   useEffect(() => {
     if (columns || data.length > 0) return;
-    generateMockData(1000);
-  }, [columns, data.length, generateMockData]);
+    loadRealData();
+  }, [columns, data.length, loadRealData]);
 
   const getDragPoint = (event: MapLayerMouseEvent) => {
     const map = mapRef.current;
@@ -112,6 +114,8 @@ export default function MapVisualization() {
       minLon,
       maxLon
     });
+    
+    log('map_region_selected', { minLat, maxLat, minLon, maxLon });
 
     resetDrag();
     setIsSelecting(false);
@@ -161,14 +165,26 @@ export default function MapVisualization() {
   };
 
   const toggleSelectionMode = () => {
-    setIsSelecting((prev) => !prev);
+    const nextState = !isSelecting;
+    setIsSelecting(nextState);
+    log('map_selection_mode_toggled', { active: nextState });
     resetDrag();
   };
 
   const handleClearBounds = () => {
+    log('map_selection_cleared');
     clearSpatialBounds();
     resetDrag();
     setIsSelecting(false);
+  };
+
+  const handleMoveEnd = (event: any) => {
+      const { viewState } = event;
+      log('map_moved', {
+          zoom: viewState.zoom,
+          latitude: viewState.latitude,
+          longitude: viewState.longitude
+      });
   };
 
   return (
@@ -179,6 +195,7 @@ export default function MapVisualization() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onMoveEnd={handleMoveEnd}
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >

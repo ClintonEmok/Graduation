@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFilterStore } from "@/store/useFilterStore";
 import { getCrimeTypeId, getDistrictId } from "@/lib/category-maps";
 import { PresetManager } from "@/components/viz/PresetManager";
+import { useLogger } from "@/hooks/useLogger";
 
 interface FilterOverlayProps {
   isOpen: boolean;
@@ -62,6 +63,22 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   const [activeTab, setActiveTab] = useState<"types" | "districts" | "time" | "presets">(
     "types"
   );
+  const { log } = useLogger();
+
+  useEffect(() => {
+    if (isOpen) {
+      log("filter_overlay_opened");
+    } else {
+      log("filter_overlay_closed");
+    }
+  }, [isOpen, log]);
+
+  useEffect(() => {
+    if (isOpen) {
+      log("filter_tab_changed", { tab: activeTab });
+    }
+  }, [activeTab, isOpen, log]);
+
   const [facetData, setFacetData] = useState<FacetsResponse>({ types: [], districts: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [facetError, setFacetError] = useState<string | null>(null);
@@ -78,14 +95,22 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const lastTimeRangeKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const nextKey = selectedTimeRange
+      ? `${selectedTimeRange[0]}-${selectedTimeRange[1]}`
+      : "none";
+    if (lastTimeRangeKeyRef.current === nextKey) return;
+    lastTimeRangeKeyRef.current = nextKey;
+
     if (selectedTimeRange) {
       setStartInput(toInputDate(selectedTimeRange[0]));
       setEndInput(toInputDate(selectedTimeRange[1]));
-    } else {
-      setStartInput("");
-      setEndInput("");
+      return;
     }
+    setStartInput("");
+    setEndInput("");
   }, [selectedTimeRange]);
 
   const timeRangeLabel = useMemo(() => {
@@ -176,6 +201,7 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   const isAllDistrictsSelected = selectedDistricts.length === 0;
 
   const handleTypeToggle = (id: number, nextChecked: boolean) => {
+    log("filter_type_toggled", { id, checked: nextChecked });
     if (isAllTypesSelected) {
       if (!nextChecked) {
         setTypes(allTypeIds.filter((typeId) => typeId !== id));
@@ -190,6 +216,7 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   };
 
   const handleDistrictToggle = (id: number, nextChecked: boolean) => {
+    log("filter_district_toggled", { id, checked: nextChecked });
     if (isAllDistrictsSelected) {
       if (!nextChecked) {
         setDistricts(allDistrictIds.filter((districtId) => districtId !== id));
@@ -203,14 +230,21 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
     }
   };
 
-  const handleDateChange = (nextStart: string, nextEnd: string) => {
-    const startValue = parseInputDate(nextStart);
-    const endValue = parseInputDate(nextEnd);
-    if (startValue && endValue) {
-      const [start, end] = startValue <= endValue ? [startValue, endValue] : [endValue, startValue];
-      setTimeRange([start, end]);
+  const parsedStart = useMemo(() => parseInputDate(startInput), [startInput]);
+  const parsedEnd = useMemo(() => parseInputDate(endInput), [endInput]);
+  const canApplyTimeRange = parsedStart != null && parsedEnd != null;
+
+  const applyTimeRange = useCallback(() => {
+    if (parsedStart == null || parsedEnd == null) return;
+    const [start, end] = parsedStart <= parsedEnd
+      ? [parsedStart, parsedEnd]
+      : [parsedEnd, parsedStart];
+    if (selectedTimeRange && selectedTimeRange[0] === start && selectedTimeRange[1] === end) {
+      return;
     }
-  };
+    log("filter_time_range_applied", { start, end });
+    setTimeRange([start, end]);
+  }, [parsedStart, parsedEnd, selectedTimeRange, setTimeRange, log]);
 
   if (!isOpen) return null;
 
@@ -390,7 +424,6 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       setStartInput(nextValue);
-                      handleDateChange(nextValue, endInput);
                     }}
                   />
                 </label>
@@ -403,10 +436,19 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       setEndInput(nextValue);
-                      handleDateChange(startInput, nextValue);
                     }}
                   />
                 </label>
+                <div className="col-span-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={applyTimeRange}
+                    disabled={!canApplyTimeRange}
+                    className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
+                </div>
               </div>
             </section>
           )}

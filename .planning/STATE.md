@@ -7,9 +7,9 @@
 ## Current Position
 
 Phase: 9 of 10 (Logging/Study)
-Plan: Ad-hoc Data Prep
+Plan: 1 of 2 in current phase (Logging)
 Status: In progress
-Last activity: 2026-02-03 - Completed 09-00-data-prep-SUMMARY.md
+Last activity: 2026-02-03 - Completed 09-01-SUMMARY.md
 
 Progress: █████████░ 94%
 
@@ -22,7 +22,7 @@ Progress: █████████░ 94%
 [x] Phase 6: Data Backend
 [x] Phase 7: Filtering
 [x] Phase 8: Coordinated
-[ ] Phase 9: Logging/Study
+[x] Phase 9: Logging/Study (Part 1/2)
 [ ] Phase 10: Study Content
 ```
 
@@ -31,7 +31,7 @@ Progress: █████████░ 94%
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 8/10 | 10/10 |
+| Phase Completion | 9/10 | 10/10 |
 
 ## Context & Decisions
 
@@ -89,17 +89,19 @@ Progress: █████████░ 94%
 | 7 | Close overlay on preset load | Faster confirmation of applied preset changes |
 | 9 | Ad-hoc Pipeline | Used Python for heavy lifting and DuckDB for Parquet conversion |
 | 9 | District Mapping | Merged District ID with Name for better UI |
+| 9 | NDJSON Logging | Use local file logging for study sessions |
 
 ## Blockers/Concerns Carried Forward
 
 - **LSP Errors:** Detected module resolution issues in `DashboardLayout.tsx` and `test-layout/page.tsx`.
 - **Lint Errors:** `npm run lint` still fails due to pre-existing issues in scripts, API routes, and visualization components.
 - **Nested Git Repo:** `datapreprocessing/` is a nested git repo, complicating version control integration.
+- **Build Error:** `next build` fails with `napi_versions` error in `duckdb` (Next 16 + Turbopack issue).
 
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 09-00-data-prep-SUMMARY.md
+Stopped at: Completed 09-01-SUMMARY.md
 Resume file: None
 
 
