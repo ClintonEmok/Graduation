@@ -8,6 +8,7 @@ import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useDataStore } from '@/store/useDataStore';
+import { applyGhostingShader } from '@/components/viz/shaders/ghosting';
 
 // Map crime types to colors
 const COLOR_MAP: Record<string, string> = {
@@ -44,6 +45,8 @@ interface DataAttributes {
 
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
+const TYPE_MAP_SIZE = 36;
+const DISTRICT_MAP_SIZE = 36;
 
 export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ data }, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -206,90 +209,15 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   });
 
   const onBeforeCompile = (shader: any) => {
-    // Store shader reference for updates
     if (meshRef.current) {
-        (meshRef.current.material as THREE.Material).userData.shader = shader;
+      (meshRef.current.material as THREE.Material).userData.shader = shader;
     }
 
-    shader.uniforms.uTimePlane = { value: 0 };
-    shader.uniforms.uRange = { value: 10 };
-    shader.uniforms.uTransition = { value: 0 };
-    shader.uniforms.uUseColumns = { value: columns ? 1 : 0 };
-
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <common>',
-      `
-      #include <common>
-      uniform float uTransition;
-      uniform float uUseColumns;
-      
-      attribute float adaptiveY;
-      attribute float colX;
-      attribute float colZ;
-      attribute float colLinearY;
-      
-      varying float vWorldY;
-      `
-    );
-
-    // Replace project_vertex to handle the position offset
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <project_vertex>',
-      `
-      vec4 mvPosition = vec4( transformed, 1.0 );
-
-      float currentY = 0.0;
-      
-      if (uUseColumns > 0.5) {
-         // Use attributes directly
-         mvPosition.x += colX;
-         mvPosition.z += colZ;
-         // Linear Y
-         currentY = colLinearY;
-         mvPosition.y += colLinearY;
-      } else {
-         #ifdef USE_INSTANCING
-            mvPosition = instanceMatrix * mvPosition;
-            currentY = instanceMatrix[3].y;
-         #endif
-      }
-      
-      // Adaptive Shift
-      float targetY = adaptiveY;
-      float yShift = (targetY - currentY) * uTransition;
-      mvPosition.y += yShift;
-
-      // Capture for fragment shader
-      vWorldY = mvPosition.y;
-
-      mvPosition = modelViewMatrix * mvPosition;
-
-      gl_Position = projectionMatrix * mvPosition;
-      `
-    );
-
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <common>',
-      `
-      #include <common>
-      uniform float uTimePlane;
-      uniform float uRange;
-      varying float vWorldY;
-      `
-    );
-
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <dithering_fragment>',
-      `
-      #include <dithering_fragment>
-      
-      float dist = abs(vWorldY - uTimePlane);
-      
-      if (dist > uRange) {
-        gl_FragColor.rgb *= 0.2; // Dim by 80%
-      }
-      `
-    );
+    applyGhostingShader(shader, {
+      useColumns: Boolean(columns),
+      typeMapSize: TYPE_MAP_SIZE,
+      districtMapSize: DISTRICT_MAP_SIZE
+    });
   };
 
   // Determine count
