@@ -3,7 +3,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
-import { Controls } from './Controls';
 import { Grid } from './Grid';
 import { DataPoints } from './DataPoints';
 import { TimePlane } from './TimePlane';
@@ -12,6 +11,7 @@ import MapBase from '../map/MapBase';
 import { generateMockData } from '../../lib/mockData';
 import { CrimeEvent } from '@/types';
 import * as THREE from 'three';
+import { CameraControls } from '@react-three/drei';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   const mode = useUIStore((state) => state.mode);
@@ -19,6 +19,14 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);
+  const controlsRef = useRef<CameraControls>(null);
+  const resetVersion = useUIStore((state) => state.resetVersion);
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.reset(true);
+    }
+  }, [resetVersion]);
 
   useEffect(() => {
     // Generate mock data on mount
@@ -47,7 +55,14 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
             <TimePlane ref={planeRef} />
             <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
             
-            <Controls />
+            <CameraControls
+              ref={controlsRef}
+              makeDefault
+              smoothTime={0.25}
+              minDistance={1}
+              maxDistance={500}
+              maxPolarAngle={Math.PI / 2}
+            />
           </Scene>
         </div>
       </div>

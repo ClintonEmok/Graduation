@@ -1,5 +1,6 @@
 import React from 'react';
 import MapBase from './MapBase';
+import { Controls } from '../viz/Controls';
 
 export default function MapVisualization() {
   return (
@@ -10,6 +11,7 @@ export default function MapVisualization() {
       <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
         <h2 className="text-sm font-semibold">Map View</h2>
       </div>
+      <Controls />
     </div>
   );
 }
