@@ -139,6 +139,9 @@ export const DualTimeline: React.FC = () => {
     if (!overviewInnerWidth || !detailInnerWidth) return;
     if (!brushRef.current || !overviewSvgRef.current || !detailSvgRef.current || !zoomRef.current) return;
 
+    const brushNode = brushRef.current;
+    const zoomNode = zoomRef.current;
+
     const brushSelection: [number, number] = [
       overviewScale(new Date(detailRangeSec[0] * 1000)),
       overviewScale(new Date(detailRangeSec[1] * 1000))
@@ -157,7 +160,7 @@ export const DualTimeline: React.FC = () => {
         const scale = overviewInnerWidth / Math.max(1, x1 - x0);
         const translateX = -x0;
         isSyncingRef.current = true;
-        select(zoomRef.current as SVGRectElement).call(
+        select(zoomNode as SVGRectElement).call(
           zoomBehavior.transform,
           zoomIdentity.scale(scale).translate(translateX, 0)
         );
@@ -177,21 +180,21 @@ export const DualTimeline: React.FC = () => {
         applyRangeToStores(startSec, endSec);
 
         isSyncingRef.current = true;
-        select(brushRef.current as SVGGElement).call(
+        select(brushNode as SVGGElement).call(
           brushBehavior.move,
           [overviewScale(newDomain[0]), overviewScale(newDomain[1])]
         );
         isSyncingRef.current = false;
       });
 
-    select(brushRef.current as SVGGElement)
+    select(brushNode as SVGGElement)
       .call(brushBehavior)
       .call(brushBehavior.move, brushSelection as [number, number]);
-    select(zoomRef.current as SVGRectElement).call(zoomBehavior);
+    select(zoomNode as SVGRectElement).call(zoomBehavior);
 
     return () => {
-      select(brushRef.current as SVGGElement).on('.brush', null);
-      select(zoomRef.current as SVGRectElement).on('.zoom', null);
+      select(brushNode as SVGGElement).on('.brush', null);
+      select(zoomNode as SVGRectElement).on('.zoom', null);
     };
   }, [
     applyRangeToStores,
