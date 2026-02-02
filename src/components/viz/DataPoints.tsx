@@ -8,6 +8,7 @@ import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useDataStore } from '@/store/useDataStore';
+import { useFilterStore } from '@/store/useFilterStore';
 import { applyGhostingShader } from '@/components/viz/shaders/ghosting';
 
 // Map crime types to colors
@@ -48,10 +49,28 @@ const tempColor = new THREE.Color();
 const TYPE_MAP_SIZE = 36;
 const DISTRICT_MAP_SIZE = 36;
 
+const buildSelectionMap = (size: number, selected: number[]): Float32Array => {
+  const map = new Float32Array(size);
+  if (selected.length === 0) {
+    map.fill(1);
+    return map;
+  }
+
+  for (const id of selected) {
+    if (id >= 0 && id < size) {
+      map[id] = 1;
+    }
+  }
+
+  return map;
+};
+
 export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ data }, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const columns = useDataStore((state) => state.columns);
+  const selectedTypes = useFilterStore((state) => state.selectedTypes);
+  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   
   useImperativeHandle(ref, () => meshRef.current!, []);
 
@@ -144,6 +163,16 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     return { adaptiveYValues: result, filterType: typeArray, filterDistrict: districtArray };
   }, [data, columns]);
 
+  const typeSelectionMap = useMemo(
+    () => buildSelectionMap(TYPE_MAP_SIZE, selectedTypes),
+    [selectedTypes]
+  );
+
+  const districtSelectionMap = useMemo(
+    () => buildSelectionMap(DISTRICT_MAP_SIZE, selectedDistricts),
+    [selectedDistricts]
+  );
+
   useLayoutEffect(() => {
     if (!meshRef.current) return;
 
@@ -190,6 +219,19 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
           }
       }
   }, [columns]);
+
+  useEffect(() => {
+    if (!meshRef.current || !meshRef.current.material) return;
+    const material = meshRef.current.material as THREE.Material;
+    const shader = material.userData.shader;
+    if (!shader) return;
+    if (shader.uniforms.uTypeMap) {
+      shader.uniforms.uTypeMap.value = typeSelectionMap;
+    }
+    if (shader.uniforms.uDistrictMap) {
+      shader.uniforms.uDistrictMap.value = districtSelectionMap;
+    }
+  }, [typeSelectionMap, districtSelectionMap]);
 
   // Animate transition
   useFrame((state, delta) => {
