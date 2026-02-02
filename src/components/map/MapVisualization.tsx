@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import MapBase from './MapBase';
+import MapEventLayer from './MapEventLayer';
 import MapSelectionOverlay, { LatLonBounds } from './MapSelectionOverlay';
 import MapSelectionMarker from './MapSelectionMarker';
 import { Controls } from '../viz/Controls';
@@ -173,6 +174,7 @@ export default function MapVisualization() {
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >
+        <MapEventLayer />
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
         {selectionPoint && (
           <MapSelectionMarker lat={selectionPoint.lat} lon={selectionPoint.lon} />
