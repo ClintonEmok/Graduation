@@ -2,14 +2,14 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 8 - Coordinated Views
+**Current Phase:** 9 - Logging/Study
 
 ## Current Position
 
-Phase: 8 of 10 (Coordinated Views)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-02 - Completed 08-03-PLAN.md
+Phase: 9 of 10 (Logging/Study)
+Plan: Ad-hoc Data Prep
+Status: In progress
+Last activity: 2026-02-03 - Completed 09-00-data-prep-SUMMARY.md
 
 Progress: █████████░ 94%
 
@@ -87,16 +87,19 @@ Progress: █████████░ 94%
 | 7 | Unknown district fallback | Keep facets endpoint functional when district column is missing |
 | 7 | Uniform selection maps | Use uniform float arrays (36 entries) to avoid bitmask limits for shader filtering |
 | 7 | Close overlay on preset load | Faster confirmation of applied preset changes |
+| 9 | Ad-hoc Pipeline | Used Python for heavy lifting and DuckDB for Parquet conversion |
+| 9 | District Mapping | Merged District ID with Name for better UI |
 
 ## Blockers/Concerns Carried Forward
 
 - **LSP Errors:** Detected module resolution issues in `DashboardLayout.tsx` and `test-layout/page.tsx`.
 - **Lint Errors:** `npm run lint` still fails due to pre-existing issues in scripts, API routes, and visualization components.
+- **Nested Git Repo:** `datapreprocessing/` is a nested git repo, complicating version control integration.
 
 ## Session Continuity
 
-Last session: 2026-02-02 20:35 UTC
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-02-03
+Stopped at: Completed 09-00-data-prep-SUMMARY.md
 Resume file: None
 
 
