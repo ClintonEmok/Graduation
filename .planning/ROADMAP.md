@@ -180,6 +180,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Changing a filter (e.g., crime type) updates the Map, Cube, and Timeline simultaneously.
 4. Scrubbing time in the timeline updates the 3D cube state instantly.
 
+**Plans:**
+- [x] 08-01-PLAN.md — Dual-scale timeline + time/filter synchronization
+- [ ] 08-02-PLAN.md — Selection highlighting across map/cube/timeline
+
 ## Phase 9: Study Logging Infrastructure
 
 **Goal:** System captures all user interactions and manages participant sessions.
@@ -228,6 +232,6 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 5. Adaptive Visualization Aids | **Complete** | 100% |
 | 6. Data Backend & Loading | **Complete** | 100% |
 | 7. Advanced Filtering | **Complete** | 100% |
-| 8. Coordinated Views | Pending | 0% |
+| 8. Coordinated Views | In progress | 50% |
 | 9. Study Logging Infrastructure | Pending | 0% |
 | 10. Study Content & Flow | Pending | 0% |
