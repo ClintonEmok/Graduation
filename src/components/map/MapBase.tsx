@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Map, { MapRef } from 'react-map-gl/maplibre';
+import Map, { MapRef, MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CENTER } from '@/lib/projection';
 
@@ -20,22 +20,47 @@ const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.j
 interface MapBaseProps {
   children?: React.ReactNode;
   className?: string;
+  onMouseDown?: (event: MapLayerMouseEvent) => void;
+  onMouseMove?: (event: MapLayerMouseEvent) => void;
+  onMouseUp?: (event: MapLayerMouseEvent) => void;
+  onMouseLeave?: (event: MapLayerMouseEvent) => void;
+  dragPan?: boolean;
+  cursor?: string;
 }
 
-export default function MapBase({ children, className }: MapBaseProps) {
-  const mapRef = React.useRef<MapRef>(null);
-
-  return (
+const MapBase = React.forwardRef<MapRef, MapBaseProps>(
+  (
+    {
+      children,
+      className,
+      onMouseDown,
+      onMouseMove,
+      onMouseUp,
+      onMouseLeave,
+      dragPan,
+      cursor
+    },
+    ref
+  ) => (
     <div className={`relative w-full h-full ${className || ''}`}>
       <Map
-        ref={mapRef}
+        ref={ref}
         initialViewState={INITIAL_VIEW_STATE}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', cursor }}
         mapStyle={MAP_STYLE}
-        attributionControl={false} // Clean look, or keep it true
+        attributionControl={false}
+        dragPan={dragPan}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
       >
         {children}
       </Map>
     </div>
-  );
-}
+  )
+);
+
+MapBase.displayName = 'MapBase';
+
+export default MapBase;
