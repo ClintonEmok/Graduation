@@ -3,8 +3,9 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { extent } from 'd3-array';
-import { CrimeEvent, CrimeType } from '@/types';
+import { CrimeEvent } from '@/types';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
+import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useDataStore } from '@/store/useDataStore';
 
@@ -31,6 +32,16 @@ interface DataPointsProps {
   data: CrimeEvent[];
 }
 
+interface DataAttributes {
+  adaptiveYValues: Float32Array;
+  colX?: Float32Array;
+  colZ?: Float32Array;
+  colLinearY?: Float32Array;
+  colors?: Float32Array;
+  filterType: Uint8Array;
+  filterDistrict: Uint8Array;
+}
+
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 
@@ -42,7 +53,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   useImperativeHandle(ref, () => meshRef.current!, []);
 
   // Calculate adaptive Y positions
-  const { adaptiveYValues, colX, colZ, colLinearY, colors } = useMemo(() => {
+  const { adaptiveYValues, colX, colZ, colLinearY, colors, filterType, filterDistrict } = useMemo<DataAttributes>(() => {
     // Mode 1: Columnar Data (Real)
     if (columns) {
         const count = columns.length;
@@ -82,16 +93,30 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
             colX: columns.x,
             colZ: columns.z,
             colLinearY: columns.timestamp,
-            colors: colorArray
+            colors: colorArray,
+            filterType: columns.type,
+            filterDistrict: columns.district
         };
     }
 
     // Mode 2: Array Data (Mock)
-    if (!data || data.length === 0) return { adaptiveYValues: new Float32Array(0) };
+    if (!data || data.length === 0) {
+      return {
+        adaptiveYValues: new Float32Array(0),
+        filterType: new Uint8Array(0),
+        filterDistrict: new Uint8Array(0)
+      };
+    }
 
     const timeExtent = extent(data, d => d.timestamp) as [Date, Date];
     // Fallback if extent is undefined
-    if (!timeExtent[0] || !timeExtent[1]) return { adaptiveYValues: new Float32Array(data.length).fill(0) };
+    if (!timeExtent[0] || !timeExtent[1]) {
+      return {
+        adaptiveYValues: new Float32Array(data.length).fill(0),
+        filterType: new Uint8Array(data.length),
+        filterDistrict: new Uint8Array(data.length)
+      };
+    }
 
     // Assuming Y range is 0 to 100 as per project context
     const yRange: [number, number] = [0, 100];
@@ -106,7 +131,14 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
         result[i] = (val === undefined || isNaN(val)) ? 0 : val;
     }
     
-    return { adaptiveYValues: result };
+    const typeArray = new Uint8Array(data.length);
+    const districtArray = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      typeArray[i] = getCrimeTypeId(data[i].type);
+      districtArray[i] = getDistrictId(String((data[i] as CrimeEvent & { district?: string }).district ?? ''));
+    }
+
+    return { adaptiveYValues: result, filterType: typeArray, filterDistrict: districtArray };
   }, [data, columns]);
 
   useLayoutEffect(() => {
@@ -272,6 +304,14 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
         <instancedBufferAttribute 
           attach="attributes-adaptiveY" 
           args={[adaptiveYValues, 1]} 
+        />
+        <instancedBufferAttribute
+          attach="attributes-filterType"
+          args={[filterType, 1]}
+        />
+        <instancedBufferAttribute
+          attach="attributes-filterDistrict"
+          args={[filterDistrict, 1]}
         />
         {columns && (
             <>
