@@ -9,6 +9,17 @@ export interface FilterPreset {
   createdAt: number;
 }
 
+export interface SpatialBounds {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+}
+
 const PRESET_STORAGE_KEY = 'crimeviz-presets';
 
 const getStorage = () => {
@@ -59,6 +70,7 @@ interface FilterState {
   selectedTypes: number[];      // Crime type IDs (empty = all types)
   selectedDistricts: number[];  // District IDs (empty = all districts)
   selectedTimeRange: [number, number] | null;  // Unix timestamp range [start, end]
+  selectedSpatialBounds: SpatialBounds | null;
 
   // Presets
   presets: FilterPreset[];
@@ -71,6 +83,8 @@ interface FilterState {
   setDistricts: (ids: number[]) => void;
   setTimeRange: (range: [number, number] | null) => void;
   clearTimeRange: () => void;
+  setSpatialBounds: (bounds: SpatialBounds) => void;
+  clearSpatialBounds: () => void;
   resetFilters: () => void;
 
   // Preset Actions
@@ -84,6 +98,7 @@ interface FilterState {
   isTypeSelected: (id: number) => boolean;
   isDistrictSelected: (id: number) => boolean;
   isTimeFiltered: () => boolean;
+  isSpatialFiltered: () => boolean;
 
   // Preset Helpers
   getPresetById: (id: string) => FilterPreset | undefined;
@@ -98,6 +113,7 @@ export const useFilterStore = create<FilterState>((set, get) => ({
   selectedTypes: [],
   selectedDistricts: [],
   selectedTimeRange: null,
+  selectedSpatialBounds: null,
 
   presets: loadPresetsFromStorage(),
   lastLoadedPresetId: null,
@@ -154,12 +170,21 @@ export const useFilterStore = create<FilterState>((set, get) => ({
     set({ selectedTimeRange: null });
   },
 
+  setSpatialBounds: (bounds: SpatialBounds) => {
+    set({ selectedSpatialBounds: bounds });
+  },
+
+  clearSpatialBounds: () => {
+    set({ selectedSpatialBounds: null });
+  },
+
   // Reset all filters to default (empty = all)
   resetFilters: () => {
     set({
       selectedTypes: [],
       selectedDistricts: [],
       selectedTimeRange: null,
+      selectedSpatialBounds: null,
     });
   },
 
@@ -238,6 +263,11 @@ export const useFilterStore = create<FilterState>((set, get) => ({
     return state.selectedTimeRange !== null;
   },
 
+  isSpatialFiltered: () => {
+    const state = get();
+    return state.selectedSpatialBounds !== null;
+  },
+
   getPresetById: (id: string) => {
     return get().presets.find((preset) => preset.id === id);
   },
@@ -253,6 +283,7 @@ export const useFilterStore = create<FilterState>((set, get) => ({
     if (state.selectedTypes.length > 0) count++;
     if (state.selectedDistricts.length > 0) count++;
     if (state.selectedTimeRange !== null) count++;
+    if (state.selectedSpatialBounds !== null) count++;
     return count;
   },
 }));
