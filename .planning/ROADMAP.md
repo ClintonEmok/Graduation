@@ -182,7 +182,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 
 **Plans:**
 - [x] 08-01-PLAN.md — Dual-scale timeline + time/filter synchronization
-- [ ] 08-02-PLAN.md — Selection highlighting across map/cube/timeline
+- [x] 08-02-PLAN.md — Selection highlighting across map/cube/timeline
 
 ## Phase 9: Study Logging Infrastructure
 
@@ -232,6 +232,6 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 5. Adaptive Visualization Aids | **Complete** | 100% |
 | 6. Data Backend & Loading | **Complete** | 100% |
 | 7. Advanced Filtering | **Complete** | 100% |
-| 8. Coordinated Views | In progress | 50% |
+| 8. Coordinated Views | **Complete** | 100% |
 | 9. Study Logging Infrastructure | Pending | 0% |
 | 10. Study Content & Flow | Pending | 0% |
