@@ -16,6 +16,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uTimePlane = { value: 0 };
   shader.uniforms.uRange = { value: 10 };
   shader.uniforms.uTransition = { value: 0 };
+  shader.uniforms.uTimeMin = { value: 0 };
+  shader.uniforms.uTimeMax = { value: 100 };
   shader.uniforms.uUseColumns = { value: useColumns ? 1 : 0 };
   shader.uniforms.uTypeMap = { value: buildUniformArray(typeMapSize) };
   shader.uniforms.uDistrictMap = { value: buildUniformArray(districtMapSize) };
@@ -35,6 +37,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     attribute float filterDistrict;
 
     varying float vWorldY;
+    varying float vLinearY;
     varying float vFilterType;
     varying float vFilterDistrict;
     `
@@ -64,6 +67,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     mvPosition.y += yShift;
 
     vWorldY = mvPosition.y;
+    vLinearY = currentY;
     vFilterType = filterType;
     vFilterDistrict = filterDistrict;
 
@@ -79,9 +83,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     #include <common>
     uniform float uTimePlane;
     uniform float uRange;
+    uniform float uTimeMin;
+    uniform float uTimeMax;
     uniform float uTypeMap[${typeMapSize}];
     uniform float uDistrictMap[${districtMapSize}];
     varying float vWorldY;
+    varying float vLinearY;
     varying float vFilterType;
     varying float vFilterDistrict;
     `
@@ -95,6 +102,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     float dist = abs(vWorldY - uTimePlane);
     if (dist > uRange) {
       gl_FragColor.rgb *= 0.2;
+    }
+
+    if (vLinearY < uTimeMin || vLinearY > uTimeMax) {
+      float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
+      gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
+      gl_FragColor.a *= 0.1;
     }
 
     float typeIndex = clamp(floor(vFilterType + 0.5), 0.0, ${typeMapSize - 1}.0);
