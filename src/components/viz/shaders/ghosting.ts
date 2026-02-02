@@ -26,6 +26,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uBoundsMin = { value: new THREE.Vector2(0, 0) };
   shader.uniforms.uBoundsMax = { value: new THREE.Vector2(0, 0) };
   shader.uniforms.uHasBounds = { value: 0 };
+  shader.uniforms.uHasSelection = { value: 0 };
+  shader.uniforms.uSelectedIndex = { value: -1 };
 
   shader.vertexShader = shader.vertexShader.replace(
     '#include <common>',
@@ -47,6 +49,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     varying float vLinearY;
     varying float vFilterType;
     varying float vFilterDistrict;
+    varying float vInstanceId;
     `
   );
 
@@ -79,6 +82,11 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     vLinearY = currentY;
     vFilterType = filterType;
     vFilterDistrict = filterDistrict;
+    #ifdef USE_INSTANCING
+      vInstanceId = float(gl_InstanceID);
+    #else
+      vInstanceId = 0.0;
+    #endif
 
     mvPosition = modelViewMatrix * mvPosition;
 
@@ -99,12 +107,15 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform vec2 uBoundsMin;
     uniform vec2 uBoundsMax;
     uniform float uHasBounds;
+    uniform float uHasSelection;
+    uniform float uSelectedIndex;
     varying float vWorldY;
     varying float vWorldX;
     varying float vWorldZ;
     varying float vLinearY;
     varying float vFilterType;
     varying float vFilterDistrict;
+    varying float vInstanceId;
     `
   );
 
@@ -141,6 +152,14 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
         float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
         gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
         gl_FragColor.a *= 0.05;
+      }
+    }
+
+    if (uHasSelection > 0.5) {
+      float isSelected = step(abs(vInstanceId - uSelectedIndex), 0.5);
+      if (isSelected > 0.5) {
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), 0.45);
+        gl_FragColor.a = min(1.0, gl_FragColor.a + 0.4);
       }
     }
     `

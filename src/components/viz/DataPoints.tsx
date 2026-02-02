@@ -1,4 +1,12 @@
-import React, { useRef, useLayoutEffect, useMemo, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, {
+  useRef,
+  useLayoutEffect,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
+  useEffect,
+  useCallback
+} from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { MathUtils } from 'three';
@@ -9,6 +17,7 @@ import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { applyGhostingShader } from '@/components/viz/shaders/ghosting';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
 
@@ -76,6 +85,9 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
+  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
+  const clearSelection = useCoordinationStore((state) => state.clearSelection);
   
   useImperativeHandle(ref, () => meshRef.current!, []);
 
@@ -308,6 +320,19 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     }
   }, [normalizedSpatialBounds]);
 
+  useEffect(() => {
+    if (!meshRef.current || !meshRef.current.material) return;
+    const material = meshRef.current.material as THREE.Material;
+    const shader = material.userData.shader;
+    if (!shader) return;
+    if (shader.uniforms.uHasSelection) {
+      shader.uniforms.uHasSelection.value = selectedIndex === null ? 0 : 1;
+    }
+    if (shader.uniforms.uSelectedIndex) {
+      shader.uniforms.uSelectedIndex.value = selectedIndex ?? -1;
+    }
+  }, [selectedIndex]);
+
   // Animate transition
   useFrame((state, delta) => {
     if (meshRef.current && meshRef.current.material) {
@@ -337,6 +362,23 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     });
   };
 
+  const handlePointerDown = useCallback(
+    (event: any) => {
+      event.stopPropagation();
+      if (typeof event.instanceId !== 'number') return;
+      setSelectedIndex(event.instanceId, 'cube');
+    },
+    [setSelectedIndex]
+  );
+
+  const handlePointerMissed = useCallback(
+    (event: any) => {
+      if (event.type !== 'pointerdown') return;
+      clearSelection();
+    },
+    [clearSelection]
+  );
+
   // Determine count
   const count = columns ? columns.length : data.length;
 
@@ -344,6 +386,8 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     <instancedMesh
       ref={meshRef}
       args={[undefined, undefined, count]}
+      onPointerDown={handlePointerDown}
+      onPointerMissed={handlePointerMissed}
     >
       <sphereGeometry args={[0.5, 8, 8]}>
         <instancedBufferAttribute 
