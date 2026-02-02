@@ -155,8 +155,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 - [x] 07-01-PLAN.md — State & Data Prep (types, districts, time range)
 - [x] 07-02-PLAN.md — Backend Facets API
 - [x] 07-03-PLAN.md — Visual Ghosting (Shader)
-- [ ] 07-04-PLAN.md — Filter UI Overlay (Controls.tsx integration)
-- [ ] 07-05-PLAN.md — Filter Presets (localStorage persistence)
+- [x] 07-04-PLAN.md — Filter UI Overlay (Controls.tsx integration)
+- [x] 07-05-PLAN.md — Filter Presets (localStorage persistence)
 
 ## Phase 8: Coordinated Views
 
@@ -225,7 +225,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 4. UI Layout Redesign | **Complete** | 100% |
 | 5. Adaptive Visualization Aids | **Complete** | 100% |
 | 6. Data Backend & Loading | **Complete** | 100% |
-| 7. Advanced Filtering | **In progress** | 60% |
+| 7. Advanced Filtering | **Complete** | 100% |
 | 8. Coordinated Views | Pending | 0% |
 | 9. Study Logging Infrastructure | Pending | 0% |
 | 10. Study Content & Flow | Pending | 0% |
