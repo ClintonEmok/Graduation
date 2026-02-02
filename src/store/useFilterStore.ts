@@ -1,5 +1,52 @@
 import { create } from 'zustand';
 
+export interface FilterPreset {
+  id: string;
+  name: string;
+  types: number[];
+  districts: number[];
+  timeRange: [number, number] | null;
+  createdAt: number;
+}
+
+const PRESET_STORAGE_KEY = 'crimeviz-presets';
+
+const getStorage = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
+
+const loadPresetsFromStorage = () => {
+  const storage = getStorage();
+  if (!storage) return [] as FilterPreset[];
+  try {
+    const raw = storage.getItem(PRESET_STORAGE_KEY);
+    if (!raw) return [] as FilterPreset[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [] as FilterPreset[];
+    return parsed.filter((preset) => preset && typeof preset.id === 'string');
+  } catch {
+    storage.removeItem(PRESET_STORAGE_KEY);
+    return [] as FilterPreset[];
+  }
+};
+
+const persistPresets = (presets: FilterPreset[]) => {
+  const storage = getStorage();
+  if (!storage) return;
+  storage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+};
+
+const normalizePresetName = (name: string) => name.trim();
+const isValidPresetName = (name: string) => {
+  const length = name.length;
+  return length >= 3 && length <= 50;
+};
+
 /**
  * Filter State Management
  * 
@@ -13,6 +60,10 @@ interface FilterState {
   selectedDistricts: number[];  // District IDs (empty = all districts)
   selectedTimeRange: [number, number] | null;  // Unix timestamp range [start, end]
 
+  // Presets
+  presets: FilterPreset[];
+  lastLoadedPresetId: string | null;
+
   // Actions
   toggleType: (id: number) => void;
   toggleDistrict: (id: number) => void;
@@ -22,10 +73,21 @@ interface FilterState {
   clearTimeRange: () => void;
   resetFilters: () => void;
 
+  // Preset Actions
+  savePreset: (name: string) => FilterPreset | null;
+  loadPreset: (id: string) => void;
+  deletePreset: (id: string) => void;
+  clearAllPresets: () => void;
+  renamePreset: (id: string, newName: string) => void;
+
   // Computed/Getters
   isTypeSelected: (id: number) => boolean;
   isDistrictSelected: (id: number) => boolean;
   isTimeFiltered: () => boolean;
+
+  // Preset Helpers
+  getPresetById: (id: string) => FilterPreset | undefined;
+  hasPresets: () => boolean;
   
   // Filter Stats
   getActiveFilterCount: () => number;
@@ -36,6 +98,9 @@ export const useFilterStore = create<FilterState>((set, get) => ({
   selectedTypes: [],
   selectedDistricts: [],
   selectedTimeRange: null,
+
+  presets: loadPresetsFromStorage(),
+  lastLoadedPresetId: null,
 
   // Toggle a crime type ID in the selection
   toggleType: (id: number) => {
@@ -98,6 +163,59 @@ export const useFilterStore = create<FilterState>((set, get) => ({
     });
   },
 
+  savePreset: (name: string) => {
+    const trimmedName = normalizePresetName(name);
+    if (!isValidPresetName(trimmedName)) return null;
+    const state = get();
+    const preset: FilterPreset = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: trimmedName,
+      types: [...state.selectedTypes],
+      districts: [...state.selectedDistricts],
+      timeRange: state.selectedTimeRange ? [...state.selectedTimeRange] : null,
+      createdAt: Date.now(),
+    };
+    const nextPresets = [preset, ...state.presets];
+    persistPresets(nextPresets);
+    set({ presets: nextPresets, lastLoadedPresetId: preset.id });
+    return preset;
+  },
+
+  loadPreset: (id: string) => {
+    const preset = get().presets.find((item) => item.id === id);
+    if (!preset) return;
+    set({
+      selectedTypes: [...preset.types],
+      selectedDistricts: [...preset.districts],
+      selectedTimeRange: preset.timeRange ? [...preset.timeRange] : null,
+      lastLoadedPresetId: preset.id,
+    });
+  },
+
+  deletePreset: (id: string) => {
+    const state = get();
+    const nextPresets = state.presets.filter((preset) => preset.id !== id);
+    const nextLoaded = state.lastLoadedPresetId === id ? null : state.lastLoadedPresetId;
+    persistPresets(nextPresets);
+    set({ presets: nextPresets, lastLoadedPresetId: nextLoaded });
+  },
+
+  clearAllPresets: () => {
+    persistPresets([]);
+    set({ presets: [], lastLoadedPresetId: null });
+  },
+
+  renamePreset: (id: string, newName: string) => {
+    const trimmedName = normalizePresetName(newName);
+    if (!isValidPresetName(trimmedName)) return;
+    const state = get();
+    const nextPresets = state.presets.map((preset) =>
+      preset.id === id ? { ...preset, name: trimmedName } : preset
+    );
+    persistPresets(nextPresets);
+    set({ presets: nextPresets });
+  },
+
   // Check if a specific type ID is selected
   isTypeSelected: (id: number) => {
     const state = get();
@@ -118,6 +236,14 @@ export const useFilterStore = create<FilterState>((set, get) => ({
   isTimeFiltered: () => {
     const state = get();
     return state.selectedTimeRange !== null;
+  },
+
+  getPresetById: (id: string) => {
+    return get().presets.find((preset) => preset.id === id);
+  },
+
+  hasPresets: () => {
+    return get().presets.length > 0;
   },
 
   // Get count of active filters
