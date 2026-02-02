@@ -183,6 +183,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 **Plans:**
 - [x] 08-01-PLAN.md — Dual-scale timeline + time/filter synchronization
 - [x] 08-02-PLAN.md — Selection highlighting across map/cube/timeline
+- [x] 08-03-PLAN.md — Map time-range filtering
 
 ## Phase 9: Study Logging Infrastructure
 
