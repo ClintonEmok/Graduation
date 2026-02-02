@@ -130,8 +130,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 
 **Plans:**
 - [x] 06-01-PLAN.md — Infrastructure & Data Prep
-- [ ] 06-02-PLAN.md — Streaming API Endpoint
-- [ ] 06-03-PLAN.md — Frontend Integration & Optimization
+- [x] 06-02-PLAN.md — Streaming API Endpoint
+- [x] 06-03-PLAN.md — Frontend Integration & Optimization
 
 ## Phase 7: Advanced Filtering
 
@@ -217,7 +217,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 3. Adaptive Scaling Logic | **Complete** | 100% |
 | 4. UI Layout Redesign | **Complete** | 100% |
 | 5. Adaptive Visualization Aids | **Complete** | 100% |
-| 6. Data Backend & Loading | In Progress | 33% |
+| 6. Data Backend & Loading | **Complete** | 100% |
 | 7. Advanced Filtering | Pending | 0% |
 | 8. Coordinated Views | Pending | 0% |
 | 9. Study Logging Infrastructure | Pending | 0% |
