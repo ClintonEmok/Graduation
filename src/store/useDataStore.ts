@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { TIME_MIN, TIME_MAX } from '@/lib/constants';
+import { toEpochSeconds } from '@/lib/time-domain';
 import { RecordBatchReader, Table } from 'apache-arrow';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 
@@ -25,8 +26,8 @@ export interface ColumnarData {
 interface DataState {
   data: DataPoint[];
   columns: ColumnarData | null;
-  minTimestamp: number | null;
-  maxTimestamp: number | null;
+  minTimestampSec: number | null;
+  maxTimestampSec: number | null;
   isLoading: boolean;
   
   setData: (data: DataPoint[]) => void;
@@ -37,8 +38,8 @@ interface DataState {
 export const useDataStore = create<DataState>((set) => ({
   data: [],
   columns: null,
-  minTimestamp: null,
-  maxTimestamp: null,
+  minTimestampSec: null,
+  maxTimestampSec: null,
   isLoading: false,
 
   setData: (data) => set({ data }),
@@ -56,7 +57,7 @@ export const useDataStore = create<DataState>((set) => ({
     }));
     // Sort by timestamp
     data.sort((a, b) => a.timestamp - b.timestamp);
-    set({ data, columns: null, minTimestamp: null, maxTimestamp: null }); // Clear columns when using mock data
+    set({ data, columns: null, minTimestampSec: null, maxTimestampSec: null }); // Clear columns when using mock data
   },
 
   loadRealData: async () => {
@@ -118,15 +119,16 @@ export const useDataStore = create<DataState>((set) => ({
       // If we use real data, we should probably normalize it to 0-100 or update the store/constants.
       // Mapping real dates to 0-100 is safer for float precision in shaders.
       
-      const rawTimestamps = timeCol ? Array.from(timeCol).map(t => Number(t)) : new Array(count).fill(0);
-      const minTime = Math.min(...rawTimestamps);
-      const maxTime = Math.max(...rawTimestamps);
-      const timeSpan = maxTime - minTime || 1;
+      const rawTimestamps = timeCol ? Array.from(timeCol).map((t) => Number(t)) : new Array(count).fill(0);
+      const rawSeconds = rawTimestamps.map((t) => toEpochSeconds(t));
+      const minTimeSec = Math.min(...rawSeconds);
+      const maxTimeSec = Math.max(...rawSeconds);
+      const timeSpanSec = maxTimeSec - minTimeSec || 1;
       
       const timestampData = new Float32Array(count);
       for(let i=0; i<count; i++) {
           // Normalize to 0-100 range
-          timestampData[i] = ((rawTimestamps[i] - minTime) / timeSpan) * 100;
+           timestampData[i] = ((rawSeconds[i] - minTimeSec) / timeSpanSec) * 100;
       }
 
       // Type mapping
@@ -153,7 +155,12 @@ export const useDataStore = create<DataState>((set) => ({
           length: count
       };
 
-      set({ columns, minTimestamp: minTime, maxTimestamp: maxTime, isLoading: false });
+      set({
+        columns,
+        minTimestampSec: minTimeSec,
+        maxTimestampSec: maxTimeSec,
+        isLoading: false
+      });
 
     } catch (err) {
       console.error('Error loading real data:', err);

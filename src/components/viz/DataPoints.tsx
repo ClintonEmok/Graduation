@@ -10,6 +10,7 @@ import { useTimeStore } from '@/store/useTimeStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { applyGhostingShader } from '@/components/viz/shaders/ghosting';
+import { epochSecondsToNormalized } from '@/lib/time-domain';
 
 // Map crime types to colors
 const COLOR_MAP: Record<string, string> = {
@@ -69,8 +70,8 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const columns = useDataStore((state) => state.columns);
-  const minTimestamp = useDataStore((state) => state.minTimestamp);
-  const maxTimestamp = useDataStore((state) => state.maxTimestamp);
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
@@ -178,19 +179,23 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   );
 
   const normalizedTimeRange = useMemo<[number, number]>(() => {
-    if (!selectedTimeRange || minTimestamp === null || maxTimestamp === null) {
+    if (!selectedTimeRange || minTimestampSec === null || maxTimestampSec === null) {
       return [0, 100];
     }
 
     const [start, end] = selectedTimeRange;
-    const span = maxTimestamp - minTimestamp || 1;
-    const normalize = (value: number) => ((value - minTimestamp) / span) * 100;
-    const normalizedStart = Math.min(Math.max(normalize(start), 0), 100);
-    const normalizedEnd = Math.min(Math.max(normalize(end), 0), 100);
+    const normalizedStart = Math.min(
+      Math.max(epochSecondsToNormalized(start, minTimestampSec, maxTimestampSec), 0),
+      100
+    );
+    const normalizedEnd = Math.min(
+      Math.max(epochSecondsToNormalized(end, minTimestampSec, maxTimestampSec), 0),
+      100
+    );
     return normalizedStart <= normalizedEnd
       ? [normalizedStart, normalizedEnd]
       : [normalizedEnd, normalizedStart];
-  }, [selectedTimeRange, minTimestamp, maxTimestamp]);
+  }, [selectedTimeRange, minTimestampSec, maxTimestampSec]);
 
   const normalizedSpatialBounds = useMemo(() => {
     if (!selectedSpatialBounds) return null;
