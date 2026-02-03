@@ -1,32 +1,34 @@
-# Summary: Logging Infrastructure
+# Summary: Logging Infrastructure & Performance
 
 **Phase:** 09 (Logging/Study)
 **Plan:** 01 (Logging Infrastructure)
 **Date:** 2026-02-03
 
 ## Overview
-Implemented a comprehensive logging system to track user interactions and system state for the upcoming user study. This includes a client-side logger, a server-side API endpoint for log storage, and instrumentation of key UI components.
+Implemented a robust logging system for the user study and resolved critical performance bottlenecks associated with loading the full Chicago crime dataset (1.2M rows).
 
-## Delivered Features
-- **Logger Service (`src/lib/logger.ts`):** Singleton service with buffering and batch flushing.
-- **React Hook (`src/hooks/useLogger.ts`):** Easy-to-use hook for components to log events.
-- **Session Store (`src/store/useStudyStore.ts`):** Manages session IDs and participant IDs using `zustand` persistence.
-- **Log API (`src/app/api/study/log/route.ts`):** Receives log batches and appends them to `logs/study-sessions.jsonl`.
-- **Study Controls (`src/components/study/StudyControls.tsx`):** UI overlay to start/stop sessions and enter participant IDs.
-- **Instrumentation:** Added logging to Map, Cube, Timeline, and Filter controls.
+## Key Deliverables
 
-## Instrumented Events
-- `session_started`, `session_ended`
-- `filter_overlay_opened`, `filter_overlay_closed`
-- `filter_tab_changed`, `filter_type_toggled`, `filter_district_toggled`, `filter_time_range_applied`
-- `map_selection_mode_toggled`, `map_region_selected`, `map_selection_cleared`, `map_moved`
-- `playback_started`, `playback_paused`, `playback_speed_changed`, `time_step_forward`, `time_step_backward`
-- `time_scale_mode_changed`, `time_window_changed`
-- `data_load_requested`, `view_reset`
+### Logging System
+- **Client-Side:** `src/lib/logger.ts` singleton for buffering and flushing logs to `src/app/api/study/log`.
+- **Instrumentation:** Added `log()` calls to all key user interactions (Map, Cube, Timeline, Filters).
+- **Session Management:** `StudyControls` UI overlay for managing participant IDs and sessions.
 
-## Known Issues
-- **Build Error:** `next build` fails with `TurbopackInternalError: missing field napi_versions` due to `duckdb` compatibility with Next.js 16 Turbopack. This does not affect development mode or the code logic, but prevents production build currently. Requires `duckdb` update or webpack fallback configuration.
+### Performance Optimization
+- **Backend Metadata:** Moved `MIN/MAX` timestamp calculation from client (O(N) loop causing stack overflow) to backend (DuckDB aggregation).
+- **Stream Fixes:** Corrected async/await usage in API routes to prevent connection errors.
+- **Data Pipeline:** Verified end-to-end flow from Python ETL -> Parquet -> DuckDB -> Arrow Stream -> Client Store.
+
+## Technical Details
+- **Stack Overflow Fix:** Replaced client-side spread operator `Math.min(...arr)` with backend metadata fetch.
+- **DuckDB Integration:** Used in-memory DuckDB instance to query local Parquet files efficiently.
+- **Git Hygiene:** Updated `.gitignore` to exclude large data files and logs.
+
+## Current State
+- **Application Status:** Fully functional with real data.
+- **Performance:** Fast initial load (metadata first) followed by streaming data.
+- **Study Readiness:** Logging infrastructure is live and writing to `logs/study-sessions.jsonl`.
 
 ## Next Steps
-- Implement **09-02-tutorial-tasks** to add the guided tutorial and task prompts.
-- Verify logging data quality by running a test session.
+- **Phase 10:** Develop study content (tutorial, tasks).
+- **Testing:** Verify log data integrity with a full mock session.
