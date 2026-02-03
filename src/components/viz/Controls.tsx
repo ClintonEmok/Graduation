@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Filter, Home, Layers, Settings } from "lucide-react";
+import { Filter, Home, Layers, Settings, Eye, EyeOff } from "lucide-react";
 import { FilterOverlay } from "./FilterOverlay";
+import { useUIStore } from "@/store/ui";
 
 export function Controls() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const showContext = useUIStore((state) => state.showContext);
+  const toggleContext = useUIStore((state) => state.toggleContext);
 
   return (
     <>
@@ -16,6 +19,15 @@ export function Controls() {
           aria-label="Home"
         >
           <Home className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="Context Visibility"
+          onClick={toggleContext}
+          title={showContext ? "Hide Context" : "Show Context"}
+        >
+          {showContext ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </button>
         <button
           type="button"
