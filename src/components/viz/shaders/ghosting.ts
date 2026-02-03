@@ -61,8 +61,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     float currentY = 0.0;
 
     if (uUseColumns > 0.5) {
-       mvPosition.x += colX;
-       mvPosition.z += colZ;
+       mvPosition.x += (colX * 100.0) - 50.0;
+       mvPosition.z += (colZ * 100.0) - 50.0;
        currentY = colLinearY;
        mvPosition.y += colLinearY;
     } else {
@@ -160,6 +160,17 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
       if (isSelected > 0.5) {
         gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), 0.45);
         gl_FragColor.a = min(1.0, gl_FragColor.a + 0.4);
+      }
+    }
+
+    if (uHasBounds > 0.5) {
+      bool outsideBounds = vWorldX < uBoundsMin.x || vWorldX > uBoundsMax.x || vWorldZ < uBoundsMin.y || vWorldZ > uBoundsMax.y;
+      if (outsideBounds) {
+        gl_FragColor.rgb = vec3(0.0);
+        gl_FragColor.a = 1.0;
+      } else {
+        gl_FragColor.rgb = vec3(1.0);
+        gl_FragColor.a = 1.0;
       }
     }
     `

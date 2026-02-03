@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
 import { Grid } from './Grid';
@@ -8,14 +8,14 @@ import { DataPoints } from './DataPoints';
 import { TimePlane } from './TimePlane';
 import { TimeLoop } from './TimeLoop';
 import MapBase from '../map/MapBase';
-import { generateMockData } from '../../lib/mockData';
-import { CrimeEvent } from '@/types';
+import { useDataStore } from '@/store/useDataStore';
 import * as THREE from 'three';
 import { CameraControls } from '@react-three/drei';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   const mode = useUIStore((state) => state.mode);
-  const [data, setData] = useState<CrimeEvent[]>([]);
+  const data = useDataStore((state) => state.data);
+  const columns = useDataStore((state) => state.columns);
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);
@@ -27,12 +27,6 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
       controlsRef.current.reset(true);
     }
   }, [resetVersion]);
-
-  useEffect(() => {
-    // Generate mock data on mount
-    const mockData = generateMockData(1000);
-    setData(mockData);
-  }, []);
 
   return (
     <div className="relative h-full w-full">

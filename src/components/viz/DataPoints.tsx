@@ -12,6 +12,7 @@ import { useFrame } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { extent } from 'd3-array';
 import { CrimeEvent } from '@/types';
+import { DataPoint } from '@/store/useDataStore';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
@@ -41,7 +42,7 @@ const TYPE_ID_TO_COLOR: Record<number, THREE.Color> = {
 };
 
 interface DataPointsProps {
-  data: CrimeEvent[];
+  data: DataPoint[];
 }
 
 interface DataAttributes {
@@ -147,9 +148,9 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       };
     }
 
-    const timeExtent = extent(data, d => d.timestamp) as [Date, Date];
+    const timeExtent = extent(data, d => d.timestamp) as [number, number];
     // Fallback if extent is undefined
-    if (!timeExtent[0] || !timeExtent[1]) {
+    if (timeExtent[0] === undefined || timeExtent[1] === undefined) {
       return {
         adaptiveYValues: new Float32Array(data.length).fill(0),
         filterType: new Uint8Array(data.length),
@@ -161,7 +162,20 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     const yRange: [number, number] = [0, 100];
     
     // Bin count of 100 is default in computeAdaptiveY
-    const adaptive = computeAdaptiveY(data, timeExtent, yRange);
+    // Adapt computeAdaptiveY to handle number timestamps
+    // OR just use computeAdaptiveYColumnar?
+    // computeAdaptiveY expects CrimeEvent[] with Date timestamps.
+    // We should refactor computeAdaptiveY to be generic or use columnar logic.
+    // For now, let's cast timestamps to Date for compatibility if needed, OR fix computeAdaptiveY.
+    // But data[i].timestamp IS a number (0-100) in mock data.
+    
+    // Check adaptive-scale.ts
+    // For now, let's map data to simple arrays and use columnar logic which is robust for numbers.
+    
+    const timestamps = new Float32Array(data.length);
+    for(let i=0; i<data.length; i++) timestamps[i] = data[i].timestamp;
+    
+    const adaptive = computeAdaptiveYColumnar(timestamps, timeExtent, yRange);
     
     // Ensure no NaNs and valid length
     const result = new Float32Array(data.length);
@@ -174,7 +188,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     const districtArray = new Uint8Array(data.length);
     for (let i = 0; i < data.length; i++) {
       typeArray[i] = getCrimeTypeId(data[i].type);
-      districtArray[i] = getDistrictId(String((data[i] as CrimeEvent & { district?: string }).district ?? ''));
+      districtArray[i] = getDistrictId(String(data[i].district ?? ''));
     }
 
     return { adaptiveYValues: result, filterType: typeArray, filterDistrict: districtArray };
