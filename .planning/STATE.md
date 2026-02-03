@@ -23,7 +23,7 @@ Progress: █████████░ 94%
 [x] Phase 7: Filtering
 [x] Phase 8: Coordinated
 [x] Phase 9: Logging/Study (Part 1/2)
-[ ] Phase 10: Study Content
+[ ] Phase 10: Study Content (Deferred)
 ```
 
 ## Performance Metrics
