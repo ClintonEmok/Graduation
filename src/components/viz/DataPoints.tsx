@@ -12,7 +12,7 @@ import { useFrame } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { extent } from 'd3-array';
 import { CrimeEvent } from '@/types';
-import { DataPoint } from '@/store/useDataStore';
+import { DataPoint, useDataStore } from '@/store/useDataStore';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
@@ -32,197 +32,213 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
 
   // ... other useMemos
 
-  // Update uniforms
+  // Update uniforms on context changes
   useEffect(() => {
-      if (meshRef.current && meshRef.current.material) {
-          const material = meshRef.current.material as THREE.Material;
-          if (material.userData.shader) {
-              material.userData.shader.uniforms.uUseColumns.value = columns ? 1 : 0;
-              material.userData.shader.uniforms.uShowContext.value = showContext ? 1 : 0;
-              material.userData.shader.uniforms.uContextOpacity.value = contextOpacity;
-          }
+    if (meshRef.current && meshRef.current.material) {
+      const material = meshRef.current.material as THREE.Material;
+      if (material.userData.shader) {
+        material.userData.shader.uniforms.uShowContext.value = showContext ? 1 : 0;
+        material.userData.shader.uniforms.uContextOpacity.value = contextOpacity;
       }
-  }, [columns, showContext, contextOpacity]);
+    }
+  }, [showContext, contextOpacity]);
 
-  // ... other useEffects
+  // Update mesh count and matrices
+  useLayoutEffect(() => {
+    if (!meshRef.current) return;
 
-  // ...
-});
+    if (columns) {
+      // Columnar mode: Attributes handle everything.
+      // Ensure count is correct
+      meshRef.current.count = columns.length;
+    } else {
+      // Data mode: Update Matrix
+      meshRef.current.count = data.length;
 
-        meshRef.current.instanceMatrix.needsUpdate = true;
-        if (meshRef.current.instanceColor) {
-            meshRef.current.instanceColor.needsUpdate = true;
-        }
+      data.forEach((point, i) => {
+        // Position
+        // X and Z are space, Y is time (Y-up)
+        tempObject.position.set(point.x, point.y, point.z);
+        tempObject.updateMatrix();
+        meshRef.current!.setMatrixAt(i, tempObject.matrix);
+
+        // Color
+        const colorHex = COLOR_MAP[point.type] || '#FFFFFF';
+        tempColor.set(colorHex);
+        meshRef.current!.setColorAt(i, tempColor);
+      });
+
+      meshRef.current.instanceMatrix.needsUpdate = true;
     }
   }, [data, columns]);
-  
-  // Update uniforms
-  useEffect(() => {
-      if (meshRef.current && meshRef.current.material) {
-          const material = meshRef.current.material as THREE.Material;
-          if (material.userData.shader) {
-              material.userData.shader.uniforms.uUseColumns.value = columns ? 1 : 0;
-          }
-      }
-  }, [columns]);
 
-  useEffect(() => {
-    if (!meshRef.current || !meshRef.current.material) return;
+// Update uniforms
+useEffect(() => {
+  if (meshRef.current && meshRef.current.material) {
     const material = meshRef.current.material as THREE.Material;
-    const shader = material.userData.shader;
-    if (!shader) return;
-    if (shader.uniforms.uTypeMap) {
-      shader.uniforms.uTypeMap.value = typeSelectionMap;
+    if (material.userData.shader) {
+      material.userData.shader.uniforms.uUseColumns.value = columns ? 1 : 0;
     }
-    if (shader.uniforms.uDistrictMap) {
-      shader.uniforms.uDistrictMap.value = districtSelectionMap;
-    }
-  }, [typeSelectionMap, districtSelectionMap]);
+  }
+}, [columns]);
 
-  useEffect(() => {
-    if (!meshRef.current || !meshRef.current.material) return;
-    const material = meshRef.current.material as THREE.Material;
-    const shader = material.userData.shader;
-    if (!shader) return;
-    if (shader.uniforms.uTimeMin) {
-      shader.uniforms.uTimeMin.value = normalizedTimeRange[0];
-    }
-    if (shader.uniforms.uTimeMax) {
-      shader.uniforms.uTimeMax.value = normalizedTimeRange[1];
-    }
-    // Update data bounds uniforms for projection
-    if (shader.uniforms.uDataBoundsMin) {
-        shader.uniforms.uDataBoundsMin.value.set(minX, minZ);
-    }
-    if (shader.uniforms.uDataBoundsMax) {
-        shader.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
-    }
-  }, [normalizedTimeRange, minX, maxX, minZ, maxZ]);
+useEffect(() => {
+  if (!meshRef.current || !meshRef.current.material) return;
+  const material = meshRef.current.material as THREE.Material;
+  const shader = material.userData.shader;
+  if (!shader) return;
+  if (shader.uniforms.uTypeMap) {
+    shader.uniforms.uTypeMap.value = typeSelectionMap;
+  }
+  if (shader.uniforms.uDistrictMap) {
+    shader.uniforms.uDistrictMap.value = districtSelectionMap;
+  }
+}, [typeSelectionMap, districtSelectionMap]);
 
-  useEffect(() => {
-    if (!meshRef.current || !meshRef.current.material) return;
-    const material = meshRef.current.material as THREE.Material;
-    const shader = material.userData.shader;
-    if (!shader) return;
+useEffect(() => {
+  if (!meshRef.current || !meshRef.current.material) return;
+  const material = meshRef.current.material as THREE.Material;
+  const shader = material.userData.shader;
+  if (!shader) return;
+  if (shader.uniforms.uTimeMin) {
+    shader.uniforms.uTimeMin.value = normalizedTimeRange[0];
+  }
+  if (shader.uniforms.uTimeMax) {
+    shader.uniforms.uTimeMax.value = normalizedTimeRange[1];
+  }
+  // Update data bounds uniforms for projection
+  if (shader.uniforms.uDataBoundsMin) {
+    shader.uniforms.uDataBoundsMin.value.set(minX, minZ);
+  }
+  if (shader.uniforms.uDataBoundsMax) {
+    shader.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
+  }
+}, [normalizedTimeRange, minX, maxX, minZ, maxZ]);
 
-    if (shader.uniforms.uHasBounds) {
-      shader.uniforms.uHasBounds.value = normalizedSpatialBounds ? 1 : 0;
-    }
+useEffect(() => {
+  if (!meshRef.current || !meshRef.current.material) return;
+  const material = meshRef.current.material as THREE.Material;
+  const shader = material.userData.shader;
+  if (!shader) return;
 
-    if (normalizedSpatialBounds) {
-      if (shader.uniforms.uBoundsMin) {
-        const value = shader.uniforms.uBoundsMin.value;
-        if (value && typeof value.set === 'function') {
-          value.set(normalizedSpatialBounds.min[0], normalizedSpatialBounds.min[1]);
-        } else {
-          shader.uniforms.uBoundsMin.value = normalizedSpatialBounds.min;
-        }
-      }
-      if (shader.uniforms.uBoundsMax) {
-        const value = shader.uniforms.uBoundsMax.value;
-        if (value && typeof value.set === 'function') {
-          value.set(normalizedSpatialBounds.max[0], normalizedSpatialBounds.max[1]);
-        } else {
-          shader.uniforms.uBoundsMax.value = normalizedSpatialBounds.max;
-        }
+  if (shader.uniforms.uHasBounds) {
+    shader.uniforms.uHasBounds.value = normalizedSpatialBounds ? 1 : 0;
+  }
+
+  if (normalizedSpatialBounds) {
+    if (shader.uniforms.uBoundsMin) {
+      const value = shader.uniforms.uBoundsMin.value;
+      if (value && typeof value.set === 'function') {
+        value.set(normalizedSpatialBounds.min[0], normalizedSpatialBounds.min[1]);
+      } else {
+        shader.uniforms.uBoundsMin.value = normalizedSpatialBounds.min;
       }
     }
-  }, [normalizedSpatialBounds]);
+    if (shader.uniforms.uBoundsMax) {
+      const value = shader.uniforms.uBoundsMax.value;
+      if (value && typeof value.set === 'function') {
+        value.set(normalizedSpatialBounds.max[0], normalizedSpatialBounds.max[1]);
+      } else {
+        shader.uniforms.uBoundsMax.value = normalizedSpatialBounds.max;
+      }
+    }
+  }
+}, [normalizedSpatialBounds]);
 
-  useEffect(() => {
-    if (!meshRef.current || !meshRef.current.material) return;
+useEffect(() => {
+  if (!meshRef.current || !meshRef.current.material) return;
+  const material = meshRef.current.material as THREE.Material;
+  const shader = material.userData.shader;
+  if (!shader) return;
+  if (shader.uniforms.uHasSelection) {
+    shader.uniforms.uHasSelection.value = selectedIndex === null ? 0 : 1;
+  }
+  if (shader.uniforms.uSelectedIndex) {
+    shader.uniforms.uSelectedIndex.value = selectedIndex ?? -1;
+  }
+}, [selectedIndex]);
+
+// Animate transition
+useFrame((state, delta) => {
+  if (meshRef.current && meshRef.current.material) {
     const material = meshRef.current.material as THREE.Material;
-    const shader = material.userData.shader;
-    if (!shader) return;
-    if (shader.uniforms.uHasSelection) {
-      shader.uniforms.uHasSelection.value = selectedIndex === null ? 0 : 1;
+    if (material.userData.shader) {
+      const target = timeScaleMode === 'adaptive' ? 1 : 0;
+      // Smoothly interpolate uTransition
+      material.userData.shader.uniforms.uTransition.value = MathUtils.damp(
+        material.userData.shader.uniforms.uTransition.value,
+        target,
+        5, // Speed/smoothness factor
+        delta
+      );
     }
-    if (shader.uniforms.uSelectedIndex) {
-      shader.uniforms.uSelectedIndex.value = selectedIndex ?? -1;
-    }
-  }, [selectedIndex]);
+  }
+});
 
-  // Animate transition
-  useFrame((state, delta) => {
-    if (meshRef.current && meshRef.current.material) {
-        const material = meshRef.current.material as THREE.Material;
-        if (material.userData.shader) {
-            const target = timeScaleMode === 'adaptive' ? 1 : 0;
-            // Smoothly interpolate uTransition
-            material.userData.shader.uniforms.uTransition.value = MathUtils.damp(
-                material.userData.shader.uniforms.uTransition.value,
-                target,
-                5, // Speed/smoothness factor
-                delta
-            );
-        }
-    }
+const onBeforeCompile = (shader: any) => {
+  if (meshRef.current) {
+    (meshRef.current.material as THREE.Material).userData.shader = shader;
+  }
+
+  applyGhostingShader(shader, {
+    useColumns: Boolean(columns),
+    typeMapSize: TYPE_MAP_SIZE,
+    districtMapSize: DISTRICT_MAP_SIZE
   });
+};
 
-  const onBeforeCompile = (shader: any) => {
-    if (meshRef.current) {
-      (meshRef.current.material as THREE.Material).userData.shader = shader;
-    }
+const handlePointerDown = useCallback(
+  (event: any) => {
+    event.stopPropagation();
+    if (typeof event.instanceId !== 'number') return;
+    setSelectedIndex(event.instanceId, 'cube');
+  },
+  [setSelectedIndex]
+);
 
-    applyGhostingShader(shader, {
-      useColumns: Boolean(columns),
-      typeMapSize: TYPE_MAP_SIZE,
-      districtMapSize: DISTRICT_MAP_SIZE
-    });
-  };
+const handlePointerMissed = useCallback(
+  (event: any) => {
+    if (event.type !== 'pointerdown') return;
+    clearSelection();
+  },
+  [clearSelection]
+);
 
-  const handlePointerDown = useCallback(
-    (event: any) => {
-      event.stopPropagation();
-      if (typeof event.instanceId !== 'number') return;
-      setSelectedIndex(event.instanceId, 'cube');
-    },
-    [setSelectedIndex]
-  );
+// Determine count
+const count = columns ? columns.length : data.length;
 
-  const handlePointerMissed = useCallback(
-    (event: any) => {
-      if (event.type !== 'pointerdown') return;
-      clearSelection();
-    },
-    [clearSelection]
-  );
-
-  // Determine count
-  const count = columns ? columns.length : data.length;
-
-  return (
-    <instancedMesh
-      ref={meshRef}
-      args={[undefined, undefined, count]}
-      onPointerDown={handlePointerDown}
-      onPointerMissed={handlePointerMissed}
-    >
-      <sphereGeometry args={[0.5, 8, 8]}>
-        <instancedBufferAttribute 
-          attach="attributes-adaptiveY" 
-          args={[adaptiveYValues, 1]} 
-        />
-        <instancedBufferAttribute
-          attach="attributes-filterType"
-          args={[filterType, 1]}
-        />
-        <instancedBufferAttribute
-          attach="attributes-filterDistrict"
-          args={[filterDistrict, 1]}
-        />
-        {columns && (
-            <>
-                <instancedBufferAttribute attach="attributes-colX" args={[colX!, 1]} />
-                <instancedBufferAttribute attach="attributes-colZ" args={[colZ!, 1]} />
-                <instancedBufferAttribute attach="attributes-colLinearY" args={[colLinearY!, 1]} />
-                <instancedBufferAttribute attach="instanceColor" args={[colors!, 3]} />
-            </>
-        )}
-      </sphereGeometry>
-      <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
-    </instancedMesh>
-  );
+return (
+  <instancedMesh
+    ref={meshRef}
+    args={[undefined, undefined, count]}
+    onPointerDown={handlePointerDown}
+    onPointerMissed={handlePointerMissed}
+  >
+    <sphereGeometry args={[0.5, 8, 8]}>
+      <instancedBufferAttribute
+        attach="attributes-adaptiveY"
+        args={[adaptiveYValues, 1]}
+      />
+      <instancedBufferAttribute
+        attach="attributes-filterType"
+        args={[filterType, 1]}
+      />
+      <instancedBufferAttribute
+        attach="attributes-filterDistrict"
+        args={[filterDistrict, 1]}
+      />
+      {columns && (
+        <>
+          <instancedBufferAttribute attach="attributes-colX" args={[colX!, 1]} />
+          <instancedBufferAttribute attach="attributes-colZ" args={[colZ!, 1]} />
+          <instancedBufferAttribute attach="attributes-colLinearY" args={[colLinearY!, 1]} />
+          <instancedBufferAttribute attach="instanceColor" args={[colors!, 3]} />
+        </>
+      )}
+    </sphereGeometry>
+    <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
+  </instancedMesh>
+);
 });
 
 DataPoints.displayName = 'DataPoints';
