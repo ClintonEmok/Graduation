@@ -20,6 +20,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uTransition = { value: 0 };
   shader.uniforms.uTimeMin = { value: 0 };
   shader.uniforms.uTimeMax = { value: 100 };
+  shader.uniforms.uShowContext = { value: 1 };
+  shader.uniforms.uContextOpacity = { value: 0.1 };
   shader.uniforms.uUseColumns = { value: useColumns ? 1 : 0 };
   shader.uniforms.uTypeMap = { value: buildUniformArray(typeMapSize) };
   shader.uniforms.uDistrictMap = { value: buildUniformArray(districtMapSize) };
@@ -110,6 +112,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uRange;
     uniform float uTimeMin;
     uniform float uTimeMax;
+    uniform float uShowContext;
+    uniform float uContextOpacity;
     uniform float uTypeMap[${typeMapSize}];
     uniform float uDistrictMap[${districtMapSize}];
     uniform vec2 uBoundsMin;
@@ -137,47 +141,62 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
       gl_FragColor.rgb *= 0.2;
     }
 
+    // Determine if point is selected/focused
+    bool isSelected = true;
+
+    // 1. Time Range Check
     if (vLinearY < uTimeMin || vLinearY > uTimeMax) {
-      float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-      gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
-      gl_FragColor.a *= 0.1;
+      isSelected = false;
     }
 
+    // 2. Filter Check (Type & District)
     float typeIndex = clamp(floor(vFilterType + 0.5), 0.0, ${typeMapSize - 1}.0);
     float districtIndex = clamp(floor(vFilterDistrict + 0.5), 0.0, ${districtMapSize - 1}.0);
     float typeSelected = uTypeMap[int(typeIndex)];
     float districtSelected = uDistrictMap[int(districtIndex)];
 
     if (typeSelected < 0.5 || districtSelected < 0.5) {
-      float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-      gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
-      gl_FragColor.a *= 0.05;
+      isSelected = false;
     }
 
+    // 3. Spatial Bounds Check
     if (uHasBounds > 0.5) {
       bool outsideBounds = vWorldX < uBoundsMin.x || vWorldX > uBoundsMax.x || vWorldZ < uBoundsMin.y || vWorldZ > uBoundsMax.y;
       if (outsideBounds) {
-        float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-        gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.2);
-        gl_FragColor.a *= 0.05;
+        isSelected = false;
       }
     }
 
-    if (uHasSelection > 0.5) {
-      float isSelected = step(abs(vInstanceId - uSelectedIndex), 0.5);
-      if (isSelected > 0.5) {
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), 0.45);
-        gl_FragColor.a = min(1.0, gl_FragColor.a + 0.4);
-      }
-    }
-
-    if (uHasBounds > 0.5) {
-      bool outsideBounds = vWorldX < uBoundsMin.x || vWorldX > uBoundsMax.x || vWorldZ < uBoundsMin.y || vWorldZ > uBoundsMax.y;
-      if (outsideBounds) {
-        gl_FragColor.rgb = vec3(0.0);
-        gl_FragColor.a = 1.0;
+    // Apply Focus+Context Logic
+    if (!isSelected) {
+      if (uShowContext < 0.5) {
+        discard; // Hide context completely if toggled off
       } else {
-        gl_FragColor.rgb = vec3(1.0);
+        // Dithering Pattern for Transparency
+        // Use screen coordinates to create a stipple pattern
+        // (x + y) % 2.0 > 0.5 gives a checkerboard
+        
+        // Adjust density based on opacity preference? 
+        // For now, fixed 50% dither for context, plus alpha blending for color fade
+        
+        // Simple 2x2 Bayer matrix simulation or just mod pattern
+        if (mod(gl_FragCoord.x + gl_FragCoord.y, 2.0) > 0.5) {
+            discard; 
+        }
+
+        // Desaturate and dim
+        float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
+        gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.0); // Fully desaturated (grayscale)
+        gl_FragColor.rgb *= 0.5; // Dimmed
+        gl_FragColor.a = 1.0; // Opaque pixels (after discard) avoids sorting issues
+      }
+    }
+
+    // Selection Highlight (Single point click)
+    if (uHasSelection > 0.5) {
+      float isInstanceSelected = step(abs(vInstanceId - uSelectedIndex), 0.5);
+      if (isInstanceSelected > 0.5) {
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), 0.45);
         gl_FragColor.a = 1.0;
       }
     }
