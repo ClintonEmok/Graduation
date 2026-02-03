@@ -92,6 +92,11 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   
   useImperativeHandle(ref, () => meshRef.current!, []);
 
+  const minX = useDataStore((state) => state.minX) ?? 0;
+  const maxX = useDataStore((state) => state.maxX) ?? 1;
+  const minZ = useDataStore((state) => state.minZ) ?? 0;
+  const maxZ = useDataStore((state) => state.maxZ) ?? 1;
+
   // Calculate adaptive Y positions
   const { adaptiveYValues, colX, colZ, colLinearY, colors, filterType, filterDistrict } = useMemo<DataAttributes>(() => {
     // Mode 1: Columnar Data (Real)
@@ -99,16 +104,8 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
         const count = columns.length;
         const yRange: [number, number] = [0, 100];
         
-        // Find extent from timestamps
-        // timestamps are normalized 0-100 in store loadRealData?
-        // Yes, we implemented normalization in loadRealData.
-        // So timeRange for adaptive calculation is just [0, 100].
-        // But computeAdaptiveYColumnar expects range.
-        
         let minT = Infinity;
         let maxT = -Infinity;
-        // Fast scan for extent if not trusted, but let's assume 0-100 or scan.
-        // TypedArray scan is fast.
         for(let i=0; i<count; i++) {
             const t = columns.timestamp[i];
             if(t < minT) minT = t;
@@ -302,7 +299,14 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     if (shader.uniforms.uTimeMax) {
       shader.uniforms.uTimeMax.value = normalizedTimeRange[1];
     }
-  }, [normalizedTimeRange]);
+    // Update data bounds uniforms for projection
+    if (shader.uniforms.uDataBoundsMin) {
+        shader.uniforms.uDataBoundsMin.value.set(minX, minZ);
+    }
+    if (shader.uniforms.uDataBoundsMax) {
+        shader.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
+    }
+  }, [normalizedTimeRange, minX, maxX, minZ, maxZ]);
 
   useEffect(() => {
     if (!meshRef.current || !meshRef.current.material) return;

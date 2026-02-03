@@ -25,6 +25,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uDistrictMap = { value: buildUniformArray(districtMapSize) };
   shader.uniforms.uBoundsMin = { value: new THREE.Vector2(0, 0) };
   shader.uniforms.uBoundsMax = { value: new THREE.Vector2(0, 0) };
+  shader.uniforms.uDataBoundsMin = { value: new THREE.Vector2(0, 0) }; // x, z min
+  shader.uniforms.uDataBoundsMax = { value: new THREE.Vector2(1, 1) }; // x, z max
   shader.uniforms.uHasBounds = { value: 0 };
   shader.uniforms.uHasSelection = { value: 0 };
   shader.uniforms.uSelectedIndex = { value: -1 };
@@ -35,6 +37,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     #include <common>
     uniform float uTransition;
     uniform float uUseColumns;
+    uniform vec2 uDataBoundsMin;
+    uniform vec2 uDataBoundsMax;
 
     attribute float adaptiveY;
     attribute float colX;
@@ -61,8 +65,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     float currentY = 0.0;
 
     if (uUseColumns > 0.5) {
-       mvPosition.x += (colX * 100.0) - 50.0;
-       mvPosition.z += (colZ * 100.0) - 50.0;
+       // Normalize X and Z based on data bounds to 0-1, then scale to grid (-50 to 50)
+       float normX = (colX - uDataBoundsMin.x) / (uDataBoundsMax.x - uDataBoundsMin.x);
+       float normZ = (colZ - uDataBoundsMin.y) / (uDataBoundsMax.y - uDataBoundsMin.y);
+       
+       mvPosition.x += (normX * 100.0) - 50.0;
+       mvPosition.z += (normZ * 100.0) - 50.0;
        currentY = colLinearY;
        mvPosition.y += colLinearY;
     } else {

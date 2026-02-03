@@ -28,6 +28,10 @@ export interface ColumnarData {
 interface DataState {
   data: DataPoint[];
   columns: ColumnarData | null;
+  minX: number | null;
+  maxX: number | null;
+  minZ: number | null;
+  maxZ: number | null;
   minTimestampSec: number | null;
   maxTimestampSec: number | null;
   isLoading: boolean;
@@ -40,6 +44,10 @@ interface DataState {
 export const useDataStore = create<DataState>((set, get) => ({
   data: [],
   columns: null,
+  minX: null,
+  maxX: null,
+  minZ: null,
+  maxZ: null,
   minTimestampSec: null,
   maxTimestampSec: null,
   isLoading: false,
@@ -59,7 +67,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     }));
     // Sort by timestamp
     data.sort((a, b) => a.timestamp - b.timestamp);
-    set({ data, columns: null, minTimestampSec: null, maxTimestampSec: null }); // Clear columns when using mock data
+    set({ data, columns: null, minTimestampSec: null, maxTimestampSec: null, minX: -50, maxX: 50, minZ: -50, maxZ: 50 }); 
   },
 
   loadRealData: async () => {
@@ -185,6 +193,10 @@ export const useDataStore = create<DataState>((set, get) => ({
         columns,
         minTimestampSec: minTimeSec,
         maxTimestampSec: maxTimeSec,
+        minX: meta.minX,
+        maxX: meta.maxX,
+        minZ: meta.minZ,
+        maxZ: meta.maxZ,
         isLoading: false
       });
 

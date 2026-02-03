@@ -15,6 +15,10 @@ export async function GET() {
             SELECT 
                 CAST(MIN(timestamp) AS VARCHAR) as min_time,
                 CAST(MAX(timestamp) AS VARCHAR) as max_time,
+                MIN(x) as min_x,
+                MAX(x) as max_x,
+                MIN(z) as min_z,
+                MAX(z) as max_z,
                 COUNT(*) as count
             FROM '${dataPath}'
         `, (err, res) => {
@@ -35,6 +39,10 @@ export async function GET() {
     return NextResponse.json({
       minTime,
       maxTime,
+      minX: row.min_x,
+      maxX: row.max_x,
+      minZ: row.min_z,
+      maxZ: row.max_z,
       count: Number(row.count)
     });
     
