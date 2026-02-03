@@ -202,6 +202,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. System requires or assigns a participant ID at the start of a session.
 3. Logs are correctly associated with the active participant ID.
 
+**Plans:**
+- [x] 09-01-PLAN.md — Logging Infrastructure
+- [x] 09-02-fix-3d-viz-PLAN.md — Fix 3D Visualization
+
 ## Phase 10: Study Content & Flow (Deferred to v2)
 
 **Status:** Deferred
@@ -235,5 +239,5 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 6. Data Backend & Loading | **Complete** | 100% |
 | 7. Advanced Filtering | **Complete** | 100% |
 | 8. Coordinated Views | **Complete** | 100% |
-| 9. Study Logging Infrastructure | Pending | 0% |
+| 9. Study Logging Infrastructure | **Complete** | 100% |
 | 10. Study Content & Flow | Deferred | 0% |

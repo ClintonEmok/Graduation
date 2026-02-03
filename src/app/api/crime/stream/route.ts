@@ -19,29 +19,19 @@ export async function GET() {
     // Fallback: Manually fetch data and serialize to Arrow
     // This is necessary because duckdb-node v1.4.4 on some platforms 
     // has issues with the 'arrow' extension and to_arrow_ipc function.
-    const rows = await new Promise<any[]>((resolve, reject) => {
-      db.all(query, (err, res) => {
+    const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+      db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
         if (err) reject(err);
         else resolve(res);
       });
     });
 
-    // Convert to Arrow Table
-    // Convert BigInts to Strings/Numbers if any (DuckDB timestamp is bigint? or string?)
-    // Apache Arrow tableFromJSON handles standard JSON types.
-    // Ensure rows are serializable.
-    
-    // Note: tableFromJSON might be slow for 1.2M rows. 
-    // Ideally we stream Arrow directly from DuckDB but that requires the arrow extension to work.
-    // For now, this is the reliable fallback.
-    
     const table = tableFromJSON(rows);
 
-    // Serialize to Arrow IPC Stream format
-    // tableToIPC returns a Uint8Array containing the full stream
     const ipcBuffer = tableToIPC(table, 'stream');
     
-    return new NextResponse(ipcBuffer as any, {
+    return new Response(ipcBuffer as unknown as BodyInit, {
+
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.apache.arrow.stream',

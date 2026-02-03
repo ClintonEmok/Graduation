@@ -10,27 +10,138 @@ import React, {
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { MathUtils } from 'three';
-import { extent } from 'd3-array';
-import { CrimeEvent } from '@/types';
 import { DataPoint, useDataStore } from '@/store/useDataStore';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
-import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
+import { getCrimeTypeId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useUIStore } from '@/store/ui';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useFilterStore } from '@/store/useFilterStore';
+import { applyGhostingShader } from './shaders/ghosting';
 
-// ... imports
+interface DataPointsProps {
+  data: DataPoint[];
+}
+
+const COLOR_MAP: Record<string, string> = {
+  Theft: '#FFD700',
+  Assault: '#FF4500',
+  Burglary: '#1E90FF',
+  Robbery: '#32CD32',
+  Vandalism: '#DA70D6',
+  Other: '#FFFFFF'
+};
+
+const TYPE_MAP_SIZE = 36;
+const DISTRICT_MAP_SIZE = 36;
+
+const tempObject = new THREE.Object3D();
+const tempColor = new THREE.Color();
 
 export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ data }, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  useImperativeHandle(ref, () => meshRef.current!);
+
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const showContext = useUIStore((state) => state.showContext);
   const contextOpacity = useUIStore((state) => state.contextOpacity);
   const columns = useDataStore((state) => state.columns);
-  // ... other hooks
+  const minX = useDataStore((state) => state.minX) ?? -50;
+  const maxX = useDataStore((state) => state.maxX) ?? 50;
+  const minZ = useDataStore((state) => state.minZ) ?? -50;
+  const maxZ = useDataStore((state) => state.maxZ) ?? 50;
 
-  // ... useMemo for data
+  const timeRange = useTimeStore((state) => state.timeRange);
+  const selectedTypes = useFilterStore((state) => state.selectedTypes);
+  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+  const spatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
+  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
+  const clearSelection = useCoordinationStore((state) => state.clearSelection);
 
-  // ... other useMemos
+  // Normalize time range
+  const normalizedTimeRange = useMemo(() => {
+    return [
+      (timeRange[0] - 0) / 100 * 100, // Assuming TIME_MIN/MAX are 0-100 in linear mode
+      (timeRange[1] - 0) / 100 * 100
+    ] as [number, number];
+  }, [timeRange]);
+
+  // Create selection maps for shader
+  const typeSelectionMap = useMemo(() => {
+    const map = new Float32Array(TYPE_MAP_SIZE);
+    if (selectedTypes.length === 0) {
+      map.fill(1);
+    } else {
+      selectedTypes.forEach((id) => {
+        if (id >= 0 && id < TYPE_MAP_SIZE) map[id] = 1;
+      });
+    }
+    return map;
+  }, [selectedTypes]);
+
+  const districtSelectionMap = useMemo(() => {
+    const map = new Float32Array(DISTRICT_MAP_SIZE);
+    if (selectedDistricts.length === 0) {
+      map.fill(1);
+    } else {
+      selectedDistricts.forEach((id) => {
+        if (id >= 0 && id < DISTRICT_MAP_SIZE) map[id] = 1;
+      });
+    }
+    return map;
+  }, [selectedDistricts]);
+
+  const normalizedSpatialBounds = useMemo(() => {
+    if (!spatialBounds) return null;
+    return {
+      min: [spatialBounds.minX, spatialBounds.minZ],
+      max: [spatialBounds.maxX, spatialBounds.maxZ]
+    };
+  }, [spatialBounds]);
+
+  const adaptiveYValues = useMemo(() => {
+    if (columns) {
+      return computeAdaptiveYColumnar(columns.timestamp, [0, 100], [0, 100]);
+    }
+    return new Float32Array(computeAdaptiveY(data, [0, 100], [0, 100]));
+  }, [data, columns]);
+
+  const { filterType, filterDistrict, colors, colX, colZ, colLinearY } = useMemo(() => {
+    const count = columns ? columns.length : data.length;
+    const types = new Float32Array(count);
+    const districts = new Float32Array(count);
+
+    if (columns) {
+      return {
+        filterType: columns.type,
+        filterDistrict: columns.district,
+        colors: new Float32Array(columns.length * 3), // Handled by attributes-colX/Z logic or pre-computed colors?
+        colX: columns.x,
+        colZ: columns.z,
+        colLinearY: columns.timestamp
+      };
+    }
+
+    const colorArr = new Float32Array(count * 3);
+    data.forEach((point, i) => {
+      types[i] = getCrimeTypeId(point.type);
+      districts[i] = point.districtId || 0;
+      const c = new THREE.Color(COLOR_MAP[point.type] || '#FFFFFF');
+      colorArr[i * 3] = c.r;
+      colorArr[i * 3 + 1] = c.g;
+      colorArr[i * 3 + 2] = c.b;
+    });
+
+    return {
+      filterType: types,
+      filterDistrict: districts,
+      colors: colorArr,
+      colX: null,
+      colZ: null,
+      colLinearY: null
+    };
+  }, [data, columns]);
 
   // Update uniforms on context changes
   useEffect(() => {
@@ -175,34 +286,35 @@ useFrame((state, delta) => {
   }
 });
 
-const onBeforeCompile = (shader: any) => {
-  if (meshRef.current) {
-    (meshRef.current.material as THREE.Material).userData.shader = shader;
-  }
+  const onBeforeCompile = (shader: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (meshRef.current) {
+      (meshRef.current.material as THREE.Material).userData.shader = shader;
+    }
 
-  applyGhostingShader(shader, {
-    useColumns: Boolean(columns),
-    typeMapSize: TYPE_MAP_SIZE,
-    districtMapSize: DISTRICT_MAP_SIZE
-  });
-};
+    applyGhostingShader(shader, {
+      useColumns: Boolean(columns),
+      typeMapSize: TYPE_MAP_SIZE,
+      districtMapSize: DISTRICT_MAP_SIZE
+    });
+  };
 
-const handlePointerDown = useCallback(
-  (event: any) => {
-    event.stopPropagation();
-    if (typeof event.instanceId !== 'number') return;
-    setSelectedIndex(event.instanceId, 'cube');
-  },
-  [setSelectedIndex]
-);
+  const handlePointerDown = useCallback(
+    (event: { stopPropagation: () => void; instanceId?: number }) => {
+      event.stopPropagation();
+      if (typeof event.instanceId !== 'number') return;
+      setSelectedIndex(event.instanceId, 'cube');
+    },
+    [setSelectedIndex]
+  );
 
-const handlePointerMissed = useCallback(
-  (event: any) => {
-    if (event.type !== 'pointerdown') return;
-    clearSelection();
-  },
-  [clearSelection]
-);
+  const handlePointerMissed = useCallback(
+    (event: { type: string }) => {
+      if (event.type !== 'pointerdown') return;
+      clearSelection();
+    },
+    [clearSelection]
+  );
+
 
 // Determine count
 const count = columns ? columns.length : data.length;

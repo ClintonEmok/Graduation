@@ -15,7 +15,6 @@ import { CameraControls } from '@react-three/drei';
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   const mode = useUIStore((state) => state.mode);
   const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);

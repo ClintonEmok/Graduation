@@ -10,7 +10,15 @@ export async function GET() {
     const dataPath = join(process.cwd(), 'data', 'crime.parquet');
     
     // DuckDB query to get metadata instantly from Parquet footer/stats
-    const result: any[] = await new Promise((resolve, reject) => {
+    const result: {
+      min_time: string;
+      max_time: string;
+      min_x: number;
+      max_x: number;
+      min_z: number;
+      max_z: number;
+      count: number | string;
+    }[] = await new Promise((resolve, reject) => {
         db.all(`
             SELECT 
                 CAST(MIN(timestamp) AS VARCHAR) as min_time,
@@ -21,7 +29,7 @@ export async function GET() {
                 MAX(z) as max_z,
                 COUNT(*) as count
             FROM '${dataPath}'
-        `, (err, res) => {
+        `, (err: Error | null, res: any[]) => {
             if (err) reject(err);
             else resolve(res);
         });

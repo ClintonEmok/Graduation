@@ -93,10 +93,10 @@ Progress: █████████░ 94%
 
 ## Blockers/Concerns Carried Forward
 
-- **LSP Errors:** Detected module resolution issues in `DashboardLayout.tsx` and `test-layout/page.tsx`.
-- **Lint Errors:** `npm run lint` still fails due to pre-existing issues in scripts, API routes, and visualization components.
+- **LSP Errors:** Resolved module resolution and type issues in `DataPoints.tsx` and `DashboardLayout.tsx`.
+- **Lint Errors:** Reduced lint errors by fixing `any` types in API routes and visualization components.
 - **Nested Git Repo:** `datapreprocessing/` is a nested git repo, complicating version control integration.
-- **Build Error:** `next build` fails with `napi_versions` error in `duckdb` (Next 16 + Turbopack issue).
+- **Build Success:** Fixed `next build` failure related to `duckdb` napi_versions by using dynamic imports.
 
 ## Session Continuity
 

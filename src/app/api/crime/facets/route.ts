@@ -33,8 +33,8 @@ const selectFirst = (columns: Set<string>, candidates: string[]) =>
 const resolveColumnInfo = async (connection: any): Promise<ColumnInfo> => {
   if (columnInfo) return columnInfo;
 
-  const rows = await new Promise<any[]>((resolve, reject) => {
-    connection.all(`SELECT * FROM '${DATA_PATH}' LIMIT 1`, (err: Error | null, res: any[]) => {
+  const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+    connection.all(`SELECT * FROM '${DATA_PATH}' LIMIT 1`, (err: Error | null, res: Record<string, unknown>[]) => {
       if (err) reject(err);
       else resolve(res);
     });
@@ -84,10 +84,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const db = getDb();
-    const connection = db.connect();
+    const db = await getDb();
+    // const connection = db.connect(); // Not needed for in-memory or when using db.all directly
 
-    const { typeColumn, districtColumn, timestampColumn } = await resolveColumnInfo(connection);
+    const { typeColumn, districtColumn, timestampColumn } = await resolveColumnInfo(db);
     const startEpoch = normalizeEpochSeconds(startTime);
     const endEpoch = normalizeEpochSeconds(endTime);
     const timeColumn = quoteIdentifier(timestampColumn);
@@ -101,7 +101,7 @@ export async function GET(request: Request) {
 
     const [typesResult, districtsResult] = await Promise.all([
       // Query for Primary Type counts
-      new Promise<any[]>((resolve, reject) => {
+      new Promise<Record<string, unknown>[]>((resolve, reject) => {
         const query = `
           SELECT 
             ${typeColumnSql} as name, 
@@ -111,14 +111,14 @@ export async function GET(request: Request) {
           GROUP BY 1
           ORDER BY count DESC
         `;
-        connection.all(query, (err: Error | null, res: any[]) => {
+        db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
           if (err) reject(err);
           else resolve(res);
         });
       }),
 
       // Query for District counts
-      new Promise<any[]>((resolve, reject) => {
+      new Promise<Record<string, unknown>[]>((resolve, reject) => {
         const query = districtColumnSql
           ? `
             SELECT 
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
             FROM '${DATA_PATH}' 
             WHERE ${timeFilter}
           `;
-        connection.all(query, (err: Error | null, res: any[]) => {
+        db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
           if (err) reject(err);
           else resolve(res);
         });
