@@ -78,21 +78,31 @@ export default function MapEventLayer() {
     if (filteredPoints.length === 0) return null;
     return {
       type: 'FeatureCollection' as const,
-      features: filteredPoints.map((point) => {
-        const [lat, lon] = unproject(point.x, point.z);
-        return {
-          type: 'Feature' as const,
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [lon, lat]
-          },
-          properties: {
-            index: point.index
-          }
-        };
-      })
+      features: filteredPoints
+        .map((point) => {
+          const lat = columns?.lat ? columns.lat[point.index] : undefined;
+          const lon = columns?.lon ? columns.lon[point.index] : undefined;
+          const [resolvedLat, resolvedLon] =
+            Number.isFinite(lat) && Number.isFinite(lon)
+              ? [lat as number, lon as number]
+              : unproject(point.x, point.z);
+          return {
+            type: 'Feature' as const,
+            geometry: {
+              type: 'Point' as const,
+              coordinates: [resolvedLon, resolvedLat]
+            },
+            properties: {
+              index: point.index
+            }
+          };
+        })
+        .filter((feature) => {
+          const coords = feature.geometry.coordinates;
+          return Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
+        })
     };
-  }, [filteredPoints]);
+  }, [columns, filteredPoints]);
 
   if (!geoJson) return null;
 

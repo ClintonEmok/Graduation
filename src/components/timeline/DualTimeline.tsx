@@ -16,10 +16,10 @@ import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
-const AXIS_HEIGHT = 18;
+const AXIS_HEIGHT = 28;
 
-const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 4, left: 12 };
-const DETAIL_MARGIN = { top: 8, right: 12, bottom: 6, left: 12 };
+const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
+const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -300,7 +300,7 @@ export const DualTimeline: React.FC = () => {
 
   return (
     <div ref={containerRef} className="w-full">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-6">
         <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
           <g transform={`translate(${OVERVIEW_MARGIN.left},${OVERVIEW_MARGIN.top})`}>
             {overviewBins.map((bucket, index) => {

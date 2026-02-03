@@ -1,0 +1,13 @@
+
+> adaptive-space-time-cube@0.1.0 dev
+> next dev
+
+⚠ Port 3000 is in use by process 877, using available port 3004 instead.
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3004
+- Network:       http://192.168.1.47:3004
+
+✓ Starting...
+⨯ Unable to acquire lock at /Users/clintonemok/University/Graduation/Project/.next/dev/lock, is another instance of next dev running?
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h

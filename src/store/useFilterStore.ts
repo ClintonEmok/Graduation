@@ -162,7 +162,14 @@ export const useFilterStore = create<FilterState>((set, get) => ({
 
   // Set time range (Unix timestamps)
   setTimeRange: (range: [number, number] | null) => {
-    set({ selectedTimeRange: range });
+    set((state) => {
+      const current = state.selectedTimeRange;
+      if (current === null && range === null) return state;
+      if (current && range && current[0] === range[0] && current[1] === range[1]) {
+        return state;
+      }
+      return { selectedTimeRange: range };
+    });
   },
 
   // Clear time range filter

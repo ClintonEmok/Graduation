@@ -28,13 +28,21 @@ export function TimeControls() {
     setTimeScaleMode
   } = useTimeStore();
 
-  const handleTimeChange = useCallback((value: number[]) => {
-    setTime(value[0]);
-  }, [setTime]);
+  const handleTimeChange = useCallback(
+    (value: number[]) => {
+      if (value[0] === currentTime) return;
+      setTime(value[0]);
+    },
+    [currentTime, setTime]
+  );
 
-  const handleWindowChange = useCallback((value: number[]) => {
-    setTimeWindow(value[0]);
-  }, [setTimeWindow]);
+  const handleWindowChange = useCallback(
+    (value: number[]) => {
+      if (value[0] === timeWindow) return;
+      setTimeWindow(value[0]);
+    },
+    [setTimeWindow, timeWindow]
+  );
 
   const handleSpeedChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSpeed(Number(e.target.value));
@@ -85,17 +93,8 @@ export function TimeControls() {
             {formatTime(currentTime)}
           </div>
 
-          {/* Main Time Slider */}
-          <div className="flex-1 px-4">
-            <Slider
-              value={[currentTime]}
-              min={timeRange[0]}
-              max={timeRange[1]}
-              step={0.1}
-              onValueChange={handleTimeChange}
-              className="cursor-pointer"
-            />
-          </div>
+          {/* Main Time Slider (temporarily removed) */}
+          <div className="flex-1 px-4" />
 
           {/* Settings Trigger (could be a popover, but inline for now) */}
           <div className="flex items-center gap-4 border-l pl-4">
@@ -116,36 +115,28 @@ export function TimeControls() {
           </div>
         </div>
 
-        {/* Secondary Controls Row (Time Window) */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground px-2">
-          <div className="flex items-center gap-2 min-w-[120px]">
-            <Settings2 className="w-4 h-4" />
-            <span>Time Window</span>
-          </div>
-          <div className="flex-1 max-w-xs">
-            <Slider
-              value={[timeWindow]}
-              min={1}
-              max={20}
-              step={1}
-              onValueChange={handleWindowChange}
-            />
-          </div>
-          <div className="w-12 text-right font-mono">
-            {timeWindow}u
-          </div>
+          {/* Secondary Controls Row (Time Window) */}
+          <div className="flex items-center gap-4 text-sm text-muted-foreground px-2">
+            <div className="flex items-center gap-2 min-w-[120px]">
+              <Settings2 className="w-4 h-4" />
+              <span>Time Window</span>
+            </div>
+            <div className="flex-1" />
+            <div className="w-12 text-right font-mono">
+              {timeWindow}u
+            </div>
 
-          {/* Time Scale Mode Toggle */}
-          <div className="flex items-center gap-2 border-l pl-4">
-            <span>Time Scale:</span>
-            <button
-              onClick={() => setTimeScaleMode(timeScaleMode === 'linear' ? 'adaptive' : 'linear')}
-              className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium transition-colors"
-            >
-              {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
-            </button>
+            {/* Time Scale Mode Toggle */}
+            <div className="flex items-center gap-2 border-l pl-4">
+              <span>Time Scale:</span>
+              <button
+                onClick={() => setTimeScaleMode(timeScaleMode === 'linear' ? 'adaptive' : 'linear')}
+                className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium transition-colors"
+              >
+                {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
+              </button>
+            </div>
           </div>
-        </div>
 
       </div>
     </div>

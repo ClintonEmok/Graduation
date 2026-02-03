@@ -10,7 +10,7 @@
 - [x] **VIS-01**: User can orbit, zoom, and pan the 3D Space-Time Cube
 - [x] **VIS-02**: User can reset camera to initial default view
 - [x] **VIS-03**: System renders crime events as 3D points with color encoding by attribute
-- [ ] **VIS-04**: User can filter displayed events by geographic region (spatial filtering)
+- [x] **VIS-04**: User can filter displayed events by geographic region (spatial filtering)
 - [x] **VIS-05**: User can toggle 2D view between real Mapbox/Leaflet map and abstract spatial plane
 
 ### Temporal System
@@ -39,8 +39,8 @@
 ### Data & Backend
 
 - [ ] **DATA-01**: Backend API serves Chicago crime data
-- [ ] **DATA-02**: System supports multi-faceted filtering (type, district, time)
-- [ ] **DATA-03**: User can save and apply filter presets
+- [x] **DATA-02**: System supports multi-faceted filtering (type, district, time)
+- [x] **DATA-03**: User can save and apply filter presets
 - [ ] **DATA-04**: System loads data progressively or uses server-side aggregation for performance
 
 ### User Study Infrastructure
@@ -74,7 +74,7 @@
 | **VIS-01** | Phase 1 | Complete |
 | **VIS-02** | Phase 1 | Complete |
 | **VIS-03** | Phase 1 | Complete |
-| **VIS-04** | Phase 6 | Pending |
+| **VIS-04** | Phase 7 | Complete |
 | **VIS-05** | Phase 1 | Complete |
 | **TIME-01** | Phase 2 | Complete |
 | **TIME-02** | Phase 2 | Complete |
@@ -91,8 +91,8 @@
 | **COORD-03** | Phase 7 | Pending |
 | **COORD-04** | Phase 7 | Pending |
 | **DATA-01** | Phase 5 | Pending |
-| **DATA-02** | Phase 6 | Pending |
-| **DATA-03** | Phase 6 | Pending |
+| **DATA-02** | Phase 7 | Complete |
+| **DATA-03** | Phase 7 | Complete |
 | **DATA-04** | Phase 5 | Pending |
 | **STUDY-01** | Phase 9 | Pending |
 | **STUDY-02** | Phase 8 | Pending |

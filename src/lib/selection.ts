@@ -27,6 +27,22 @@ const getTimestampSec = (
   return null;
 };
 
+const resolveLatLon = (
+  x: number,
+  z: number,
+  index: number,
+  columns?: { lat?: Float32Array; lon?: Float32Array }
+): [number, number] => {
+  if (columns?.lat && columns?.lon) {
+    const lat = columns.lat[index];
+    const lon = columns.lon[index];
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return [lat, lon];
+    }
+  }
+  return unproject(x, z);
+};
+
 export const resolvePointByIndex = (index: number): SelectionPoint | null => {
   const { columns, data, minTimestampSec, maxTimestampSec } = useDataStore.getState();
 
@@ -35,7 +51,7 @@ export const resolvePointByIndex = (index: number): SelectionPoint | null => {
     const x = columns.x[index];
     const z = columns.z[index];
     const timestampSec = getTimestampSec(index, minTimestampSec, maxTimestampSec, columns.timestamp);
-    const [lat, lon] = unproject(x, z);
+    const [lat, lon] = resolveLatLon(x, z, index, columns);
     return { index, x, z, lat, lon, timestampSec };
   }
 
@@ -44,7 +60,10 @@ export const resolvePointByIndex = (index: number): SelectionPoint | null => {
   const x = point.x;
   const z = point.z;
   const timestampSec = typeof point.timestamp === 'number' ? point.timestamp : null;
-  const [lat, lon] = unproject(x, z);
+  const pointLat = typeof point.lat === 'number' ? point.lat : null;
+  const pointLon = typeof point.lon === 'number' ? point.lon : null;
+  const [lat, lon] =
+    pointLat !== null && pointLon !== null ? [pointLat, pointLon] : unproject(x, z);
   return { index, x, z, lat, lon, timestampSec };
 };
 
