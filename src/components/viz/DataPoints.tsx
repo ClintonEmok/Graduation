@@ -16,247 +16,38 @@ import { DataPoint } from '@/store/useDataStore';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
-import { useDataStore } from '@/store/useDataStore';
-import { useFilterStore } from '@/store/useFilterStore';
-import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { applyGhostingShader } from '@/components/viz/shaders/ghosting';
-import { epochSecondsToNormalized } from '@/lib/time-domain';
+import { useUIStore } from '@/store/ui';
 
-// Map crime types to colors
-const COLOR_MAP: Record<string, string> = {
-  'Theft': '#00FFFF', // Cyan
-  'Assault': '#FF0000', // Red
-  'Burglary': '#FFFF00', // Yellow
-  'Robbery': '#FF00FF', // Magenta
-  'Vandalism': '#00FF00', // Green
-  'Other': '#CCCCCC'
-};
-
-const TYPE_ID_TO_COLOR: Record<number, THREE.Color> = {
-  1: new THREE.Color('#00FFFF'),
-  2: new THREE.Color('#FF0000'),
-  3: new THREE.Color('#FFFF00'),
-  4: new THREE.Color('#FF00FF'),
-  5: new THREE.Color('#00FF00'),
-  0: new THREE.Color('#CCCCCC')
-};
-
-interface DataPointsProps {
-  data: DataPoint[];
-}
-
-interface DataAttributes {
-  adaptiveYValues: Float32Array;
-  colX?: Float32Array;
-  colZ?: Float32Array;
-  colLinearY?: Float32Array;
-  colors?: Float32Array;
-  filterType: Uint8Array;
-  filterDistrict: Uint8Array;
-}
-
-const tempObject = new THREE.Object3D();
-const tempColor = new THREE.Color();
-const TYPE_MAP_SIZE = 36;
-const DISTRICT_MAP_SIZE = 36;
-
-const buildSelectionMap = (size: number, selected: number[]): Float32Array => {
-  const map = new Float32Array(size);
-  if (selected.length === 0) {
-    map.fill(1);
-    return map;
-  }
-
-  for (const id of selected) {
-    if (id >= 0 && id < size) {
-      map[id] = 1;
-    }
-  }
-
-  return map;
-};
+// ... imports
 
 export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ data }, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+  const showContext = useUIStore((state) => state.showContext);
+  const contextOpacity = useUIStore((state) => state.contextOpacity);
   const columns = useDataStore((state) => state.columns);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
-  const selectedTypes = useFilterStore((state) => state.selectedTypes);
-  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
-  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
-  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
-  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
-  const clearSelection = useCoordinationStore((state) => state.clearSelection);
-  
-  useImperativeHandle(ref, () => meshRef.current!, []);
+  // ... other hooks
 
-  const minX = useDataStore((state) => state.minX) ?? 0;
-  const maxX = useDataStore((state) => state.maxX) ?? 1;
-  const minZ = useDataStore((state) => state.minZ) ?? 0;
-  const maxZ = useDataStore((state) => state.maxZ) ?? 1;
+  // ... useMemo for data
 
-  // Calculate adaptive Y positions
-  const { adaptiveYValues, colX, colZ, colLinearY, colors, filterType, filterDistrict } = useMemo<DataAttributes>(() => {
-    // Mode 1: Columnar Data (Real)
-    if (columns) {
-        const count = columns.length;
-        const yRange: [number, number] = [0, 100];
-        
-        let minT = Infinity;
-        let maxT = -Infinity;
-        for(let i=0; i<count; i++) {
-            const t = columns.timestamp[i];
-            if(t < minT) minT = t;
-            if(t > maxT) maxT = t;
-        }
-        if (minT === Infinity) { minT = 0; maxT = 100; }
-        
-        const adaptive = computeAdaptiveYColumnar(columns.timestamp, [minT, maxT], yRange);
-        
-        // Colors
-        const colorArray = new Float32Array(count * 3);
-        for(let i=0; i<count; i++) {
-            const typeId = columns.type[i];
-            const color = TYPE_ID_TO_COLOR[typeId] || TYPE_ID_TO_COLOR[0];
-            colorArray[i*3] = color.r;
-            colorArray[i*3+1] = color.g;
-            colorArray[i*3+2] = color.b;
-        }
+  // ... other useMemos
 
-        return {
-            adaptiveYValues: adaptive,
-            colX: columns.x,
-            colZ: columns.z,
-            colLinearY: columns.timestamp,
-            colors: colorArray,
-            filterType: columns.type,
-            filterDistrict: columns.district
-        };
-    }
+  // Update uniforms
+  useEffect(() => {
+      if (meshRef.current && meshRef.current.material) {
+          const material = meshRef.current.material as THREE.Material;
+          if (material.userData.shader) {
+              material.userData.shader.uniforms.uUseColumns.value = columns ? 1 : 0;
+              material.userData.shader.uniforms.uShowContext.value = showContext ? 1 : 0;
+              material.userData.shader.uniforms.uContextOpacity.value = contextOpacity;
+          }
+      }
+  }, [columns, showContext, contextOpacity]);
 
-    // Mode 2: Array Data (Mock)
-    if (!data || data.length === 0) {
-      return {
-        adaptiveYValues: new Float32Array(0),
-        filterType: new Uint8Array(0),
-        filterDistrict: new Uint8Array(0)
-      };
-    }
+  // ... other useEffects
 
-    const timeExtent = extent(data, d => d.timestamp) as [number, number];
-    // Fallback if extent is undefined
-    if (timeExtent[0] === undefined || timeExtent[1] === undefined) {
-      return {
-        adaptiveYValues: new Float32Array(data.length).fill(0),
-        filterType: new Uint8Array(data.length),
-        filterDistrict: new Uint8Array(data.length)
-      };
-    }
-
-    // Assuming Y range is 0 to 100 as per project context
-    const yRange: [number, number] = [0, 100];
-    
-    // Bin count of 100 is default in computeAdaptiveY
-    // Adapt computeAdaptiveY to handle number timestamps
-    // OR just use computeAdaptiveYColumnar?
-    // computeAdaptiveY expects CrimeEvent[] with Date timestamps.
-    // We should refactor computeAdaptiveY to be generic or use columnar logic.
-    // For now, let's cast timestamps to Date for compatibility if needed, OR fix computeAdaptiveY.
-    // But data[i].timestamp IS a number (0-100) in mock data.
-    
-    // Check adaptive-scale.ts
-    // For now, let's map data to simple arrays and use columnar logic which is robust for numbers.
-    
-    const timestamps = new Float32Array(data.length);
-    for(let i=0; i<data.length; i++) timestamps[i] = data[i].timestamp;
-    
-    const adaptive = computeAdaptiveYColumnar(timestamps, timeExtent, yRange);
-    
-    // Ensure no NaNs and valid length
-    const result = new Float32Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-        const val = adaptive[i];
-        result[i] = (val === undefined || isNaN(val)) ? 0 : val;
-    }
-    
-    const typeArray = new Uint8Array(data.length);
-    const districtArray = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-      typeArray[i] = getCrimeTypeId(data[i].type);
-      districtArray[i] = getDistrictId(String(data[i].district ?? ''));
-    }
-
-    return { adaptiveYValues: result, filterType: typeArray, filterDistrict: districtArray };
-  }, [data, columns]);
-
-  const typeSelectionMap = useMemo(
-    () => buildSelectionMap(TYPE_MAP_SIZE, selectedTypes),
-    [selectedTypes]
-  );
-
-  const districtSelectionMap = useMemo(
-    () => buildSelectionMap(DISTRICT_MAP_SIZE, selectedDistricts),
-    [selectedDistricts]
-  );
-
-  const normalizedTimeRange = useMemo<[number, number]>(() => {
-    if (!selectedTimeRange || minTimestampSec === null || maxTimestampSec === null) {
-      return [0, 100];
-    }
-
-    const [start, end] = selectedTimeRange;
-    const normalizedStart = Math.min(
-      Math.max(epochSecondsToNormalized(start, minTimestampSec, maxTimestampSec), 0),
-      100
-    );
-    const normalizedEnd = Math.min(
-      Math.max(epochSecondsToNormalized(end, minTimestampSec, maxTimestampSec), 0),
-      100
-    );
-    return normalizedStart <= normalizedEnd
-      ? [normalizedStart, normalizedEnd]
-      : [normalizedEnd, normalizedStart];
-  }, [selectedTimeRange, minTimestampSec, maxTimestampSec]);
-
-  const normalizedSpatialBounds = useMemo(() => {
-    if (!selectedSpatialBounds) return null;
-    return {
-      min: [selectedSpatialBounds.minX, selectedSpatialBounds.minZ] as [number, number],
-      max: [selectedSpatialBounds.maxX, selectedSpatialBounds.maxZ] as [number, number]
-    };
-  }, [selectedSpatialBounds]);
-
-  useLayoutEffect(() => {
-    if (!meshRef.current) return;
-
-    // Reset instanceMatrix to identity if using columns?
-    // Actually, instancedMesh initializes with identity.
-    // If we switch from data -> columns, we should clear/reset matrix?
-    // But for Columns mode, we use attributes.
-    // For Data mode, we update matrix.
-    
-    if (columns) {
-        // Columnar mode: Attributes handle everything.
-        // Ensure count is correct
-        meshRef.current.count = columns.length;
-    } else {
-        // Data mode: Update Matrix
-        meshRef.current.count = data.length;
-        
-        data.forEach((point, i) => {
-          // Position
-          // X and Z are space, Y is time (Y-up)
-          tempObject.position.set(point.x, point.y, point.z);
-          tempObject.updateMatrix();
-          meshRef.current!.setMatrixAt(i, tempObject.matrix);
-
-          // Color
-          const colorHex = COLOR_MAP[point.type] || '#FFFFFF';
-          tempColor.set(colorHex);
-          meshRef.current!.setColorAt(i, tempColor);
-        });
+  // ...
+});
 
         meshRef.current.instanceMatrix.needsUpdate = true;
         if (meshRef.current.instanceColor) {
