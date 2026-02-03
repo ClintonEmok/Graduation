@@ -17,6 +17,8 @@ export interface DataPoint {
 export interface ColumnarData {
   x: Float32Array;
   z: Float32Array;
+  lat?: Float32Array;
+  lon?: Float32Array;
   timestamp: Float32Array;
   type: Uint8Array;
   district: Uint8Array;
@@ -35,7 +37,7 @@ interface DataState {
   loadRealData: () => Promise<void>;
 }
 
-export const useDataStore = create<DataState>((set) => ({
+export const useDataStore = create<DataState>((set, get) => ({
   data: [],
   columns: null,
   minTimestampSec: null,
@@ -61,6 +63,8 @@ export const useDataStore = create<DataState>((set) => ({
   },
 
   loadRealData: async () => {
+    const { isLoading, columns } = get();
+    if (isLoading || columns) return;
     set({ isLoading: true });
     try {
       const response = await fetch('/api/crime/stream');
@@ -83,6 +87,14 @@ export const useDataStore = create<DataState>((set) => ({
       
       const xCol = table.getChild('x');
       const yCol = table.getChild('y'); // This maps to Z in our 3D space
+      const latCol =
+        table.getChild('lat') ||
+        table.getChild('latitude') ||
+        table.getChild('Latitude');
+      const lonCol =
+        table.getChild('lon') ||
+        table.getChild('longitude') ||
+        table.getChild('Longitude');
       const timeCol = table.getChild('timestamp');
       const typeCol = table.getChild('primary_type');
 
@@ -100,6 +112,8 @@ export const useDataStore = create<DataState>((set) => ({
       // x and y are likely Float64 in Parquet, we convert to Float32 for WebGL
       const xData = xCol ? new Float32Array(xCol.toArray()) : new Float32Array(count);
       const zData = yCol ? new Float32Array(yCol.toArray()) : new Float32Array(count);
+      const latData = latCol ? new Float32Array(latCol.toArray()) : undefined;
+      const lonData = lonCol ? new Float32Array(lonCol.toArray()) : undefined;
       
       // Timestamp: Arrow Timestamp is BigInt usually. 
       // We need number (epoch ms) or similar for our logic.
@@ -120,9 +134,22 @@ export const useDataStore = create<DataState>((set) => ({
       // Mapping real dates to 0-100 is safer for float precision in shaders.
       
       const rawTimestamps = timeCol ? Array.from(timeCol).map((t) => Number(t)) : new Array(count).fill(0);
-      const rawSeconds = rawTimestamps.map((t) => toEpochSeconds(t));
-      const minTimeSec = Math.min(...rawSeconds);
-      const maxTimeSec = Math.max(...rawSeconds);
+      
+      // Manually calculate min/max to avoid stack overflow with spread
+      let minTimeSec = Infinity;
+      let maxTimeSec = -Infinity;
+      const rawSeconds = new Float64Array(count);
+      
+      for(let i=0; i<count; i++) {
+        const sec = toEpochSeconds(rawTimestamps[i]);
+        rawSeconds[i] = sec;
+        if (sec < minTimeSec) minTimeSec = sec;
+        if (sec > maxTimeSec) maxTimeSec = sec;
+      }
+
+      if (minTimeSec === Infinity) minTimeSec = 0;
+      if (maxTimeSec === -Infinity) maxTimeSec = 0;
+
       const timeSpanSec = maxTimeSec - minTimeSec || 1;
       
       const timestampData = new Float32Array(count);
@@ -149,6 +176,8 @@ export const useDataStore = create<DataState>((set) => ({
       const columns: ColumnarData = {
           x: xData,
           z: zData,
+          lat: latData,
+          lon: lonData,
           timestamp: timestampData,
           type: typeData,
           district: districtData,
