@@ -202,8 +202,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. System requires or assigns a participant ID at the start of a session.
 3. Logs are correctly associated with the active participant ID.
 
-## Phase 10: Study Content & Flow
+## Phase 10: Study Content & Flow (Deferred to v2)
 
+**Status:** Deferred
 **Goal:** Users are guided through the complete study protocol (tutorial -> tasks).
 
 **Dependencies:** Phase 9
@@ -235,4 +236,4 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 7. Advanced Filtering | **Complete** | 100% |
 | 8. Coordinated Views | **Complete** | 100% |
 | 9. Study Logging Infrastructure | Pending | 0% |
-| 10. Study Content & Flow | Pending | 0% |
+| 10. Study Content & Flow | Deferred | 0% |
