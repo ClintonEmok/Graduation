@@ -67,8 +67,20 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (isLoading || columns) return;
     set({ isLoading: true });
     try {
+      // 1. Fetch Metadata (min/max time)
+      const metaRes = await fetch('/api/crime/meta');
+      if (!metaRes.ok) throw new Error(`Meta HTTP error! status: ${metaRes.status}`);
+      const meta = await metaRes.json();
+      
+      const minTimeSec = meta.minTime;
+      const maxTimeSec = meta.maxTime;
+      const timeSpanSec = maxTimeSec - minTimeSec || 1;
+
+      console.log(`Metadata: ${new Date(minTimeSec*1000).toISOString()} to ${new Date(maxTimeSec*1000).toISOString()}, Count: ${meta.count}`);
+
+      // 2. Fetch Data Stream
       const response = await fetch('/api/crime/stream');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(`Stream HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('Response body is null');
 
       const reader = await RecordBatchReader.from(response);
@@ -82,81 +94,67 @@ export const useDataStore = create<DataState>((set, get) => ({
       console.log(`Loaded ${count} rows`);
 
       // Extract columns
-      // Expecting columns: x, y, timestamp, primary_type from DB
-      // We map API x->x, API y->z.
-      
       const xCol = table.getChild('x');
-      const yCol = table.getChild('y'); // This maps to Z in our 3D space
-      const latCol =
-        table.getChild('lat') ||
-        table.getChild('latitude') ||
-        table.getChild('Latitude');
-      const lonCol =
-        table.getChild('lon') ||
-        table.getChild('longitude') ||
-        table.getChild('Longitude');
-      const timeCol = table.getChild('timestamp');
+      const yCol = table.getChild('y'); // This is Z (depth/latitude projection) in our 3D space
+      const timeCol = table.getChild('timestamp'); // Raw timestamp
       const typeCol = table.getChild('primary_type');
+      const districtCol = table.getChild('district');
+      const latCol = table.getChild('lat');
+      const lonCol = table.getChild('lon');
 
       if (!xCol || !yCol || !timeCol) {
          console.warn("Missing columns in stream data", table.schema.fields.map((f: any) => f.name));
-         // Fallback or error?
       }
 
       // Convert to TypedArrays
-      // Arrow vectors can be zero-copy if we use them right, but Table combines chunks.
-      // toFloat32Array() might copy.
-      // We use Float32 for rendering coordinates.
-      
-      // Handle potential nulls or different types
-      // x and y are likely Float64 in Parquet, we convert to Float32 for WebGL
       const xData = xCol ? new Float32Array(xCol.toArray()) : new Float32Array(count);
       const zData = yCol ? new Float32Array(yCol.toArray()) : new Float32Array(count);
       const latData = latCol ? new Float32Array(latCol.toArray()) : undefined;
       const lonData = lonCol ? new Float32Array(lonCol.toArray()) : undefined;
       
-      // Timestamp: Arrow Timestamp is BigInt usually. 
-      // We need number (epoch ms) or similar for our logic.
-      // We'll convert to Float32 for now as our adaptive logic uses numbers.
-      // WARNING: Float32 has low precision for timestamps (epoch ms).
-      // We should offset them relative to a start time or use Float64.
-      // Store interface says Float32Array for timestamp...
-      // Let's use Float64Array for timestamp to preserve precision during calcs, 
-      // but if we pass to shader we might need to offset.
-      // For now, let's update the interface to Float64Array for timestamp?
-      // No, let's keep it Float32 but normalized (0-100 or something)?
-      // No, `loadRealData` should normalize?
-      // Our `generateMockData` uses `TIME_MIN` (0) to `TIME_MAX` (100).
-      // Real data timestamps are dates.
-      // We should normalize them to our 0-100 range OR update the application to work with real dates.
-      // Phase 2 decisions said "Time Range 0-100".
-      // If we use real data, we should probably normalize it to 0-100 or update the store/constants.
-      // Mapping real dates to 0-100 is safer for float precision in shaders.
+      // Use raw timestamp column to calculate normalized Y (Time)
+      // This is redundant if parquet has 'y' as time, but our script maps:
+      // x -> x
+      // z -> z (lat projection)
+      // y -> y (time projection)
+      // Wait, let's check setup-data.js mapping again to be sure.
+      // setup-data.js:
+      // (lon + 180) / 360 AS x
+      // (1.0 - ...) / 2.0 AS z
+      // ((epoch(timestamp) ...)) AS y
       
-      const rawTimestamps = timeCol ? Array.from(timeCol).map((t) => Number(t)) : new Array(count).fill(0);
+      // So Parquet 'y' IS the normalized time (0-100).
+      // Parquet 'z' IS the latitude projection.
+      // Parquet 'x' IS the longitude projection.
       
-      // Manually calculate min/max to avoid stack overflow with spread
-      let minTimeSec = Infinity;
-      let maxTimeSec = -Infinity;
-      const rawSeconds = new Float64Array(count);
+      // But in store lines 113-114:
+      // const xData = xCol ...
+      // const zData = yCol ... (maps 'y' col to 'zData')
       
-      for(let i=0; i<count; i++) {
-        const sec = toEpochSeconds(rawTimestamps[i]);
-        rawSeconds[i] = sec;
-        if (sec < minTimeSec) minTimeSec = sec;
-        if (sec > maxTimeSec) maxTimeSec = sec;
-      }
+      // If Parquet col 'y' is Time, assigning it to 'zData' is wrong if 'zData' means depth.
+      // However, check Variable Naming in Store:
+      // interface ColumnarData { x, z, timestamp ... }
+      
+      // If setup-data.js named them x, z, y...
+      // Then table.getChild('z') should be the depth.
+      // And table.getChild('y') should be the time.
+      
+      // Let's fix the column retrieval based on setup-data.js
+      const parquetX = table.getChild('x');
+      const parquetZ = table.getChild('z'); // Depth
+      const parquetY = table.getChild('y'); // Time (0-100)
 
-      if (minTimeSec === Infinity) minTimeSec = 0;
-      if (maxTimeSec === -Infinity) maxTimeSec = 0;
-
-      const timeSpanSec = maxTimeSec - minTimeSec || 1;
+      const xDataFinal = parquetX ? new Float32Array(parquetX.toArray()) : new Float32Array(count);
+      // Map Parquet Z (depth) to Store Z
+      const zDataFinal = parquetZ ? new Float32Array(parquetZ.toArray()) : new Float32Array(count);
       
-      const timestampData = new Float32Array(count);
-      for(let i=0; i<count; i++) {
-          // Normalize to 0-100 range
-           timestampData[i] = ((rawSeconds[i] - minTimeSec) / timeSpanSec) * 100;
-      }
+      // Map Parquet Y (Time 0-100) to Store timestamp?
+      // Store timestamp expects normalized 0-100 for visualization?
+      // Interface says: timestamp: Float32Array
+      // And usage in DualTimeline suggests it converts back to epoch seconds.
+      
+      // If we use the pre-calculated 'y' (0-100), we save calculation.
+      const timestampData = parquetY ? new Float32Array(parquetY.toArray()) : new Float32Array(count);
 
       // Type mapping
       const typeData = new Uint8Array(count);
@@ -166,7 +164,6 @@ export const useDataStore = create<DataState>((set, get) => ({
       }
 
       // District mapping
-      const districtCol = table.getChild('district');
       const districtData = new Uint8Array(count);
       const rawDistricts = districtCol ? districtCol.toArray() : [];
       for(let i=0; i<count; i++) {
@@ -174,8 +171,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       }
 
       const columns: ColumnarData = {
-          x: xData,
-          z: zData,
+          x: xDataFinal,
+          z: zDataFinal,
           lat: latData,
           lon: lonData,
           timestamp: timestampData,
