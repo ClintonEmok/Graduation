@@ -33,6 +33,7 @@ export function FloatingToolbar() {
   return (
     <TooltipProvider>
       <div
+        id="tour-toolbar"
         ref={dragRef}
         onMouseDown={handleMouseDown}
         className={cn(

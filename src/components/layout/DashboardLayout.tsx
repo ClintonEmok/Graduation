@@ -38,7 +38,7 @@ export default function DashboardLayout({
           <Group orientation="horizontal" onLayoutChange={setInnerLayout} id="inner-group">
             {/* Left Panel: Map */}
             <Panel id="top-left" defaultSize={innerLayout.left} minSize={20}>
-              <div className="h-full w-full relative overflow-hidden">
+              <div id="tour-map-panel" className="h-full w-full relative overflow-hidden">
                 {leftPanel}
               </div>
             </Panel>
@@ -47,7 +47,7 @@ export default function DashboardLayout({
 
             {/* Right Panel: Cube */}
             <Panel id="top-right" defaultSize={innerLayout.right} minSize={20}>
-              <div className="h-full w-full relative overflow-hidden">
+              <div id="tour-cube-panel" className="h-full w-full relative overflow-hidden">
                 {topRightPanel}
               </div>
             </Panel>
@@ -58,7 +58,7 @@ export default function DashboardLayout({
         
         {/* Bottom Panel: Timeline */}
         <Panel id="bottom" defaultSize={outerLayout.bottom} minSize={10}>
-          <div className="h-full w-full relative overflow-hidden">
+          <div id="tour-timeline-panel" className="h-full w-full relative overflow-hidden">
             {bottomRightPanel}
           </div>
         </Panel>

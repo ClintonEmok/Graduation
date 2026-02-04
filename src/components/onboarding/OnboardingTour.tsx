@@ -24,10 +24,53 @@ export function OnboardingTour() {
         // Mark as seen when tour is finished or skipped
         localStorage.setItem("hasSeenTour", "true");
       },
-      steps: [] // Steps will be defined in the next task
+      steps: [
+        {
+          popover: {
+            title: 'Welcome to Adaptive Space-Time Cube',
+            description: 'Explore spatiotemporal patterns in Chicago crime data using synchronized 2D, 3D, and timeline views.'
+          }
+        },
+        {
+          element: '#tour-toolbar',
+          popover: {
+            title: 'Floating Toolbar',
+            description: 'Use these tools to reset view, toggle context, manage layers, open settings, and filter data.',
+            side: "bottom",
+            align: 'center'
+          }
+        },
+        {
+          element: '#tour-map-panel',
+          popover: {
+            title: '2D Map View',
+            description: 'View spatial distribution of events. Compare spatial patterns with the 3D structure.',
+            side: "right",
+            align: 'center'
+          }
+        },
+        {
+          element: '#tour-cube-panel',
+          popover: {
+            title: '3D Space-Time Cube',
+            description: 'Visualize events in 3D (X/Y=Space, Z=Time). Enable Adaptive Time to see density-based scaling.',
+            side: "left",
+            align: 'center'
+          }
+        },
+        {
+          element: '#tour-timeline-panel',
+          popover: {
+            title: 'Interactive Timeline',
+            description: 'Analyze temporal distribution. Select time ranges to filter the Map and Cube views.',
+            side: "top",
+            align: 'center'
+          }
+        }
+      ]
     });
     
-    // We will call drive() once steps are added
+    driverRef.current.drive();
   }, []);
 
   return null;
