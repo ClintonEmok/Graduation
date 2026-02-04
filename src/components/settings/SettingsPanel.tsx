@@ -55,7 +55,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyShare = async () => {
-    const success = await copyShareURL();
+    // Share pending changes if any, otherwise committed flags
+    const effectiveFlags = pendingFlags || flags;
+    const success = await copyShareURL(effectiveFlags);
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

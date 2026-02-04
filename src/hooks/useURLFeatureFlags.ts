@@ -22,7 +22,9 @@ export function useURLFeatureFlags() {
     if (!flagsParam) return;
     
     try {
-      const parsed = JSON.parse(atob(flagsParam));
+      // Handle potential space-as-plus issue in URL encoding
+      const normalized = flagsParam.replace(/ /g, '+');
+      const parsed = JSON.parse(atob(normalized));
       
       // Validate: only include known flag IDs
       const validFlagIds = new Set(FLAG_DEFINITIONS.map((f) => f.id));
@@ -45,13 +47,16 @@ export function useURLFeatureFlags() {
         if (hasDifferences) {
           setUrlFlags(validFlags);
           setShowConflictDialog(true);
+        } else if (showConflictDialog) {
+          // If differences resolved (e.g. after hydration), close dialog
+          setShowConflictDialog(false);
         }
       }
-    } catch {
+    } catch (e) {
       // Invalid base64 or JSON, silently ignore
-      console.warn('Invalid flags parameter in URL');
+      console.warn('Invalid flags parameter in URL', e);
     }
-  }, [searchParams, flags]);
+  }, [searchParams, flags, showConflictDialog]);
 
   // Apply URL flags (called when user confirms)
   const confirmURLFlags = useCallback(() => {
@@ -81,8 +86,8 @@ export function useURLFeatureFlags() {
   }, [searchParams, pathname, router]);
 
   // Generate shareable URL with current flags
-  const generateShareURL = useCallback(() => {
-    const currentFlags = useFeatureFlagsStore.getState().flags;
+  const generateShareURL = useCallback((flagsOverride?: Record<string, boolean>) => {
+    const currentFlags = flagsOverride || useFeatureFlagsStore.getState().flags;
     const encoded = btoa(JSON.stringify(currentFlags));
     
     const params = new URLSearchParams(searchParams.toString());
@@ -92,8 +97,8 @@ export function useURLFeatureFlags() {
   }, [pathname, searchParams]);
 
   // Copy share URL to clipboard
-  const copyShareURL = useCallback(async () => {
-    const url = generateShareURL();
+  const copyShareURL = useCallback(async (flagsOverride?: Record<string, boolean>) => {
+    const url = generateShareURL(flagsOverride);
     try {
       await navigator.clipboard.writeText(url);
       return true;
