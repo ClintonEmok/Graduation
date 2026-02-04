@@ -293,7 +293,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 4. Hovering controls reveals helpful tooltips.
 
 **Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+- [ ] 13-01-PLAN.md — Feedback Infrastructure: Loading, Errors, Toasts
+- [ ] 13-02-PLAN.md — Interaction Polish: Tooltips & Consistency
+- [ ] 13-03-PLAN.md — User Guidance: Onboarding Tour
 
 ## Phase 14: Color Schemes & Accessibility
 
