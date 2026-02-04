@@ -267,7 +267,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Disabled features are completely hidden from UI.
 
 **Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+- [ ] 12-01-PLAN.md — Core infrastructure: shadcn components + store + flag definitions
+- [ ] 12-02-PLAN.md — Settings UI: draggable toolbar + Settings panel
+- [ ] 12-03-PLAN.md — URL sharing with conflict resolution + verification
 
 ## Phase 13: UI Polish
 
