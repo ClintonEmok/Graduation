@@ -1,9 +1,10 @@
-let db: unknown = null;
+import duckdb from 'duckdb';
 
-export const getDb = async (): Promise<any> => {
+let db: duckdb.Database | null = null;
+
+export const getDb = async (): Promise<duckdb.Database> => {
   if (!db) {
-    const duckdb = await import('duckdb');
-    db = new duckdb.default.Database(':memory:');
+    db = new duckdb.Database(':memory:');
   }
   return db;
 };
