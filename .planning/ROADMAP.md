@@ -1,8 +1,8 @@
 # Project Roadmap
 
 **Project:** Adaptive Space-Time Cube
-**Status:** Planning
-**Total Phases:** 10
+**Status:** Active
+**Total Phases:** 19
 
 ## Overview
 
@@ -227,6 +227,202 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. System automatically records the duration taken to complete each task.
 4. User sees a progress indicator showing their status in the study session.
 
+## Phase 11: Focus+Context Visualization
+
+**Goal:** Users can distinguish focus (selected) data from context (unselected) data via visual de-emphasis.
+
+**Dependencies:** Phase 9
+**Focus:** Shader effects, dithered transparency, context controls
+
+| Requirement | Description |
+|-------------|-------------|
+| **VIZ-FC-01** | System renders focus points at full opacity with type coloring |
+| **VIZ-FC-02** | System renders context points with dithered transparency (ghosting) |
+| **VIZ-FC-03** | User can toggle context visibility on/off |
+
+**Success Criteria:**
+1. Selected/filtered points are fully visible and colored by type.
+2. Unselected context points are visible but de-emphasized without alpha sorting artifacts.
+3. User can toggle context layer via UI control.
+
+**Plans:**
+- [x] 11-01-PLAN.md — Dithered transparency shader + context controls
+
+## Phase 12: Feature Flags Infrastructure
+
+**Goal:** System supports toggling experimental features via settings panel.
+
+**Dependencies:** Phase 11
+**Focus:** Settings UI, localStorage persistence, flag system
+
+| Requirement | Description |
+|-------------|-------------|
+| **FLAG-01** | System stores feature flags in localStorage |
+| **FLAG-02** | User can access Settings panel to toggle features |
+| **FLAG-03** | Feature flags control visibility of experimental viz modes |
+
+**Success Criteria:**
+1. Settings panel accessible via gear icon.
+2. Toggle switches persist across browser sessions.
+3. Disabled features are completely hidden from UI.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 13: UI Polish
+
+**Goal:** Users experience a polished, responsive interface with clear feedback.
+
+**Dependencies:** Phase 12
+**Focus:** Loading states, error handling, visual consistency, tooltips
+
+| Requirement | Description |
+|-------------|-------------|
+| **POLISH-01** | System displays loading indicators during data operations |
+| **POLISH-02** | System provides clear error messages and recovery options |
+| **POLISH-03** | UI elements have consistent spacing, colors, typography |
+| **POLISH-04** | Tooltips explain controls and features on hover |
+| **POLISH-05** | First-time users see optional onboarding guidance |
+
+**Success Criteria:**
+1. Users never see blank/frozen states during loading.
+2. Errors are explained with actionable next steps.
+3. Visual design is cohesive across all panels.
+4. Hovering controls reveals helpful tooltips.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 14: Color Schemes & Accessibility
+
+**Goal:** Users can choose color schemes including colorblind-safe and dark mode options.
+
+**Dependencies:** Phase 12
+**Focus:** Palette system, accessibility, theme switching
+
+| Requirement | Description |
+|-------------|-------------|
+| **COLOR-01** | System provides default, colorblind-safe, and dark mode palettes |
+| **COLOR-02** | User can switch palettes via Settings |
+| **COLOR-03** | Palette choice persists via feature flag system |
+
+**Success Criteria:**
+1. At least 3 color palettes available (default, colorblind-safe, dark).
+2. Palette switch updates all visualizations immediately.
+3. Selected palette persists across sessions.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 15: Time Slices Visualization
+
+**Goal:** Users can see horizontal planes showing temporal cross-sections through the data.
+
+**Dependencies:** Phase 12
+**Focus:** 3D geometry, temporal markers, slice controls
+
+| Requirement | Description |
+|-------------|-------------|
+| **SLICE-01** | System renders horizontal plane(s) at user-specified time values |
+| **SLICE-02** | User can add/remove/move time slice planes |
+| **SLICE-03** | Feature toggleable via feature flag |
+
+**Success Criteria:**
+1. Semi-transparent horizontal planes visible at specified Y positions.
+2. User can interactively position slices.
+3. Feature can be disabled in Settings.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 16: Heatmap Layer
+
+**Goal:** Users can view a 2D density overlay on the map showing spatial concentration.
+
+**Dependencies:** Phase 12
+**Focus:** Density calculation, canvas/WebGL overlay, map integration
+
+| Requirement | Description |
+|-------------|-------------|
+| **HEAT-01** | System calculates 2D spatial density from visible points |
+| **HEAT-02** | System renders heatmap overlay on map panel |
+| **HEAT-03** | Heatmap updates when filters change |
+| **HEAT-04** | Feature toggleable via feature flag |
+
+**Success Criteria:**
+1. Heatmap shows high-density areas in warm colors.
+2. Heatmap responds to filter/time changes.
+3. Feature can be disabled in Settings.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 17: Cluster Highlighting
+
+**Goal:** Users can auto-detect and label dense regions in the 3D cube.
+
+**Dependencies:** Phase 12
+**Focus:** Clustering algorithm, 3D labels, highlight geometry
+
+| Requirement | Description |
+|-------------|-------------|
+| **CLUSTER-01** | System identifies dense clusters using spatial-temporal proximity |
+| **CLUSTER-02** | System renders bounding indicators around clusters |
+| **CLUSTER-03** | User can click cluster to zoom/focus |
+| **CLUSTER-04** | Feature toggleable via feature flag |
+
+**Success Criteria:**
+1. Dense regions are automatically identified and marked.
+2. Visual indicators (boxes, labels) highlight cluster boundaries.
+3. Clicking a cluster focuses the view on that region.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 18: Trajectories Visualization
+
+**Goal:** Users can see connected paths showing event sequences over time.
+
+**Dependencies:** Phase 12
+**Focus:** Line geometry, temporal ordering, path rendering
+
+| Requirement | Description |
+|-------------|-------------|
+| **TRAJ-01** | System connects related events with line geometry |
+| **TRAJ-02** | Trajectories show temporal direction (color gradient or arrows) |
+| **TRAJ-03** | User can filter which trajectories are shown |
+| **TRAJ-04** | Feature toggleable via feature flag |
+
+**Success Criteria:**
+1. Related events connected by visible paths in 3D space.
+2. Path direction (time flow) is visually indicated.
+3. Feature can be disabled in Settings.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
+## Phase 19: Aggregated Bins (LOD)
+
+**Goal:** Users see 3D bars instead of points at far zoom levels for better overview.
+
+**Dependencies:** Phase 12
+**Focus:** LOD system, binning algorithm, instanced geometry
+
+| Requirement | Description |
+|-------------|-------------|
+| **AGG-01** | System aggregates points into spatial-temporal bins at zoom-out |
+| **AGG-02** | System renders bins as 3D bars with height = count |
+| **AGG-03** | System transitions smoothly between points and bins based on zoom |
+| **AGG-04** | Feature toggleable via feature flag |
+
+**Success Criteria:**
+1. Zooming out transitions from individual points to aggregated bars.
+2. Bar height encodes event count per bin.
+3. Transition is smooth, not jarring.
+
+**Plans:**
+- [ ] TBD (created by /gsd/plan-phase)
+
 ## Progress
 
 | Phase | Status | Completion |
@@ -241,3 +437,12 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 8. Coordinated Views | **Complete** | 100% |
 | 9. Study Logging Infrastructure | **Complete** | 100% |
 | 10. Study Content & Flow | Deferred | 0% |
+| 11. Focus+Context Visualization | **Complete** | 100% |
+| 12. Feature Flags Infrastructure | Planned | 0% |
+| 13. UI Polish | Planned | 0% |
+| 14. Color Schemes & Accessibility | Planned | 0% |
+| 15. Time Slices Visualization | Planned | 0% |
+| 16. Heatmap Layer | Planned | 0% |
+| 17. Cluster Highlighting | Planned | 0% |
+| 18. Trajectories Visualization | Planned | 0% |
+| 19. Aggregated Bins (LOD) | Planned | 0% |
