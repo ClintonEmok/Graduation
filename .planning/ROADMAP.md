@@ -267,7 +267,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Disabled features are completely hidden from UI.
 
 **Plans:**
-- [ ] 12-01-PLAN.md — Core infrastructure: shadcn components + store + flag definitions
+- [x] 12-01-PLAN.md — Core infrastructure: shadcn components + store + flag definitions
 - [ ] 12-02-PLAN.md — Settings UI: draggable toolbar + Settings panel
 - [ ] 12-03-PLAN.md — URL sharing with conflict resolution + verification
 
@@ -440,7 +440,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 9. Study Logging Infrastructure | **Complete** | 100% |
 | 10. Study Content & Flow | Deferred | 0% |
 | 11. Focus+Context Visualization | **Complete** | 100% |
-| 12. Feature Flags Infrastructure | Planned | 0% |
+| 12. Feature Flags Infrastructure | In progress | 33% |
 | 13. UI Polish | Planned | 0% |
 | 14. Color Schemes & Accessibility | Planned | 0% |
 | 15. Time Slices Visualization | Planned | 0% |
