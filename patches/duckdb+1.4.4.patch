@@ -1,0 +1,28 @@
+diff --git a/node_modules/duckdb/package.json b/node_modules/duckdb/package.json
+index 23dbc85..fb0e6f8 100644
+--- a/node_modules/duckdb/package.json
++++ b/node_modules/duckdb/package.json
+@@ -12,8 +12,12 @@
+   },
+   "binary": {
+     "module_name": "duckdb",
+-    "module_path": "./lib/binding/",
+-    "host": "https://npm.duckdb.org/duckdb"
++    "module_path": "./lib/binding/{napi_build_version}",
++    "host": "https://npm.duckdb.org/duckdb",
++    "napi_versions": [
++      3
++    ],
++    "package_name": "{module_name}-v{version}-{napi_build_version}-{platform}-{arch}.tar.gz"
+   },
+   "scripts": {
+     "install": "node-pre-gyp install --fallback-to-build",
+@@ -57,7 +61,7 @@
+     "sql",
+     "duckdb"
+   ],
+-  "author": "Hannes Mühleisen",
++  "author": "Hannes M\u00fchleisen",
+   "license": "MIT",
+   "bugs": {
+     "url": "https://github.com/duckdb/duckdb-node/issues"
