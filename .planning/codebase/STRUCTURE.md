@@ -12,6 +12,7 @@ Project/
 │   ├── app/                      # Next.js App Router
 │   ├── components/               # React Components
 │   │   ├── map/                  # MapLibre Components
+│   │   ├── ui/                   # Shared UI Components (shadcn/ui)
 │   │   └── viz/                  # 3D Visualization Components
 │   └── lib/                      # Utility functions
 ├── datapreprocessing/            # Main project directory
