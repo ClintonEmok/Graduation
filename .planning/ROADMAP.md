@@ -296,6 +296,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 - [x] 13-01-PLAN.md — Feedback Infrastructure: Loading, Errors, Toasts
 - [x] 13-02-PLAN.md — Interaction Polish: Tooltips & Consistency
 - [x] 13-03-PLAN.md — User Guidance: Onboarding Tour
+- [ ] 13-04-PLAN.md — Feedback Gaps: Toasts, Loading, Errors
 
 ## Phase 14: Color Schemes & Accessibility
 
