@@ -11,6 +11,9 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Share2, Check } from 'lucide-react';
+import { useState } from 'react';
+import { useURLFeatureFlags } from '@/hooks/useURLFeatureFlags';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import {
   FLAG_DEFINITIONS,
@@ -47,6 +50,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       startEditing();
     }
   }, [isOpen, startEditing]);
+
+  const { copyShareURL } = useURLFeatureFlags();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyShare = async () => {
+    const success = await copyShareURL();
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleClose = () => {
     discardPendingFlags();
@@ -120,6 +134,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </p>
           )}
           <div className="flex gap-2 w-full">
+            <Button 
+              variant="outline" 
+              onClick={handleCopyShare}
+              className="flex-1"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-4 w-4 mr-1" />
+                  Share URL
+                </>
+              )}
+            </Button>
             <Button variant="outline" onClick={handleReset} className="flex-1">
               Reset to Defaults
             </Button>

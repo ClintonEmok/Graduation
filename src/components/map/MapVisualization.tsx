@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import MapBase from './MapBase';
 import MapEventLayer from './MapEventLayer';
@@ -229,7 +229,9 @@ export default function MapVisualization() {
           </button>
         </div>
       </div>
-      <Controls />
+      <Suspense fallback={null}>
+        <Controls />
+      </Suspense>
     </div>
   );
 }

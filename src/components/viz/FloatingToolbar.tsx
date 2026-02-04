@@ -6,6 +6,8 @@ import { FilterOverlay } from './FilterOverlay';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { useUIStore } from '@/store/ui';
 import { useDraggable } from '@/hooks/useDraggable';
+import { useURLFeatureFlags } from '@/hooks/useURLFeatureFlags';
+import { URLConflictDialog } from '@/components/settings/URLConflictDialog';
 import { cn } from '@/lib/utils';
 
 export function FloatingToolbar() {
@@ -19,6 +21,13 @@ export function FloatingToolbar() {
     storageKey: 'toolbar-position-v1',
     initialPosition: { x: window?.innerWidth ? window.innerWidth - 250 : 16, y: 16 },
   });
+
+  const {
+    showConflictDialog,
+    urlFlags,
+    confirmURLFlags,
+    rejectURLFlags,
+  } = useURLFeatureFlags();
 
   return (
     <>
@@ -86,6 +95,12 @@ export function FloatingToolbar() {
 
       <FilterOverlay isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <URLConflictDialog
+        isOpen={showConflictDialog}
+        urlFlags={urlFlags}
+        onConfirm={confirmURLFlags}
+        onCancel={rejectURLFlags}
+      />
     </>
   );
 }
