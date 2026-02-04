@@ -9,6 +9,7 @@ import { useDraggable } from '@/hooks/useDraggable';
 import { useURLFeatureFlags } from '@/hooks/useURLFeatureFlags';
 import { URLConflictDialog } from '@/components/settings/URLConflictDialog';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function FloatingToolbar() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -30,12 +31,12 @@ export function FloatingToolbar() {
   } = useURLFeatureFlags();
 
   return (
-    <>
+    <TooltipProvider>
       <div
         ref={dragRef}
         onMouseDown={handleMouseDown}
         className={cn(
-          'fixed z-20 flex items-center gap-2 rounded-full border border-border bg-background/90 px-3 py-2 shadow-sm backdrop-blur',
+          'fixed z-20 flex items-center gap-4 rounded-full border border-border bg-background/90 px-6 py-3 shadow-md backdrop-blur transition-shadow hover:shadow-lg',
           isDragging ? 'cursor-grabbing' : 'cursor-grab'
         )}
         style={{
@@ -44,53 +45,96 @@ export function FloatingToolbar() {
         }}
       >
         {/* Drag handle indicator */}
-        <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="cursor-grab active:cursor-grabbing p-1">
+              <GripVertical className="h-5 w-5 text-muted-foreground/50" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Drag to move</p>
+          </TooltipContent>
+        </Tooltip>
         
-        <button
-          type="button"
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Home"
-        >
-          <Home className="h-4 w-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full p-3 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Home"
+            >
+              <Home className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Reset View</p>
+          </TooltipContent>
+        </Tooltip>
         
-        <button
-          type="button"
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Context Visibility"
-          onClick={toggleContext}
-          title={showContext ? 'Hide Context' : 'Show Context'}
-        >
-          {showContext ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full p-3 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Context Visibility"
+              onClick={toggleContext}
+            >
+              {showContext ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{showContext ? 'Hide Context' : 'Show Context'}</p>
+          </TooltipContent>
+        </Tooltip>
         
-        <button
-          type="button"
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Layers"
-        >
-          <Layers className="h-4 w-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full p-3 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Layers"
+            >
+              <Layers className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Layers</p>
+          </TooltipContent>
+        </Tooltip>
         
-        <button
-          type="button"
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Settings"
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          <Settings className="h-4 w-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full p-3 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Settings"
+              onClick={() => setIsSettingsOpen(true)}
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Settings</p>
+          </TooltipContent>
+        </Tooltip>
         
-        <div className="h-5 w-px bg-border" />
+        <div className="h-6 w-px bg-border mx-1" />
         
-        <button
-          type="button"
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Filters"
-          onClick={() => setIsFilterOpen((open) => !open)}
-        >
-          <Filter className="h-4 w-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full p-3 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Filters"
+              onClick={() => setIsFilterOpen((open) => !open)}
+            >
+              <Filter className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Filters</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <FilterOverlay isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
@@ -101,6 +145,6 @@ export function FloatingToolbar() {
         onConfirm={confirmURLFlags}
         onCancel={rejectURLFlags}
       />
-    </>
+    </TooltipProvider>
   );
 }
