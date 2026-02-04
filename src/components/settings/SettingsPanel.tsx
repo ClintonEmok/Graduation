@@ -127,42 +127,46 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </Tabs>
         </div>
 
-        <SheetFooter className="flex-col gap-2 sm:flex-col">
+        <SheetFooter className="flex-col gap-3 sm:flex-col">
           {hasChanges && (
-            <p className="text-sm text-amber-500 font-medium">
-              Unsaved changes
+            <p className="text-sm text-amber-500 font-medium text-center">
+              Unsaved changes - Save to apply
             </p>
           )}
-          <div className="flex gap-2 w-full">
-            <Button 
-              variant="outline" 
-              onClick={handleCopyShare}
-              className="flex-1"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4 mr-1" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-4 w-4 mr-1" />
-                  Share URL
-                </>
-              )}
-            </Button>
-            <Button variant="outline" onClick={handleReset} className="flex-1">
-              Reset to Defaults
-            </Button>
-            <Button variant="outline" onClick={handleClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              className={hasChanges ? 'flex-1 bg-amber-500 hover:bg-amber-600' : 'flex-1'}
-            >
-              Save
-            </Button>
+          <div className="flex flex-col gap-2 w-full">
+            <div className="flex gap-2 w-full">
+              <Button 
+                variant="outline" 
+                onClick={handleCopyShare}
+                className="flex-1"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-4 w-4 mr-1" />
+                    Share URL
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" onClick={handleReset} className="flex-1">
+                Reset
+              </Button>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" onClick={handleClose} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                className={hasChanges ? 'flex-1 bg-amber-500 hover:bg-amber-600' : 'flex-1'}
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </SheetFooter>
       </SheetContent>
