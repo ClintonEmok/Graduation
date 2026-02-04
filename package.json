@@ -37,6 +37,7 @@
     "d3-scale": "^4.0.2",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
+    "driver.js": "^1.4.0",
     "duckdb": "^1.4.4",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.563.0",
