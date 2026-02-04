@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 12 - Feature Flags Infrastructure
-**Status:** Complete
+**Current Phase:** 13 - UI Polish
+**Status:** In Progress
 
 ## Current Position
 
-Phase: 12 of 19 (Feature Flags Infrastructure)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-04 - Completed 12-03-SUMMARY.md
+Phase: 13 of 19 (UI Polish)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-05 - Completed 13-01-SUMMARY.md
 
-Progress: ████████░░ 63%
+Progress: █████████░ 64%
 
 ```
 [x] Phase 1: Core 3D
@@ -26,8 +26,8 @@ Progress: ████████░░ 63%
 [x] Phase 9: Logging/Study
 [ ] Phase 10: Study Content (Deferred)
 [x] Phase 11: Focus+Context
-[x] Phase 12: Feature Flags Infrastructure (Complete)
-[ ] Phase 13: UI Polish
+[x] Phase 12: Feature Flags Infrastructure
+[>] Phase 13: UI Polish
 [ ] Phase 14: Color Schemes & Accessibility
 [ ] Phase 15: Time Slices Visualization
 [ ] Phase 16: Heatmap Layer
@@ -105,6 +105,8 @@ Progress: ████████░░ 63%
 | 12 | Draggable Toolbar | Used useDraggable hook to allow user positioning of tools |
 | 12 | Base64 URL Encoding | Keep shared URLs clean and safe |
 | 12 | Conflict Resolution Dialog | Prevent accidental overwrite of local settings by shared URLs |
+| 13 | Used Sonner for toasts | Modern, stackable toast notifications (replacing older use-toast) |
+| 13 | Wrapped AlertDialog | Standardized ErrorDialog for critical failures with technical details |
 
 ## Blockers/Concerns Carried Forward
 
@@ -112,9 +114,10 @@ Progress: ████████░░ 63%
 - **Lint Errors:** Reduced lint errors by fixing `any` types in API routes and visualization components.
 - **Nested Git Repo:** `datapreprocessing/` is a nested git repo, complicating version control integration.
 - **Build Success:** Fixed `next build` failure related to `duckdb` napi_versions by using dynamic imports.
+- **Dependency Conflicts:** React 19 causing peer dependency issues with `visx` and `sonner`, requiring `--legacy-peer-deps`.
 
 ## Session Continuity
 
-Last session: 2026-02-04
-Stopped at: Completed 12-03-SUMMARY.md
+Last session: 2026-02-05
+Stopped at: Completed 13-01-SUMMARY.md
 Resume file: None
