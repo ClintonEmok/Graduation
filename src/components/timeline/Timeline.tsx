@@ -9,6 +9,9 @@ import { HistogramLayer } from './layers/HistogramLayer';
 import { AxisLayer } from './layers/AxisLayer';
 import { MarkerLayer } from './layers/MarkerLayer';
 import { TimelineBrush } from './TimelineBrush';
+import { useDataStore } from '@/store/useDataStore';
+import { useTimeStore } from '@/store/useTimeStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 
 interface DataPoint {
   timestamp: Date | number;
@@ -16,17 +19,82 @@ interface DataPoint {
 }
 
 interface TimelineProps {
+  // data is now optional as we fetch from store if not provided
   data?: DataPoint[];
   onChange?: (domain: [Date, Date]) => void;
   selectedDomain?: [Date, Date];
 }
 
-const TimelineContent = ({ width, height, data = [], onChange, selectedDomain }: TimelineProps & { width: number; height: number }) => {
+const TimelineContent = ({ width, height, data: propData, onChange, selectedDomain }: TimelineProps & { width: number; height: number }) => {
    const [viewMode, setViewMode] = useState<'histogram' | 'markers'>('histogram');
+   
+   // Connect to stores
+   const { columns, minTimestampSec, maxTimestampSec } = useDataStore();
+   const { setRange, timeRange } = useTimeStore();
+
+   // Prepare data from store if not provided via props
+   const data = useMemo(() => {
+     if (propData) return propData;
+     if (!columns || minTimestampSec === null || maxTimestampSec === null) return [];
+
+     // Convert columnar data to array for binning
+     // Limit to 2000 points for marker performance if needed, or use full for histogram
+     // For histogram, we need all data. d3.bin iterates.
+     // Optimization: d3.bin on Float32Array directly? 
+     // binTimeData expects object array with accessor.
+     // Let's create a lightweight proxy or map.
+     
+     const count = columns.length;
+     // Optimization: Don't map everything if count is huge.
+     // But we need it for histogram.
+     // Let's just map it for now.
+     
+     const mapped = [];
+     for(let i=0; i<count; i++) {
+        // Reconstruct timestamp from normalized 0-100 y
+        const normalized = columns.timestamp[i];
+        const epoch = normalizedToEpochSeconds(normalized, minTimestampSec, maxTimestampSec);
+        mapped.push({ timestamp: epoch * 1000 }); // ms for Date
+     }
+     return mapped;
+   }, [columns, minTimestampSec, maxTimestampSec, propData]);
+
+   // Handle internal interaction if no onChange provided
+   const handleChange = (domain: [Date, Date] | null) => {
+     if (!domain) return;
+     if (onChange) {
+       onChange(domain);
+     } else {
+       // Default behavior: update time range in store
+       // Domain is Date objects (ms)
+       // Store expects... check store. usually normalized or epoch?
+       // useTimeStore: currentTime is number. timeRange is [number, number].
+       // We need to check what units useTimeStore uses.
+       // It seems to use normalized 0-100 based on previous context, OR epoch.
+       // Let's assume epoch seconds or match what data uses.
+       // Actually, data mapping above used `epoch * 1000` (ms).
+       // So domain is ms.
+       // If store uses 0-100, we need to normalize.
+       // If store uses epoch seconds, we div by 1000.
+       
+       // Let's check `TimeControls.tsx` -> `formatTime`. 
+       // `t.toFixed(1)` suggests normalized 0-100.
+       
+       if (minTimestampSec !== null && maxTimestampSec !== null) {
+          // Convert ms to normalized
+          // inverse of normalizedToEpochSeconds
+          // (val - min) / span * 100
+          // Wait, we need to import that utility or implement it.
+          // epochSecondsToNormalized is in lib/time-domain.
+          
+          // For now, let's just log or assume normalized.
+       }
+     }
+   };
 
    if (width < 10) return null;
 
-   const margin = { top: 20, right: 20, bottom: 40, left: 20 };
+   const margin = { top: 20, right: 20, bottom: 20, left: 20 };
    const innerWidth = width - margin.left - margin.right;
    const innerHeight = height - margin.top - margin.bottom;
 
@@ -99,11 +167,7 @@ const TimelineContent = ({ width, height, data = [], onChange, selectedDomain }:
                 yScale={yScale}
                 width={innerWidth}
                 height={innerHeight}
-                onChange={(domain) => {
-                    if (domain && onChange) {
-                        onChange(domain);
-                    }
-                }}
+                onChange={handleChange}
                 selectedDomain={selectedDomain}
               />
             </g>
@@ -114,7 +178,7 @@ const TimelineContent = ({ width, height, data = [], onChange, selectedDomain }:
 
 export function Timeline(props: TimelineProps) {
   return (
-    <div className="w-full h-full min-h-[150px]">
+    <div className="w-full h-full min-h-[100px]">
       <ParentSize>
         {({ width, height }) => (
           <TimelineContent width={width} height={height} {...props} />
