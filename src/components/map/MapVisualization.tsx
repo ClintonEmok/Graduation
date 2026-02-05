@@ -6,6 +6,7 @@ import MapBase from './MapBase';
 import MapEventLayer from './MapEventLayer';
 import MapSelectionOverlay, { LatLonBounds } from './MapSelectionOverlay';
 import MapSelectionMarker from './MapSelectionMarker';
+import MapDebugOverlay from './MapDebugOverlay';
 import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
@@ -42,6 +43,7 @@ export default function MapVisualization() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<DragPoint | null>(null);
   const [dragCurrent, setDragCurrent] = useState<DragPoint | null>(null);
+  const [lastClick, setLastClick] = useState<{lat: number, lon: number} | null>(null);
 
   useEffect(() => {
     if (columns || data.length > 0) return;
@@ -145,18 +147,29 @@ export default function MapVisualization() {
       finalizeBounds();
       return;
     }
-    if (!event || isDragging) return;
-    const point = getDragPoint(event);
-    if (!point) return;
-    const [x, z] = project(point.lat, point.lon);
+    // Point selection moved to handleClick
+  };
+
+  const handleClick = (event: MapLayerMouseEvent) => {
+    if (isSelecting) return;
+    
+    const { lng, lat } = event.lngLat;
+    setLastClick({ lat, lon: lng });
+
+    const [x, z] = project(lat, lng);
     const nearest = findNearestIndexByScenePosition(x, z);
-    if (!nearest) {
-      clearSelection();
-      return;
-    }
-    const MAX_DISTANCE = 12;
-    if (nearest.distance <= MAX_DISTANCE) {
-      setSelectedIndex(nearest.index, 'map');
+    
+    if (nearest) {
+      // Check distance in projected units? 
+      // findNearestIndexByScenePosition returns distance in scene units.
+      // 12 units is the threshold used before.
+      if (nearest.distance <= 12) {
+        setSelectedIndex(nearest.index, 'map');
+        log('map_point_selected', { index: nearest.index, distance: nearest.distance });
+      } else {
+        clearSelection();
+        log('map_click_missed', { distance: nearest.distance });
+      }
     } else {
       clearSelection();
     }
@@ -197,6 +210,7 @@ export default function MapVisualization() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onClick={handleClick}
         onMouseLeave={handleMouseLeave}
         onMoveEnd={handleMoveEnd}
         dragPan={!isSelecting}
@@ -207,13 +221,14 @@ export default function MapVisualization() {
         <MapClusterHighlights />
         <MapTrajectoryLayer />
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
+        <MapDebugOverlay clickPoint={lastClick} selectedPoint={selectionPoint} />
 
         {selectionPoint && (
           <MapSelectionMarker lat={selectionPoint.lat} lon={selectionPoint.lon} />
         )}
       </MapBase>
       
-      {/* Overlay UI can go here */}
+      {/* Overlay UI */}
       <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
         <h2 className="text-sm font-semibold">Map View</h2>
         <div className="mt-2 flex items-center gap-2">
@@ -235,6 +250,12 @@ export default function MapVisualization() {
             Clear
           </button>
         </div>
+        {/* Debug Info */}
+        {lastClick && (
+          <div className="mt-2 text-[10px] text-muted-foreground font-mono">
+            Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
+          </div>
+        )}
       </div>
       <Suspense fallback={null}>
         <Controls />
