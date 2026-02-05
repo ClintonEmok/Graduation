@@ -415,10 +415,11 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Path direction (time flow) is visually indicated.
 3. Feature can be disabled in Settings.
 
-**Plans:** 3 plans
-- [ ] 18-01-PLAN.md — Data Foundation: Block attribute & Store
-- [ ] 18-02-PLAN.md — 3D Rendering: Engine & Directionality
-- [ ] 18-03-PLAN.md — Interaction: Highlights & Map Integration
+**Plans:** 4 plans
+- [ ] 18-01-PLAN.md — Data Foundation: Block attribute & Pipeline
+- [ ] 18-02-PLAN.md — 3D Rendering: Engine & Contextual Filtering
+- [ ] 18-03-PLAN.md — Interaction: Tooltips & Selection isolation
+- [ ] 18-04-PLAN.md — Map Integration & Polish
 
 ## Phase 19: Aggregated Bins (LOD)
 
