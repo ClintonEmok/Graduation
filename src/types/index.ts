@@ -12,6 +12,14 @@ export interface CrimeEvent {
   block?: string;
 }
 
+export interface Bin {
+  x: number;
+  y: number;
+  z: number;
+  count: number;
+  dominantType: string;
+}
+
 export interface ColumnarData {
   x: Float32Array;
   z: Float32Array;

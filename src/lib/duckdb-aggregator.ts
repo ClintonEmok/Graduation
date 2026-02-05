@@ -1,13 +1,6 @@
 import { getDb } from './db';
 import { join } from 'path';
-
-export interface Bin {
-  x: number;
-  y: number;
-  z: number;
-  count: number;
-  dominantType: string;
-}
+import { Bin } from '@/types';
 
 export interface AggregationParams {
   resX: number;
