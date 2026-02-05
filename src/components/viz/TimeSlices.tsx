@@ -45,7 +45,7 @@ export function TimeSlices() {
     const y = e.point.y;
     const time = yToTime(y);
     const clampedTime = Math.max(0, Math.min(100, time));
-    addSlice(clampedTime);
+    addSlice({ type: 'point', time: clampedTime });
   }, [addSlice, yToTime]);
 
   return (
