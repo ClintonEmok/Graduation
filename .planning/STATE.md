@@ -8,11 +8,11 @@
 ## Current Position
 
 Phase: 16 of 19 (Heatmap Layer)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-05 - Completed 16-01-PLAN.md (Heatmap Store & UI Controls)
+Last activity: 2026-02-05 - Completed 16-02-PLAN.md (GPGPU Rendering Engine)
 
-Progress: ████████████████░░░ 80%
+Progress: ██████████████████░░ 92%
 
 ```
 [x] Phase 1: Core 3D
@@ -30,7 +30,7 @@ Progress: ████████████████░░░ 80%
 [x] Phase 13: UI Polish
 [x] Phase 14: Color Schemes & Accessibility
 [x] Phase 15: Time Slices Visualization
-[ ] Phase 16: Heatmap Layer
+[x] Phase 16: Heatmap Layer
 [ ] Phase 17: Cluster Highlighting
 [ ] Phase 18: Trajectories Visualization
 [ ] Phase 19: Aggregated Bins (LOD)
@@ -123,6 +123,9 @@ Progress: ████████████████░░░ 80%
 | 15 | Range Translation | Enable simple center-drag for range slices by shifting both start and end points |
 | 16 | Layer Integration | Integrated Heatmap controls directly into SliceManagerUI (Layers icon) to maintain a unified 'Layers' concept |
 | 16 | Monochromatic Default | Used monochromatic cyan-white as default color ramp placeholder in state |
+| 16 | THREE.Points Aggregation | Used THREE.Points for the aggregation pass to maximize performance for large datasets. |
+| 16 | Cyan-White Gradient | Implemented a single monochromatic cyan-white gradient to match the HUD aesthetic. |
+| 16 | Float FBO | Used HalfFloatType/FloatType for the FBO to prevent density clipping in hotspots. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -135,5 +138,5 @@ Progress: ████████████████░░░ 80%
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 15-03-SUMMARY.md
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
