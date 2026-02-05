@@ -10,6 +10,8 @@ import { TimeLoop } from './TimeLoop';
 import { TimeSlices } from './TimeSlices';
 import { HeatmapOverlay } from './HeatmapOverlay';
 import { ClusterManager } from './ClusterManager';
+import { ClusterHighlights } from './ClusterHighlights';
+import { ClusterLabels } from './ClusterLabels';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
@@ -55,7 +57,13 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
             <TimePlane ref={planeRef} />
             {isTimeSlicesEnabled && <TimeSlices />}
             {isHeatmapEnabled && <HeatmapOverlay />}
-            {isClusterHighlightEnabled && <ClusterManager />}
+            {isClusterHighlightEnabled && (
+              <>
+                <ClusterManager />
+                <ClusterHighlights />
+                <ClusterLabels />
+              </>
+            )}
             <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
             
             <CameraControls
