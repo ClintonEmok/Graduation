@@ -3,16 +3,16 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 15 - Time Slices Visualization
-**Status:** In progress
+**Status:** Phase complete
 
 ## Current Position
 
 Phase: 15 of 19 (Time Slices Visualization)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-05 - Completed 15-02-SUMMARY.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-05 - Completed 15-03-SUMMARY.md
 
-Progress: ███████████████░░░ 75%
+Progress: ███████████████░░░░ 79%
 
 ```
 [x] Phase 1: Core 3D
@@ -27,8 +27,8 @@ Progress: ███████████████░░░ 75%
 [ ] Phase 10: Study Content (Deferred)
 [x] Phase 11: Focus+Context
 [x] Phase 13: UI Polish
-[ ] Phase 14: Color Schemes & Accessibility (Skipped/Deferred)
-[>] Phase 15: Time Slices Visualization
+[x] Phase 14: Color Schemes & Accessibility
+[x] Phase 15: Time Slices Visualization
 [ ] Phase 16: Heatmap Layer
 [ ] Phase 17: Cluster Highlighting
 [ ] Phase 18: Trajectories Visualization
@@ -40,7 +40,7 @@ Progress: ███████████████░░░ 75%
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 14/19 | 19/19 |
+| Phase Completion | 15/19 | 19/19 |
 
 ## Context & Decisions
 
@@ -115,7 +115,8 @@ Progress: ███████████████░░░ 75%
 | 15 | Extended adaptive-scale.ts | Added Columnar support to avoid O(N) allocation |
 | 15 | Drag Interaction | Implemented custom raycasting for robust slice movement |
 | 15 | Feature Flag Gating | Used 'timeSlices' flag to gate visualization |
-| 15 | Slice Manager in Toolbar | Accessible via "Layers" button in FloatingToolbar |
+| 15 | Uniform Injection | Passed slice data via uniforms to avoid shader recompilation |
+| 15 | Adaptive Compatibility | Used vLinearY in shader for highlighting to support adaptive mode |
 
 ## Blockers/Concerns Carried Forward
 
@@ -128,5 +129,5 @@ Progress: ███████████████░░░ 75%
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 15-02-SUMMARY.md
+Stopped at: Completed 15-03-SUMMARY.md
 Resume file: None

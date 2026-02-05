@@ -340,7 +340,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 **Plans:**
 - [x] 15-01-PLAN.md — Foundation: Slice Store & 3D Components
 - [x] 15-02-PLAN.md — UI Controls: Manager Panel
-- [ ] 15-03-PLAN.md — Visualization: Shader Highlighting
+- [x] 15-03-PLAN.md — Visualization: Shader Highlighting
 
 ## Phase 16: Heatmap Layer
 
@@ -448,7 +448,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 12. Feature Flags Infrastructure | **Complete** | 100% |
 | 13. UI Polish | **Complete** | 100% |
 | 14. Color Schemes & Accessibility | **Complete** | 100% |
-| 15. Time Slices Visualization | In Progress | 66% |
+| 15. Time Slices Visualization | **Complete** | 100% |
 | 16. Heatmap Layer | Planned | 0% |
 | 17. Cluster Highlighting | Planned | 0% |
 | 18. Trajectories Visualization | Planned | 0% |
