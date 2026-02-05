@@ -390,9 +390,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Clicking a cluster focuses the view on that region.
 
 **Plans:** 3 plans
-- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [x] 16-02-PLAN.md — GPGPU Rendering Engine
-- [x] 16-03-PLAN.md — View Integration (Map & Cube)
+- [ ] 17-01-PLAN.md — Clustering Foundation
+- [ ] 17-02-PLAN.md — Cluster Visualization
+- [ ] 17-03-PLAN.md — Interaction & UI Integration
 
 ## Phase 18: Trajectories Visualization
 
@@ -413,10 +413,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Path direction (time flow) is visually indicated.
 3. Feature can be disabled in Settings.
 
-**Plans:** 3 plans
-- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [x] 16-02-PLAN.md — GPGPU Rendering Engine
-- [x] 16-03-PLAN.md — View Integration (Map & Cube)
+**Plans:** 0 plans
+- [ ] TBD (created by /gsd/plan-phase)
 
 ## Phase 19: Aggregated Bins (LOD)
 
@@ -437,10 +435,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Bar height encodes event count per bin.
 3. Transition is smooth, not jarring.
 
-**Plans:** 3 plans
-- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [x] 16-02-PLAN.md — GPGPU Rendering Engine
-- [x] 16-03-PLAN.md — View Integration (Map & Cube)
+**Plans:** 0 plans
+- [ ] TBD (created by /gsd/plan-phase)
 
 ## Progress
 
