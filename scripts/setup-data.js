@@ -18,20 +18,30 @@ const START_TIME = END_TIME - 365 * 24 * 60 * 60 * 1000;
 
 const NUM_POINTS = 100000;
 const TYPES = ['Theft', 'Assault', 'Burglary', 'Robbery', 'Vandalism'];
+const BLOCKS = ['100 N STATE ST', '200 W MADISON ST', '300 S MICHIGAN AVE', '400 E RANDOLPH ST', '500 W ADAMS ST'];
 
 function generateCSV() {
   console.log('Generating synthetic data...');
   return new Promise((resolve, reject) => {
     const stream = fs.createWriteStream(SOURCE_CSV);
-    stream.write('id,type,lat,lon,timestamp\n');
+    stream.write('id,type,lat,lon,timestamp,block,district,district_name\n');
 
     for (let i = 0; i < NUM_POINTS; i++) {
       const id = `evt_${i}`;
       const type = TYPES[Math.floor(Math.random() * TYPES.length)];
-      const lat = CENTER_LAT + (Math.random() - 0.5) * LAT_RANGE;
-      const lon = CENTER_LON + (Math.random() - 0.5) * LON_RANGE;
+      
+      // Reuse blocks for trajectory pillars
+      const blockIndex = Math.floor(Math.random() * BLOCKS.length);
+      const block = BLOCKS[blockIndex];
+      const district = `${(blockIndex % 25) + 1}`;
+      const district_name = `District ${district}`;
+      
+      // Fixed location for each block to create pillars
+      const lat = CENTER_LAT + (blockIndex - 2) * 0.01;
+      const lon = CENTER_LON + (blockIndex - 2) * 0.01;
+      
       const timestamp = new Date(START_TIME + Math.random() * (END_TIME - START_TIME)).toISOString();
-      stream.write(`${id},${type},${lat},${lon},${timestamp}\n`);
+      stream.write(`${id},${type},${lat},${lon},${timestamp},${block},${district},${district_name}\n`);
     }
 
     stream.end();
@@ -91,6 +101,7 @@ async function main() {
           timestamp,
           district,
           district_name,
+          block,
           (lon + 180.0) / 360.0 AS x,
           (1.0 - (ln(tan(lat * PI() / 180.0) + (1.0 / cos(lat * PI() / 180.0))) / PI())) / 2.0 AS z,
           ((epoch(timestamp) * 1000 - ${minT}) / ${rangeT}) * 100.0 AS y

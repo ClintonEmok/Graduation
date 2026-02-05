@@ -11,6 +11,7 @@ export interface DataPoint {
   y: number;
   z: number;
   type: string;
+  block?: string;
   [key: string]: any;
 }
 
@@ -22,6 +23,7 @@ export interface ColumnarData {
   timestamp: Float32Array;
   type: Uint8Array;
   district: Uint8Array;
+  block: string[];
   length: number;
 }
 
@@ -49,6 +51,7 @@ export interface FilteredPoint {
   lon?: number;
   typeId: number;
   districtId: number;
+  block?: string;
   originalIndex: number;
 }
 
@@ -118,6 +121,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       const timeCol = table.getChild('timestamp'); // Raw timestamp
       const typeCol = table.getChild('primary_type');
       const districtCol = table.getChild('district');
+      const blockCol = table.getChild('block');
       const latCol = table.getChild('lat');
       const lonCol = table.getChild('lon');
 
@@ -130,6 +134,12 @@ export const useDataStore = create<DataState>((set, get) => ({
       const zData = yCol ? new Float32Array(yCol.toArray()) : new Float32Array(count);
       const latData = latCol ? new Float32Array(latCol.toArray()) : undefined;
       const lonData = lonCol ? new Float32Array(lonCol.toArray()) : undefined;
+      
+      const blockDataRaw = blockCol ? blockCol.toArray() : [];
+      const blockData: string[] = [];
+      for (let i = 0; i < count; i++) {
+        blockData.push(String(blockDataRaw[i] || ''));
+      }
       
       // Use raw timestamp column to calculate normalized Y (Time)
       // This is redundant if parquet has 'y' as time, but our script maps:
@@ -197,6 +207,7 @@ export const useDataStore = create<DataState>((set, get) => ({
           timestamp: timestampData,
           type: typeData,
           district: districtData,
+          block: blockData,
           length: count
       };
 
@@ -234,7 +245,7 @@ export const selectFilteredData = (dataState: DataState, filterState: {
 
   // Handle Real Data (Columnar)
   if (columns) {
-    const { x, z, lat, lon, timestamp, type, district, length } = columns;
+    const { x, z, lat, lon, timestamp, type, district, block, length } = columns;
 
     // Normalize time filter to 0-100
     let minT = -Infinity;
@@ -263,6 +274,7 @@ export const selectFilteredData = (dataState: DataState, filterState: {
         lon: lon ? lon[i] : undefined,
         typeId: type[i],
         districtId: district[i],
+        block: block ? block[i] : undefined,
         originalIndex: i
       });
     }

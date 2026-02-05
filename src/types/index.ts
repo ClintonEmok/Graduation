@@ -9,6 +9,7 @@ export interface CrimeEvent {
   timestamp: Date;
   district?: string;
   districtId?: number;
+  block?: string;
 }
 
 export interface ColumnarData {
@@ -17,5 +18,6 @@ export interface ColumnarData {
   timestamp: Float32Array;
   type: Uint8Array;
   district: Uint8Array;
+  block: string[];
   length: number;
 }
