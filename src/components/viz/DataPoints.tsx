@@ -56,6 +56,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const { slices, setActiveSlice } = useSliceStore();
 
   // Normalize time range
   const normalizedTimeRange = useMemo(() => {
@@ -337,12 +338,40 @@ useEffect(() => {
   };
 
   const handlePointerDown = useCallback(
-    (event: { stopPropagation: () => void; instanceId?: number }) => {
+    (event: { stopPropagation: () => void; instanceId?: number; point?: THREE.Vector3 }) => {
       event.stopPropagation();
       if (typeof event.instanceId !== 'number') return;
+      
+      // Original behavior: select in global context
       setSelectedIndex(event.instanceId, 'cube');
+
+      // New behavior: Check if inside an active slice
+      const pointY = colLinearY ? colLinearY[event.instanceId] : (data[event.instanceId]?.y || 0);
+      const activeSlices = slices.filter(s => s.isVisible);
+      const threshold = 1.0; // Same as shader threshold
+
+      // Find if this point is inside any visible slice
+      const insideSlice = activeSlices.find(s => {
+        if (s.type === 'point') {
+          return pointY >= s.time - threshold && pointY <= s.time + threshold;
+        } else {
+          return s.range && pointY >= s.range[0] && pointY <= s.range[1];
+        }
+      });
+
+      if (insideSlice) {
+        // Activate the slice panel for this slice
+        setActiveSlice(insideSlice.id);
+        // Note: We might want to pass the point ID to the panel too
+        // but currently panel only takes sliceId. 
+        // Plan 22-03 Task 3 says: "If a point inside an active slice is clicked, set it as inspected point"
+        // This likely requires another store field or extending useSliceStore.
+        // For now, activating the slice is the primary linkage.
+        // PointInspector inside the panel (Plan 22-03) assumes a pointId prop.
+        // Let's assume we just open the panel for now.
+      }
     },
-    [setSelectedIndex]
+    [setSelectedIndex, colLinearY, data, slices, setActiveSlice]
   );
 
   const handlePointerMissed = useCallback(
