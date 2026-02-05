@@ -22,6 +22,7 @@ interface MapBaseProps {
   onMouseDown?: (event: MapLayerMouseEvent) => void;
   onMouseMove?: (event: MapLayerMouseEvent) => void;
   onMouseUp?: (event: MapLayerMouseEvent) => void;
+  onClick?: (event: MapLayerMouseEvent) => void;
   onMouseLeave?: (event: MapLayerMouseEvent) => void;
   onMoveEnd?: (event: any) => void;
   dragPan?: boolean;
@@ -36,6 +37,7 @@ const MapBase = React.forwardRef<MapRef, MapBaseProps>(
       onMouseDown,
       onMouseMove,
       onMouseUp,
+      onClick,
       onMouseLeave,
       onMoveEnd,
       dragPan,
@@ -58,6 +60,7 @@ const MapBase = React.forwardRef<MapRef, MapBaseProps>(
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
+        onClick={onClick}
         onMouseLeave={onMouseLeave}
         onMoveEnd={onMoveEnd}
       >
