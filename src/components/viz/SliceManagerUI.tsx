@@ -1,7 +1,9 @@
 'use client';
 
-import { useSliceStore, TimeSlice } from '@/store/useSliceStore';
+import { useSliceStore } from '@/store/useSliceStore';
 import { useDataStore } from '@/store/useDataStore';
+import { useHeatmapStore } from '@/store/useHeatmapStore';
+import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import {
   Sheet,
   SheetContent,
@@ -10,12 +12,14 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Eye, EyeOff, Lock, Unlock, Trash2, Plus, RefreshCw, Calendar as CalendarIcon, Layers } from 'lucide-react';
+import { Eye, EyeOff, Lock, Unlock, Trash2, Plus, RefreshCw, Calendar as CalendarIcon, Layers, Flame } from 'lucide-react';
 import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 
 interface SliceManagerUIProps {
   isOpen: boolean;
@@ -25,6 +29,20 @@ interface SliceManagerUIProps {
 export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
   const { slices, addSlice, removeSlice, updateSlice, toggleLock, toggleVisibility, clearSlices } = useSliceStore();
   const { minTimestampSec, maxTimestampSec } = useDataStore();
+  const { isEnabled: isHeatmapFeatureEnabled } = useFeatureFlagsStore();
+  
+  const { 
+    isEnabled: isHeatmapActive, 
+    setIsEnabled: setHeatmapActive,
+    intensity: heatmapIntensity,
+    setIntensity: setHeatmapIntensity,
+    radius: heatmapRadius,
+    setRadius: setHeatmapRadius,
+    opacity: heatmapOpacity,
+    setOpacity: setHeatmapOpacity
+  } = useHeatmapStore();
+
+  const showHeatmapSection = isHeatmapFeatureEnabled('heatmap');
 
   const handleAddPointSlice = () => {
     addSlice({ type: 'point', time: 50 });
@@ -73,8 +91,76 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
           </SheetDescription>
         </SheetHeader>
         
-        <div className="py-6 space-y-4">
-            <div className="flex gap-2">
+        <div className="py-6 space-y-8">
+            {showHeatmapSection && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Flame className="h-4 w-4 text-orange-500" />
+                            <h3 className="text-sm font-medium">Heatmap Layer</h3>
+                        </div>
+                        <Switch 
+                            checked={isHeatmapActive} 
+                            onCheckedChange={setHeatmapActive} 
+                        />
+                    </div>
+                    
+                    {isHeatmapActive && (
+                        <div className="space-y-4 pt-2 border-l-2 border-accent pl-4 ml-2">
+                            <div className="space-y-2">
+                                <div className="flex justify-between">
+                                    <Label className="text-xs">Intensity</Label>
+                                    <span className="text-[10px] text-muted-foreground">{heatmapIntensity.toFixed(1)}</span>
+                                </div>
+                                <Slider 
+                                    value={[heatmapIntensity]} 
+                                    onValueChange={([val]: number[]) => setHeatmapIntensity(val)} 
+                                    min={1} 
+                                    max={100} 
+                                    step={0.5} 
+                                />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <div className="flex justify-between">
+                                    <Label className="text-xs">Radius</Label>
+                                    <span className="text-[10px] text-muted-foreground">{heatmapRadius.toFixed(1)}</span>
+                                </div>
+                                <Slider 
+                                    value={[heatmapRadius]} 
+                                    onValueChange={([val]: number[]) => setHeatmapRadius(val)} 
+                                    min={0.5} 
+                                    max={20} 
+                                    step={0.1} 
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between">
+                                    <Label className="text-xs">Opacity</Label>
+                                    <span className="text-[10px] text-muted-foreground">{(heatmapOpacity * 100).toFixed(0)}%</span>
+                                </div>
+                                <Slider 
+                                    value={[heatmapOpacity]} 
+                                    onValueChange={([val]: number[]) => setHeatmapOpacity(val)} 
+                                    min={0} 
+                                    max={1} 
+                                    step={0.05} 
+                                />
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="h-px bg-border my-2" />
+                </div>
+            )}
+
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-blue-500" />
+                    <h3 className="text-sm font-medium">Time Slices</h3>
+                </div>
+                <div className="flex gap-2">
                 <Button onClick={handleAddPointSlice} className="flex-1" size="sm">
                     <Plus className="mr-2 h-4 w-4" /> Point
                 </Button>
@@ -188,6 +274,7 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
                     Clear All
                 </Button>
             )}
+            </div>
         </div>
       </SheetContent>
     </Sheet>
