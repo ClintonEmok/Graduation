@@ -8,12 +8,12 @@
 ## Current Position
 
 Phase: 24 of 24 (Interaction Synthesis & 3D Debugging)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-05 - Completed 24-01-PLAN.md
-**Next Plan:** 24-02: Additional synchronization features
+Last activity: 2026-02-05 - Completed 24-02-PLAN.md
+**Next Plan:** 24-03: Final integration and polish
 
-Progress: ████████████████████████░░ 96%
+Progress: ████████████████████████░ 98%
 
 ```
 [x] Phase 1: Core 3D
@@ -68,6 +68,8 @@ Progress: ███████████████████████�
 | 24 | Deferred Sync Hook | Selection-to-time sync deferred to Plan 03 via `useSelectionSync` hook for cleaner separation. |
 | 24 | Opacity Dithering | Dynamic dithering based on `uContextOpacity` provides smoother ghosting than fixed patterns. |
 | 24 | Normalized Time | All components use 0-100 normalized range as common currency for cross-compatibility. |
+| 24 | Drag vs Click | 5px threshold distinguishes drag (camera rotate) from click (point selection). |
+| 24 | Brush-based Dimming | Points outside brush range get 0.1x opacity via uBrushStart/uBrushEnd uniforms. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -77,7 +79,7 @@ Progress: ███████████████████████�
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 24-01-PLAN.md
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None
 
 ## Phase 23 - Map Interaction & Debugging
@@ -89,11 +91,13 @@ Resume file: None
 
 ## Phase 24 - Interaction Synthesis & 3D Debugging
 **Status:** In Progress
-**Plan:** 1 of 3 Complete
+**Plan:** 2 of 3 Complete
 **Key Outcomes:**
 - useCoordinationStore verified as single source of truth
 - Ghosting shader supports dynamic opacity-based dimming
 - Timeline brush properly synchronizes with 3D view via normalized time
+- 3D click targeting fixed with drag detection and visual debugging
+- Brush-based context dimming implemented in shader via uBrushStart/uBrushEnd
 
 ## Accumulated Context
 ### Roadmap Evolution
