@@ -62,10 +62,18 @@
 - [x] **SLICE-01**: System renders horizontal plane(s) at user-specified time values
 - [x] **SLICE-02**: User can add/remove/move time slice planes
 - [x] **SLICE-03**: Feature toggleable via feature flag
-- [ ] **HEAT-01**: System calculates 2D spatial density from visible points
-- [ ] **HEAT-02**: System renders heatmap overlay on map panel
-- [ ] **HEAT-03**: Heatmap updates when filters change
-- [ ] **HEAT-04**: Feature toggleable via feature flag
+- [x] **HEAT-01**: System calculates 2D spatial density from visible points
+- [x] **HEAT-02**: System renders heatmap overlay on map panel
+- [x] **HEAT-03**: Heatmap updates when filters change
+- [x] **HEAT-04**: Feature toggleable via feature flag
+- [x] **TRAJ-01**: System connects related events with line geometry
+- [x] **TRAJ-02**: Trajectories show temporal direction (color gradient or arrows)
+- [x] **TRAJ-03**: User can filter which trajectories are shown
+- [x] **TRAJ-04**: Feature toggleable via feature flag
+- [x] **CLUSTER-01**: System identifies dense clusters using spatial-temporal proximity
+- [x] **CLUSTER-02**: System renders bounding indicators around clusters
+- [x] **CLUSTER-03**: User can click cluster to zoom/focus
+- [x] **CLUSTER-04**: Feature toggleable via feature flag
 
 ## Out of Scope
 
@@ -112,6 +120,18 @@
 | **SLICE-01** | Phase 15 | Complete |
 | **SLICE-02** | Phase 15 | Complete |
 | **SLICE-03** | Phase 15 | Complete |
+| **HEAT-01** | Phase 16 | Complete |
+| **HEAT-02** | Phase 16 | Complete |
+| **HEAT-03** | Phase 16 | Complete |
+| **HEAT-04** | Phase 16 | Complete |
+| **CLUSTER-01** | Phase 17 | Complete |
+| **CLUSTER-02** | Phase 17 | Complete |
+| **CLUSTER-03** | Phase 17 | Complete |
+| **CLUSTER-04** | Phase 17 | Complete |
+| **TRAJ-01** | Phase 18 | Complete |
+| **TRAJ-02** | Phase 18 | Complete |
+| **TRAJ-03** | Phase 18 | Complete |
+| **TRAJ-04** | Phase 18 | Complete |
 
 ---
 *Requirements defined: 2025-01-30*

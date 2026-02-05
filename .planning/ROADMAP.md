@@ -416,10 +416,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Feature can be disabled in Settings.
 
 **Plans:** 4 plans
-- [ ] 18-01-PLAN.md — Data Foundation: Block attribute & Pipeline
-- [ ] 18-02-PLAN.md — 3D Rendering: Engine & Contextual Filtering
-- [ ] 18-03-PLAN.md — Interaction: Tooltips & Selection isolation
-- [ ] 18-04-PLAN.md — Map Integration & Polish
+- [x] 18-01-PLAN.md — Data Foundation: Block attribute & Pipeline
+- [x] 18-02-PLAN.md — 3D Rendering: Engine & Contextual Filtering
+- [x] 18-03-PLAN.md — Interaction: Tooltips & Selection isolation
+- [x] 18-04-PLAN.md — Map Integration & Polish
 
 ## Phase 19: Aggregated Bins (LOD)
 
@@ -464,5 +464,5 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 15. Time Slices Visualization | **Complete** | 100% |
 | 16. Heatmap Layer | **Complete** | 100% |
 | 17. Cluster Highlighting | **Complete** | 100% |
-| 18. Trajectories Visualization | Planned | 0% |
+| 18. Trajectories Visualization | **Complete** | 100% |
 | 19. Aggregated Bins (LOD) | Planned | 0% |
