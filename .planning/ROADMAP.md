@@ -1,10 +1,10 @@
-### Phase 21: Timeline Redesign
+### Phase 22: Contextual Slice Analysis
 
-**Goal:** Redesign the timeline with Visx to support Focus+Context navigation, responsive layout, and histogram/marker toggling.
-**Depends on:** Phase 20
+**Goal:** Implement detailed data inspection for selected time slices via a contextual side panel.
+**Depends on:** Phase 21
 **Plans:** 3 plans
 
 Plans:
-- [x] 21-01-PLAN.md — Foundation (Dependencies & Container)
-- [x] 21-02-PLAN.md — Visualization Layers (Histogram & Axis)
-- [x] 21-03-PLAN.md — Interaction & Integration (Brush, Toggle, Slider Replacement)
+- [ ] 22-01-PLAN.md — Data Foundation
+- [ ] 22-02-PLAN.md — Panel UI
+- [ ] 22-03-PLAN.md — Integration & Interaction
