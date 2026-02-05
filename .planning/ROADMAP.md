@@ -372,6 +372,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 
 ## Phase 17: Cluster Highlighting
 
+**Status:** Complete
+
 **Goal:** Users can auto-detect and label dense regions in the 3D cube.
 
 **Dependencies:** Phase 12
@@ -392,7 +394,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 **Plans:** 2/3 plans complete
 - [x] 17-01-PLAN.md — Clustering Engine
 - [x] 17-02-PLAN.md — 3D Visualization
-- [ ] 17-03-PLAN.md — Interaction & UI Integration
+- [x] 17-03-PLAN.md — Interaction & UI Integration
 
 ## Phase 18: Trajectories Visualization
 
@@ -458,6 +460,6 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 14. Color Schemes & Accessibility | **Complete** | 100% |
 | 15. Time Slices Visualization | **Complete** | 100% |
 | 16. Heatmap Layer | **Complete** | 100% |
-| 17. Cluster Highlighting | Planned | 0% |
+| 17. Cluster Highlighting | **Complete** | 100% |
 | 18. Trajectories Visualization | Planned | 0% |
 | 19. Aggregated Bins (LOD) | Planned | 0% |
