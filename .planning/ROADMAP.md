@@ -446,3 +446,25 @@ Plans:
 - [x] 19-01-PLAN.md — Setup binning store and manager logic
 - [x] 19-02-PLAN.md — Render binned data as 3D bars
 - [x] 19-03-PLAN.md — Implement LOD transitions and camera controller
+
+## Phase 20: Server-Side Aggregation
+
+**Goal:** Move 3D binning logic to DuckDB for high-performance data reduction.
+
+**Dependencies:** Phase 19
+**Focus:** DuckDB SQL, API design, data reduction
+
+| Requirement | Description |
+|-------------|-------------|
+| **SS-AGG-01** | Backend API calculates 3D density bins via SQL GROUP BY |
+| **SS-AGG-02** | Frontend fetches pre-aggregated bins instead of calculating on CPU |
+| **SS-AGG-03** | Support for adaptive time scaling in SQL queries |
+
+**Success Criteria:**
+1. Frontend receives small bin array from API.
+2. 3D bars render correctly based on server-calculated counts.
+3. System scales to 1M+ points without browser lag.
+
+**Plans:** 2 plans
+- [ ] 20-01-PLAN.md — Backend Aggregation API
+- [ ] 20-02-PLAN.md — Frontend Transition & Adaptive SQL
