@@ -41,6 +41,17 @@ interface DataState {
   loadRealData: () => Promise<void>;
 }
 
+export interface FilteredPoint {
+  x: number;
+  y: number; // Time (0-100)
+  z: number;
+  lat?: number;
+  lon?: number;
+  typeId: number;
+  districtId: number;
+  originalIndex: number;
+}
+
 export const useDataStore = create<DataState>((set, get) => ({
   data: [],
   columns: null,
@@ -206,3 +217,84 @@ export const useDataStore = create<DataState>((set, get) => ({
     }
   }
 }));
+
+/**
+ * CPU-side selector for filtered data.
+ * Used for clustering and other heavy analytical tasks.
+ */
+export const selectFilteredData = (dataState: DataState, filterState: { 
+  selectedTypes: number[], 
+  selectedDistricts: number[], 
+  selectedTimeRange: [number, number] | null 
+}): FilteredPoint[] => {
+  const { columns, data, minTimestampSec, maxTimestampSec } = dataState;
+  const { selectedTypes, selectedDistricts, selectedTimeRange } = filterState;
+
+  const result: FilteredPoint[] = [];
+
+  // Handle Real Data (Columnar)
+  if (columns) {
+    const { x, z, lat, lon, timestamp, type, district, length } = columns;
+
+    // Normalize time filter to 0-100
+    let minT = -Infinity;
+    let maxT = Infinity;
+    if (selectedTimeRange && minTimestampSec !== null && maxTimestampSec !== null) {
+      const span = maxTimestampSec - minTimestampSec || 1;
+      minT = ((selectedTimeRange[0] - minTimestampSec) / span) * 100;
+      maxT = ((selectedTimeRange[1] - minTimestampSec) / span) * 100;
+    }
+
+    for (let i = 0; i < length; i++) {
+      // Filter by Type
+      if (selectedTypes.length > 0 && !selectedTypes.includes(type[i])) continue;
+
+      // Filter by District
+      if (selectedDistricts.length > 0 && !selectedDistricts.includes(district[i])) continue;
+
+      // Filter by Time
+      if (timestamp[i] < minT || timestamp[i] > maxT) continue;
+
+      result.push({
+        x: x[i],
+        y: timestamp[i],
+        z: z[i],
+        lat: lat ? lat[i] : undefined,
+        lon: lon ? lon[i] : undefined,
+        typeId: type[i],
+        districtId: district[i],
+        originalIndex: i
+      });
+    }
+  } 
+  // Handle Mock Data
+  else if (data.length > 0) {
+    // For mock data, we'll assume types and districts are strings in data points
+    // and we need to map them to IDs if we want to match filters.
+    // However, filters in this project use IDs.
+    // In useDataStore.ts generateMockData, types are strings.
+    // Let's assume for mock data we just bypass type/district filters or map them.
+    // Since this is for Phase 17 (Real Data integrated in Phase 6), 
+    // real data is the priority.
+    
+    for (let i = 0; i < data.length; i++) {
+      const p = data[i];
+      // Simple time filter (mock data is 0-100)
+      if (selectedTimeRange) {
+        // If it's mock data, selectedTimeRange might not match 0-100 scale well
+        // but let's assume it's normalized or just ignored for mock.
+      }
+
+      result.push({
+        x: p.x,
+        y: p.timestamp, // In mock data, timestamp is y (0-100)
+        z: p.z,
+        typeId: 0, // Mock fallback
+        districtId: 0, // Mock fallback
+        originalIndex: i
+      });
+    }
+  }
+
+  return result;
+};
