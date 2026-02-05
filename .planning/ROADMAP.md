@@ -5,6 +5,6 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — Foundation (Dependencies & Container)
-- [ ] 21-02-PLAN.md — Visualization Layers (Histogram & Axis)
-- [ ] 21-03-PLAN.md — Interaction & Integration (Brush, Toggle, Slider Replacement)
+- [x] 21-01-PLAN.md — Foundation (Dependencies & Container)
+- [x] 21-02-PLAN.md — Visualization Layers (Histogram & Axis)
+- [x] 21-03-PLAN.md — Interaction & Integration (Brush, Toggle, Slider Replacement)

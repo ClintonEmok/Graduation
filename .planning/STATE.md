@@ -2,16 +2,16 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 20 - Server-Side Aggregation
-**Status:** In progress
+**Current Phase:** 21 - Timeline Redesign
+**Status:** Complete
 
 ## Current Position
 
-Phase: 20 of 20 (Server-Side Aggregation)
-Plan: 1 of 2 in current phase
+Phase: 21 of 21 (Timeline Redesign)
+Plan: 3 of 3 in current phase
 Status: Complete
-Last activity: 2026-02-05 - Completed 20-01-PLAN.md (Backend Aggregation API)
-**Next Phase:** Phase 21: Timeline Redesign
+Last activity: 2026-02-05 - Completed Phase 21
+**Next Phase:** Milestone Audit / Completion
 
 Progress: █████████████████████████ 100%
 
@@ -36,6 +36,7 @@ Progress: ███████████████████████�
 [x] Phase 18: Trajectories Visualization
 [x] Phase 19: Aggregated Bins (LOD)
 [x] Phase 20: Server-Side Aggregation
+[x] Phase 21: Timeline Redesign
 ```
 
 ## Performance Metrics
@@ -43,43 +44,36 @@ Progress: ███████████████████████�
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 20/20 | 20/20 |
+| Phase Completion | 21/21 | 21/21 |
 
 ## Context & Decisions
 
-- **Roadmap Structure:** Extended to Phase 20 for server-side optimizations.
-- **Aggregation Rendering:** Used `InstancedMesh` with a fixed buffer (20,000) for performance.
+- **Timeline Stack:** Migrated to Visx/D3 for "Focus+Context" interactions.
+- **Responsiveness:** Implemented mobile blocking overlay.
 
 ## Decisions Made
 
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
-| 19 | InstancedMesh for Bins | Thousands of bins require efficient rendering to maintain 60FPS. |
-| 19 | Bin Capacity (20k) | Covers the maximum possible bins (16,384) in a 32x16x32 grid. |
-| 19 | Smoothstep LOD | Mapping camera distance to lodFactor via smoothstep provides natural feeling transitions. |
-| 19 | Dithered Fading | Used screen-space dithering in shaders to avoid transparency sorting issues while fading. |
-| 20 | mode() in DuckDB | Efficiently find most frequent crime type per bin in a single pass. |
-| 20 | Int counts | DuckDB BigInt counts cast to Integer for JSON safety. |
+| 21 | Visx for Timeline | React-native D3 integration provides better DX and performance than raw D3. |
+| 21 | Mobile Blocking | Complex interactions require desktop precision; mobile is explicitly out of scope. |
+| 21 | Store Integration | Timeline drives `useTimeStore` directly, acting as the primary navigation control. |
 
 ## Blockers/Concerns Carried Forward
 
-- **LSP Errors:** Persistent false positives for `lucide-react` and `@react-three/fiber` in the editor environment.
-- **Dependency Conflicts:** React 19 causing peer dependency issues with `visx` and `sonner`, requiring `--legacy-peer-deps`.
+- **LSP Errors:** Persistent false positives for `lucide-react` and `@react-three/fiber`.
+- **Peer Deps:** React 19 vs Visx 3.x required `--legacy-peer-deps`.
 
 ## Session Continuity
 
-Last session: 2026-02-05 18:41 UTC
-Stopped at: Completed 20-01-PLAN.md
+Last session: 2026-02-05
+Stopped at: Completed Phase 21
 Resume file: None
 
-## Phase 20 - Server-Side Aggregation
+## Phase 21 - Timeline Redesign
 **Status:** Complete
 **Completed:** 2026-02-05
 **Key Outcomes:**
-- Moved 3D binning logic from React to DuckDB API (/api/crime/bins).
-- Implemented spatial-temporal filtering in SQL.
-- Updated frontend to consume aggregated stats, reducing client load.
-
-## Accumulated Context
-### Roadmap Evolution
-- Phase 21 added: timeline redesign
+- Replaced placeholder slider with Visx-based Histogram/Brush timeline.
+- Enabled "Focus+Context" zooming and panning.
+- Fixed single-point selection bug by using range-based interaction.
