@@ -18,19 +18,13 @@ import { useUIStore } from '@/store/ui';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { applyGhostingShader } from './shaders/ghosting';
+import { useThemeStore } from '@/store/useThemeStore';
+import { useSliceStore } from '@/store/useSliceStore';
+import { PALETTES } from '@/lib/palettes';
 
 interface DataPointsProps {
   data: DataPoint[];
 }
-
-const COLOR_MAP: Record<string, string> = {
-  Theft: '#FFD700',
-  Assault: '#FF4500',
-  Burglary: '#1E90FF',
-  Robbery: '#32CD32',
-  Vandalism: '#DA70D6',
-  Other: '#FFFFFF'
-};
 
 const TYPE_MAP_SIZE = 36;
 const DISTRICT_MAP_SIZE = 36;
@@ -41,6 +35,9 @@ const tempColor = new THREE.Color();
 export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ data }, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   useImperativeHandle(ref, () => meshRef.current!);
+
+  const theme = useThemeStore((state) => state.theme);
+  const colorMap = useMemo(() => PALETTES[theme].categoryColors, [theme]);
 
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const showContext = useUIStore((state) => state.showContext);
@@ -127,7 +124,12 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     data.forEach((point, i) => {
       types[i] = getCrimeTypeId(point.type);
       districts[i] = point.districtId || 0;
-      const c = new THREE.Color(COLOR_MAP[point.type] || '#FFFFFF');
+      // Use colorMap from store, normalize point type to UPPERCASE
+      const typeKey = point.type.toUpperCase();
+      // Try exact match, or 'OTHER'
+      const colorHex = colorMap[typeKey] || colorMap[point.type] || colorMap['OTHER'] || '#FFFFFF';
+      
+      const c = new THREE.Color(colorHex);
       colorArr[i * 3] = c.r;
       colorArr[i * 3 + 1] = c.g;
       colorArr[i * 3 + 2] = c.b;
@@ -141,7 +143,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       colZ: null,
       colLinearY: null
     };
-  }, [data, columns]);
+  }, [data, columns, colorMap]);
 
   // Update uniforms on context changes
   useEffect(() => {
@@ -174,14 +176,15 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
         meshRef.current!.setMatrixAt(i, tempObject.matrix);
 
         // Color
-        const colorHex = COLOR_MAP[point.type] || '#FFFFFF';
+        const typeKey = point.type.toUpperCase();
+        const colorHex = colorMap[typeKey] || colorMap[point.type] || colorMap['OTHER'] || '#FFFFFF';
         tempColor.set(colorHex);
         meshRef.current!.setColorAt(i, tempColor);
       });
 
       meshRef.current.instanceMatrix.needsUpdate = true;
     }
-  }, [data, columns]);
+  }, [data, columns, colorMap]);
 
 // Update uniforms
 useEffect(() => {
@@ -269,22 +272,42 @@ useEffect(() => {
   }
 }, [selectedIndex]);
 
-// Animate transition
-useFrame((state, delta) => {
-  if (meshRef.current && meshRef.current.material) {
-    const material = meshRef.current.material as THREE.Material;
-    if (material.userData.shader) {
-      const target = timeScaleMode === 'adaptive' ? 1 : 0;
-      // Smoothly interpolate uTransition
-      material.userData.shader.uniforms.uTransition.value = MathUtils.damp(
-        material.userData.shader.uniforms.uTransition.value,
-        target,
-        5, // Speed/smoothness factor
-        delta
-      );
+  // Animate transition
+  useFrame((state, delta) => {
+    if (meshRef.current && meshRef.current.material) {
+      const material = meshRef.current.material as THREE.Material;
+      if (material.userData.shader) {
+        const target = timeScaleMode === 'adaptive' ? 1 : 0;
+        // Smoothly interpolate uTransition
+        material.userData.shader.uniforms.uTransition.value = MathUtils.damp(
+          material.userData.shader.uniforms.uTransition.value,
+          target,
+          5, // Speed/smoothness factor
+          delta
+        );
+
+        // Update Slices
+        const slices = useSliceStore.getState().slices;
+        const activeSlices = slices.filter(s => s.isVisible);
+        const shader = material.userData.shader;
+        
+        if (shader.uniforms.uSliceCount) {
+          shader.uniforms.uSliceCount.value = activeSlices.length;
+        }
+        
+        if (shader.uniforms.uSlices && shader.uniforms.uSlices.value) {
+          const sliceTimes = shader.uniforms.uSlices.value;
+          for (let i = 0; i < 20; i++) {
+            if (i < activeSlices.length) {
+              sliceTimes[i] = activeSlices[i].time;
+            } else {
+              sliceTimes[i] = -9999;
+            }
+          }
+        }
+      }
     }
-  }
-});
+  });
 
   const onBeforeCompile = (shader: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     if (meshRef.current) {
