@@ -1,5 +1,6 @@
-import React, { useRef, useLayoutEffect } from 'react';
+import React, { useRef, useLayoutEffect, useCallback } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import { useAggregationStore } from '@/store/useAggregationStore';
 
 const tempObject = new THREE.Object3D();
@@ -10,6 +11,7 @@ export const AggregatedBars: React.FC = () => {
   const bins = useAggregationStore((state) => state.bins);
   const gridResolution = useAggregationStore((state) => state.gridResolution);
   const enabled = useAggregationStore((state) => state.enabled);
+  const lodFactor = useAggregationStore((state) => state.lodFactor);
 
   const dx = 100 / gridResolution.x;
   const dy = 100 / gridResolution.y;
@@ -26,21 +28,12 @@ export const AggregatedBars: React.FC = () => {
     meshRef.current.count = bins.length;
 
     bins.forEach((bin, i) => {
-      // Bar height corresponds to event count in the bin
-      // Height = count * 0.5, clamped to avoid vertical overlap if possible
       const height = Math.min(bin.count * 0.5, dy); 
-      
-      // Position: Each instance should be at the bin's (x, y, z) center.
       tempObject.position.set(bin.x, bin.y, bin.z);
-      
-      // Scale: X and Z scales should match the bin size.
-      // Use a slight multiplier (0.9) to make them look like distinct bars
       tempObject.scale.set(dx * 0.9, height, dz * 0.9);
       tempObject.updateMatrix();
       
       meshRef.current!.setMatrixAt(i, tempObject.matrix);
-      
-      // Color: Use the dominant type's color from the bin.
       tempColor.set(bin.color);
       meshRef.current!.setColorAt(i, tempColor);
     });
@@ -51,16 +44,70 @@ export const AggregatedBars: React.FC = () => {
     }
   }, [bins, dx, dy, dz, enabled]);
 
-  // We always return the mesh but control visibility via count and enabled
-  // This avoids unmounting/remounting which can be expensive for instancedMesh
+  useFrame(() => {
+    if (meshRef.current && meshRef.current.material) {
+      const material = meshRef.current.material as THREE.Material;
+      if (material.userData.shader) {
+        material.userData.shader.uniforms.uLodFactor.value = lodFactor;
+      }
+    }
+  });
+
+  const onBeforeCompile = useCallback((shader: any) => {
+    shader.uniforms.uLodFactor = { value: 0 };
+    
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      `
+      #include <common>
+      uniform float uLodFactor;
+      `
+    );
+    
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <project_vertex>',
+      `
+      vec3 transformedCopy = transformed * uLodFactor;
+      vec4 mvPosition = vec4( transformedCopy, 1.0 );
+      mvPosition = modelViewMatrix * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;
+      `
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      `
+      #include <common>
+      uniform float uLodFactor;
+      `
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <dithering_fragment>',
+      `
+      #include <dithering_fragment>
+      if (uLodFactor < 0.05) discard;
+      if (uLodFactor < 0.95) {
+        if (mod(gl_FragCoord.x + gl_FragCoord.y, 2.0) > uLodFactor * 2.0) {
+          discard;
+        }
+      }
+      `
+    );
+
+    if (meshRef.current) {
+      (meshRef.current.material as THREE.Material).userData.shader = shader;
+    }
+  }, []);
+
   return (
     <instancedMesh 
       ref={meshRef} 
       args={[undefined, undefined, 20000]} 
-      visible={enabled && bins.length > 0}
+      visible={enabled && bins.length > 0 && lodFactor > 0.01}
     >
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial />
+      <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
     </instancedMesh>
   );
 };
