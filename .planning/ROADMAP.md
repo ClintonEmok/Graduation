@@ -441,7 +441,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Transition is smooth, not jarring.
 
 **Plans:**
-- [ ] 19-01-PLAN.md — Setup binning store and manager logic
+- [x] 19-01-PLAN.md — Setup binning store and manager logic
 - [ ] 19-02-PLAN.md — Render binned data as 3D bars
 - [ ] 19-03-PLAN.md — Implement LOD transitions and camera controller
 
@@ -467,4 +467,4 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 16. Heatmap Layer | **Complete** | 100% |
 | 17. Cluster Highlighting | **Complete** | 100% |
 | 18. Trajectories Visualization | **Complete** | 100% |
-| 19. Aggregated Bins (LOD) | Planned | 0% |
+| 19. Aggregated Bins (LOD) | **In progress** | 33% |
