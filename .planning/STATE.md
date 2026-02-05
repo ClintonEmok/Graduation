@@ -8,11 +8,11 @@
 ## Current Position
 
 Phase: 17 of 19 (Cluster Highlighting)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-05 - Completed 17-01-PLAN.md (Clustering Engine)
+Last activity: 2026-02-05 - Completed 17-02-PLAN.md (Cluster Highlighting Viz)
 
-Progress: ████████████████████ 98%
+Progress: █████████████████████░ 99%
 
 ```
 [x] Phase 1: Core 3D
@@ -128,6 +128,8 @@ Progress: ████████████████████ 98%
 | 16 | Float FBO | Used HalfFloatType/FloatType for the FBO to prevent density clipping in hotspots. |
 | 17 | density-clustering | Used as fallback for ml-dbscan due to registry issues. |
 | 17 | Temporal Weighting | Weighted temporal distance by 0.5 to prioritize spatial co-location. |
+| 17 | Label Limiting | Capped HUD labels at Top 5 clusters to maintain UI clarity. |
+| 17 | Visual Style | Chose 10% opacity volumes + wireframes for non-obstructive highlighting. |
 
 ## Blockers/Concerns Carried Forward
 

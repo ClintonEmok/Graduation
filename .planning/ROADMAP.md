@@ -389,9 +389,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Visual indicators (boxes, labels) highlight cluster boundaries.
 3. Clicking a cluster focuses the view on that region.
 
-**Plans:** 1/3 plans complete
+**Plans:** 2/3 plans complete
 - [x] 17-01-PLAN.md — Clustering Engine
-- [ ] 17-02-PLAN.md — 3D Visualization
+- [x] 17-02-PLAN.md — 3D Visualization
 - [ ] 17-03-PLAN.md — Interaction & UI Integration
 
 ## Phase 18: Trajectories Visualization
