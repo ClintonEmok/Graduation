@@ -13,10 +13,19 @@ export async function GET(request: NextRequest) {
     const resY = parseInt(searchParams.get('resY') || '16', 10);
     const resZ = parseInt(searchParams.get('resZ') || '32', 10);
 
+    const types = searchParams.get('types')?.split(',').filter(Boolean);
+    const districts = searchParams.get('districts')?.split(',').filter(Boolean);
+    const startTime = searchParams.get('startTime') ? parseFloat(searchParams.get('startTime')!) : undefined;
+    const endTime = searchParams.get('endTime') ? parseFloat(searchParams.get('endTime')!) : undefined;
+
     const bins = await getAggregatedBins({
       resX,
       resY,
-      resZ
+      resZ,
+      types,
+      districts,
+      startTime,
+      endTime
     });
 
     return NextResponse.json(bins, {

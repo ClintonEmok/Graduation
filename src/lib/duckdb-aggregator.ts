@@ -35,9 +35,7 @@ export const getAggregatedBins = async (params: AggregationParams): Promise<Bin[
   }
   // y is 0-100 in our parquet file
   if (startTime !== undefined && endTime !== undefined) {
-    // We would need the full time range to normalize if we wanted to filter by raw timestamps
-    // but the API usually works with normalized or pre-filtered data.
-    // For now, let's assume y is already 0-100 and we filter on it if needed.
+    whereClause += ` AND y >= ${startTime} AND y <= ${endTime}`;
   }
 
   const query = `
