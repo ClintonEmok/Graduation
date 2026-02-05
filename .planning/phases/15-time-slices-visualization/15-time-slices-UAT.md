@@ -57,10 +57,15 @@ skipped: 0
 - truth: "Drag the slice in the 3D view; the time value in the UI should update"
   status: failed
   reason: "User reported: i think we can remove that or implement it better"
+  diagnosis: |
+    Current drag implementation relies on a single small sphere handle (radius 1.5) at the corner [50, 0, 50] of the 100x100 plane.
+    This provides a poor hit target and is visually disconnected from the slice plane itself.
+    The plane mesh itself is not interactive.
   severity: major
   test: 3
-  artifacts: []
-  missing: []
+  artifacts: ["src/components/viz/SlicePlane.tsx"]
+  missing: ["Drag handlers on the plane mesh", "Visible/accessible drag handles"]
+  recommendation: "Refactor SlicePlane to make the entire plane draggable or provide a clearer, larger handle mechanism."
 - truth: "Move a slice through a cluster of points. Points within a small temporal distance of the slice should appear brighter or highlighted."
   status: failed
   reason: "User reported: how is small temporal distance calculated"

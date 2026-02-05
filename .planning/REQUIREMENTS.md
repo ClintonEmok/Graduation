@@ -26,37 +26,46 @@
 - [x] **ADAPT-01**: System supports Uniform time mapping (linear baseline)
 - [x] **ADAPT-02**: System supports Adaptive time scaling (density-based expansion)
 - [x] **ADAPT-03**: User can toggle between Uniform and Adaptive modes with animated transition
-- [ ] **ADAPT-04**: System visualizes the time scale (axis) to show deformation
-- [ ] **ADAPT-05**: System displays event density indicator (histogram) to explain scaling
+- [x] **ADAPT-04**: System visualizes the time scale (axis) to show deformation
+- [x] **ADAPT-05**: System displays event density indicator (histogram) to explain scaling
 
 ### Coordinated Views
 
-- [ ] **COORD-01**: System displays Dual-scale timeline (overview + zoomed detail)
-- [ ] **COORD-02**: System synchronizes selection/highlighting across Map, Cube, and Timeline (Bidirectional sync)
-- [ ] **COORD-03**: System synchronizes filtering across all views
-- [ ] **COORD-04**: System synchronizes current time state across all views
+- [x] **COORD-01**: System displays Dual-scale timeline (overview + zoomed detail)
+- [x] **COORD-02**: System synchronizes selection/highlighting across Map, Cube, and Timeline (Bidirectional sync)
+- [x] **COORD-03**: System synchronizes filtering across all views
+- [x] **COORD-04**: System synchronizes current time state across all views
 
 ### Data & Backend
 
-- [ ] **DATA-01**: Backend API serves Chicago crime data
+- [x] **DATA-01**: Backend API serves Chicago crime data
 - [x] **DATA-02**: System supports multi-faceted filtering (type, district, time)
 - [x] **DATA-03**: User can save and apply filter presets
-- [ ] **DATA-04**: System loads data progressively or uses server-side aggregation for performance
+- [x] **DATA-04**: System loads data progressively or uses server-side aggregation for performance
 
 ### User Study Infrastructure
 
 - [ ] **STUDY-01**: System presents guided tutorial to train participants
-- [ ] **STUDY-02**: System logs user interactions (clicks, view changes) with timestamps
+- [x] **STUDY-02**: System logs user interactions (clicks, view changes) with timestamps
 - [ ] **STUDY-03**: System presents specific exploration tasks to participants
 - [ ] **STUDY-04**: System measures time-on-task
 - [ ] **STUDY-05**: System tracks participant progress through study session
-- [ ] **STUDY-06**: System manages participant IDs for data association
+- [x] **STUDY-06**: System manages participant IDs for data association
 
 ## v2 Requirements
 
 ### Advanced Analysis
 - **ANALYSIS-01**: Linked 2D charts for attribute distribution (deferred)
 - **ANALYSIS-02**: Session replay capability (deferred)
+
+### Advanced Visualization
+- [x] **SLICE-01**: System renders horizontal plane(s) at user-specified time values
+- [x] **SLICE-02**: User can add/remove/move time slice planes
+- [x] **SLICE-03**: Feature toggleable via feature flag
+- [ ] **HEAT-01**: System calculates 2D spatial density from visible points
+- [ ] **HEAT-02**: System renders heatmap overlay on map panel
+- [ ] **HEAT-03**: Heatmap updates when filters change
+- [ ] **HEAT-04**: Feature toggleable via feature flag
 
 ## Out of Scope
 
@@ -84,22 +93,25 @@
 | **ADAPT-01** | Phase 3 | Complete |
 | **ADAPT-02** | Phase 3 | Complete |
 | **ADAPT-03** | Phase 3 | Complete |
-| **ADAPT-04** | Phase 4 | Pending |
-| **ADAPT-05** | Phase 4 | Pending |
-| **COORD-01** | Phase 7 | Pending |
-| **COORD-02** | Phase 7 | Pending |
-| **COORD-03** | Phase 7 | Pending |
-| **COORD-04** | Phase 7 | Pending |
-| **DATA-01** | Phase 5 | Pending |
+| **ADAPT-04** | Phase 5 | Complete |
+| **ADAPT-05** | Phase 5 | Complete |
+| **COORD-01** | Phase 8 | Complete |
+| **COORD-02** | Phase 8 | Complete |
+| **COORD-03** | Phase 8 | Complete |
+| **COORD-04** | Phase 8 | Complete |
+| **DATA-01** | Phase 6 | Complete |
 | **DATA-02** | Phase 7 | Complete |
 | **DATA-03** | Phase 7 | Complete |
-| **DATA-04** | Phase 5 | Pending |
-| **STUDY-01** | Phase 9 | Pending |
-| **STUDY-02** | Phase 8 | Pending |
-| **STUDY-03** | Phase 9 | Pending |
-| **STUDY-04** | Phase 9 | Pending |
-| **STUDY-05** | Phase 9 | Pending |
-| **STUDY-06** | Phase 8 | Pending |
+| **DATA-04** | Phase 6 | Complete |
+| **STUDY-01** | Phase 10 | Pending |
+| **STUDY-02** | Phase 9 | Complete |
+| **STUDY-03** | Phase 10 | Pending |
+| **STUDY-04** | Phase 10 | Pending |
+| **STUDY-05** | Phase 10 | Pending |
+| **STUDY-06** | Phase 9 | Complete |
+| **SLICE-01** | Phase 15 | Complete |
+| **SLICE-02** | Phase 15 | Complete |
+| **SLICE-03** | Phase 15 | Complete |
 
 ---
 *Requirements defined: 2025-01-30*
