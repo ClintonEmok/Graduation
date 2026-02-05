@@ -337,10 +337,46 @@ useEffect(() => {
     });
   };
 
+  // Raycasting debug state
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const handlePointerDown = useCallback(
-    (event: { stopPropagation: () => void; instanceId?: number; point?: THREE.Vector3 }) => {
+    (event: { stopPropagation: () => void; clientX?: number; clientY?: number; instanceId?: number; point?: THREE.Vector3 }) => {
       event.stopPropagation();
-      if (typeof event.instanceId !== 'number') return;
+      
+      // Track drag start for distinguishing click vs drag
+      dragStartRef.current = { x: event.clientX || 0, y: event.clientY || 0 };
+      setIsDragging(false);
+    },
+    []
+  );
+
+  const handlePointerUp = useCallback(
+    (event: { stopPropagation: () => void; clientX?: number; clientY?: number; instanceId?: number; point?: THREE.Vector3 }) => {
+      event.stopPropagation();
+      
+      // Calculate drag distance
+      if (dragStartRef.current && event.clientX && event.clientY) {
+        const dx = Math.abs(event.clientX - dragStartRef.current.x);
+        const dy = Math.abs(event.clientY - dragStartRef.current.y);
+        const dragThreshold = 5; // pixels
+        
+        if (dx > dragThreshold || dy > dragThreshold) {
+          // This was a drag, not a click
+          console.log('[Raycast] Drag detected, not a click');
+          return;
+        }
+      }
+      
+      if (typeof event.instanceId !== 'number') {
+        console.log('[Raycast] No instanceId on click event');
+        return;
+      }
+      
+      console.log('[Raycast] Click hit instance:', event.instanceId, 'at point:', event.point);
       
       // Original behavior: select in global context
       setSelectedIndex(event.instanceId, 'cube');
@@ -374,13 +410,37 @@ useEffect(() => {
     [setSelectedIndex, colLinearY, data, slices, setActiveSlice]
   );
 
+  const handlePointerMove = useCallback(
+    () => {
+      if (dragStartRef.current) {
+        setIsDragging(true);
+      }
+    },
+    []
+  );
+
   const handlePointerMissed = useCallback(
     (event: { type: string }) => {
-      if (event.type !== 'pointerdown') return;
-      clearSelection();
+      if (event.type === 'pointerdown' || event.type === 'click') {
+        console.log('[Raycast] Click missed - clearing selection');
+        clearSelection();
+      }
     },
     [clearSelection]
   );
+
+  // Add click event listener
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+
+    // Log raycasting setup info
+    console.log('[Raycast] InstancedMesh setup:', {
+      count: mesh.count,
+      frustumCulled: mesh.frustumCulled,
+      geometryRadius: (mesh.geometry as THREE.SphereGeometry)?.parameters?.radius
+    });
+  }, []);
 
 
 // Determine count
@@ -391,6 +451,8 @@ const count = columns ? columns.length : data.length;
       ref={meshRef}
       args={[undefined, undefined, count]}
       onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
       onPointerMissed={handlePointerMissed}
       frustumCulled={false}
     >
