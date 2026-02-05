@@ -357,13 +357,15 @@ useEffect(() => {
 // Determine count
 const count = columns ? columns.length : data.length;
 
-return (
-  <instancedMesh
-    ref={meshRef}
-    args={[undefined, undefined, count]}
-    onPointerDown={handlePointerDown}
-    onPointerMissed={handlePointerMissed}
-  >
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, count]}
+      onPointerDown={handlePointerDown}
+      onPointerMissed={handlePointerMissed}
+      frustumCulled={false}
+    >
+
     <sphereGeometry args={[0.5, 8, 8]}>
       <instancedBufferAttribute
         attach="attributes-adaptiveY"

@@ -27,6 +27,6 @@ export const useAggregationStore = create<AggregationState>((set) => ({
   enabled: false,
   setBins: (bins) => set({ bins }),
   setLodFactor: (lodFactor) => set({ lodFactor }),
-  setEnabled: (enabled) => set({ enabled }),
+  setEnabled: (enabled) => set((state) => ({ enabled, lodFactor: enabled ? state.lodFactor : 0 })),
   setGridResolution: (gridResolution) => set({ gridResolution }),
 }));

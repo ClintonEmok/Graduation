@@ -34,6 +34,11 @@ export const AggregationManager: React.FC = () => {
     setStoreEnabled(isEnabled);
   }, [isEnabled, setStoreEnabled]);
 
+  const minX = useDataStore((state) => state.minX) ?? -50;
+  const maxX = useDataStore((state) => state.maxX) ?? 50;
+  const minZ = useDataStore((state) => state.minZ) ?? -50;
+  const maxZ = useDataStore((state) => state.maxZ) ?? 50;
+
   const performAggregation = useCallback(() => {
     if (!isEnabled) {
       setBins([]);
@@ -51,12 +56,21 @@ export const AggregationManager: React.FC = () => {
       return;
     }
 
-    // 2. Adaptive Awareness
-    let pointsToBin: FilteredPoint[] = filteredPoints;
+    // 2. Adaptive Awareness & World Projection
+    const spanX = maxX - minX || 1;
+    const spanZ = maxZ - minZ || 1;
+
+    let pointsToBin: FilteredPoint[] = filteredPoints.map(p => ({
+      ...p,
+      // Project to [-50, 50] range which the STC box uses
+      x: ((p.x - minX) / spanX) * 100 - 50,
+      z: ((p.z - minZ) / spanZ) * 100 - 50
+    }));
+
     if (timeScaleMode === 'adaptive') {
-      const timestamps = new Float32Array(filteredPoints.map(p => p.y));
+      const timestamps = new Float32Array(pointsToBin.map(p => p.y));
       const adaptiveY = computeAdaptiveYColumnar(timestamps, [0, 100], [0, 100]);
-      pointsToBin = filteredPoints.map((p, i) => ({
+      pointsToBin = pointsToBin.map((p, i) => ({
         ...p,
         y: adaptiveY[i]
       }));
@@ -121,7 +135,8 @@ export const AggregationManager: React.FC = () => {
       });
     });
 
-    console.log(`[AggregationManager] Generated ${bins.length} bins from ${pointsToBin.length} points`);
+    console.log(`[AggregationManager] Generated ${bins.length} bins from ${pointsToBin.length} points (Source: ${columns ? 'Real Columnar' : 'Mock Array'})`);
+    console.log(`[AggregationManager] Bounds: X[${minX.toFixed(4)}, ${maxX.toFixed(4)}], Z[${minZ.toFixed(4)}, ${maxZ.toFixed(4)}]`);
     setBins(bins);
   }, [
     isEnabled, columns, data, minTimestampSec, maxTimestampSec,

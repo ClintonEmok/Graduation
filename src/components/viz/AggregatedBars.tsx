@@ -69,6 +69,9 @@ export const AggregatedBars: React.FC = () => {
       `
       vec3 transformedCopy = transformed * uLodFactor;
       vec4 mvPosition = vec4( transformedCopy, 1.0 );
+      #ifdef USE_INSTANCING
+        mvPosition = instanceMatrix * mvPosition;
+      #endif
       mvPosition = modelViewMatrix * mvPosition;
       gl_Position = projectionMatrix * mvPosition;
       `
@@ -105,6 +108,7 @@ export const AggregatedBars: React.FC = () => {
       ref={meshRef} 
       args={[undefined, undefined, 20000]} 
       visible={enabled && bins.length > 0 && lodFactor > 0.01}
+      frustumCulled={false}
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial onBeforeCompile={onBeforeCompile} />

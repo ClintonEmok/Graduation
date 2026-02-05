@@ -66,11 +66,38 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.vertexShader = shader.vertexShader.replace(
     '#include <project_vertex>',
     `
-    vec3 transformedCopy = transformed * (1.0 - uLodFactor);
-    vec4 mvPosition = vec4( transformedCopy, 1.0 );
+    float currentY = mix(colLinearY, adaptiveY, uTransition);
+    
+    // Position Projection
+    vec3 worldPos;
+    if (uUseColumns > 0.5) {
+      float wx = ((colX - uDataBoundsMin.x) / (uDataBoundsMax.x - uDataBoundsMin.x) * 100.0) - 50.0;
+      float wz = ((colZ - uDataBoundsMin.y) / (uDataBoundsMax.y - uDataBoundsMin.y) * 100.0) - 50.0;
+      worldPos = vec3(wx, currentY, wz);
+    } else {
+      // In non-columnar mode, instanceMatrix already contains the position
+      // but we still want to apply adaptive Y if needed.
+      // However, mock data in this project is usually pre-calculated or uses instanceMatrix.
+      // For simplicity, we assume instanceMatrix is correct for non-columnar.
+      worldPos = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      worldPos.y = mix(worldPos.y, adaptiveY, uTransition);
+    }
 
-    float currentY = 0.0;
-`
+    // Shrink points as we zoom out (LOD)
+    vec3 transformedCopy = transformed * (1.0 - uLodFactor);
+    
+    // Final position
+    vec4 mvPosition = modelViewMatrix * vec4(worldPos + transformedCopy, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
+
+    vWorldX = worldPos.x;
+    vWorldY = worldPos.y;
+    vWorldZ = worldPos.z;
+    vLinearY = uUseColumns > 0.5 ? colLinearY : worldPos.y;
+    vFilterType = filterType;
+    vFilterDistrict = filterDistrict;
+    vInstanceId = float(gl_InstanceID);
+    `
   );
 
   shader.fragmentShader = shader.fragmentShader.replace(

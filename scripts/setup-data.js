@@ -36,9 +36,9 @@ function generateCSV() {
       const district = `${(blockIndex % 25) + 1}`;
       const district_name = `District ${district}`;
       
-      // Fixed location for each block to create pillars
-      const lat = CENTER_LAT + (blockIndex - 2) * 0.01;
-      const lon = CENTER_LON + (blockIndex - 2) * 0.01;
+      // Add noise to avoid perfect overlap pillars
+      const lat = CENTER_LAT + (blockIndex - 2) * 0.01 + (Math.random() - 0.5) * 0.005;
+      const lon = CENTER_LON + (blockIndex - 2) * 0.01 + (Math.random() - 0.5) * 0.005;
       
       const timestamp = new Date(START_TIME + Math.random() * (END_TIME - START_TIME)).toISOString();
       stream.write(`${id},${type},${lat},${lon},${timestamp},${block},${district},${district_name}\n`);
