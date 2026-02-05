@@ -11,6 +11,7 @@ import { MarkerLayer } from './layers/MarkerLayer';
 import { TimelineBrush } from './TimelineBrush';
 import { useDataStore } from '@/store/useDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
 
 interface DataPoint {
@@ -31,6 +32,7 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
    // Connect to stores
    const { columns, minTimestampSec, maxTimestampSec } = useDataStore();
    const { setRange, timeRange } = useTimeStore();
+   const { setBrushRange } = useCoordinationStore();
 
    // Prepare data from store if not provided via props
    const data = useMemo(() => {
@@ -77,6 +79,7 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
         const endNormalized = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
         
         setRange([startNormalized, endNormalized]);
+        setBrushRange([startNormalized, endNormalized]);
       }
     };
 
