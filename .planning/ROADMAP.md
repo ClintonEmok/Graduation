@@ -400,7 +400,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 
 **Goal:** Users can see connected paths showing event sequences over time.
 
-**Dependencies:** Phase 12
+**Dependencies:** Phase 12 (Feature Flags)
 **Focus:** Line geometry, temporal ordering, path rendering
 
 | Requirement | Description |
@@ -415,8 +415,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Path direction (time flow) is visually indicated.
 3. Feature can be disabled in Settings.
 
-**Plans:** 0 plans
-- [ ] TBD (created by /gsd/plan-phase)
+**Plans:** 3 plans
+- [ ] 18-01-PLAN.md — Data Foundation: Block attribute & Store
+- [ ] 18-02-PLAN.md — 3D Rendering: Engine & Directionality
+- [ ] 18-03-PLAN.md — Interaction: Highlights & Map Integration
 
 ## Phase 19: Aggregated Bins (LOD)
 
