@@ -8,9 +8,9 @@
 ## Current Position
 
 Phase: 15 of 19 (Time Slices Visualization)
-Plan: 4 of 5 in current phase
-Status: In Progress
-Last activity: 2026-02-05 - Completed 15-04-PLAN.md (Slice UX Refactor)
+Plan: 5 of 5 in current phase
+Status: Phase complete
+Last activity: 2026-02-05 - Completed 15-05-PLAN.md (Range Visualization & Shader)
 
 Progress: ███████████████░░░░ 79%
 
@@ -26,9 +26,10 @@ Progress: ███████████████░░░░ 79%
 [x] Phase 9: Logging/Study
 [x] Phase 10: Study Content (Deferred)
 [x] Phase 11: Focus+Context
+[x] Phase 12: Feature Flags
 [x] Phase 13: UI Polish
 [x] Phase 14: Color Schemes & Accessibility
-[ ] Phase 15: Time Slices Visualization
+[x] Phase 15: Time Slices Visualization
 [ ] Phase 16: Heatmap Layer
 [ ] Phase 17: Cluster Highlighting
 [ ] Phase 18: Trajectories Visualization
@@ -117,6 +118,9 @@ Progress: ███████████████░░░░ 79%
 | 15 | Feature Flag Gating | Used 'timeSlices' flag to gate visualization |
 | 15 | Uniform Injection | Passed slice data via uniforms to avoid shader recompilation |
 | 15 | Adaptive Compatibility | Used vLinearY in shader for highlighting to support adaptive mode |
+| 15 | Unified Shader | Use vec2 uSliceRanges[20] to support both point and range slices with a single shader loop |
+| 15 | Narrow Point Ranges | Treat point slices as narrow ranges (time +/- 1.0) in the shader injection to unify logic |
+| 15 | Range Translation | Enable simple center-drag for range slices by shifting both start and end points |
 
 ## Blockers/Concerns Carried Forward
 
