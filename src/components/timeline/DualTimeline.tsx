@@ -34,6 +34,7 @@ export const DualTimeline: React.FC = () => {
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -132,13 +133,14 @@ export const DualTimeline: React.FC = () => {
 
       setTimeRange([safeStart, safeEnd]);
       setRange(nextRange);
+      setBrushRange(nextRange);
 
       const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
       if (clampedTime !== currentTime) {
         setTime(clampedTime);
       }
     },
-    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange]
+    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange]
   );
 
   useEffect(() => {
