@@ -2,7 +2,7 @@
 
 import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
-import { Slider } from '@/components/ui/slider';
+import { TimelineContainer } from '@/components/timeline/TimelineContainer';
 import { 
   Play, 
   Pause, 
@@ -16,7 +16,6 @@ export function TimeControls() {
   const {
     currentTime,
     isPlaying,
-    timeRange,
     timeWindow,
     speed,
     timeScaleMode,
@@ -55,7 +54,7 @@ export function TimeControls() {
       <div className="container mx-auto max-w-4xl flex flex-col gap-4">
         
         {/* Main Controls Row */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 h-24">
           
           {/* Playback Controls */}
           <div className="flex items-center gap-2">
@@ -93,11 +92,12 @@ export function TimeControls() {
             {formatTime(currentTime)}
           </div>
 
-          {/* Main Time Slider (temporarily removed) */}
-          <div className="flex-1 px-4" />
+          {/* New Timeline Integration */}
+          {/* We pass a class to override the fixed positioning of TimelineContainer */}
+          <TimelineContainer className="flex-1 h-full px-4" />
 
           {/* Settings Trigger (could be a popover, but inline for now) */}
-          <div className="flex items-center gap-4 border-l pl-4">
+          <div className="flex items-center gap-4 border-l pl-4 h-full">
              {/* Speed Selector */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <FastForward className="w-4 h-4" />
