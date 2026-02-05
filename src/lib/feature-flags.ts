@@ -43,7 +43,7 @@ export const FLAG_DEFINITIONS: FeatureFlag[] = [
   },
   // Phase 17: Cluster Highlighting
   {
-    id: 'clusterHighlight',
+    id: 'clustering',
     name: 'Cluster Highlighting',
     description: 'Auto-detect and label dense regions',
     category: 'visualization',

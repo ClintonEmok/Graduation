@@ -3,6 +3,7 @@
 import { useSliceStore } from '@/store/useSliceStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useHeatmapStore } from '@/store/useHeatmapStore';
+import { useClusterStore } from '@/store/useClusterStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import {
   Sheet,
@@ -17,7 +18,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Eye, EyeOff, Lock, Unlock, Trash2, Plus, RefreshCw, Calendar as CalendarIcon, Layers, Flame } from 'lucide-react';
+import { Eye, EyeOff, Lock, Unlock, Trash2, Plus, RefreshCw, Calendar as CalendarIcon, Layers, Flame, Zap } from 'lucide-react';
 import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
 import { format } from 'date-fns';
 
@@ -43,6 +44,14 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
   } = useHeatmapStore();
 
   const showHeatmapSection = isHeatmapFeatureEnabled('heatmap');
+  const showClusterSection = isHeatmapFeatureEnabled('clustering');
+
+  const {
+    enabled: isClusteringActive,
+    setEnabled: setClusteringActive,
+    sensitivity: clusterSensitivity,
+    setSensitivity: setClusterSensitivity
+  } = useClusterStore();
 
   const handleAddPointSlice = () => {
     addSlice({ type: 'point', time: 50 });
@@ -146,6 +155,41 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
                                     min={0} 
                                     max={1} 
                                     step={0.05} 
+                                />
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="h-px bg-border my-2" />
+                </div>
+            )}
+
+            {showClusterSection && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-yellow-500" />
+                            <h3 className="text-sm font-medium">Clustering</h3>
+                        </div>
+                        <Switch 
+                            checked={isClusteringActive} 
+                            onCheckedChange={setClusteringActive} 
+                        />
+                    </div>
+                    
+                    {isClusteringActive && (
+                        <div className="space-y-4 pt-2 border-l-2 border-accent pl-4 ml-2">
+                            <div className="space-y-2">
+                                <div className="flex justify-between">
+                                    <Label className="text-xs">Sensitivity</Label>
+                                    <span className="text-[10px] text-muted-foreground">{(clusterSensitivity * 100).toFixed(0)}%</span>
+                                </div>
+                                <Slider 
+                                    value={[clusterSensitivity * 100]} 
+                                    onValueChange={([val]: number[]) => setClusterSensitivity(val / 100)} 
+                                    min={0} 
+                                    max={100} 
+                                    step={1} 
                                 />
                             </div>
                         </div>

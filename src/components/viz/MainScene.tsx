@@ -23,7 +23,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const data = useDataStore((state) => state.data);
   const isTimeSlicesEnabled = useFeatureFlagsStore((state) => state.isEnabled('timeSlices'));
   const isHeatmapEnabled = useFeatureFlagsStore((state) => state.isEnabled('heatmap'));
-  const isClusterHighlightEnabled = useFeatureFlagsStore((state) => state.isEnabled('clusterHighlight'));
+  const isClusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);
@@ -57,7 +57,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
             <TimePlane ref={planeRef} />
             {isTimeSlicesEnabled && <TimeSlices />}
             {isHeatmapEnabled && <HeatmapOverlay />}
-            {isClusterHighlightEnabled && (
+            {isClusteringEnabled && (
               <>
                 <ClusterManager />
                 <ClusterHighlights />
