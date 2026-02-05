@@ -467,6 +467,8 @@ Plans:
 2. 3D bars render correctly based on server-calculated counts.
 3. System scales to 1M+ points without browser lag.
 
-**Plans:** 1/2 plans complete
-- [x] 20-01-PLAN.md — Backend Aggregation API
-- [ ] 20-02-PLAN.md — Frontend Transition & Adaptive SQL
+**Plans:** 2 plans
+
+Plans:
+- [x] 20-01-PLAN.md — Backend SQL binning API
+- [x] 20-02-PLAN.md — Frontend API integration
