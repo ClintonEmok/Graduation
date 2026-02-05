@@ -5,11 +5,13 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useEffect,
-  useCallback
+  useCallback,
+  useState
 } from 'react';
 import * as THREE from 'three';
-import { useFrame, RootState } from '@react-three/fiber';
+import { useFrame, RootState, useThree } from '@react-three/fiber';
 import { MathUtils } from 'three';
+import { RaycastLine } from './RaycastLine';
 import { DataPoint, useDataStore } from '@/store/useDataStore';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
 import { getCrimeTypeId } from '@/lib/category-maps';
@@ -357,6 +359,14 @@ useEffect(() => {
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
   const [isDragging, setIsDragging] = React.useState(false);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  
+  // Raycast line visualization state
+  const [raycastLine, setRaycastLine] = useState<{
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    visible: boolean;
+  } | null>(null);
+  const { camera } = useThree();
 
   const handlePointerDown = useCallback(
     (event: { stopPropagation: () => void; clientX?: number; clientY?: number; instanceId?: number; point?: THREE.Vector3 }) => {
@@ -393,6 +403,15 @@ useEffect(() => {
       
       console.log('[Raycast] Click hit instance:', event.instanceId, 'at point:', event.point);
       
+      // Show raycast line from camera to click point
+      if (event.point && camera) {
+        setRaycastLine({
+          start: camera.position.clone(),
+          end: event.point.clone(),
+          visible: true
+        });
+      }
+      
       // Original behavior: select in global context
       setSelectedIndex(event.instanceId, 'cube');
 
@@ -422,7 +441,7 @@ useEffect(() => {
         // Let's assume we just open the panel for now.
       }
     },
-    [setSelectedIndex, colLinearY, data, slices, setActiveSlice]
+    [setSelectedIndex, colLinearY, data, slices, setActiveSlice, camera]
   );
 
   const handlePointerMove = useCallback(
@@ -462,40 +481,53 @@ useEffect(() => {
 const count = columns ? columns.length : data.length;
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[undefined, undefined, count]}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerMove={handlePointerMove}
-      onPointerMissed={handlePointerMissed}
-      frustumCulled={false}
-    >
+    <>
+      <instancedMesh
+        ref={meshRef}
+        args={[undefined, undefined, count]}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerMove={handlePointerMove}
+        onPointerMissed={handlePointerMissed}
+        frustumCulled={false}
+      >
 
-    <sphereGeometry args={[0.5, 8, 8]}>
-      <instancedBufferAttribute
-        attach="attributes-adaptiveY"
-        args={[adaptiveYValues, 1]}
+      <sphereGeometry args={[0.5, 8, 8]}>
+        <instancedBufferAttribute
+          attach="attributes-adaptiveY"
+          args={[adaptiveYValues, 1]}
+        />
+        <instancedBufferAttribute
+          attach="attributes-filterType"
+          args={[filterType, 1]}
+        />
+        <instancedBufferAttribute
+          attach="attributes-filterDistrict"
+          args={[filterDistrict, 1]}
+        />
+        {columns && (
+          <>
+            <instancedBufferAttribute attach="attributes-colX" args={[colX!, 1]} />
+            <instancedBufferAttribute attach="attributes-colZ" args={[colZ!, 1]} />
+            <instancedBufferAttribute attach="attributes-colLinearY" args={[colLinearY!, 1]} />
+            <instancedBufferAttribute attach="instanceColor" args={[colors!, 3]} />
+          </>
+        )}
+      </sphereGeometry>
+      <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
+    </instancedMesh>
+    
+    {/* Raycast line visualization - shows briefly when clicking a point */}
+    {raycastLine?.visible && (
+      <RaycastLine
+        start={raycastLine.start}
+        end={raycastLine.end}
+        color="#00ffff"
+        duration={500}
+        onComplete={() => setRaycastLine(null)}
       />
-      <instancedBufferAttribute
-        attach="attributes-filterType"
-        args={[filterType, 1]}
-      />
-      <instancedBufferAttribute
-        attach="attributes-filterDistrict"
-        args={[filterDistrict, 1]}
-      />
-      {columns && (
-        <>
-          <instancedBufferAttribute attach="attributes-colX" args={[colX!, 1]} />
-          <instancedBufferAttribute attach="attributes-colZ" args={[colZ!, 1]} />
-          <instancedBufferAttribute attach="attributes-colLinearY" args={[colLinearY!, 1]} />
-          <instancedBufferAttribute attach="instanceColor" args={[colors!, 3]} />
-        </>
-      )}
-    </sphereGeometry>
-    <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
-  </instancedMesh>
+    )}
+  </>
 );
 });
 
