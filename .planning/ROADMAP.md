@@ -5,14 +5,7 @@
 **Plans:** 4 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — Foundation & Utils (Visx setup, helpers)
-- [ ] 21-02-PLAN.md — Visual Layers (Histogram, Markers, Axis)
-- [ ] 21-03-PLAN.md — Core Timeline (Logic, State, Interaction)
-- [ ] 21-04-PLAN.md — Integration (Panel update, Mobile guard)
-
-**Details:**
-This phase replaces the existing DualTimeline with a new Visx-based implementation supporting:
-- Zoomable/Brushable interface
-- Switchable Histogram/Marker views
-- Strict desktop-only enforcement
-- Fix for single-point selection bugs
+- [ ] 21-01-PLAN.md — Foundation & Utils
+- [ ] 21-02-PLAN.md — Visual Layers
+- [ ] 21-03-PLAN.md — Core Timeline
+- [ ] 21-04-PLAN.md — Integration
