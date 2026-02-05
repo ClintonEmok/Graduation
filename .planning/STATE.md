@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 15 - Time Slices Visualization
-**Status:** Phase complete
+**Current Phase:** 16 - Heatmap Layer
+**Status:** In progress
 
 ## Current Position
 
-Phase: 15 of 19 (Time Slices Visualization)
-Plan: 5 of 5 in current phase
-Status: Phase complete
-Last activity: 2026-02-05 - Completed 15-05-PLAN.md (Range Visualization & Shader)
+Phase: 16 of 19 (Heatmap Layer)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-05 - Completed 16-01-PLAN.md (Heatmap Store & UI Controls)
 
-Progress: ███████████████░░░░ 79%
+Progress: ████████████████░░░ 80%
 
 ```
 [x] Phase 1: Core 3D
@@ -121,6 +121,8 @@ Progress: ███████████████░░░░ 79%
 | 15 | Unified Shader | Use vec2 uSliceRanges[20] to support both point and range slices with a single shader loop |
 | 15 | Narrow Point Ranges | Treat point slices as narrow ranges (time +/- 1.0) in the shader injection to unify logic |
 | 15 | Range Translation | Enable simple center-drag for range slices by shifting both start and end points |
+| 16 | Layer Integration | Integrated Heatmap controls directly into SliceManagerUI (Layers icon) to maintain a unified 'Layers' concept |
+| 16 | Monochromatic Default | Used monochromatic cyan-white as default color ramp placeholder in state |
 
 ## Blockers/Concerns Carried Forward
 

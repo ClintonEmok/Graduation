@@ -461,7 +461,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 13. UI Polish | **Complete** | 100% |
 | 14. Color Schemes & Accessibility | **Complete** | 100% |
 | 15. Time Slices Visualization | **Complete** | 100% |
-| 16. Heatmap Layer | Planned | 0% |
+| 16. Heatmap Layer | **In Progress** | 33% |
 | 17. Cluster Highlighting | Planned | 0% |
 | 18. Trajectories Visualization | Planned | 0% |
 | 19. Aggregated Bins (LOD) | Planned | 0% |
