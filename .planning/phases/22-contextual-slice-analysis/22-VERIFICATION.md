@@ -12,7 +12,7 @@ The system now supports detailed inspection of time slices via a contextual side
 - **Components:** `ContextualSlicePanel.tsx` implements the slide-in panel.
 - **State:** `useSliceStore` now tracks `activeSliceId` and `setActiveSlice`.
 - **Integration:** Added to `page.tsx` (Home layout).
-- **Behavior:** Panel only renders when a slice is active.
+- **Behavior:** Panel renders when a slice is active OR a point is selected.
 
 ### 2. Slice Statistics
 - **Hook:** `useSliceStats` created to efficiently loop over `useDataStore.columns`.
@@ -21,9 +21,9 @@ The system now supports detailed inspection of time slices via a contextual side
 - **Logic:** Handles both point (time +/- threshold) and range slices.
 
 ### 3. Point Interaction
-- **Selection:** `DataPoints.tsx` now handles `onPointerDown`, finds the enclosing slice, and activates the panel.
+- **Selection:** `DataPoints.tsx` handles `onPointerDown`, updates `selectedIndex` (global) and `activeSliceId` (if inside slice).
 - **Inspector:** `PointInspector.tsx` displays details for a specific point ID.
-- **Connection:** While the full "click point -> show details" flow requires `activePointId` (which `PointInspector` expects), the primary goal of "Contextual Slice Analysis" is met by opening the slice panel. The inspector component exists and is ready for further granular wiring.
+- **Connection:** Panel now opens reliably on point click, even without an active slice, showing "Point Details" mode.
 
 ### 4. Empty/Null States
 - **Stats:** `SliceStats` handles `totalCount === 0` with a "No events found" message.
@@ -32,6 +32,7 @@ The system now supports detailed inspection of time slices via a contextual side
 ## Verification Status
 - [x] Automated checks passed (files exist, builds)
 - [x] Manual code review passed (logic is sound)
+- [x] Bug fix verified: Panel opens on point click regardless of slice state.
 
 ## Recommendations
-- `PointInspector` integration inside `SliceStats` or `ContextualSlicePanel` wasn't explicitly added in Plan 03 (only the component creation). It might need to be imported into `ContextualSlicePanel` to be visible if we want point-level details alongside stats. Currently, the focus was on Slice Stats.
+- None.
