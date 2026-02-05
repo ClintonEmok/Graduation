@@ -19,10 +19,14 @@ import { TrajectoryLayer } from './TrajectoryLayer';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
+import { useSelectionSync } from '@/hooks/useSelectionSync';
 import * as THREE from 'three';
 import { CameraControls } from '@react-three/drei';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
+  // Initialize the selection sync conductor - ties all views together
+  useSelectionSync();
+
   const mode = useUIStore((state) => state.mode);
   const data = useDataStore((state) => state.data);
   const isTimeSlicesEnabled = useFeatureFlagsStore((state) => state.isEnabled('timeSlices'));
