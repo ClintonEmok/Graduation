@@ -65,8 +65,9 @@ export function TimeSlices() {
           key={slice.id}
           slice={slice}
           y={scale(slice.time)}
-          onUpdate={(t) => updateSlice(slice.id, { time: t })}
+          onUpdate={(updates) => updateSlice(slice.id, updates)}
           yToTime={yToTime}
+          timeToY={scale}
         />
       ))}
     </group>

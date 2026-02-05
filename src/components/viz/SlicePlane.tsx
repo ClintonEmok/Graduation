@@ -7,18 +7,27 @@ import { TimeSlice } from '@/store/useSliceStore';
 interface SlicePlaneProps {
   slice: TimeSlice;
   y: number;
-  onUpdate: (time: number) => void;
+  onUpdate: (updates: Partial<TimeSlice>) => void;
   yToTime: (y: number) => number;
+  timeToY: (t: number) => number;
 }
 
-export function SlicePlane({ slice, y, onUpdate, yToTime }: SlicePlaneProps) {
+export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY }: SlicePlaneProps) {
   const { camera, gl } = useThree();
   const [isDragging, setIsDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
   
+  const isRange = slice.type === 'range';
+  
   // Visual props
-  const color = slice.isLocked ? '#999' : '#00ffff';
-  const opacity = 0.2;
+  const color = slice.isLocked ? '#999' : (isRange ? '#ff00ff' : '#00ffff');
+  const opacity = isRange ? 0.1 : 0.2;
+
+  // Calculate range specifics
+  const rangeYStart = isRange ? timeToY(slice.range?.[0] ?? 0) : y;
+  const rangeYEnd = isRange ? timeToY(slice.range?.[1] ?? 0) : y;
+  const height = isRange ? Math.abs(rangeYEnd - rangeYStart) : 0.1;
+  const centerY = isRange ? (rangeYStart + rangeYEnd) / 2 : y;
 
   // Handle drag logic
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
@@ -51,11 +60,6 @@ export function SlicePlane({ slice, y, onUpdate, yToTime }: SlicePlaneProps) {
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(new THREE.Vector2(x, yNDC), camera);
 
-      // 3. Intersect with a virtual vertical plane facing the camera
-      // We want a plane that passes through the current handle position
-      // and is roughly perpendicular to the camera to maximize drag area.
-      // But since we only care about Y, a generic plane like Z=0 works if we're not edge-on.
-      // Better: Plane with normal = (cameraDir.x, 0, cameraDir.z) normalized.
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       cameraDir.y = 0;
@@ -64,19 +68,23 @@ export function SlicePlane({ slice, y, onUpdate, yToTime }: SlicePlaneProps) {
       const planeNormal = cameraDir.clone().negate(); // Face camera
       const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
         planeNormal, 
-        new THREE.Vector3(0, y, 0)
+        new THREE.Vector3(0, centerY, 0)
       );
 
       const target = new THREE.Vector3();
       const intersection = raycaster.ray.intersectPlane(plane, target);
 
       if (intersection) {
-        // Update Y
-        // We calculate new Time from Y
-        // Clamp Y to reasonable bounds (e.g. 0-100? or domain of scale?)
-        // Let yToTime handle the logic/clamping via scale.invert()
-        const newTime = yToTime(intersection.y);
-        onUpdate(newTime);
+        if (isRange) {
+          // Simplistic range drag: shift both by same amount
+          const deltaY = intersection.y - centerY;
+          const newStart = yToTime(rangeYStart + deltaY);
+          const newEnd = yToTime(rangeYEnd + deltaY);
+          onUpdate({ range: [newStart, newEnd] });
+        } else {
+          const newTime = yToTime(intersection.y);
+          onUpdate({ time: newTime });
+        }
       }
     };
 
@@ -89,42 +97,54 @@ export function SlicePlane({ slice, y, onUpdate, yToTime }: SlicePlaneProps) {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [isDragging, camera, gl.domElement, onUpdate, yToTime, y]);
+  }, [isDragging, camera, gl.domElement, onUpdate, yToTime, centerY, isRange, rangeYStart, rangeYEnd]);
 
   // Format label
   const label = useMemo(() => {
-    // Basic formatting - assuming 0-100 is normalized, 
-    // but if it's a timestamp, format date.
-    // For now, if > 1000000000 assume timestamp
+    if (isRange) {
+      const r = slice.range || [0, 0];
+      return `${r[0].toFixed(1)} - ${r[1].toFixed(1)}`;
+    }
     if (slice.time > 1000000000) {
       return new Date(slice.time).toLocaleDateString();
     }
     return slice.time.toFixed(1);
-  }, [slice.time]);
+  }, [slice.time, slice.range, isRange]);
 
   if (!slice.isVisible) return null;
 
   return (
-    <group position={[0, y, 0]}>
-      {/* The Plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[100, 100]} />
-        <meshBasicMaterial 
-          color={color} 
-          transparent 
-          opacity={opacity} 
-          side={THREE.DoubleSide} 
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Grid Helper on the plane for visual reference */}
-      <gridHelper args={[100, 10]} position={[0, 0.01, 0]} rotation={[0, 0, 0]}>
-        <meshBasicMaterial color={color} transparent opacity={0.3} />
-      </gridHelper>
+    <group position={[0, centerY, 0]}>
+      {/* Visual Representation */}
+      {isRange ? (
+        <mesh>
+          <boxGeometry args={[100, height, 100]} />
+          <meshBasicMaterial 
+            color={color} 
+            transparent 
+            opacity={opacity} 
+            depthWrite={false}
+          />
+        </mesh>
+      ) : (
+        <>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[100, 100]} />
+            <meshBasicMaterial 
+              color={color} 
+              transparent 
+              opacity={opacity} 
+              side={THREE.DoubleSide} 
+              depthWrite={false}
+            />
+          </mesh>
+          <gridHelper args={[100, 10]} position={[0, 0.01, 0]} rotation={[0, 0, 0]}>
+            <meshBasicMaterial color={color} transparent opacity={0.3} />
+          </gridHelper>
+        </>
+      )}
 
       {/* Handle and Label */}
-      {/* Positioned at one corner or edge? Let's put it on the axis or corner */}
       <group position={[50, 0, 50]}>
         <mesh 
           onPointerDown={handlePointerDown}
