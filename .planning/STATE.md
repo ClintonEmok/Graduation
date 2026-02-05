@@ -70,3 +70,11 @@ Progress: ███████████████████████�
 Last session: 2026-02-05 18:41 UTC
 Stopped at: Completed 20-01-PLAN.md
 Resume file: None
+
+## Phase 20 - Server-Side Aggregation
+**Status:** Complete
+**Completed:** 2026-02-05
+**Key Outcomes:**
+- Moved 3D binning logic from React to DuckDB API (/api/crime/bins).
+- Implemented spatial-temporal filtering in SQL.
+- Updated frontend to consume aggregated stats, reducing client load.
