@@ -295,13 +295,23 @@ useEffect(() => {
           shader.uniforms.uSliceCount.value = activeSlices.length;
         }
         
-        if (shader.uniforms.uSlices && shader.uniforms.uSlices.value) {
-          const sliceTimes = shader.uniforms.uSlices.value;
+        if (shader.uniforms.uSliceRanges && shader.uniforms.uSliceRanges.value) {
+          const sliceRanges = shader.uniforms.uSliceRanges.value;
+          const threshold = 1.0; // Hardcoded or from some config? Existing code used 1.0
           for (let i = 0; i < 20; i++) {
             if (i < activeSlices.length) {
-              sliceTimes[i] = activeSlices[i].time;
+              const slice = activeSlices[i];
+              if (slice.type === 'point') {
+                sliceRanges[i * 2] = slice.time - threshold;
+                sliceRanges[i * 2 + 1] = slice.time + threshold;
+              } else {
+                // Range slice
+                sliceRanges[i * 2] = slice.range?.[0] ?? 0;
+                sliceRanges[i * 2 + 1] = slice.range?.[1] ?? 0;
+              }
             } else {
-              sliceTimes[i] = -9999;
+              sliceRanges[i * 2] = -9999;
+              sliceRanges[i * 2 + 1] = -9999;
             }
           }
         }
