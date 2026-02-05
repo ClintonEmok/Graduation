@@ -365,10 +365,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Heatmap responds to filter/time changes.
 3. Feature can be disabled in Settings.
 
-**Plans:** 3 plans
-- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
-- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
+**Plans:**
+- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [x] 16-02-PLAN.md — GPGPU Rendering Engine
+- [x] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 17: Cluster Highlighting
 
@@ -461,7 +461,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 13. UI Polish | **Complete** | 100% |
 | 14. Color Schemes & Accessibility | **Complete** | 100% |
 | 15. Time Slices Visualization | **Complete** | 100% |
-| 16. Heatmap Layer | **In Progress** | 33% |
+| 16. Heatmap Layer | **Complete** | 100% |
 | 17. Cluster Highlighting | Planned | 0% |
 | 18. Trajectories Visualization | Planned | 0% |
 | 19. Aggregated Bins (LOD) | Planned | 0% |
