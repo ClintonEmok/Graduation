@@ -6,11 +6,11 @@ const DATA_DIR = path.join(__dirname, '../data');
 const SOURCE_CSV = path.join(DATA_DIR, 'source.csv');
 const OUTPUT_PARQUET = path.join(DATA_DIR, 'crime.parquet');
 
-// Chicago approximate bounds
-const CENTER_LAT = 41.8781;
-const CENTER_LON = -87.6298;
-const LAT_RANGE = 0.1;
-const LON_RANGE = 0.1;
+// Chicago approximate bounds (More inland, West Loop / Near West Side)
+const CENTER_LAT = 41.85; 
+const CENTER_LON = -87.70; 
+const LAT_RANGE = 0.15;
+const LON_RANGE = 0.15;
 
 // Time range: Last year
 const END_TIME = new Date().getTime();
@@ -18,7 +18,7 @@ const START_TIME = END_TIME - 365 * 24 * 60 * 60 * 1000;
 
 const NUM_POINTS = 100000;
 const TYPES = ['Theft', 'Assault', 'Burglary', 'Robbery', 'Vandalism'];
-const BLOCKS = ['100 N STATE ST', '200 W MADISON ST', '300 S MICHIGAN AVE', '400 E RANDOLPH ST', '500 W ADAMS ST'];
+const BLOCKS = Array.from({length: 100}).map((_, i) => `BLOCK_${i}`);
 
 function generateCSV() {
   console.log('Generating synthetic data...');
@@ -37,8 +37,9 @@ function generateCSV() {
       const district_name = `District ${district}`;
       
       // Add noise to avoid perfect overlap pillars
-      const lat = CENTER_LAT + (blockIndex - 2) * 0.01 + (Math.random() - 0.5) * 0.005;
-      const lon = CENTER_LON + (blockIndex - 2) * 0.01 + (Math.random() - 0.5) * 0.005;
+      // Random scattering instead of diagonal line
+      const lat = CENTER_LAT + (Math.random() - 0.5) * LAT_RANGE;
+      const lon = CENTER_LON + (Math.random() - 0.5) * LON_RANGE;
       
       const timestamp = new Date(START_TIME + Math.random() * (END_TIME - START_TIME)).toISOString();
       stream.write(`${id},${type},${lat},${lon},${timestamp},${block},${district},${district_name}\n`);
