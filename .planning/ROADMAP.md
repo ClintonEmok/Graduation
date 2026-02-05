@@ -338,7 +338,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Feature can be disabled in Settings.
 
 **Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+- [ ] 15-01-PLAN.md — Foundation: Slice Store & 3D Components
+- [ ] 15-02-PLAN.md — UI Controls: Manager Panel
+- [ ] 15-03-PLAN.md — Visualization: Shader Highlighting
 
 ## Phase 16: Heatmap Layer
 
@@ -445,7 +447,7 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 | 11. Focus+Context Visualization | **Complete** | 100% |
 | 12. Feature Flags Infrastructure | **Complete** | 100% |
 | 13. UI Polish | **Complete** | 100% |
-| 14. Color Schemes & Accessibility | Planned | 0% |
+| 14. Color Schemes & Accessibility | **Complete** | 100% |
 | 15. Time Slices Visualization | Planned | 0% |
 | 16. Heatmap Layer | Planned | 0% |
 | 17. Cluster Highlighting | Planned | 0% |
