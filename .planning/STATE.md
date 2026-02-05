@@ -2,15 +2,15 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 22 - Contextual Slice Analysis
-**Status:** Complete
+**Current Phase:** 23 - Map Interaction & Debugging
+**Status:** In progress
 
 ## Current Position
 
-Phase: 22 of 22 (Contextual Slice Analysis)
-Plan: 3 of 3 in current phase
-Status: Complete
-Last activity: 2026-02-05 - Completed Phase 22
+Phase: 23 of 23 (Map Interaction & Debugging)
+Plan: 1 of 1 (Plan 01 Complete)
+Status: In Progress
+Last activity: 2026-02-05 - Completed Phase 23 Plan 01
 **Next Phase:** Milestone Audit / Completion
 
 Progress: █████████████████████████ 100%
@@ -38,6 +38,7 @@ Progress: ███████████████████████�
 [x] Phase 20: Server-Side Aggregation
 [x] Phase 21: Timeline Redesign
 [x] Phase 22: Contextual Slice Analysis
+[x] Phase 23: Map Interaction & Debugging
 ```
 
 ## Performance Metrics
@@ -45,7 +46,7 @@ Progress: ███████████████████████�
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 22/22 | 22/22 |
+| Phase Completion | 23/23 | 23/23 |
 
 ## Context & Decisions
 
@@ -61,6 +62,8 @@ Progress: ███████████████████████�
 | 21 | Store Integration | Timeline drives `useTimeStore` directly, acting as the primary navigation control. |
 | 22 | Side Panel | Contextual analysis lives in a slide-in sidebar to preserve map visibility. |
 | 22 | On-Demand Stats | Stats are calculated only when a slice is active to save resources. |
+| 23 | Map Click | Switched from `onMouseUp` to `onClick` for robust point selection on map. |
+| 23 | Debug Overlay | Added visualization connecting clicks to resolved points to verify projection logic. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -70,13 +73,12 @@ Progress: ███████████████████████�
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed Phase 22
+Stopped at: Completed Phase 23 Plan 01
 Resume file: None
 
-## Phase 22 - Contextual Slice Analysis
-**Status:** Complete
-**Completed:** 2026-02-05
+## Phase 23 - Map Interaction & Debugging
+**Status:** In Progress
+**Completed:** Plan 01
 **Key Outcomes:**
-- Implemented `ContextualSlicePanel` for inspecting time slices.
-- Added `useSliceStats` to calculate crime type/district distributions.
-- Wired 3D point clicks to open the relevant slice context.
+- Clicking on map now selects points reliably.
+- Visual debug lines confirm selection accuracy.
