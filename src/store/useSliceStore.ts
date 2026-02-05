@@ -3,14 +3,16 @@ import { persist } from 'zustand/middleware';
 
 export interface TimeSlice {
   id: string;
-  time: number; // Normalized time 0-100
+  type: 'point' | 'range';
+  time: number; // Normalized time 0-100 (for point)
+  range?: [number, number]; // Normalized start/end (for range)
   isLocked: boolean;
   isVisible: boolean;
 }
 
 interface SliceStore {
   slices: TimeSlice[];
-  addSlice: (time: number) => void;
+  addSlice: (initial: Partial<TimeSlice>) => void;
   removeSlice: (id: string) => void;
   updateSlice: (id: string, updates: Partial<TimeSlice>) => void;
   toggleLock: (id: string) => void;
@@ -22,15 +24,18 @@ export const useSliceStore = create<SliceStore>()(
   persist(
     (set) => ({
       slices: [],
-      addSlice: (time) =>
+      addSlice: (initial) =>
         set((state) => ({
           slices: [
             ...state.slices,
             {
               id: crypto.randomUUID(),
-              time,
+              type: initial.type || 'point',
+              time: initial.time ?? 50,
+              range: initial.range || [40, 60],
               isLocked: false,
               isVisible: true,
+              ...initial,
             },
           ],
         })),
