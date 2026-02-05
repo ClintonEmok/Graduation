@@ -18,6 +18,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uTimePlane = { value: 0 };
   shader.uniforms.uRange = { value: 10 };
   shader.uniforms.uTransition = { value: 0 };
+  shader.uniforms.uLodFactor = { value: 0 };
   shader.uniforms.uTimeMin = { value: 0 };
   shader.uniforms.uTimeMax = { value: 100 };
   shader.uniforms.uSliceRanges = { value: new Float32Array(40) }; // 20 vec2s as flat array
@@ -40,6 +41,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     `
     #include <common>
     uniform float uTransition;
+    uniform float uLodFactor;
     uniform float uUseColumns;
     uniform vec2 uDataBoundsMin;
     uniform vec2 uDataBoundsMax;
@@ -64,46 +66,11 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.vertexShader = shader.vertexShader.replace(
     '#include <project_vertex>',
     `
-    vec4 mvPosition = vec4( transformed, 1.0 );
+    vec3 transformedCopy = transformed * (1.0 - uLodFactor);
+    vec4 mvPosition = vec4( transformedCopy, 1.0 );
 
     float currentY = 0.0;
-
-    if (uUseColumns > 0.5) {
-       // Normalize X and Z based on data bounds to 0-1, then scale to grid (-50 to 50)
-       float normX = (colX - uDataBoundsMin.x) / (uDataBoundsMax.x - uDataBoundsMin.x);
-       float normZ = (colZ - uDataBoundsMin.y) / (uDataBoundsMax.y - uDataBoundsMin.y);
-       
-       mvPosition.x += (normX * 100.0) - 50.0;
-       mvPosition.z += (normZ * 100.0) - 50.0;
-       currentY = colLinearY;
-       mvPosition.y += colLinearY;
-    } else {
-       #ifdef USE_INSTANCING
-          mvPosition = instanceMatrix * mvPosition;
-          currentY = instanceMatrix[3].y;
-       #endif
-    }
-
-    float targetY = adaptiveY;
-    float yShift = (targetY - currentY) * uTransition;
-    mvPosition.y += yShift;
-
-    vWorldY = mvPosition.y;
-    vWorldX = mvPosition.x;
-    vWorldZ = mvPosition.z;
-    vLinearY = currentY;
-    vFilterType = filterType;
-    vFilterDistrict = filterDistrict;
-    #ifdef USE_INSTANCING
-      vInstanceId = float(gl_InstanceID);
-    #else
-      vInstanceId = 0.0;
-    #endif
-
-    mvPosition = modelViewMatrix * mvPosition;
-
-    gl_Position = projectionMatrix * mvPosition;
-    `
+`
   );
 
   shader.fragmentShader = shader.fragmentShader.replace(
@@ -118,6 +85,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform int uSliceCount;
     uniform float uShowContext;
     uniform float uContextOpacity;
+    uniform float uLodFactor;
     uniform float uTypeMap[${typeMapSize}];
     uniform float uDistrictMap[${districtMapSize}];
     uniform vec2 uBoundsMin;
@@ -139,6 +107,15 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     '#include <dithering_fragment>',
     `
     #include <dithering_fragment>
+    
+    // Global LOD fade out
+    if (uLodFactor > 0.05) {
+      // Checkerboard dither that gets more aggressive as uLodFactor increases
+      float dither = mod(gl_FragCoord.x + gl_FragCoord.y, 2.0);
+      if (uLodFactor > 0.8 || (uLodFactor > 0.4 && dither > 0.5)) {
+        discard;
+      }
+    }
 
     float dist = abs(vWorldY - uTimePlane);
     if (dist > uRange) {

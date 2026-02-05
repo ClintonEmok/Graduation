@@ -8,12 +8,13 @@ import React, {
   useCallback
 } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, RootState } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { DataPoint, useDataStore } from '@/store/useDataStore';
 import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
 import { getCrimeTypeId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useAggregationStore } from '@/store/useAggregationStore';
 import { useUIStore } from '@/store/ui';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useFilterStore } from '@/store/useFilterStore';
@@ -273,7 +274,7 @@ useEffect(() => {
 }, [selectedIndex]);
 
   // Animate transition
-  useFrame((state, delta) => {
+  useFrame((_state: RootState, delta: number) => {
     if (meshRef.current && meshRef.current.material) {
       const material = meshRef.current.material as THREE.Material;
       if (material.userData.shader) {
@@ -285,6 +286,10 @@ useEffect(() => {
           5, // Speed/smoothness factor
           delta
         );
+
+        // Update LOD Factor from store
+        const lodFactor = useAggregationStore.getState().lodFactor;
+        material.userData.shader.uniforms.uLodFactor.value = lodFactor;
 
         // Update Slices
         const slices = useSliceStore.getState().slices;
