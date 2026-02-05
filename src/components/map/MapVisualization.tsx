@@ -6,6 +6,7 @@ import MapBase from './MapBase';
 import MapEventLayer from './MapEventLayer';
 import MapSelectionOverlay, { LatLonBounds } from './MapSelectionOverlay';
 import MapSelectionMarker from './MapSelectionMarker';
+import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { Controls } from '../viz/Controls';
 import { project } from '@/lib/projection';
@@ -202,6 +203,7 @@ export default function MapVisualization() {
       >
         <MapEventLayer />
         <MapHeatmapOverlay />
+        <MapClusterHighlights />
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
         {selectionPoint && (
           <MapSelectionMarker lat={selectionPoint.lat} lon={selectionPoint.lon} />
