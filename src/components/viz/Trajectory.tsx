@@ -19,6 +19,7 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ trajectory, adaptiveYVal
   const lineRef = useRef<any>(null);
   const arrowRef = useRef<THREE.Group>(null);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+  const currentTime = useTimeStore((state) => state.currentTime);
   const transitionRef = useRef(timeScaleMode === 'adaptive' ? 1 : 0);
 
   const hoveredBlock = useTrajectoryStore((state) => state.hoveredBlock);
@@ -81,14 +82,27 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ trajectory, adaptiveYVal
     transitionRef.current = MathUtils.damp(transitionRef.current, target, 5, delta);
 
     if (lineRef.current) {
-      const currentPoints = points.map((p, i) => {
+      const trailWindow = 20; // Time units
+      const currentPoints: number[] = [];
+      const currentColors: number[] = [];
+
+      points.forEach((p, i) => {
         const linearY = p.y;
         const adaptiveY = adaptiveYValues ? adaptiveYValues[trajectory.points[i].originalIndex] : linearY;
         const y = MathUtils.lerp(linearY, adaptiveY, transitionRef.current);
-        return [p.x, y, p.z] as [number, number, number];
-      }).flat();
+        currentPoints.push(p.x, y, p.z);
+
+        // Trail Effect: Fade out points far from currentTime
+        const timeDist = Math.abs(linearY - currentTime);
+        const trailOpacity = MathUtils.clamp(1.0 - timeDist / trailWindow, 0, 1);
+        
+        const baseColor = colors[i];
+        // We can't do per-vertex alpha easily with Line2, so we dim the color towards black
+        currentColors.push(baseColor.r * trailOpacity, baseColor.g * trailOpacity, baseColor.b * trailOpacity);
+      });
 
       lineRef.current.setPoints(currentPoints);
+      lineRef.current.setColors(currentColors);
       
       // Update Arrowhead position and orientation
       if (arrowRef.current && trajectory.points.length > 1) {

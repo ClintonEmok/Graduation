@@ -8,6 +8,7 @@ import MapSelectionOverlay, { LatLonBounds } from './MapSelectionOverlay';
 import MapSelectionMarker from './MapSelectionMarker';
 import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
+import { MapTrajectoryLayer } from './MapTrajectoryLayer';
 import { Controls } from '../viz/Controls';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
@@ -201,10 +202,12 @@ export default function MapVisualization() {
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >
-        <MapEventLayer />
+         <MapEventLayer />
         <MapHeatmapOverlay />
         <MapClusterHighlights />
+        <MapTrajectoryLayer />
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
+
         {selectionPoint && (
           <MapSelectionMarker lat={selectionPoint.lat} lon={selectionPoint.lon} />
         )}

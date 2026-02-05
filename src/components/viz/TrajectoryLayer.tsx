@@ -1,13 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useDataStore, selectFilteredData } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTrajectoryStore } from '@/store/useTrajectoryStore';
 import { groupToTrajectories } from '@/lib/trajectories';
 import { Trajectory } from './Trajectory';
 import { computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
+import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
 
 export const TrajectoryLayer: React.FC = () => {
   const isVisible = useTrajectoryStore((state) => state.isVisible);
+  const selectedBlock = useTrajectoryStore((state) => state.selectedBlock);
   const columns = useDataStore((state) => state.columns);
   const data = useDataStore((state) => state.data);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
@@ -16,6 +19,8 @@ export const TrajectoryLayer: React.FC = () => {
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  
+  const { controls } = useThree() as any;
 
   // 1. Get filtered data (to know which blocks to show)
   const filteredPoints = useMemo(() => {
@@ -65,6 +70,20 @@ export const TrajectoryLayer: React.FC = () => {
     }));
     return groupToTrajectories(mockPoints as any, filteredIndices);
   }, [allPoints, filteredIndices, columns, data]);
+
+  // 5. Auto-focus on selection
+  useEffect(() => {
+    if (selectedBlock && trajectories.length > 0 && controls) {
+      const selectedTraj = trajectories.find(t => t.block === selectedBlock);
+      if (selectedTraj) {
+        const box = new THREE.Box3();
+        selectedTraj.points.forEach(p => {
+          box.expandByPoint(new THREE.Vector3(p.x, p.y, p.z));
+        });
+        controls.fitToBox(box, true, { paddingLeft: 2, paddingRight: 2, paddingTop: 2, paddingBottom: 2 });
+      }
+    }
+  }, [selectedBlock, trajectories, controls]);
 
   if (!isVisible) return null;
 
