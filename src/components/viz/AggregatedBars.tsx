@@ -56,7 +56,7 @@ export const AggregatedBars: React.FC = () => {
   return (
     <instancedMesh 
       ref={meshRef} 
-      args={[undefined, undefined, 10000]} 
+      args={[undefined, undefined, 20000]} 
       visible={enabled && bins.length > 0}
     >
       <boxGeometry args={[1, 1, 1]} />
