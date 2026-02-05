@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 16 - Heatmap Layer
+**Current Phase:** 17 - Cluster Highlighting
 **Status:** In progress
 
 ## Current Position
 
-Phase: 16 of 19 (Heatmap Layer)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-05 - Completed 16-03-PLAN.md (View Integration)
+Phase: 17 of 19 (Cluster Highlighting)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-05 - Completed 17-01-PLAN.md (Clustering Engine)
 
-Progress: ███████████████████░ 96%
+Progress: ████████████████████ 98%
 
 ```
 [x] Phase 1: Core 3D
@@ -31,7 +31,7 @@ Progress: ███████████████████░ 96%
 [x] Phase 14: Color Schemes & Accessibility
 [x] Phase 15: Time Slices Visualization
 [x] Phase 16: Heatmap Layer
-[ ] Phase 17: Cluster Highlighting
+[x] Phase 17: Cluster Highlighting
 [ ] Phase 18: Trajectories Visualization
 [ ] Phase 19: Aggregated Bins (LOD)
 ```
@@ -126,6 +126,8 @@ Progress: ███████████████████░ 96%
 | 16 | THREE.Points Aggregation | Used THREE.Points for the aggregation pass to maximize performance for large datasets. |
 | 16 | Cyan-White Gradient | Implemented a single monochromatic cyan-white gradient to match the HUD aesthetic. |
 | 16 | Float FBO | Used HalfFloatType/FloatType for the FBO to prevent density clipping in hotspots. |
+| 17 | density-clustering | Used as fallback for ml-dbscan due to registry issues. |
+| 17 | Temporal Weighting | Weighted temporal distance by 0.5 to prioritize spatial co-location. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -137,6 +139,6 @@ Progress: ███████████████████░ 96%
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-02-05 15:25 UTC
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
