@@ -88,6 +88,69 @@ export function getAdaptiveScaleConfig(
   return { domain, range };
 }
 
+export function getAdaptiveScaleConfigColumnar(
+  timestamps: Float32Array | Float64Array,
+  timeRange: [number, number],
+  yRange: [number, number],
+  binCount: number = 100
+): AdaptiveScaleConfig {
+  const tStart = timeRange[0];
+  const tEnd = timeRange[1];
+  const tSpan = tEnd - tStart;
+  const count = timestamps.length;
+  const [yMin, yMax] = yRange;
+
+  if (count === 0 || tSpan <= 0) {
+    return {
+      domain: [tStart, tEnd],
+      range: [yMin, yMax]
+    };
+  }
+
+  // 1. Binning
+  const counts = new Float64Array(binCount);
+  
+  for (let i = 0; i < count; i++) {
+    const t = timestamps[i];
+    const norm = (t - tStart) / tSpan;
+    const idx = Math.floor(norm * binCount);
+    const clampedIdx = Math.max(0, Math.min(idx, binCount - 1));
+    counts[clampedIdx]++;
+  }
+  
+  // 2. Weights
+  const maxDensity = max(counts) || 1;
+  const weights = new Float64Array(binCount);
+  
+  for (let i = 0; i < binCount; i++) {
+    const density = counts[i];
+    weights[i] = 1 + (density / maxDensity) * 5;
+  }
+  
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const totalHeight = yMax - yMin;
+  
+  // 3. Build Domain and Range Arrays
+  const domain = new Array(binCount + 1);
+  const range = new Array(binCount + 1);
+  
+  let currentY = yMin;
+  const binSize = tSpan / binCount;
+
+  for (let i = 0; i < binCount; i++) {
+    domain[i] = tStart + i * binSize;
+    range[i] = currentY;
+    
+    const binHeight = (weights[i] / totalWeight) * totalHeight;
+    currentY += binHeight;
+  }
+  
+  domain[binCount] = tEnd;
+  range[binCount] = yMax;
+
+  return { domain, range };
+}
+
 /**
  * Computes the Y (vertical) positions for points based on adaptive temporal scaling.
  */
