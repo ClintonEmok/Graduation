@@ -13,6 +13,7 @@ import { ClusterManager } from './ClusterManager';
 import { ClusterHighlights } from './ClusterHighlights';
 import { ClusterLabels } from './ClusterLabels';
 import { AggregationManager } from './AggregationManager';
+import { AggregatedBars } from './AggregatedBars';
 import { TrajectoryLayer } from './TrajectoryLayer';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
@@ -68,7 +69,12 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
                  <ClusterLabels />
               </>
             )}
-            {isAggregatedBinsEnabled && <AggregationManager />}
+            {isAggregatedBinsEnabled && (
+              <>
+                <AggregationManager />
+                <AggregatedBars />
+              </>
+            )}
             {isTrajectoriesEnabled && <TrajectoryLayer />}
             <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
 
