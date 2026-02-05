@@ -2,7 +2,7 @@
 
 **Project:** Adaptive Space-Time Cube
 **Status:** Active
-**Total Phases:** 19
+**Total Phases:** 20
 
 ## Overview
 
@@ -449,6 +449,8 @@ Plans:
 
 ## Phase 20: Server-Side Aggregation
 
+**Status:** In progress
+
 **Goal:** Move 3D binning logic to DuckDB for high-performance data reduction.
 
 **Dependencies:** Phase 19
@@ -465,6 +467,6 @@ Plans:
 2. 3D bars render correctly based on server-calculated counts.
 3. System scales to 1M+ points without browser lag.
 
-**Plans:** 2 plans
-- [ ] 20-01-PLAN.md — Backend Aggregation API
+**Plans:** 1/2 plans complete
+- [x] 20-01-PLAN.md — Backend Aggregation API
 - [ ] 20-02-PLAN.md — Frontend Transition & Adaptive SQL
