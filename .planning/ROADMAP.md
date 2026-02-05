@@ -440,10 +440,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Bar height encodes event count per bin.
 3. Transition is smooth, not jarring.
 
-**Plans:** 3 plans
-- [ ] 19-01-PLAN.md — Infrastructure: Binning Store & Manager
-- [ ] 19-02-PLAN.md — Rendering: Aggregated Bars Component
-- [ ] 19-03-PLAN.md — LOD: Transition Controller & Shaders
+**Plans:**
+- [ ] 19-01-PLAN.md — Setup binning store and manager logic
+- [ ] 19-02-PLAN.md — Render binned data as 3D bars
+- [ ] 19-03-PLAN.md — Implement LOD transitions and camera controller
 
 ## Progress
 
