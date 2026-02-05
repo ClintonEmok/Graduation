@@ -390,8 +390,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Clicking a cluster focuses the view on that region.
 
 **Plans:** 3 plans
-- [ ] 17-01-PLAN.md — Clustering Foundation
-- [ ] 17-02-PLAN.md — Cluster Visualization
+- [ ] 17-01-PLAN.md — Clustering Engine
+- [ ] 17-02-PLAN.md — 3D Visualization
 - [ ] 17-03-PLAN.md — Interaction & UI Integration
 
 ## Phase 18: Trajectories Visualization
