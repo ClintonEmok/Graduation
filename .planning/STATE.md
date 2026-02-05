@@ -3,17 +3,17 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 23 - Map Interaction & Debugging
-**Status:** In progress
+**Status:** Complete
 
 ## Current Position
 
-Phase: 23 of 23 (Map Interaction & Debugging)
-Plan: 1 of 1 (Plan 01 Complete)
-Status: In Progress
-Last activity: 2026-02-05 - Completed Phase 23 Plan 01
-**Next Phase:** Milestone Audit / Completion
+Phase: 24 of 24 (Interaction Synthesis & 3D Debugging)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-05 - Completed 24-01-PLAN.md
+**Next Plan:** 24-02: Additional synchronization features
 
-Progress: █████████████████████████ 100%
+Progress: ████████████████████████░░ 96%
 
 ```
 [x] Phase 1: Core 3D
@@ -39,6 +39,7 @@ Progress: ███████████████████████�
 [x] Phase 21: Timeline Redesign
 [x] Phase 22: Contextual Slice Analysis
 [x] Phase 23: Map Interaction & Debugging
+[ ] Phase 24: Interaction Synthesis & 3D Debugging
 ```
 
 ## Performance Metrics
@@ -46,7 +47,7 @@ Progress: ███████████████████████�
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 23/23 | 23/23 |
+| Phase Completion | 23/24 | 24/24 |
 
 ## Context & Decisions
 
@@ -64,6 +65,9 @@ Progress: ███████████████████████�
 | 22 | On-Demand Stats | Stats are calculated only when a slice is active to save resources. |
 | 23 | Map Click | Switched from `onMouseUp` to `onClick` for robust point selection on map. |
 | 23 | Debug Overlay | Added visualization connecting clicks to resolved points to verify projection logic. |
+| 24 | Deferred Sync Hook | Selection-to-time sync deferred to Plan 03 via `useSelectionSync` hook for cleaner separation. |
+| 24 | Opacity Dithering | Dynamic dithering based on `uContextOpacity` provides smoother ghosting than fixed patterns. |
+| 24 | Normalized Time | All components use 0-100 normalized range as common currency for cross-compatibility. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -73,12 +77,27 @@ Progress: ███████████████████████�
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed Phase 23 Plan 01
+Stopped at: Completed 24-01-PLAN.md
 Resume file: None
 
 ## Phase 23 - Map Interaction & Debugging
-**Status:** In Progress
-**Completed:** Plan 01
+**Status:** Complete
+**Completed:** 2026-02-05
 **Key Outcomes:**
 - Clicking on map now selects points reliably.
 - Visual debug lines confirm selection accuracy.
+
+## Phase 24 - Interaction Synthesis & 3D Debugging
+**Status:** In Progress
+**Plan:** 1 of 3 Complete
+**Key Outcomes:**
+- useCoordinationStore verified as single source of truth
+- Ghosting shader supports dynamic opacity-based dimming
+- Timeline brush properly synchronizes with 3D view via normalized time
+
+## Accumulated Context
+### Roadmap Evolution
+- Phase 21 added: timeline redesign
+- Phase 22 added: contextual slice analysis
+- Phase 23 added: map interaction & debugging
+- Phase 24 added: interaction synthesis & 3d debugging
