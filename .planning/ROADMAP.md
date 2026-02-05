@@ -341,6 +341,8 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 - [x] 15-01-PLAN.md — Foundation: Slice Store & 3D Components
 - [x] 15-02-PLAN.md — UI Controls: Manager Panel
 - [x] 15-03-PLAN.md — Visualization: Shader Highlighting
+- [ ] 15-04-PLAN.md — Refactor Time Slices to Date/Range UX
+- [ ] 15-05-PLAN.md — Range Visualization & Shader
 
 ## Phase 16: Heatmap Layer
 
