@@ -11,6 +11,7 @@ Phase: 20 of 20 (Server-Side Aggregation)
 Plan: 1 of 2 in current phase
 Status: Complete
 Last activity: 2026-02-05 - Completed 20-01-PLAN.md (Backend Aggregation API)
+**Next Phase:** Phase 21: Timeline Redesign
 
 Progress: █████████████████████████ 100%
 
@@ -78,3 +79,7 @@ Resume file: None
 - Moved 3D binning logic from React to DuckDB API (/api/crime/bins).
 - Implemented spatial-temporal filtering in SQL.
 - Updated frontend to consume aggregated stats, reducing client load.
+
+## Accumulated Context
+### Roadmap Evolution
+- Phase 21 added: timeline redesign
