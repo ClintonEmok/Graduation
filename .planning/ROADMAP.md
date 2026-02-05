@@ -1,10 +1,8 @@
-### Phase 22: Contextual Slice Analysis
+### Phase 23: Map Interaction & Debugging
 
-**Goal:** Implement detailed data inspection for selected time slices via a contextual side panel.
-**Depends on:** Phase 21
-**Plans:** 3 plans
+**Goal:** Enable point selection on the 2D map and add debug visualization lines.
+**Depends on:** Phase 22
+**Plans:** 1 plan
 
 Plans:
-- [x] 22-01-PLAN.md — Data Foundation
-- [x] 22-02-PLAN.md — Panel UI
-- [x] 22-03-PLAN.md — Integration & Interaction
+- [x] 23-01-PLAN.md — Map Interaction & Debugging
