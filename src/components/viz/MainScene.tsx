@@ -8,6 +8,7 @@ import { DataPoints } from './DataPoints';
 import { TimePlane } from './TimePlane';
 import { TimeLoop } from './TimeLoop';
 import { TimeSlices } from './TimeSlices';
+import { HeatmapOverlay } from './HeatmapOverlay';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
@@ -18,6 +19,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const mode = useUIStore((state) => state.mode);
   const data = useDataStore((state) => state.data);
   const isTimeSlicesEnabled = useFeatureFlagsStore((state) => state.isEnabled('timeSlices'));
+  const isHeatmapEnabled = useFeatureFlagsStore((state) => state.isEnabled('heatmap'));
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);
@@ -50,6 +52,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
             <DataPoints data={data} ref={pointsRef} />
             <TimePlane ref={planeRef} />
             {isTimeSlicesEnabled && <TimeSlices />}
+            {isHeatmapEnabled && <HeatmapOverlay />}
             <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
             
             <CameraControls

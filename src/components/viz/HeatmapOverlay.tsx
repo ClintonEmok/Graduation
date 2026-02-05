@@ -18,7 +18,9 @@ import {
  * Pass 1: Aggregates spatial density into an offscreen Float RenderTarget.
  * Pass 2: Renders the density map onto a spatial plane with logarithmic scaling and color mapping.
  */
-export const HeatmapOverlay: React.FC = () => {
+export const HeatmapOverlay: React.FC<{ blending?: THREE.Blending }> = ({ 
+  blending = THREE.NormalBlending 
+}) => {
   const isEnabled = useHeatmapStore((state) => state.isEnabled);
   const intensity = useHeatmapStore((state) => state.intensity);
   const radius = useHeatmapStore((state) => state.radius);
@@ -114,7 +116,8 @@ export const HeatmapOverlay: React.FC = () => {
     transparent: true,
     depthWrite: false,
     depthTest: true,
-  }), [fbo.texture]);
+    blending,
+  }), [fbo.texture, blending]);
 
   // Geometry for aggregation (using THREE.Points for max performance)
   const geometry = useMemo(() => {
