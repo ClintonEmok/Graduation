@@ -440,31 +440,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Bar height encodes event count per bin.
 3. Transition is smooth, not jarring.
 
-**Plans:**
+**Plans:** 3 plans
+
+Plans:
 - [x] 19-01-PLAN.md — Setup binning store and manager logic
 - [x] 19-02-PLAN.md — Render binned data as 3D bars
 - [x] 19-03-PLAN.md — Implement LOD transitions and camera controller
-
-## Progress
-
-| Phase | Status | Completion |
-|-------|--------|------------|
-| 1. Core 3D Visualization | **Complete** | 100% |
-| 2. Temporal Controls | **Complete** | 100% |
-| 3. Adaptive Scaling Logic | **Complete** | 100% |
-| 4. UI Layout Redesign | **Complete** | 100% |
-| 5. Adaptive Visualization Aids | **Complete** | 100% |
-| 6. Data Backend & Loading | **Complete** | 100% |
-| 7. Advanced Filtering | **Complete** | 100% |
-| 8. Coordinated Views | **Complete** | 100% |
-| 9. Study Logging Infrastructure | **Complete** | 100% |
-| 10. Study Content & Flow | Deferred | 0% |
-| 11. Focus+Context Visualization | **Complete** | 100% |
-| 12. Feature Flags Infrastructure | **Complete** | 100% |
-| 13. UI Polish | **Complete** | 100% |
-| 14. Color Schemes & Accessibility | **Complete** | 100% |
-| 15. Time Slices Visualization | **Complete** | 100% |
-| 16. Heatmap Layer | **Complete** | 100% |
-| 17. Cluster Highlighting | **Complete** | 100% |
-| 18. Trajectories Visualization | **Complete** | 100% |
-| 19. Aggregated Bins (LOD) | **Complete** | 100% |
