@@ -317,9 +317,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Selected palette persists across sessions.
 
 **Plans:** 3 plans
-- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
-- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
+- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [x] 16-02-PLAN.md — GPGPU Rendering Engine
+- [x] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 15: Time Slices Visualization
 
@@ -390,9 +390,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Clicking a cluster focuses the view on that region.
 
 **Plans:** 3 plans
-- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
-- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
+- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [x] 16-02-PLAN.md — GPGPU Rendering Engine
+- [x] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 18: Trajectories Visualization
 
@@ -414,9 +414,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Feature can be disabled in Settings.
 
 **Plans:** 3 plans
-- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
-- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
+- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [x] 16-02-PLAN.md — GPGPU Rendering Engine
+- [x] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 19: Aggregated Bins (LOD)
 
@@ -438,9 +438,9 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 3. Transition is smooth, not jarring.
 
 **Plans:** 3 plans
-- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
-- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
-- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
+- [x] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [x] 16-02-PLAN.md — GPGPU Rendering Engine
+- [x] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Progress
 
