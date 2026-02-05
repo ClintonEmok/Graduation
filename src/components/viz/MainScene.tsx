@@ -12,6 +12,7 @@ import { HeatmapOverlay } from './HeatmapOverlay';
 import { ClusterManager } from './ClusterManager';
 import { ClusterHighlights } from './ClusterHighlights';
 import { ClusterLabels } from './ClusterLabels';
+import { AggregationManager } from './AggregationManager';
 import { TrajectoryLayer } from './TrajectoryLayer';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
@@ -26,6 +27,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const isHeatmapEnabled = useFeatureFlagsStore((state) => state.isEnabled('heatmap'));
   const isClusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
   const isTrajectoriesEnabled = useFeatureFlagsStore((state) => state.isEnabled('trajectories'));
+  const isAggregatedBinsEnabled = useFeatureFlagsStore((state) => state.isEnabled('aggregatedBins'));
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);
@@ -66,6 +68,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
                  <ClusterLabels />
               </>
             )}
+            {isAggregatedBinsEnabled && <AggregationManager />}
             {isTrajectoriesEnabled && <TrajectoryLayer />}
             <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
 
