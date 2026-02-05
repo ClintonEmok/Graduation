@@ -9,6 +9,7 @@ import { TimePlane } from './TimePlane';
 import { TimeLoop } from './TimeLoop';
 import { TimeSlices } from './TimeSlices';
 import { HeatmapOverlay } from './HeatmapOverlay';
+import { ClusterManager } from './ClusterManager';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
@@ -20,6 +21,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const data = useDataStore((state) => state.data);
   const isTimeSlicesEnabled = useFeatureFlagsStore((state) => state.isEnabled('timeSlices'));
   const isHeatmapEnabled = useFeatureFlagsStore((state) => state.isEnabled('heatmap'));
+  const isClusterHighlightEnabled = useFeatureFlagsStore((state) => state.isEnabled('clusterHighlight'));
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
   const planeRef = useRef<THREE.Mesh>(null);
@@ -53,6 +55,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
             <TimePlane ref={planeRef} />
             {isTimeSlicesEnabled && <TimeSlices />}
             {isHeatmapEnabled && <HeatmapOverlay />}
+            {isClusterHighlightEnabled && <ClusterManager />}
             <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
             
             <CameraControls
