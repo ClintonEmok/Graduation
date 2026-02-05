@@ -14,6 +14,7 @@ import { ClusterHighlights } from './ClusterHighlights';
 import { ClusterLabels } from './ClusterLabels';
 import { AggregationManager } from './AggregationManager';
 import { AggregatedBars } from './AggregatedBars';
+import { LODController } from './LODController';
 import { TrajectoryLayer } from './TrajectoryLayer';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
@@ -73,6 +74,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
               <>
                 <AggregationManager />
                 <AggregatedBars />
+                <LODController />
               </>
             )}
             {isTrajectoriesEnabled && <TrajectoryLayer />}
