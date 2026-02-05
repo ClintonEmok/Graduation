@@ -13,6 +13,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Share2, Check } from 'lucide-react';
 import { useState } from 'react';
+import { useThemeStore } from '@/store/useThemeStore';
+import { PALETTES, Theme } from '@/lib/palettes';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useURLFeatureFlags } from '@/hooks/useURLFeatureFlags';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import {
@@ -87,6 +97,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   };
 
   const hasChanges = hasPendingChanges();
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -99,6 +111,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
+          <div className="px-1 mb-6 space-y-2">
+            <Label>Appearance</Label>
+            <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select theme" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PALETTES).map(([key, palette]) => (
+                  <SelectItem key={key} value={key}>
+                    {palette.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Tabs defaultValue="visualization" className="w-full">
             <TabsList className="w-full grid grid-cols-3">
               {CATEGORIES.map((cat) => (

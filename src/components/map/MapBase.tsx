@@ -4,6 +4,8 @@ import * as React from 'react';
 import Map, { MapRef, MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CENTER } from '@/lib/projection';
+import { useThemeStore } from '@/store/useThemeStore';
+import { PALETTES } from '@/lib/palettes';
 
 // Initial view state for Chicago
 const INITIAL_VIEW_STATE = {
@@ -13,9 +15,6 @@ const INITIAL_VIEW_STATE = {
   pitch: 0,
   bearing: 0
 };
-
-// Dark Matter style
-const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 interface MapBaseProps {
   children?: React.ReactNode;
@@ -43,14 +42,18 @@ const MapBase = React.forwardRef<MapRef, MapBaseProps>(
       cursor
     },
     ref
-  ) => (
-    <div className={`relative w-full h-full ${className || ''}`}>
-      <Map
-        ref={ref}
-        initialViewState={INITIAL_VIEW_STATE}
-        style={{ width: '100%', height: '100%', cursor }}
-        mapStyle={MAP_STYLE}
-        attributionControl={false}
+  ) => {
+    const theme = useThemeStore((state) => state.theme);
+    const mapStyle = PALETTES[theme].mapStyle;
+
+    return (
+      <div className={`relative w-full h-full ${className || ''}`}>
+        <Map
+          ref={ref}
+          initialViewState={INITIAL_VIEW_STATE}
+          style={{ width: '100%', height: '100%', cursor }}
+          mapStyle={mapStyle}
+          attributionControl={false}
         dragPan={dragPan}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
@@ -61,7 +64,8 @@ const MapBase = React.forwardRef<MapRef, MapBaseProps>(
         {children}
       </Map>
     </div>
-  )
+    );
+  }
 );
 
 MapBase.displayName = 'MapBase';

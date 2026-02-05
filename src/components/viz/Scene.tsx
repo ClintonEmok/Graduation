@@ -2,6 +2,8 @@
 
 import { Canvas } from '@react-three/fiber';
 import { ReactNode } from 'react';
+import { useThemeStore } from '@/store/useThemeStore';
+import { PALETTES } from '@/lib/palettes';
 
 interface SceneProps {
   children?: ReactNode;
@@ -9,6 +11,9 @@ interface SceneProps {
 }
 
 export function Scene({ children, transparent = false }: SceneProps) {
+  const theme = useThemeStore((state) => state.theme);
+  const palette = PALETTES[theme];
+
   return (
     <Canvas
       gl={{ alpha: true }}
@@ -17,7 +22,8 @@ export function Scene({ children, transparent = false }: SceneProps) {
         fov: 45,
       }}
     >
-      {!transparent && <color attach="background" args={['#000000']} />}
+      {!transparent && <color attach="background" args={[palette.background]} />}
+      {!transparent && <fog attach="fog" args={[palette.background, 10, 500]} />}
       {children}
     </Canvas>
   );
