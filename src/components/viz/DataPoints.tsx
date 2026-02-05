@@ -56,6 +56,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const brushRange = useCoordinationStore((state) => state.brushRange);
   const { slices, setActiveSlice } = useSliceStore();
 
   // Normalize time range
@@ -273,6 +274,20 @@ useEffect(() => {
     shader.uniforms.uSelectedIndex.value = selectedIndex ?? -1;
   }
 }, [selectedIndex]);
+
+// Update brush range uniforms
+useEffect(() => {
+  if (!meshRef.current || !meshRef.current.material) return;
+  const material = meshRef.current.material as THREE.Material;
+  const shader = material.userData.shader;
+  if (!shader) return;
+  if (shader.uniforms.uBrushStart) {
+    shader.uniforms.uBrushStart.value = brushRange ? brushRange[0] : 0;
+  }
+  if (shader.uniforms.uBrushEnd) {
+    shader.uniforms.uBrushEnd.value = brushRange ? brushRange[1] : 100;
+  }
+}, [brushRange]);
 
   // Animate transition
   useFrame((_state: RootState, delta: number) => {

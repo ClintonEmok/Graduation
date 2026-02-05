@@ -35,6 +35,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uHasBounds = { value: 0 };
   shader.uniforms.uHasSelection = { value: 0 };
   shader.uniforms.uSelectedIndex = { value: -1 };
+  shader.uniforms.uBrushStart = { value: 0 };
+  shader.uniforms.uBrushEnd = { value: 100 };
 
   shader.vertexShader = shader.vertexShader.replace(
     '#include <common>',
@@ -120,6 +122,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uHasBounds;
     uniform float uHasSelection;
     uniform float uSelectedIndex;
+    uniform float uBrushStart;
+    uniform float uBrushEnd;
     varying float vWorldY;
     varying float vWorldX;
     varying float vWorldZ;
@@ -152,7 +156,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     // Determine if point is selected/focused
     bool isSelected = true;
 
-    // 1. Time Range Check
+    // 1. Time Range Check (existing filter range)
     if (vLinearY < uTimeMin || vLinearY > uTimeMax) {
       isSelected = false;
     }
@@ -185,6 +189,14 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
         // Lower opacity = more aggressive dithering
         
         float opacity = uContextOpacity;
+        
+        // Brush Range Check - "Dim Others" logic
+        // Points outside the brush range get extra dimming
+        bool inBrushRange = vLinearY >= uBrushStart && vLinearY <= uBrushEnd;
+        if (!inBrushRange) {
+          // Extra ghosting for points outside the brush range
+          opacity *= 0.1;
+        }
         
         // Create a dithering threshold based on opacity
         // opacity 0.1 (very ghosted) -> high discard rate
