@@ -6,6 +6,10 @@ import { Trajectory as TrajectoryType } from '@/lib/trajectories';
 import { useTimeStore } from '@/store/useTimeStore';
 import { MathUtils } from 'three';
 
+import { useTrajectoryStore } from '@/store/useTrajectoryStore';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { TrajectoryTooltip } from './TrajectoryTooltip';
+
 interface TrajectoryProps {
   trajectory: TrajectoryType;
   adaptiveYValues: Float32Array | null;
@@ -17,15 +21,36 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ trajectory, adaptiveYVal
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const transitionRef = useRef(timeScaleMode === 'adaptive' ? 1 : 0);
 
+  const hoveredBlock = useTrajectoryStore((state) => state.hoveredBlock);
+  const selectedBlock = useTrajectoryStore((state) => state.selectedBlock);
+  const setHoveredBlock = useTrajectoryStore((state) => state.setHoveredBlock);
+  const setSelectedBlock = useTrajectoryStore((state) => state.setSelectedBlock);
+  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
+
+  const isSelected = selectedBlock === trajectory.block;
+  const isHovered = hoveredBlock === trajectory.block;
+  const hasSelection = selectedBlock !== null;
+
   // 1. Compute base positions and colors
-  const { points, colors, thicknesses } = useMemo(() => {
+  const { points, colors, thicknesses, duration, distance } = useMemo(() => {
     const pts: THREE.Vector3[] = [];
     const cols: THREE.Color[] = [];
     const thks: number[] = [];
 
+    let totalDist = 0;
+    const p0 = trajectory.points[0];
+    const minT = p0.y;
+    const maxT = trajectory.points[trajectory.points.length - 1].y;
+
     trajectory.points.forEach((p, i) => {
       pts.push(new THREE.Vector3(p.x, p.y, p.z));
       
+      if (i > 0) {
+        const prev = trajectory.points[i - 1];
+        // Euclidean distance on XZ plane
+        totalDist += Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.z - prev.z, 2));
+      }
+
       // Gradient: Dim at start, bright at end
       const progress = i / (trajectory.points.length - 1 || 1);
       const color = new THREE.Color().setHSL(0.6, 0.8, 0.2 + progress * 0.6);
@@ -41,7 +66,13 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ trajectory, adaptiveYVal
       }
     });
 
-    return { points: pts, colors: cols, thicknesses: thks };
+    return { 
+      points: pts, 
+      colors: cols, 
+      thicknesses: thks,
+      duration: maxT - minT,
+      distance: totalDist
+    };
   }, [trajectory]);
 
   // 2. Animate transition and update geometry
@@ -82,13 +113,46 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ trajectory, adaptiveYVal
     }
   });
 
-  // Calculate average thickness for the Line (Line2 doesn't support per-vertex thickness easily in drei)
+  // Calculate average thickness for the Line
   const avgThickness = useMemo(() => {
-    return thicknesses.reduce((a, b) => a + b, 0) / thicknesses.length;
-  }, [thicknesses]);
+    let base = thicknesses.reduce((a, b) => a + b, 0) / thicknesses.length;
+    if (isHovered || isSelected) base *= 2;
+    return base;
+  }, [thicknesses, isHovered, isSelected]);
+
+  const opacity = useMemo(() => {
+    if (isSelected) return 1.0;
+    if (hasSelection) return 0.05; // Ghosting
+    if (isHovered) return 0.9;
+    return 0.6;
+  }, [isSelected, hasSelection, isHovered]);
+
+  const handlePointerOver = (e: any) => {
+    e.stopPropagation();
+    setHoveredBlock(trajectory.block);
+  };
+
+  const handlePointerOut = () => {
+    setHoveredBlock(null);
+  };
+
+  const handleClick = (e: any) => {
+    e.stopPropagation();
+    if (isSelected) {
+      setSelectedBlock(null);
+    } else {
+      setSelectedBlock(trajectory.block);
+      // Select the first point in the trajectory as a representative
+      setSelectedIndex(trajectory.points[0].originalIndex, 'cube');
+    }
+  };
 
   return (
-    <group>
+    <group 
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+      onClick={handleClick}
+    >
       <Line
         ref={lineRef}
         points={points.map(p => [p.x, p.y, p.z] as [number, number, number])}
@@ -96,16 +160,24 @@ export const Trajectory: React.FC<TrajectoryProps> = ({ trajectory, adaptiveYVal
         lineWidth={avgThickness}
         vertexColors={colors.map(c => [c.r, c.g, c.b] as [number, number, number])}
         transparent
-        opacity={0.8}
+        opacity={opacity}
       />
       
       {/* Arrowhead (Cone) at the latest point */}
-      <group ref={arrowRef}>
+      <group ref={arrowRef} visible={!hasSelection || isSelected}>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <coneGeometry args={[0.8, 2, 8]} />
-          <meshStandardMaterial color="white" />
+          <meshStandardMaterial color="white" transparent opacity={opacity} />
         </mesh>
       </group>
+
+      {isHovered && (
+        <TrajectoryTooltip 
+          duration={duration} 
+          distance={distance} 
+          block={trajectory.block}
+        />
+      )}
     </group>
   );
 };
