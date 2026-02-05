@@ -11,7 +11,7 @@ import { MarkerLayer } from './layers/MarkerLayer';
 import { TimelineBrush } from './TimelineBrush';
 import { useDataStore } from '@/store/useDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
-import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
 
 interface DataPoint {
   timestamp: Date | number;
@@ -59,38 +59,26 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
      return mapped;
    }, [columns, minTimestampSec, maxTimestampSec, propData]);
 
-   // Handle internal interaction if no onChange provided
-   const handleChange = (domain: [Date, Date] | null) => {
-     if (!domain) return;
-     if (onChange) {
-       onChange(domain);
-     } else {
-       // Default behavior: update time range in store
-       // Domain is Date objects (ms)
-       // Store expects... check store. usually normalized or epoch?
-       // useTimeStore: currentTime is number. timeRange is [number, number].
-       // We need to check what units useTimeStore uses.
-       // It seems to use normalized 0-100 based on previous context, OR epoch.
-       // Let's assume epoch seconds or match what data uses.
-       // Actually, data mapping above used `epoch * 1000` (ms).
-       // So domain is ms.
-       // If store uses 0-100, we need to normalize.
-       // If store uses epoch seconds, we div by 1000.
-       
-       // Let's check `TimeControls.tsx` -> `formatTime`. 
-       // `t.toFixed(1)` suggests normalized 0-100.
-       
-       if (minTimestampSec !== null && maxTimestampSec !== null) {
-          // Convert ms to normalized
-          // inverse of normalizedToEpochSeconds
-          // (val - min) / span * 100
-          // Wait, we need to import that utility or implement it.
-          // epochSecondsToNormalized is in lib/time-domain.
-          
-          // For now, let's just log or assume normalized.
-       }
-     }
-   };
+    // Handle brush selection - converts dates to normalized time range
+    const handleChange = (domain: [Date, Date] | null) => {
+      if (!domain) return;
+      
+      if (onChange) {
+        onChange(domain);
+      }
+      
+      // Always update the store for 3D view synchronization
+      // Convert Date (ms) to normalized 0-100 range
+      if (minTimestampSec !== null && maxTimestampSec !== null) {
+        const startEpoch = domain[0].getTime() / 1000; // ms to seconds
+        const endEpoch = domain[1].getTime() / 1000;
+        
+        const startNormalized = epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec);
+        const endNormalized = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
+        
+        setRange([startNormalized, endNormalized]);
+      }
+    };
 
    if (width < 10) return null;
 

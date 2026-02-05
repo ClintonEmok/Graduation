@@ -180,22 +180,37 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
       if (uShowContext < 0.5) {
         discard; // Hide context completely if toggled off
       } else {
-        // Dithering Pattern for Transparency
-        // Use screen coordinates to create a stipple pattern
-        // (x + y) % 2.0 > 0.5 gives a checkerboard
+        // Dynamic opacity-based dithering
+        // uContextOpacity controls how visible context points are (0.0 to 1.0)
+        // Lower opacity = more aggressive dithering
         
-        // Adjust density based on opacity preference? 
-        // For now, fixed 50% dither for context, plus alpha blending for color fade
+        float opacity = uContextOpacity;
         
-        // Simple 2x2 Bayer matrix simulation or just mod pattern
-        if (mod(gl_FragCoord.x + gl_FragCoord.y, 2.0) > 0.5) {
-            discard; 
+        // Create a dithering threshold based on opacity
+        // opacity 0.1 (very ghosted) -> high discard rate
+        // opacity 0.5 (half visible) -> medium discard rate
+        // opacity 1.0 (fully visible) -> no discard
+        
+        if (opacity < 0.99) {
+          // Use a hash-based dither for smoother appearance
+          float ditherValue = mod(gl_FragCoord.x * 0.37 + gl_FragCoord.y * 0.73, 1.0);
+          
+          // Adjust threshold: lower opacity = higher threshold = more discards
+          float threshold = 1.0 - opacity;
+          
+          if (ditherValue < threshold) {
+            discard;
+          }
         }
 
-        // Desaturate and dim
+        // Desaturate and dim based on opacity
         float luminance = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-        gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 0.0); // Fully desaturated (grayscale)
-        gl_FragColor.rgb *= 0.5; // Dimmed
+        float desaturation = 0.7; // Keep some color but mostly gray
+        gl_FragColor.rgb = mix(vec3(luminance), gl_FragColor.rgb, 1.0 - desaturation);
+        
+        // Dim more aggressively when opacity is low
+        float dimFactor = 0.3 + (opacity * 0.4); // 0.3 to 0.7 range
+        gl_FragColor.rgb *= dimFactor;
         gl_FragColor.a = 1.0; // Opaque pixels (after discard) avoids sorting issues
       }
     }
