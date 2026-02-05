@@ -316,8 +316,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Palette switch updates all visualizations immediately.
 3. Selected palette persists across sessions.
 
-**Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+**Plans:** 3 plans
+- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
+- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 15: Time Slices Visualization
 
@@ -363,8 +365,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Heatmap responds to filter/time changes.
 3. Feature can be disabled in Settings.
 
-**Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+**Plans:** 3 plans
+- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
+- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 17: Cluster Highlighting
 
@@ -385,8 +389,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Visual indicators (boxes, labels) highlight cluster boundaries.
 3. Clicking a cluster focuses the view on that region.
 
-**Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+**Plans:** 3 plans
+- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
+- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 18: Trajectories Visualization
 
@@ -407,8 +413,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Path direction (time flow) is visually indicated.
 3. Feature can be disabled in Settings.
 
-**Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+**Plans:** 3 plans
+- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
+- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Phase 19: Aggregated Bins (LOD)
 
@@ -429,8 +437,10 @@ This roadmap delivers a research prototype for evaluating adaptive time scaling 
 2. Bar height encodes event count per bin.
 3. Transition is smooth, not jarring.
 
-**Plans:**
-- [ ] TBD (created by /gsd/plan-phase)
+**Plans:** 3 plans
+- [ ] 16-01-PLAN.md — Heatmap Store & UI Controls
+- [ ] 16-02-PLAN.md — GPGPU Rendering Engine
+- [ ] 16-03-PLAN.md — View Integration (Map & Cube)
 
 ## Progress
 
