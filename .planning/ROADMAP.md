@@ -5,6 +5,6 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 22-01-PLAN.md — Data Foundation
-- [ ] 22-02-PLAN.md — Panel UI
-- [ ] 22-03-PLAN.md — Integration & Interaction
+- [x] 22-01-PLAN.md — Data Foundation
+- [x] 22-02-PLAN.md — Panel UI
+- [x] 22-03-PLAN.md — Integration & Interaction

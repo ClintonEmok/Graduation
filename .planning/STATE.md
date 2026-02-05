@@ -2,16 +2,16 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 21 - Timeline Redesign
+**Current Phase:** 22 - Contextual Slice Analysis
 **Status:** Complete
 
 ## Current Position
 
-Phase: 21 of 21 (Timeline Redesign)
+Phase: 22 of 22 (Contextual Slice Analysis)
 Plan: 3 of 3 in current phase
 Status: Complete
-Last activity: 2026-02-05 - Completed Phase 21
-**Next Phase:** Phase 22: Contextual Slice Analysis
+Last activity: 2026-02-05 - Completed Phase 22
+**Next Phase:** Milestone Audit / Completion
 
 Progress: █████████████████████████ 100%
 
@@ -37,7 +37,7 @@ Progress: ███████████████████████�
 [x] Phase 19: Aggregated Bins (LOD)
 [x] Phase 20: Server-Side Aggregation
 [x] Phase 21: Timeline Redesign
-[ ] Phase 22: Contextual Slice Analysis
+[x] Phase 22: Contextual Slice Analysis
 ```
 
 ## Performance Metrics
@@ -45,7 +45,7 @@ Progress: ███████████████████████�
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 21/22 | 22/22 |
+| Phase Completion | 22/22 | 22/22 |
 
 ## Context & Decisions
 
@@ -59,6 +59,8 @@ Progress: ███████████████████████�
 | 21 | Visx for Timeline | React-native D3 integration provides better DX and performance than raw D3. |
 | 21 | Mobile Blocking | Complex interactions require desktop precision; mobile is explicitly out of scope. |
 | 21 | Store Integration | Timeline drives `useTimeStore` directly, acting as the primary navigation control. |
+| 22 | Side Panel | Contextual analysis lives in a slide-in sidebar to preserve map visibility. |
+| 22 | On-Demand Stats | Stats are calculated only when a slice is active to save resources. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -68,18 +70,13 @@ Progress: ███████████████████████�
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed Phase 21
+Stopped at: Completed Phase 22
 Resume file: None
 
-## Phase 21 - Timeline Redesign
+## Phase 22 - Contextual Slice Analysis
 **Status:** Complete
 **Completed:** 2026-02-05
 **Key Outcomes:**
-- Replaced placeholder slider with Visx-based Histogram/Brush timeline.
-- Enabled "Focus+Context" zooming and panning.
-- Fixed single-point selection bug by using range-based interaction.
-
-## Accumulated Context
-### Roadmap Evolution
-- Phase 21 added: timeline redesign
-- Phase 22 added: contextual slice analysis
+- Implemented `ContextualSlicePanel` for inspecting time slices.
+- Added `useSliceStats` to calculate crime type/district distributions.
+- Wired 3D point clicks to open the relevant slice context.
