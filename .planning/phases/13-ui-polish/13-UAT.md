@@ -64,7 +64,7 @@ skipped: 0
   reason: "User reported: i dont see it"
   severity: major
   test: 1
-  root_cause: ""     # Filled by diagnosis
+  root_cause: "SettingsPanel.tsx handleSave function applies changes but does not trigger toast.success()."
   artifacts: []      # Filled by diagnosis
   missing: []        # Filled by diagnosis
   debug_session: ""  # Filled by diagnosis
@@ -74,7 +74,7 @@ skipped: 0
   reason: "User reported: save changes doesnt trigger it or its too fast"
   severity: minor
   test: 2
-  root_cause: ""     # Filled by diagnosis
+  root_cause: "LoadingOverlay component is created but not imported or used in the application."
   artifacts: []      # Filled by diagnosis
   missing: []        # Filled by diagnosis
   debug_session: ""  # Filled by diagnosis
@@ -84,7 +84,7 @@ skipped: 0
   reason: "User reported: cant seem to trigger it"
   severity: major
   test: 3
-  root_cause: ""     # Filled by diagnosis
+  root_cause: "ErrorDialog component is created but not connected to any ErrorBoundary or error handling logic."
   artifacts: []      # Filled by diagnosis
   missing: []        # Filled by diagnosis
   debug_session: ""  # Filled by diagnosis
