@@ -20,6 +20,9 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uTransition = { value: 0 };
   shader.uniforms.uTimeMin = { value: 0 };
   shader.uniforms.uTimeMax = { value: 100 };
+  shader.uniforms.uSlices = { value: new Float32Array(20) };
+  shader.uniforms.uSliceCount = { value: 0 };
+  shader.uniforms.uSliceThreshold = { value: 1.0 };
   shader.uniforms.uShowContext = { value: 1 };
   shader.uniforms.uContextOpacity = { value: 0.1 };
   shader.uniforms.uUseColumns = { value: useColumns ? 1 : 0 };
@@ -112,6 +115,9 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uRange;
     uniform float uTimeMin;
     uniform float uTimeMax;
+    uniform float uSlices[20];
+    uniform int uSliceCount;
+    uniform float uSliceThreshold;
     uniform float uShowContext;
     uniform float uContextOpacity;
     uniform float uTypeMap[${typeMapSize}];
@@ -197,6 +203,15 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
       float isInstanceSelected = step(abs(vInstanceId - uSelectedIndex), 0.5);
       if (isInstanceSelected > 0.5) {
         gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), 0.45);
+        gl_FragColor.a = 1.0;
+      }
+    }
+
+    // Slice Highlighting
+    for (int i = 0; i < 20; i++) {
+      if (i >= uSliceCount) break;
+      if (abs(vLinearY - uSlices[i]) < uSliceThreshold) {
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), 0.6);
         gl_FragColor.a = 1.0;
       }
     }
