@@ -54,7 +54,7 @@ export const getAggregatedBins = async (params: AggregationParams): Promise<Bin[
       ((ix + 0.5) / ${resX} * 100.0) - 50.0 as x,
       ((iy + 0.5) / ${resY} * 100.0) as y,
       ((iz + 0.5) / ${resZ} * 100.0) - 50.0 as z,
-      count(*) as count,
+      CAST(count(*) AS INTEGER) as count,
       mode(type) as dominantType
     FROM binned
     WHERE ix >= 0 AND ix < ${resX}
