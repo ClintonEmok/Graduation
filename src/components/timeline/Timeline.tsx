@@ -1,13 +1,15 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ParentSize } from '@visx/responsive';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { max } from 'd3-array';
+import { BarChart2, CircleDot } from 'lucide-react';
 import { binTimeData } from '@/utils/binning';
 import { HistogramLayer } from './layers/HistogramLayer';
 import { AxisLayer } from './layers/AxisLayer';
+import { MarkerLayer } from './layers/MarkerLayer';
+import { TimelineBrush } from './TimelineBrush';
 
-// TODO: Replace with real data type
 interface DataPoint {
   timestamp: Date | number;
   [key: string]: any;
@@ -15,11 +17,13 @@ interface DataPoint {
 
 interface TimelineProps {
   data?: DataPoint[];
-  width: number;
-  height: number;
+  onChange?: (domain: [Date, Date]) => void;
+  selectedDomain?: [Date, Date];
 }
 
-const TimelineContent = ({ width, height, data = [] }: TimelineProps) => {
+const TimelineContent = ({ width, height, data = [], onChange, selectedDomain }: TimelineProps & { width: number; height: number }) => {
+   const [viewMode, setViewMode] = useState<'histogram' | 'markers'>('histogram');
+
    if (width < 10) return null;
 
    const margin = { top: 20, right: 20, bottom: 40, left: 20 };
@@ -58,27 +62,62 @@ const TimelineContent = ({ width, height, data = [] }: TimelineProps) => {
    }
 
    return (
-     <svg width={width} height={height}>
-        <g transform={`translate(${margin.left}, ${margin.top})`}>
-          <HistogramLayer 
-            bins={bins} 
-            xScale={xScale} 
-            yScale={yScale} 
-            height={innerHeight} 
-            color="#3b82f6" 
-          />
-          <AxisLayer xScale={xScale} height={innerHeight} />
-        </g>
-     </svg>
+     <div className="relative w-full h-full">
+        {/* View Toggle */}
+        <button
+          onClick={() => setViewMode(m => m === 'histogram' ? 'markers' : 'histogram')}
+          className="absolute top-0 right-0 p-1 bg-background/80 backdrop-blur rounded border shadow-sm z-10 hover:bg-accent"
+          title={`Switch to ${viewMode === 'histogram' ? 'Markers' : 'Histogram'}`}
+        >
+          {viewMode === 'histogram' ? <CircleDot className="w-4 h-4" /> : <BarChart2 className="w-4 h-4" />}
+        </button>
+
+        <svg width={width} height={height}>
+            <g transform={`translate(${margin.left}, ${margin.top})`}>
+              {viewMode === 'histogram' && (
+                  <HistogramLayer 
+                    bins={bins} 
+                    xScale={xScale} 
+                    yScale={yScale} 
+                    height={innerHeight} 
+                    color="#3b82f6" 
+                  />
+              )}
+              {viewMode === 'markers' && (
+                  <MarkerLayer
+                    data={data}
+                    xScale={xScale}
+                    yScale={yScale}
+                    height={innerHeight}
+                  />
+              )}
+              
+              <AxisLayer xScale={xScale} height={innerHeight} />
+              
+              <TimelineBrush 
+                xScale={xScale}
+                yScale={yScale}
+                width={innerWidth}
+                height={innerHeight}
+                onChange={(domain) => {
+                    if (domain && onChange) {
+                        onChange(domain);
+                    }
+                }}
+                selectedDomain={selectedDomain}
+              />
+            </g>
+        </svg>
+     </div>
    );
 };
 
-export function Timeline({ data }: { data?: any[] }) {
+export function Timeline(props: TimelineProps) {
   return (
     <div className="w-full h-full min-h-[150px]">
       <ParentSize>
         {({ width, height }) => (
-          <TimelineContent width={width} height={height} data={data} />
+          <TimelineContent width={width} height={height} {...props} />
         )}
       </ParentSize>
     </div>
