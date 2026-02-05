@@ -8,11 +8,11 @@
 ## Current Position
 
 Phase: 15 of 19 (Time Slices Visualization)
-Plan: 1 of 2 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-05 - Completed 15-01-SUMMARY.md
+Last activity: 2026-02-05 - Completed 15-02-SUMMARY.md
 
-Progress: ██████████████░░░░ 74%
+Progress: ███████████████░░░ 75%
 
 ```
 [x] Phase 1: Core 3D
@@ -115,6 +115,7 @@ Progress: ██████████████░░░░ 74%
 | 15 | Extended adaptive-scale.ts | Added Columnar support to avoid O(N) allocation |
 | 15 | Drag Interaction | Implemented custom raycasting for robust slice movement |
 | 15 | Feature Flag Gating | Used 'timeSlices' flag to gate visualization |
+| 15 | Slice Manager in Toolbar | Accessible via "Layers" button in FloatingToolbar |
 
 ## Blockers/Concerns Carried Forward
 
@@ -127,5 +128,5 @@ Progress: ██████████████░░░░ 74%
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 15-01-SUMMARY.md
+Stopped at: Completed 15-02-SUMMARY.md
 Resume file: None
