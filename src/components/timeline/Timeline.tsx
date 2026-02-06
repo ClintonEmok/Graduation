@@ -13,6 +13,7 @@ import { useDataStore } from '@/store/useDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
+import { DensityTrack } from './DensityTrack';
 
 interface DataPoint {
   timestamp: Date | number;
@@ -38,19 +39,8 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
    const data = useMemo(() => {
      if (propData) return propData;
      if (!columns || minTimestampSec === null || maxTimestampSec === null) return [];
-
-     // Convert columnar data to array for binning
-     // Limit to 2000 points for marker performance if needed, or use full for histogram
-     // For histogram, we need all data. d3.bin iterates.
-     // Optimization: d3.bin on Float32Array directly? 
-     // binTimeData expects object array with accessor.
-     // Let's create a lightweight proxy or map.
      
      const count = columns.length;
-     // Optimization: Don't map everything if count is huge.
-     // But we need it for histogram.
-     // Let's just map it for now.
-     
      const mapped = [];
      for(let i=0; i<count; i++) {
         // Reconstruct timestamp from normalized 0-100 y
@@ -85,9 +75,11 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
 
    if (width < 10) return null;
 
+   const densityHeight = 12;
    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
    const innerWidth = width - margin.left - margin.right;
-   const innerHeight = height - margin.top - margin.bottom;
+   // Subtract densityHeight from available chart height
+   const innerHeight = height - margin.top - margin.bottom - densityHeight;
 
    const { xScale, yScale, bins } = useMemo(() => {
      if (!data.length) return { xScale: null, yScale: null, bins: [] };
@@ -120,6 +112,8 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
      );
    }
 
+   // ...
+
    return (
      <div className="relative w-full h-full">
         {/* View Toggle */}
@@ -131,8 +125,22 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
           {viewMode === 'histogram' ? <CircleDot className="w-4 h-4" /> : <BarChart2 className="w-4 h-4" />}
         </button>
 
+        {/* Density Track - Placed above the chart area */}
+        <div 
+            className="absolute" 
+            style={{ 
+                left: margin.left, 
+                top: margin.top, 
+                width: innerWidth, 
+                height: densityHeight 
+            }}
+        >
+            <DensityTrack width={innerWidth} height={densityHeight} />
+        </div>
+
         <svg width={width} height={height}>
-            <g transform={`translate(${margin.left}, ${margin.top})`}>
+            {/* Shift chart down by densityHeight */}
+            <g transform={`translate(${margin.left}, ${margin.top + densityHeight})`}>
               {viewMode === 'histogram' && (
                   <HistogramLayer 
                     bins={bins} 
@@ -166,6 +174,7 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
      </div>
    );
 };
+
 
 export function Timeline(props: TimelineProps) {
   return (

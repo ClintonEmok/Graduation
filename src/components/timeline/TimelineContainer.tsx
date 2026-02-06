@@ -1,4 +1,5 @@
 import { Timeline } from './Timeline';
+import { AdaptiveControls } from './AdaptiveControls';
 import { cn } from '@/lib/utils'; // Assuming this exists, typical in shadcn/ui. If not, I'll use template literals.
 
 export function TimelineContainer({ className }: { className?: string }) {
@@ -17,7 +18,13 @@ export function TimelineContainer({ className }: { className?: string }) {
       </div>
       
       {/* Desktop Content */}
-      <div className="hidden md:block w-full h-48 p-4">
+      <div className="hidden md:block w-full h-48 p-4 relative group">
+         {/* Adaptive Controls - Hover to see fully or always visible? Always visible for now. */}
+         {/* Positioned top-left, floating above the timeline content */}
+         <div className="absolute top-2 left-4 z-50">
+            <AdaptiveControls />
+         </div>
+         
          <Timeline /> 
       </div>
     </div>
