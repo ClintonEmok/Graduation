@@ -8,12 +8,12 @@
 ## Current Position
 
 Phase: 25 of 25 (Adaptive Time Intervals & Burstiness)
-Plan: 0 of 2 in current phase
-Status: Not Started
-Last activity: 2026-02-06 - Added Phase 25
-**Next:** Plan Phase 25
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-06 - Completed 25-01-PLAN.md
+**Next:** Execute 25-02-PLAN.md
 
-Progress: ████████████████████████░ 96%
+Progress: ████████████████████████▌ 98%
 
 ```
 [x] Phase 1: Core 3D
@@ -76,6 +76,7 @@ Progress: ███████████████████████�
 | 24 | Hook in MainScene | Sync hook runs in always-mounted component for guaranteed availability. |
 | 24 | Cyan Raycast Line | Cyan (#00ffff) provides high visibility for raycast feedback against dark 3D background. |
 | 24 | Raycast Animation | 500ms fade-out balances visibility with non-intrusiveness for user feedback. |
+| 25 | Worker-Store Pattern | Offload density calcs to Worker, managed by Zustand singleton |
 
 ## Blockers/Concerns Carried Forward
 
@@ -84,8 +85,8 @@ Progress: ███████████████████████�
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Completed 24-05-PLAN.md - Visual raycast line provides click feedback in 3D view
+Last session: 2026-02-06
+Stopped at: Completed 25-01-PLAN.md - Adaptive Worker & Store
 Resume file: None
 
 ## Phase 23 - Map Interaction & Debugging
