@@ -17,19 +17,20 @@ Plans:
 - [x] 24-01-PLAN.md — Coordination Store & Focus+Context
 - [x] 24-02-PLAN.md — 3D Click Targeting & Raycast Debug
 - [x] 24-03-PLAN.md — Conductor Logic (useSelectionSync hook)
-- [ ] 24-04-PLAN.md — Gap: Connect Brush Range to Coordination Store
-- [ ] 24-05-PLAN.md — Gap: Add Visual Raycast Line
+- [x] 24-04-PLAN.md — Gap: Connect Brush Range to Coordination Store
+- [x] 24-05-PLAN.md — Gap: Add Visual Raycast Line
 
 ### Phase 25: Adaptive Time Intervals & Burstiness
 
 **Goal:** Implement adaptive time scaling based on burstiness intervals.
 **Depends on:** Phase 24
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd/plan-phase 25 to break down)
+- [ ] 25-01-PLAN.md — Core Warp Logic (KDE & Hooks)
+- [ ] 25-02-PLAN.md — Visualization & Adaptive Binning
 
 **Details:**
-- Find bursty intervals and expand them.
-- Compress low-activity intervals in adaptive mode.
-- Develop a measure of burstiness.
+- Implement KDE-based time warping.
+- Upgrade Timeline to use Screen Pixel Density binning (Option C).
+- Synchronize 3D Cube and Timeline in adaptive mode.
