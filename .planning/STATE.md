@@ -2,18 +2,18 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 23 - Map Interaction & Debugging
-**Status:** Complete
+**Current Phase:** 25 - Adaptive Time Intervals & Burstiness
+**Status:** Not Started
 
 ## Current Position
 
-Phase: 24 of 24 (Interaction Synthesis & 3D Debugging)
-Plan: 5 of 5 in current phase
-Status: Phase Complete
-Last activity: 2026-02-05 - Completed 24-05-PLAN.md (Gap closure - visual raycast line)
-**Next:** Project complete - all phases finished
+Phase: 25 of 25 (Adaptive Time Intervals & Burstiness)
+Plan: 0 of 2 in current phase
+Status: Not Started
+Last activity: 2026-02-06 - Added Phase 25
+**Next:** Plan Phase 25
 
-Progress: █████████████████████████ 100%
+Progress: ████████████████████████░ 96%
 
 ```
 [x] Phase 1: Core 3D
@@ -40,6 +40,7 @@ Progress: ███████████████████████�
 [x] Phase 22: Contextual Slice Analysis
 [x] Phase 23: Map Interaction & Debugging
 [x] Phase 24: Interaction Synthesis & 3D Debugging
+[ ] Phase 25: Adaptive Time Intervals & Burstiness
 ```
 
 ## Performance Metrics
@@ -47,7 +48,7 @@ Progress: ███████████████████████�
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 23/24 | 24/24 |
+| Phase Completion | 24/25 | 25/25 |
 
 ## Context & Decisions
 
@@ -116,3 +117,4 @@ Resume file: None
 - Phase 22 added: contextual slice analysis
 - Phase 23 added: map interaction & debugging
 - Phase 24 added: interaction synthesis & 3d debugging
+- Phase 25 added: adaptive time intervals & burstiness
