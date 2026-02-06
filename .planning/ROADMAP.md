@@ -24,11 +24,12 @@ Plans:
 
 **Goal:** Implement adaptive time scaling based on burstiness intervals.
 **Depends on:** Phase 24
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — Core Warp Logic (KDE & Hooks)
-- [ ] 25-02-PLAN.md — Visualization & Adaptive Binning
+- [ ] 25-01-PLAN.md — Foundation (Worker & Store)
+- [ ] 25-02-PLAN.md — 3D Adaptive Visualization (Shader & Interaction)
+- [ ] 25-03-PLAN.md — Timeline Density & Controls
 
 **Details:**
 - Implement KDE-based time warping with Linear Blend (Option C).
