@@ -19,6 +19,7 @@ import { TrajectoryLayer } from './TrajectoryLayer';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
 import * as THREE from 'three';
 import { CameraControls } from '@react-three/drei';
@@ -29,6 +30,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
 
   const mode = useUIStore((state) => state.mode);
   const data = useDataStore((state) => state.data);
+  const columns = useDataStore((state) => state.columns);
   const isTimeSlicesEnabled = useFeatureFlagsStore((state) => state.isEnabled('timeSlices'));
   const isHeatmapEnabled = useFeatureFlagsStore((state) => state.isEnabled('heatmap'));
   const isClusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
@@ -39,6 +41,33 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const planeRef = useRef<THREE.Mesh>(null);
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
+
+  // Trigger adaptive map computation when data loads
+  useEffect(() => {
+    // 1. Handle Columnar Data (Real Data)
+    if (columns && columns.timestamp) {
+      // timestamps are normalized 0-100 in the store for columnar data
+      useAdaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
+    } 
+    // 2. Handle Mock Data (Object Array)
+    else if (data.length > 0) {
+      const count = data.length;
+      const timestamps = new Float32Array(count);
+      let minT = Infinity;
+      let maxT = -Infinity;
+      
+      for(let i=0; i<count; i++) {
+        const t = data[i].timestamp;
+        timestamps[i] = t;
+        if (t < minT) minT = t;
+        if (t > maxT) maxT = t;
+      }
+      
+      if (minT !== Infinity && maxT > minT) {
+        useAdaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
+      }
+    }
+  }, [columns, data]);
 
   useEffect(() => {
     if (controlsRef.current) {
