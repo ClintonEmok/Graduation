@@ -3,17 +3,17 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 25 - Adaptive Time Intervals & Burstiness
-**Status:** Not Started
+**Status:** Complete
 
 ## Current Position
 
 Phase: 25 of 25 (Adaptive Time Intervals & Burstiness)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-06 - Completed 25-01-PLAN.md
-**Next:** Execute 25-02-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-06 - Completed 25-03-SUMMARY.md
+**Next:** Project Complete (or Maintenance)
 
-Progress: ████████████████████████▌ 98%
+Progress: █████████████████████████ 100%
 
 ```
 [x] Phase 1: Core 3D
@@ -40,7 +40,7 @@ Progress: ███████████████████████�
 [x] Phase 22: Contextual Slice Analysis
 [x] Phase 23: Map Interaction & Debugging
 [x] Phase 24: Interaction Synthesis & 3D Debugging
-[ ] Phase 25: Adaptive Time Intervals & Burstiness
+[x] Phase 25: Adaptive Time Intervals & Burstiness
 ```
 
 ## Performance Metrics
@@ -48,7 +48,7 @@ Progress: ███████████████████████�
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirement Coverage | 100% | 100% |
-| Phase Completion | 24/25 | 25/25 |
+| Phase Completion | 25/25 | 25/25 |
 
 ## Context & Decisions
 
@@ -77,6 +77,9 @@ Progress: ███████████████████████�
 | 24 | Cyan Raycast Line | Cyan (#00ffff) provides high visibility for raycast feedback against dark 3D background. |
 | 24 | Raycast Animation | 500ms fade-out balances visibility with non-intrusiveness for user feedback. |
 | 25 | Worker-Store Pattern | Offload density calcs to Worker, managed by Zustand singleton |
+| 25 | Texture Warp | Using DataTexture for GPU warp lookup ensures performance with complex adaptive maps. |
+| 25 | Debounced Raycast | Updating CPU matrices only after warp settles (500ms) preserves interaction accuracy without lag. |
+| 25 | Density Heatmap | Canvas-based strip visualizes density (Red=High, Blue=Low) for intuitive understanding of warp. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -86,31 +89,17 @@ Progress: ███████████████████████�
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 25-01-PLAN.md - Adaptive Worker & Store
+Stopped at: Completed 25-03-SUMMARY.md - Integrated Adaptive Controls
 Resume file: None
 
-## Phase 23 - Map Interaction & Debugging
+## Phase 25 - Adaptive Time Intervals & Burstiness
 **Status:** Complete
-**Completed:** 2026-02-05
+**Completed:** 2026-02-06
 **Key Outcomes:**
-- Clicking on map now selects points reliably.
-- Visual debug lines confirm selection accuracy.
-
-## Phase 24 - Interaction Synthesis & 3D Debugging
-**Status:** Complete
-**Plan:** 5 of 5 Complete
-**Key Outcomes:**
-- useCoordinationStore verified as single source of truth
-- Ghosting shader supports dynamic opacity-based dimming
-- Timeline brush properly synchronizes with 3D view via normalized time
-- 3D click targeting fixed with drag detection and visual debugging
-- Brush-based context dimming implemented in shader via uBrushStart/uBrushEnd
-- Conductor hook (useSelectionSync) ties all views together
-- Timeline auto-scrolls to selected point's time
-- Slice panels auto-activate when selection falls within range
-- Timeline brush selection now populates coordinationStore brushRange (Plan 04)
-- DualTimeline brush/zoom updates coordinationStore brushRange (Plan 04)
-- Visual raycast line shows camera-to-click feedback (Plan 05 - Gap closure)
+- Implemented Kernel Density Estimation in a Web Worker for non-blocking adaptive time calculation.
+- GPU-accelerated adaptive warping using Data Textures and custom shader logic.
+- Accurate raycasting for warped points via debounced CPU matrix sync.
+- Adaptive Controls UI and Density Heatmap integrated into Timeline.
 
 ## Accumulated Context
 ### Roadmap Evolution
