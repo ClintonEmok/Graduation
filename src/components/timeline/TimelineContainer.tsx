@@ -18,10 +18,10 @@ export function TimelineContainer({ className }: { className?: string }) {
       </div>
       
       {/* Desktop Content */}
-      <div className="hidden md:block w-full h-48 p-4 relative group">
+      <div className="hidden md:block w-full h-full p-4 relative group">
          {/* Adaptive Controls - Hover to see fully or always visible? Always visible for now. */}
          {/* Positioned top-left, floating above the timeline content */}
-         <div className="absolute top-2 left-4 z-50">
+         <div className="absolute top-2 left-4 z-[100]">
             <AdaptiveControls />
          </div>
          
