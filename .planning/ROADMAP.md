@@ -31,6 +31,7 @@ Plans:
 - [ ] 25-02-PLAN.md — Visualization & Adaptive Binning
 
 **Details:**
-- Implement KDE-based time warping.
-- Upgrade Timeline to use Screen Pixel Density binning (Option C).
+- Implement KDE-based time warping with Linear Blend (Option C).
+- Upgrade Timeline to use Screen Pixel Density binning.
+- Add Slider to blend between Uniform and Adaptive time.
 - Synchronize 3D Cube and Timeline in adaptive mode.
