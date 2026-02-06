@@ -13,7 +13,7 @@ import { useFrame, RootState, useThree } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { RaycastLine } from './RaycastLine';
 import { DataPoint, useDataStore } from '@/store/useDataStore';
-import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale';
+// import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale'; // Removed
 import { getCrimeTypeId } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useAggregationStore } from '@/store/useAggregationStore';
@@ -23,6 +23,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { applyGhostingShader } from './shaders/ghosting';
 import { useThemeStore } from '@/store/useThemeStore';
 import { useSliceStore } from '@/store/useSliceStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { PALETTES } from '@/lib/palettes';
 
 interface DataPointsProps {
@@ -60,6 +61,45 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
   const brushRange = useCoordinationStore((state) => state.brushRange);
   const { slices, setActiveSlice } = useSliceStore();
+
+  // Adaptive Store
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const warpMap = useAdaptiveStore((state) => state.warpMap);
+  const computeMaps = useAdaptiveStore((state) => state.computeMaps);
+
+  // Initialize Data Texture for Warp Map
+  // Default: 2 points (0 -> 0, 1 -> 100) linear mapping
+  const [warpTexture] = useState(() => {
+    const tex = new THREE.DataTexture(
+      new Float32Array([0, 100]),
+      2,
+      1,
+      THREE.RedFormat,
+      THREE.FloatType
+    );
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    return tex;
+  });
+
+  // Update texture when warpMap changes
+  useEffect(() => {
+    if (warpMap && warpMap.length > 0) {
+      // Re-allocate texture if size changes, or just update data if safe?
+      // Safest to dispose and recreate or just update image.data if size matches?
+      // DataTexture allows updating image.data.
+      warpTexture.image.data = warpMap;
+      warpTexture.image.width = warpMap.length;
+      warpTexture.needsUpdate = true;
+    }
+  }, [warpMap, warpTexture]);
+
+  // Compute adaptive maps when data changes
+  useEffect(() => {
+    const timestamps = columns ? columns.timestamp : new Float32Array(data.map(d => d.y));
+    computeMaps(timestamps, [0, 100]);
+  }, [columns, data, computeMaps]);
 
   // Normalize time range
   const normalizedTimeRange = useMemo(() => {
@@ -102,12 +142,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     };
   }, [spatialBounds]);
 
-  const adaptiveYValues = useMemo(() => {
-    if (columns) {
-      return computeAdaptiveYColumnar(columns.timestamp, [0, 100], [0, 100]);
-    }
-    return new Float32Array(computeAdaptiveY(data, [0, 100], [0, 100]));
-  }, [data, columns]);
+  // Removed adaptiveYValues computation
 
   const { filterType, filterDistrict, colors, colX, colZ, colLinearY } = useMemo(() => {
     const count = columns ? columns.length : data.length;
@@ -219,6 +254,12 @@ useEffect(() => {
   const material = meshRef.current.material as THREE.Material;
   const shader = material.userData.shader;
   if (!shader) return;
+  
+  // Update Warp Texture
+  if (shader.uniforms.uWarpTexture) {
+    shader.uniforms.uWarpTexture.value = warpTexture;
+  }
+
   if (shader.uniforms.uTimeMin) {
     shader.uniforms.uTimeMin.value = normalizedTimeRange[0];
   }
@@ -232,7 +273,7 @@ useEffect(() => {
   if (shader.uniforms.uDataBoundsMax) {
     shader.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
   }
-}, [normalizedTimeRange, minX, maxX, minZ, maxZ]);
+}, [normalizedTimeRange, minX, maxX, minZ, maxZ, warpTexture]);
 
 useEffect(() => {
   if (!meshRef.current || !meshRef.current.material) return;
@@ -296,15 +337,25 @@ useEffect(() => {
     if (meshRef.current && meshRef.current.material) {
       const material = meshRef.current.material as THREE.Material;
       if (material.userData.shader) {
-        const target = timeScaleMode === 'adaptive' ? 1 : 0;
-        // Smoothly interpolate uTransition
-        material.userData.shader.uniforms.uTransition.value = MathUtils.damp(
-          material.userData.shader.uniforms.uTransition.value,
-          target,
-          5, // Speed/smoothness factor
-          delta
-        );
+        // Logic for target warp factor
+        // If mode is adaptive, target is the store's warpFactor (0-1)
+        // If mode is linear, target is 0
+        const target = timeScaleMode === 'adaptive' ? warpFactor : 0;
+        
+        // Use uWarpFactor uniform
+        if (material.userData.shader.uniforms.uWarpFactor) {
+            material.userData.shader.uniforms.uWarpFactor.value = MathUtils.damp(
+                material.userData.shader.uniforms.uWarpFactor.value,
+                target,
+                5, // Speed/smoothness factor
+                delta
+            );
+        }
 
+        // Also update legacy uTransition just in case, or leave it
+        // uTransition can mirror uWarpFactor if we removed mix(linear, adaptive, uTransition)
+        // We replaced it with uWarpFactor, so uTransition is unused in vertex.
+        
         // Update LOD Factor from store
         const lodFactor = useAggregationStore.getState().lodFactor;
         material.userData.shader.uniforms.uLodFactor.value = lodFactor;
@@ -342,6 +393,75 @@ useEffect(() => {
     }
   });
 
+  // Sync CPU matrices for accurate raycasting when warp settles
+  useEffect(() => {
+    // Debounce to avoid heavy CPU updates during interaction
+    const timer = setTimeout(() => {
+      if (!meshRef.current) return;
+      
+      const count = columns ? columns.length : data.length;
+      const dummy = new THREE.Object3D();
+      
+      // Helper to sample texture
+      const sampleWarp = (t: number) => {
+        if (!warpMap || warpMap.length === 0) return 0;
+        const len = warpMap.length;
+        const idx = t * (len - 1);
+        const low = Math.floor(idx);
+        const high = Math.min(low + 1, len - 1);
+        const frac = idx - low;
+        // Handle edges
+        if (low < 0) return warpMap[0];
+        if (low >= len - 1) return warpMap[len - 1];
+        return warpMap[low] * (1 - frac) + warpMap[high] * frac;
+      };
+
+      const tMin = normalizedTimeRange[0];
+      const tMax = normalizedTimeRange[1];
+      const tRange = tMax - tMin || 1; // Avoid divide by zero
+
+      const xRange = maxX - minX || 1;
+      const zRange = maxZ - minZ || 1;
+
+      for (let i = 0; i < count; i++) {
+        let x = 0, y = 0, z = 0;
+        let linearY = 0;
+
+        if (columns && colLinearY && colX && colZ) {
+          x = ((colX[i] - minX) / xRange * 100) - 50;
+          z = ((colZ[i] - minZ) / zRange * 100) - 50;
+          linearY = colLinearY[i];
+        } else {
+          // Data mode uses direct values
+          const p = data[i];
+          x = p.x;
+          z = p.z;
+          linearY = p.y;
+        }
+
+        // Calculate Adaptive Y
+        let adaptiveY = linearY;
+        if (warpMap && warpMap.length > 0) {
+            const normalizedT = (linearY - tMin) / tRange;
+            const clampedT = Math.max(0, Math.min(1, normalizedT));
+            adaptiveY = sampleWarp(clampedT);
+        }
+        
+        // Mix based on warpFactor
+        y = linearY * (1 - warpFactor) + adaptiveY * warpFactor;
+
+        dummy.position.set(x, y, z);
+        dummy.updateMatrix();
+        meshRef.current.setMatrixAt(i, dummy.matrix);
+      }
+      
+      meshRef.current.instanceMatrix.needsUpdate = true;
+      
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [warpFactor, warpMap, columns, data, colLinearY, colX, colZ, minX, maxX, minZ, maxZ, normalizedTimeRange]);
+
   const onBeforeCompile = (shader: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     if (meshRef.current) {
       (meshRef.current.material as THREE.Material).userData.shader = shader;
@@ -353,6 +473,8 @@ useEffect(() => {
       districtMapSize: DISTRICT_MAP_SIZE
     });
   };
+
+
 
   // Raycasting debug state
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
@@ -493,10 +615,7 @@ const count = columns ? columns.length : data.length;
       >
 
       <sphereGeometry args={[0.5, 8, 8]}>
-        <instancedBufferAttribute
-          attach="attributes-adaptiveY"
-          args={[adaptiveYValues, 1]}
-        />
+        {/* adaptiveY removed - using texture lookup */}
         <instancedBufferAttribute
           attach="attributes-filterType"
           args={[filterType, 1]}
