@@ -3,6 +3,7 @@
 import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
 import { TimelineContainer } from '@/components/timeline/TimelineContainer';
+import { AdaptiveControls } from '@/components/timeline/AdaptiveControls';
 import { 
   Play, 
   Pause, 
@@ -127,7 +128,7 @@ export function TimeControls() {
             </div>
 
             {/* Time Scale Mode Toggle */}
-            <div className="flex items-center gap-2 border-l pl-4">
+            <div className="flex items-center gap-2 border-l pl-4 border-r pr-4">
               <span>Time Scale:</span>
               <button
                 onClick={() => setTimeScaleMode(timeScaleMode === 'linear' ? 'adaptive' : 'linear')}
@@ -136,6 +137,11 @@ export function TimeControls() {
                 {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
               </button>
             </div>
+
+            {/* Adaptive Controls */}
+            {timeScaleMode === 'adaptive' && (
+              <AdaptiveControls />
+            )}
           </div>
 
       </div>
