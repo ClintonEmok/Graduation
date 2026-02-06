@@ -17,7 +17,9 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
 
   shader.uniforms.uTimePlane = { value: 0 };
   shader.uniforms.uRange = { value: 10 };
-  shader.uniforms.uTransition = { value: 0 };
+  shader.uniforms.uTransition = { value: 0 }; // Legacy transition (keep for now if needed, but we'll use uWarpFactor)
+  shader.uniforms.uWarpFactor = { value: 0 };
+  shader.uniforms.uWarpTexture = { value: null };
   shader.uniforms.uLodFactor = { value: 0 };
   shader.uniforms.uTimeMin = { value: 0 };
   shader.uniforms.uTimeMax = { value: 100 };
@@ -43,12 +45,16 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     `
     #include <common>
     uniform float uTransition;
+    uniform float uWarpFactor;
+    uniform sampler2D uWarpTexture;
     uniform float uLodFactor;
     uniform float uUseColumns;
     uniform vec2 uDataBoundsMin;
     uniform vec2 uDataBoundsMax;
+    uniform float uTimeMin;
+    uniform float uTimeMax;
 
-    attribute float adaptiveY;
+    // attribute float adaptiveY; // Removed, now using texture
     attribute float colX;
     attribute float colZ;
     attribute float colLinearY;
@@ -68,7 +74,18 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.vertexShader = shader.vertexShader.replace(
     '#include <project_vertex>',
     `
-    float currentY = mix(colLinearY, adaptiveY, uTransition);
+    // Normalize linearY to 0-1 for texture lookup
+    // Assuming colLinearY is in 0..100 range (global normalized time)
+    // We do NOT use uTimeMin/uTimeMax here because those are filter bounds,
+    // and the warp map is computed for the full 0-100 range.
+    float normalizedTime = clamp(colLinearY / 100.0, 0.0, 1.0);
+    
+    // Sample adaptive position from texture
+    // Texture is 1D (Nx1), so y coord is 0.5
+    float adaptiveY = texture2D(uWarpTexture, vec2(normalizedTime, 0.5)).r;
+    
+    // Mix based on uWarpFactor (0 = Linear, 1 = Adaptive)
+    float currentY = mix(colLinearY, adaptiveY, uWarpFactor);
     
     // Position Projection
     vec3 worldPos;
