@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { bin, max } from 'd3-array';
 import { brushX } from 'd3-brush';
 import { select } from 'd3-selection';
@@ -44,6 +44,7 @@ export const DualTimeline: React.FC = () => {
   const zoomRef = useRef<SVGRectElement | null>(null);
   const isSyncingRef = useRef(false);
   const isScrubbingRef = useRef(false);
+  const [hoveredDetail, setHoveredDetail] = useState<{ x: number; label: string } | null>(null);
 
   const width = Math.max(0, bounds.width ?? 0);
   const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
@@ -84,17 +85,16 @@ export const DualTimeline: React.FC = () => {
     return binner(timestampSeconds);
   }, [timestampSeconds, domainStart, domainEnd]);
 
-  const detailBins = useMemo(() => {
-    if (!timestampSeconds.length) return [];
-    const binner = bin<number, number>()
-      .value((d) => d)
-      .domain([detailRangeSec[0], detailRangeSec[1]])
-      .thresholds(40);
-    return binner(timestampSeconds);
-  }, [timestampSeconds, detailRangeSec]);
-
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
-  const detailMax = useMemo(() => max(detailBins, (d) => d.length) || 1, [detailBins]);
+  const detailPoints = useMemo(() => {
+    if (!timestampSeconds.length) return [];
+    const [start, end] = detailRangeSec;
+    const points = timestampSeconds.filter((value) => value >= start && value <= end);
+    const maxPoints = 4000;
+    if (points.length <= maxPoints) return points;
+    const step = Math.ceil(points.length / maxPoints);
+    return points.filter((_, index) => index % step === 0);
+  }, [timestampSeconds, detailRangeSec]);
 
   const overviewScale = useMemo(
     () =>
@@ -239,14 +239,38 @@ export const DualTimeline: React.FC = () => {
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
+      if (!detailInnerWidth) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
+      const epochSeconds = detailScale.invert(x).getTime() / 1000;
+
+      const nearest = findNearestIndexByTime(epochSeconds);
+      if (nearest) {
+        const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
+        const maxDistance = Math.max(rangeSpan * 0.01, 60);
+        if (nearest.distance <= maxDistance) {
+          const ts = nearest.point.timestampSec ?? epochSeconds;
+          const label =
+            minTimestampSec !== null && maxTimestampSec !== null
+              ? new Date(ts * 1000).toLocaleString()
+              : `t=${ts.toFixed(2)}`;
+          setHoveredDetail({ x, label });
+        } else {
+          setHoveredDetail(null);
+        }
+      } else {
+        setHoveredDetail(null);
+      }
+
       if (!isScrubbingRef.current) return;
       scrubFromEvent(event);
     },
-    [scrubFromEvent]
+    [detailInnerWidth, detailScale, detailRangeSec, minTimestampSec, maxTimestampSec, scrubFromEvent]
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<SVGRectElement>) => {
     isScrubbingRef.current = false;
+    setHoveredDetail(null);
     event.currentTarget.releasePointerCapture(event.pointerId);
   }, []);
 
@@ -344,22 +368,18 @@ export const DualTimeline: React.FC = () => {
           </g>
         </svg>
 
-        <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
-          <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
-            {detailBins.map((bucket, index) => {
-              if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
-              const x0 = detailScale(new Date(bucket.x0 * 1000));
-              const x1 = detailScale(new Date(bucket.x1 * 1000));
-              const barWidth = Math.max(0, x1 - x0 - 1);
-              const barHeight = (bucket.length / detailMax) * DETAIL_HEIGHT;
+        <div className="relative">
+          <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
+            <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
+            {detailPoints.map((timestamp, index) => {
+              const x = detailScale(new Date(timestamp * 1000));
               return (
-                <rect
-                  key={`detail-${index}`}
-                  x={x0}
-                  y={DETAIL_HEIGHT - barHeight}
-                  width={barWidth}
-                  height={barHeight}
-                  className="fill-primary/35"
+                <circle
+                  key={`detail-point-${index}`}
+                  cx={x}
+                  cy={DETAIL_HEIGHT - 6}
+                  r={2}
+                  className="fill-primary/60"
                 />
               );
             })}
@@ -411,8 +431,20 @@ export const DualTimeline: React.FC = () => {
                 );
               })}
             </g>
-          </g>
-        </svg>
+            </g>
+          </svg>
+          {hoveredDetail && (
+            <div
+              className="pointer-events-none absolute top-0 z-10 rounded bg-background/95 px-2 py-1 text-xs text-foreground shadow-sm"
+              style={{
+                left: hoveredDetail.x + DETAIL_MARGIN.left,
+                transform: 'translate(-50%, -100%)'
+              }}
+            >
+              {hoveredDetail.label}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

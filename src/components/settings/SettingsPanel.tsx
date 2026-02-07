@@ -31,7 +31,6 @@ import {
   type FeatureCategory,
 } from '@/lib/feature-flags';
 import { FeatureFlagItem } from './FeatureFlagItem';
-import { AdaptiveControls } from '@/components/timeline/AdaptiveControls';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -126,10 +125,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="px-1 mb-6 space-y-2">
-            <AdaptiveControls />
           </div>
 
           <Tabs defaultValue="visualization" className="w-full">

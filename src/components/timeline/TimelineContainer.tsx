@@ -1,4 +1,5 @@
 import { Timeline } from './Timeline';
+import { AdaptiveControls } from './AdaptiveControls';
 
 export function TimelineContainer({ className }: { className?: string }) {
   // Default fixed styles
@@ -13,6 +14,9 @@ export function TimelineContainer({ className }: { className?: string }) {
       
       {/* Desktop Content */}
       <div className="hidden md:block w-full h-full p-4 relative group">
+         <div className="absolute top-3 left-3 z-10 w-[220px] rounded-md border bg-background/90 backdrop-blur p-3 shadow-sm">
+           <AdaptiveControls />
+         </div>
          <Timeline /> 
       </div>
     </div>

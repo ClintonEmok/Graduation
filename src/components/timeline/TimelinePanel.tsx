@@ -14,6 +14,9 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { DualTimeline } from './DualTimeline';
 import { useLogger } from '@/hooks/useLogger';
+import { AdaptiveControls } from './AdaptiveControls';
+import { useDraggable } from '@/hooks/useDraggable';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 
 export function TimelinePanel() {
   const {
@@ -28,6 +31,8 @@ export function TimelinePanel() {
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
   
   const { log } = useLogger();
 
@@ -59,10 +64,18 @@ export function TimelinePanel() {
   const handleScaleModeToggle = () => {
     const nextMode = timeScaleMode === 'linear' ? 'adaptive' : 'linear';
     setTimeScaleMode(nextMode);
+    if (nextMode === 'adaptive' && warpFactor === 0) {
+      setWarpFactor(1);
+    }
     log('time_scale_mode_changed', { mode: nextMode });
   };
 
   const formatTime = (t: number) => t.toFixed(1);
+
+  const { position, dragRef, handleMouseDown, isDragging } = useDraggable({
+    storageKey: 'adaptive-controls-position',
+    initialPosition: { x: 24, y: 24 }
+  });
 
   return (
     <div className="w-full h-full bg-background border-t p-4 flex flex-col justify-center">
@@ -154,6 +167,21 @@ export function TimelinePanel() {
           </div>
         </div>
 
+
+      </div>
+      <div
+        ref={dragRef}
+        onMouseDown={handleMouseDown}
+        style={{ left: position.x, top: position.y }}
+        className="fixed z-[60] w-[220px] rounded-md border bg-background/90 backdrop-blur shadow-sm"
+      >
+        <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground border-b cursor-move select-none">
+          <span>Adaptive Warp</span>
+          <span>{isDragging ? 'Moving' : 'Drag'}</span>
+        </div>
+        <div className="p-3">
+          <AdaptiveControls />
+        </div>
       </div>
     </div>
   );

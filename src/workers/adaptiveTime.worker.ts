@@ -20,23 +20,24 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
   const { timestamps, domain, config } = e.data;
   const { binCount, kernelWidth = 1 } = config;
 
+  const tStart = domain[0];
+  const tEnd = domain[1];
+  const tSpan = tEnd - tStart || 1;
+
   if (!timestamps || timestamps.length === 0) {
     const emptyDensity = new Float32Array(binCount);
     const emptyWarp = new Float32Array(binCount);
-    // Default linear warp map (0 to 1)
+    // Default linear warp map across the provided domain
+    const denom = binCount > 1 ? binCount - 1 : 1;
     for (let i = 0; i < binCount; i++) {
-      emptyWarp[i] = i / binCount;
+      emptyWarp[i] = tStart + (i / denom) * tSpan;
     }
     self.postMessage(
-      { densityMap: emptyDensity, warpMap: emptyWarp }, 
+      { densityMap: emptyDensity, warpMap: emptyWarp },
       [emptyDensity.buffer, emptyWarp.buffer] as any
     );
     return;
   }
-
-  const tStart = domain[0];
-  const tEnd = domain[1];
-  const tSpan = tEnd - tStart || 1;
 
   // 1. Binning (Histogram)
   const density = new Float32Array(binCount);
@@ -91,7 +92,7 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
   let accumulated = 0;
   for (let i = 0; i < binCount; i++) {
     // warpMap[i] represents the warped start position of bin i
-    warpMap[i] = accumulated / totalWeight;
+    warpMap[i] = tStart + (accumulated / totalWeight) * tSpan;
     accumulated += weights[i];
   }
 

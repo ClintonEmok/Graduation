@@ -65,7 +65,6 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   // Adaptive Store
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
-  const computeMaps = useAdaptiveStore((state) => state.computeMaps);
 
   // Initialize Data Texture for Warp Map
   // Default: 2 points (0 -> 0, 1 -> 100) linear mapping
@@ -94,12 +93,6 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       warpTexture.needsUpdate = true;
     }
   }, [warpMap, warpTexture]);
-
-  // Compute adaptive maps when data changes
-  useEffect(() => {
-    const timestamps = columns ? columns.timestamp : new Float32Array(data.map(d => d.y));
-    computeMaps(timestamps, [0, 100]);
-  }, [columns, data, computeMaps]);
 
   // Normalize time range
   const normalizedTimeRange = useMemo(() => {
