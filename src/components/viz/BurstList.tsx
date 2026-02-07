@@ -1,0 +1,125 @@
+import { useMemo } from 'react';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useDataStore } from '@/store/useDataStore';
+import { useFilterStore } from '@/store/useFilterStore';
+import { useTimeStore } from '@/store/useTimeStore';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+
+type BurstWindow = {
+  id: string;
+  start: number;
+  end: number;
+  peak: number;
+};
+
+export function BurstList() {
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
+  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const setTimeRange = useFilterStore((state) => state.setTimeRange);
+  const setRange = useTimeStore((state) => state.setRange);
+  const setTime = useTimeStore((state) => state.setTime);
+  const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
+  const setSelectedBurstWindow = useCoordinationStore((state) => state.setSelectedBurstWindow);
+
+  const burstWindows = useMemo(() => {
+    const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
+    if (!selectedMap || selectedMap.length === 0) return [] as BurstWindow[];
+
+    const span = Math.max(0.0001, mapDomain[1] - mapDomain[0]);
+    const step = span / Math.max(1, selectedMap.length - 1);
+    const windows: BurstWindow[] = [];
+
+    let startIdx: number | null = null;
+    let peak = 0;
+
+    for (let i = 0; i < selectedMap.length; i += 1) {
+      const value = selectedMap[i];
+      if (value >= burstCutoff) {
+        if (startIdx === null) startIdx = i;
+        peak = Math.max(peak, value);
+      } else if (startIdx !== null) {
+        const start = mapDomain[0] + startIdx * step;
+        const end = mapDomain[0] + i * step;
+        windows.push({ id: `${startIdx}-${i}`, start, end, peak });
+        startIdx = null;
+        peak = 0;
+      }
+    }
+
+    if (startIdx !== null) {
+      const start = mapDomain[0] + startIdx * step;
+      const end = mapDomain[1];
+      windows.push({ id: `${startIdx}-end`, start, end, peak });
+    }
+
+    return windows.sort((a, b) => b.peak - a.peak).slice(0, 10);
+  }, [burstCutoff, burstMetric, burstinessMap, densityMap, mapDomain]);
+
+  if (burstWindows.length === 0) return null;
+
+  const formatWindow = (start: number, end: number) => {
+    if (minTimestampSec !== null && maxTimestampSec !== null) {
+      const startEpoch = normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec);
+      const endEpoch = normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec);
+      const startLabel = new Date(startEpoch * 1000).toLocaleString();
+      const endLabel = new Date(endEpoch * 1000).toLocaleString();
+      return `${startLabel} → ${endLabel}`;
+    }
+    return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+  };
+
+  const handleSelectWindow = (window: BurstWindow) => {
+    setSelectedBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
+    if (minTimestampSec !== null && maxTimestampSec !== null) {
+      const startEpoch = normalizedToEpochSeconds(window.start, minTimestampSec, maxTimestampSec);
+      const endEpoch = normalizedToEpochSeconds(window.end, minTimestampSec, maxTimestampSec);
+      setTimeRange([startEpoch, endEpoch]);
+      const startNorm = epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec);
+      const endNorm = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
+      const range: [number, number] = startNorm <= endNorm ? [startNorm, endNorm] : [endNorm, startNorm];
+      setRange(range);
+      setBrushRange(range);
+      setTime((range[0] + range[1]) / 2);
+      return;
+    }
+
+    const range: [number, number] = window.start <= window.end ? [window.start, window.end] : [window.end, window.start];
+    setTimeRange(range);
+    setRange(range);
+    setBrushRange(range);
+    setTime((range[0] + range[1]) / 2);
+  };
+
+  return (
+    <div className="p-4 border-t">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Burst Windows</h3>
+        <span className="text-[10px] text-muted-foreground">Top {burstWindows.length}</span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {burstWindows.map((window, index) => (
+          <button
+            key={window.id}
+            type="button"
+            onClick={() => handleSelectWindow(window)}
+            className="w-full text-left rounded-md border px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
+          >
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Burst {index + 1}</span>
+              <span>Peak {Math.round(window.peak * 100)}%</span>
+            </div>
+            <div className="mt-1 text-foreground">
+              {formatWindow(window.start, window.end)}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

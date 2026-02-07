@@ -21,6 +21,8 @@ export default function MapEventLayer() {
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
   const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
@@ -82,7 +84,8 @@ export default function MapEventLayer() {
   const geoJson = useMemo(() => {
     if (filteredPoints.length === 0) return null;
     const densitySpan = Math.max(0.0001, mapDomain[1] - mapDomain[0]);
-    const densitySize = densityMap?.length ?? 0;
+    const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
+    const densitySize = selectedMap?.length ?? 0;
     return {
       type: 'FeatureCollection' as const,
       features: filteredPoints
@@ -103,10 +106,10 @@ export default function MapEventLayer() {
           }
 
           let burstIntensity = 0;
-          if (densityMap && densitySize > 0 && Number.isFinite(linearY)) {
+          if (selectedMap && densitySize > 0 && Number.isFinite(linearY)) {
             const normalized = Math.max(0, Math.min(1, (linearY - mapDomain[0]) / densitySpan));
             const idx = Math.min(Math.floor(normalized * densitySize), densitySize - 1);
-            burstIntensity = densityMap[idx] ?? 0;
+            burstIntensity = selectedMap[idx] ?? 0;
           }
 
           const [resolvedLat, resolvedLon] =
@@ -130,7 +133,7 @@ export default function MapEventLayer() {
           return Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
         })
     };
-  }, [columns, data, densityMap, filteredPoints, mapDomain]);
+  }, [burstMetric, burstinessMap, columns, data, densityMap, filteredPoints, mapDomain]);
 
   if (!geoJson) return null;
 

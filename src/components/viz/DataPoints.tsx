@@ -66,6 +66,8 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
   const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
@@ -113,12 +115,13 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   }, [warpMap, warpTexture]);
 
   useEffect(() => {
-    if (densityMap && densityMap.length > 0) {
-      densityTexture.image.data = densityMap;
-      densityTexture.image.width = densityMap.length;
+    const selected = burstMetric === 'burstiness' ? burstinessMap : densityMap;
+    if (selected && selected.length > 0) {
+      densityTexture.image.data = selected;
+      densityTexture.image.width = selected.length;
       densityTexture.needsUpdate = true;
     }
-  }, [densityMap, densityTexture]);
+  }, [burstMetric, burstinessMap, densityMap, densityTexture]);
 
   // Normalize time range
   const normalizedTimeRange = useMemo(() => {

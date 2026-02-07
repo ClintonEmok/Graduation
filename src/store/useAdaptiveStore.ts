@@ -4,13 +4,16 @@ import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils'
 interface AdaptiveState {
   warpFactor: number; // 0 = Linear, 1 = Fully Adaptive
   densityMap: Float32Array | null;
+  burstinessMap: Float32Array | null;
   warpMap: Float32Array | null;
   isComputing: boolean;
+  burstMetric: 'density' | 'burstiness';
   burstThreshold: number;
   burstCutoff: number;
   mapDomain: [number, number];
   
   setWarpFactor: (v: number) => void;
+  setBurstMetric: (metric: AdaptiveState['burstMetric']) => void;
   setBurstThreshold: (v: number) => void;
   computeMaps: (timestamps: Float32Array, domain: [number, number]) => void;
 }
@@ -21,6 +24,10 @@ const computePercentile = (values: Float32Array, percentile: number): number => 
   const clamped = Math.max(0, Math.min(1, percentile));
   const index = Math.min(sorted.length - 1, Math.floor(clamped * (sorted.length - 1)));
   return sorted[index] ?? 1;
+};
+
+const resolveBurstMap = (state: AdaptiveState) => {
+  return state.burstMetric === 'burstiness' ? state.burstinessMap : state.densityMap;
 };
 
 // Module-level worker instance
@@ -35,12 +42,16 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
     // Setup listener
     if (worker) {
         worker.onmessage = (e) => {
-            const { densityMap, warpMap } = e.data;
+            const { densityMap, burstinessMap, warpMap } = e.data;
             set((state) => ({
               densityMap,
+              burstinessMap,
               warpMap,
               isComputing: false,
-              burstCutoff: computePercentile(densityMap, state.burstThreshold)
+              burstCutoff: computePercentile(
+                state.burstMetric === 'burstiness' ? burstinessMap : densityMap,
+                state.burstThreshold
+              )
             }));
         };
     }
@@ -48,17 +59,28 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
     return {
       warpFactor: 0,
       densityMap: null,
+      burstinessMap: null,
       warpMap: null,
       isComputing: false,
+      burstMetric: 'density',
       burstThreshold: 0.7,
       burstCutoff: 1,
       mapDomain: [0, 100],
       
       setWarpFactor: (v) => set({ warpFactor: v }),
+      setBurstMetric: (metric) =>
+        set((state) => {
+          const nextState = { ...state, burstMetric: metric };
+          const map = resolveBurstMap(nextState);
+          return {
+            burstMetric: metric,
+            burstCutoff: map ? computePercentile(map, state.burstThreshold) : state.burstCutoff
+          };
+        }),
       setBurstThreshold: (v) =>
         set((state) => ({
           burstThreshold: v,
-          burstCutoff: state.densityMap ? computePercentile(state.densityMap, v) : state.burstCutoff
+          burstCutoff: resolveBurstMap(state) ? computePercentile(resolveBurstMap(state) as Float32Array, v) : state.burstCutoff
         })),
       
       computeMaps: (timestamps, domain) => {

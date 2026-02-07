@@ -59,8 +59,16 @@ export const DualTimeline: React.FC = () => {
   }, [minTimestampSec, maxTimestampSec]);
 
   const detailRangeSec = useMemo<[number, number]>(() => {
-    const range = selectedTimeRange ?? [domainStart, domainEnd];
-    return range[0] <= range[1] ? [range[0], range[1]] : [range[1], range[0]];
+    if (selectedTimeRange) {
+      const [rawStart, rawEnd] = selectedTimeRange;
+      const start = Math.min(rawStart, rawEnd);
+      const end = Math.max(rawStart, rawEnd);
+      const overlaps = end >= domainStart && start <= domainEnd;
+      if (Number.isFinite(start) && Number.isFinite(end) && overlaps) {
+        return [start, end];
+      }
+    }
+    return [domainStart, domainEnd];
   }, [selectedTimeRange, domainStart, domainEnd]);
 
   const timestampSeconds = useMemo<number[]>(() => {
@@ -143,6 +151,19 @@ export const DualTimeline: React.FC = () => {
     },
     [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange]
   );
+
+  useEffect(() => {
+    if (!selectedTimeRange) return;
+    const [rawStart, rawEnd] = selectedTimeRange;
+    const start = Math.min(rawStart, rawEnd);
+    const end = Math.max(rawStart, rawEnd);
+    const overlaps = end >= domainStart && start <= domainEnd;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || !overlaps) {
+      isSyncingRef.current = true;
+      applyRangeToStores(domainStart, domainEnd);
+      isSyncingRef.current = false;
+    }
+  }, [applyRangeToStores, domainEnd, domainStart, selectedTimeRange]);
 
   useEffect(() => {
     const resolutionSeconds: Record<typeof timeResolution, number> = {

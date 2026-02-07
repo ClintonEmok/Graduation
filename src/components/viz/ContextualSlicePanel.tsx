@@ -4,6 +4,9 @@ import { useSliceStore } from '@/store/useSliceStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { SliceStats } from './SliceStats';
 import { PointInspector } from './PointInspector';
+import { BurstList } from './BurstList';
+import { BurstDetails } from './BurstDetails';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 
 export function ContextualSlicePanel() {
@@ -34,11 +37,36 @@ export function ContextualSlicePanel() {
         </button>
       </div>
       
-      {selectedIndex !== null && (
-        <PointInspector pointId={String(selectedIndex)} />
-      )}
+      <Tabs defaultValue={selectedIndex !== null ? 'point' : activeSliceId ? 'slice' : 'bursts'} className="w-full">
+        <div className="px-4 pt-4">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="point">Point</TabsTrigger>
+            <TabsTrigger value="bursts">Bursts</TabsTrigger>
+            <TabsTrigger value="slice">Slice</TabsTrigger>
+          </TabsList>
+        </div>
 
-      {activeSliceId && <SliceStats sliceId={activeSliceId} />}
+        <TabsContent value="point">
+          {selectedIndex !== null ? (
+            <PointInspector pointId={String(selectedIndex)} />
+          ) : (
+            <div className="px-4 py-6 text-sm text-muted-foreground">Select a point to see details.</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bursts">
+          <BurstList />
+          <BurstDetails />
+        </TabsContent>
+
+        <TabsContent value="slice">
+          {activeSliceId ? (
+            <SliceStats sliceId={activeSliceId} />
+          ) : (
+            <div className="px-4 py-6 text-sm text-muted-foreground">Create a slice to see stats.</div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { DataPoints } from './DataPoints';
 import { TimePlane } from './TimePlane';
 import { TimeLoop } from './TimeLoop';
 import { TimeSlices } from './TimeSlices';
+import { TimeGrid } from './TimeGrid';
 import { HeatmapOverlay } from './HeatmapOverlay';
 import { ClusterManager } from './ClusterManager';
 import { ClusterHighlights } from './ClusterHighlights';
@@ -120,6 +121,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
             {mode === 'abstract' && <Grid />}
             
             <DataPoints data={data} ref={pointsRef} />
+            <TimeGrid />
             <TimePlane ref={planeRef} />
             {isTimeSlicesEnabled && <TimeSlices />}
             {isHeatmapEnabled && <HeatmapOverlay />}
