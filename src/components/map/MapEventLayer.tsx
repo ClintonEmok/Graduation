@@ -19,9 +19,10 @@ type ScenePoint = {
 
 interface MapEventLayerProps {
   colorMode: 'burst' | 'type';
+  hoveredTypeId?: number | null;
 }
 
-export default function MapEventLayer({ colorMode }: MapEventLayerProps) {
+export default function MapEventLayer({ colorMode, hoveredTypeId }: MapEventLayerProps) {
   const columns = useDataStore((state) => state.columns);
   const data = useDataStore((state) => state.data);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
@@ -208,7 +209,7 @@ export default function MapEventLayer({ colorMode }: MapEventLayerProps) {
     return ['match', ['get', 'typeId'], ...entries, fallback] as unknown as any[];
   }, [palette]);
 
-  const paint = (colorMode === 'burst'
+  const paint: any = colorMode === 'burst'
     ? {
         'circle-radius': [
           'case',
@@ -229,11 +230,27 @@ export default function MapEventLayer({ colorMode }: MapEventLayerProps) {
           0.35
         ]
       }
+    : hoveredTypeId
+    ? {
+        'circle-radius': [
+          'case',
+          ['==', ['get', 'typeId'], hoveredTypeId],
+          4,
+          2
+        ],
+        'circle-color': typeColorExpression,
+        'circle-opacity': [
+          'case',
+          ['==', ['get', 'typeId'], hoveredTypeId],
+          0.95,
+          0.15
+        ]
+      }
     : {
         'circle-radius': 3,
         'circle-color': typeColorExpression,
         'circle-opacity': 0.7
-      }) as any;
+      };
 
   if (!geoJson) return null;
 

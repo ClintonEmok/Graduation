@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useDraggable } from '@/hooks/useDraggable';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useDataStore } from '@/store/useDataStore';
+import { useFilterStore } from '@/store/useFilterStore';
 
 export function TopBar() {
   const [adaptiveDocked, setAdaptiveDocked] = useState(true);
@@ -15,6 +16,8 @@ export function TopBar() {
   const [adaptiveOpen, setAdaptiveOpen] = useState(false);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
   const { columns, data, generateMockData } = useDataStore();
+  const activeFilterCount = useFilterStore((state) => state.getActiveFilterCount());
+  const resetFilters = useFilterStore((state) => state.resetFilters);
 
   const { position, dragRef, handleMouseDown, isDragging } = useDraggable({
     storageKey: 'adaptive-controls-floating',
@@ -38,6 +41,18 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
+        {activeFilterCount > 0 && (
+          <div className="flex items-center gap-2 rounded-full border px-2 py-1 text-xs text-muted-foreground">
+            <span>Filters: {activeFilterCount}</span>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          </div>
+        )}
         {!columns && (
           <button
             type="button"

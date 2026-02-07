@@ -32,6 +32,10 @@ export default function MapVisualization() {
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
   const clearSpatialBounds = useFilterStore((state) => state.clearSpatialBounds);
+  const selectedTypes = useFilterStore((state) => state.selectedTypes);
+  const toggleType = useFilterStore((state) => state.toggleType);
+  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
@@ -44,6 +48,7 @@ export default function MapVisualization() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [colorMode, setColorMode] = useState<'burst' | 'type'>('burst');
+  const [hoveredTypeId, setHoveredTypeId] = useState<number | null>(null);
   const [dragStart, setDragStart] = useState<DragPoint | null>(null);
   const [dragCurrent, setDragCurrent] = useState<DragPoint | null>(null);
   const [lastClick, setLastClick] = useState<{lat: number, lon: number} | null>(null);
@@ -219,7 +224,7 @@ export default function MapVisualization() {
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >
-         <MapEventLayer colorMode={colorMode} />
+         <MapEventLayer colorMode={colorMode} hoveredTypeId={hoveredTypeId} />
         <MapHeatmapOverlay />
         <MapClusterHighlights />
         <MapTrajectoryLayer />
@@ -283,6 +288,18 @@ export default function MapVisualization() {
             Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
           </div>
         )}
+        {(selectedTypes.length > 0 || selectedDistricts.length > 0 || selectedTimeRange || selectedSpatialBounds) && (
+          <div className="mt-2 text-[10px] text-muted-foreground">
+            Filters: {[
+              selectedTypes.length > 0 ? `Types ${selectedTypes.length}` : null,
+              selectedDistricts.length > 0 ? `Districts ${selectedDistricts.length}` : null,
+              selectedTimeRange ? 'Time' : null,
+              selectedSpatialBounds ? 'Region' : null
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+        )}
         {colorMode === 'burst' ? (
           <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="h-2 w-2 rounded-full bg-orange-500" />
@@ -290,7 +307,12 @@ export default function MapVisualization() {
           </div>
         ) : (
           <div className="mt-2">
-            <MapTypeLegend />
+            <MapTypeLegend
+              selectedTypes={selectedTypes}
+              hoveredTypeId={hoveredTypeId}
+              onHoverType={setHoveredTypeId}
+              onToggleType={toggleType}
+            />
           </div>
         )}
       </div>

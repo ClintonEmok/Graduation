@@ -8,7 +8,8 @@ import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useFilterStore } from '@/store/useFilterStore';
-import { epochSecondsToNormalized } from '@/lib/time-domain';
+import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
 
 export function SimpleCrimePoints() {
   const data = useDataStore((state) => state.data);
@@ -24,6 +25,8 @@ export function SimpleCrimePoints() {
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
+  const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
 
   const theme = useThemeStore((state) => state.theme);
   const palette = PALETTES[theme];
@@ -232,10 +235,27 @@ export function SimpleCrimePoints() {
       z: positions[base + 2]
     };
 
+    const formatEpoch = (epochSeconds: number) => {
+      return new Intl.DateTimeFormat('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(new Date(epochSeconds * 1000));
+    };
+
+    const resolveEpochSeconds = (rawTime: number) => {
+      if (minTimestampSec != null && maxTimestampSec != null && rawTime >= 0 && rawTime <= 100) {
+        return normalizedToEpochSeconds(rawTime, minTimestampSec, maxTimestampSec);
+      }
+      const epochSeconds = toEpochSeconds(rawTime);
+      return epochSeconds > 1_000_000_000 ? epochSeconds : null;
+    };
+
     if (columns) {
       const typeName = getCrimeTypeName(columns.type[sourceIndex]);
       const timeValue = columns.timestamp[sourceIndex];
-      return { position, type: typeName, time: timeValue };
+      const epochSeconds = resolveEpochSeconds(timeValue);
+      const timeLabel = epochSeconds ? formatEpoch(epochSeconds) : `t: ${Math.round(timeValue)}`;
+      return { position, type: typeName, timeLabel };
     }
 
     const point = data[sourceIndex];
@@ -247,8 +267,19 @@ export function SimpleCrimePoints() {
       : timestampValue instanceof Date
       ? timestampValue.getTime()
       : 0;
-    return { position, type: point.type, time: timeValue };
-  }, [hoveredIndex, count, indices, positions, columns, data]);
+    const epochSeconds = resolveEpochSeconds(timeValue);
+    const timeLabel = epochSeconds ? formatEpoch(epochSeconds) : `t: ${Math.round(timeValue)}`;
+    return { position, type: point.type, timeLabel };
+  }, [
+    hoveredIndex,
+    count,
+    indices,
+    positions,
+    columns,
+    data,
+    maxTimestampSec,
+    minTimestampSec
+  ]);
 
   if (count === 0) return null;
 
@@ -261,6 +292,14 @@ export function SimpleCrimePoints() {
           setHoveredIndex(event.index);
         }
       }}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (typeof event.index !== 'number') return;
+        const sourceIndex = indices[event.index];
+        if (typeof sourceIndex !== 'number') return;
+        setSelectedIndex(sourceIndex, 'cube');
+        setDetailsOpen(true);
+      }}
       onPointerOut={() => setHoveredIndex(null)}
     >
       <bufferGeometry>
@@ -272,7 +311,7 @@ export function SimpleCrimePoints() {
         <Html position={[hovered.position.x, hovered.position.y, hovered.position.z]} center>
           <div className="rounded-md border border-border bg-background/90 px-2 py-1 text-[11px] text-foreground shadow-sm">
             <div className="font-medium">{hovered.type}</div>
-            <div className="text-[10px] text-muted-foreground">t: {Math.round(hovered.time)}</div>
+            <div className="text-[10px] text-muted-foreground">{hovered.timeLabel}</div>
           </div>
         </Html>
       )}
