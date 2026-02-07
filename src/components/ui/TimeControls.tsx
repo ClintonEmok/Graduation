@@ -3,7 +3,6 @@
 import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
 import { TimelineContainer } from '@/components/timeline/TimelineContainer';
-import { AdaptiveControls } from '@/components/timeline/AdaptiveControls';
 import { 
   Play, 
   Pause, 
@@ -137,11 +136,6 @@ export function TimeControls() {
                 {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
               </button>
             </div>
-
-            {/* Adaptive Controls */}
-            {timeScaleMode === 'adaptive' && (
-              <AdaptiveControls />
-            )}
           </div>
 
       </div>
