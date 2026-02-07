@@ -20,6 +20,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uTransition = { value: 0 }; // Legacy transition (keep for now if needed, but we'll use uWarpFactor)
   shader.uniforms.uWarpFactor = { value: 0 };
   shader.uniforms.uWarpTexture = { value: null };
+  shader.uniforms.uDensityTexture = { value: null };
+  shader.uniforms.uBurstThreshold = { value: 0.7 };
+  shader.uniforms.uWarpDomainMin = { value: 0 };
+  shader.uniforms.uWarpDomainMax = { value: 100 };
+  shader.uniforms.uDensityDomainMin = { value: 0 };
+  shader.uniforms.uDensityDomainMax = { value: 100 };
   shader.uniforms.uLodFactor = { value: 0 };
   shader.uniforms.uTimeMin = { value: 0 };
   shader.uniforms.uTimeMax = { value: 100 };
@@ -47,6 +53,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uTransition;
     uniform float uWarpFactor;
     uniform sampler2D uWarpTexture;
+    uniform sampler2D uDensityTexture;
+    uniform float uBurstThreshold;
+    uniform float uWarpDomainMin;
+    uniform float uWarpDomainMax;
+    uniform float uDensityDomainMin;
+    uniform float uDensityDomainMax;
     uniform float uLodFactor;
     uniform float uUseColumns;
     uniform vec2 uDataBoundsMin;
@@ -74,32 +86,33 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.vertexShader = shader.vertexShader.replace(
     '#include <project_vertex>',
     `
+    vec3 worldPos = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    float linearY = worldPos.y;
+    if (uUseColumns > 0.5) {
+      linearY = colLinearY;
+    }
+
     // Normalize linearY to 0-1 for texture lookup
-    // Assuming colLinearY is in 0..100 range (global normalized time)
+    // Assuming linearY is in 0..100 range (global normalized time)
     // We do NOT use uTimeMin/uTimeMax here because those are filter bounds,
     // and the warp map is computed for the full 0-100 range.
-    float normalizedTime = clamp(colLinearY / 100.0, 0.0, 1.0);
+    float warpSpan = max(0.0001, uWarpDomainMax - uWarpDomainMin);
+    float normalizedTime = clamp((linearY - uWarpDomainMin) / warpSpan, 0.0, 1.0);
     
     // Sample adaptive position from texture
     // Texture is 1D (Nx1), so y coord is 0.5
     float adaptiveY = texture2D(uWarpTexture, vec2(normalizedTime, 0.5)).r;
     
     // Mix based on uWarpFactor (0 = Linear, 1 = Adaptive)
-    float currentY = mix(colLinearY, adaptiveY, uWarpFactor);
+    float currentY = mix(linearY, adaptiveY, uWarpFactor);
     
     // Position Projection
-    vec3 worldPos;
     if (uUseColumns > 0.5) {
       float wx = ((colX - uDataBoundsMin.x) / (uDataBoundsMax.x - uDataBoundsMin.x) * 100.0) - 50.0;
       float wz = ((colZ - uDataBoundsMin.y) / (uDataBoundsMax.y - uDataBoundsMin.y) * 100.0) - 50.0;
       worldPos = vec3(wx, currentY, wz);
     } else {
-      // In non-columnar mode, instanceMatrix already contains the position
-      // but we still want to apply adaptive Y if needed.
-      // However, mock data in this project is usually pre-calculated or uses instanceMatrix.
-      // For simplicity, we assume instanceMatrix is correct for non-columnar.
-      worldPos = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-      worldPos.y = mix(worldPos.y, adaptiveY, uTransition);
+      worldPos.y = currentY;
     }
 
     // Shrink points as we zoom out (LOD)
@@ -112,7 +125,7 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     vWorldX = worldPos.x;
     vWorldY = worldPos.y;
     vWorldZ = worldPos.z;
-    vLinearY = uUseColumns > 0.5 ? colLinearY : worldPos.y;
+    vLinearY = linearY;
     vFilterType = filterType;
     vFilterDistrict = filterDistrict;
     vInstanceId = float(gl_InstanceID);
@@ -141,6 +154,10 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uSelectedIndex;
     uniform float uBrushStart;
     uniform float uBrushEnd;
+    uniform sampler2D uDensityTexture;
+    uniform float uBurstThreshold;
+    uniform float uDensityDomainMin;
+    uniform float uDensityDomainMax;
     varying float vWorldY;
     varying float vWorldX;
     varying float vWorldZ;
@@ -242,6 +259,14 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
         gl_FragColor.rgb *= dimFactor;
         gl_FragColor.a = 1.0; // Opaque pixels (after discard) avoids sorting issues
       }
+    }
+
+    // Burst highlight (based on density)
+    float densitySpan = max(0.0001, uDensityDomainMax - uDensityDomainMin);
+    float burstNorm = clamp((vLinearY - uDensityDomainMin) / densitySpan, 0.0, 1.0);
+    float burstDensity = texture2D(uDensityTexture, vec2(burstNorm, 0.5)).r;
+    if (burstDensity >= uBurstThreshold) {
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.55, 0.1), 0.6);
     }
 
     // Selection Highlight (Single point click)

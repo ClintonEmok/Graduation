@@ -65,12 +65,30 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   // Adaptive Store
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
+  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   // Initialize Data Texture for Warp Map
   // Default: 2 points (0 -> 0, 1 -> 100) linear mapping
   const [warpTexture] = useState(() => {
     const tex = new THREE.DataTexture(
       new Float32Array([0, 100]),
+      2,
+      1,
+      THREE.RedFormat,
+      THREE.FloatType
+    );
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    return tex;
+  });
+
+  const [densityTexture] = useState(() => {
+    const tex = new THREE.DataTexture(
+      new Float32Array([0, 0]),
       2,
       1,
       THREE.RedFormat,
@@ -93,6 +111,14 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       warpTexture.needsUpdate = true;
     }
   }, [warpMap, warpTexture]);
+
+  useEffect(() => {
+    if (densityMap && densityMap.length > 0) {
+      densityTexture.image.data = densityMap;
+      densityTexture.image.width = densityMap.length;
+      densityTexture.needsUpdate = true;
+    }
+  }, [densityMap, densityTexture]);
 
   // Normalize time range
   const normalizedTimeRange = useMemo(() => {
@@ -253,6 +279,28 @@ useEffect(() => {
     shader.uniforms.uWarpTexture.value = warpTexture;
   }
 
+  if (shader.uniforms.uDensityTexture) {
+    shader.uniforms.uDensityTexture.value = densityTexture;
+  }
+
+  if (shader.uniforms.uBurstThreshold) {
+    shader.uniforms.uBurstThreshold.value = burstCutoff;
+  }
+
+  if (shader.uniforms.uWarpDomainMin) {
+    shader.uniforms.uWarpDomainMin.value = mapDomain[0];
+  }
+  if (shader.uniforms.uWarpDomainMax) {
+    shader.uniforms.uWarpDomainMax.value = mapDomain[1];
+  }
+
+  if (shader.uniforms.uDensityDomainMin) {
+    shader.uniforms.uDensityDomainMin.value = mapDomain[0];
+  }
+  if (shader.uniforms.uDensityDomainMax) {
+    shader.uniforms.uDensityDomainMax.value = mapDomain[1];
+  }
+
   if (shader.uniforms.uTimeMin) {
     shader.uniforms.uTimeMin.value = normalizedTimeRange[0];
   }
@@ -266,7 +314,7 @@ useEffect(() => {
   if (shader.uniforms.uDataBoundsMax) {
     shader.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
   }
-}, [normalizedTimeRange, minX, maxX, minZ, maxZ, warpTexture]);
+}, [normalizedTimeRange, minX, maxX, minZ, maxZ, warpTexture, densityTexture, burstCutoff, mapDomain]);
 
 useEffect(() => {
   if (!meshRef.current || !meshRef.current.material) return;

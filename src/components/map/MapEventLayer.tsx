@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Layer, Source } from 'react-map-gl/maplibre';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
 import { unproject } from '@/lib/projection';
 
@@ -19,6 +20,10 @@ export default function MapEventLayer() {
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
+  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   const filteredPoints = useMemo<ScenePoint[]>(() => {
     const points: ScenePoint[] = [];
@@ -76,12 +81,34 @@ export default function MapEventLayer() {
 
   const geoJson = useMemo(() => {
     if (filteredPoints.length === 0) return null;
+    const densitySpan = Math.max(0.0001, mapDomain[1] - mapDomain[0]);
+    const densitySize = densityMap?.length ?? 0;
     return {
       type: 'FeatureCollection' as const,
       features: filteredPoints
         .map((point) => {
           const lat = columns?.lat ? columns.lat[point.index] : undefined;
           const lon = columns?.lon ? columns.lon[point.index] : undefined;
+          let linearY = NaN;
+          if (columns) {
+            linearY = columns.timestamp[point.index];
+          } else if (data.length > 0) {
+            const candidate = data[point.index]?.y;
+            if (typeof candidate === 'number') {
+              linearY = candidate;
+            } else {
+              const raw = data[point.index]?.timestamp;
+              linearY = typeof raw === 'number' ? raw : NaN;
+            }
+          }
+
+          let burstIntensity = 0;
+          if (densityMap && densitySize > 0 && Number.isFinite(linearY)) {
+            const normalized = Math.max(0, Math.min(1, (linearY - mapDomain[0]) / densitySpan));
+            const idx = Math.min(Math.floor(normalized * densitySize), densitySize - 1);
+            burstIntensity = densityMap[idx] ?? 0;
+          }
+
           const [resolvedLat, resolvedLon] =
             Number.isFinite(lat) && Number.isFinite(lon)
               ? [lat as number, lon as number]
@@ -93,7 +120,8 @@ export default function MapEventLayer() {
               coordinates: [resolvedLon, resolvedLat]
             },
             properties: {
-              index: point.index
+              index: point.index,
+              burstIntensity
             }
           };
         })
@@ -102,7 +130,7 @@ export default function MapEventLayer() {
           return Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
         })
     };
-  }, [columns, filteredPoints]);
+  }, [columns, data, densityMap, filteredPoints, mapDomain]);
 
   if (!geoJson) return null;
 
@@ -112,9 +140,24 @@ export default function MapEventLayer() {
         id="map-events-layer"
         type="circle"
         paint={{
-          'circle-radius': 3,
-          'circle-color': '#94a3b8',
-          'circle-opacity': 0.35
+          'circle-radius': [
+            'case',
+            ['>=', ['get', 'burstIntensity'], burstCutoff],
+            4,
+            3
+          ],
+          'circle-color': [
+            'case',
+            ['>=', ['get', 'burstIntensity'], burstCutoff],
+            '#f97316',
+            '#94a3b8'
+          ],
+          'circle-opacity': [
+            'case',
+            ['>=', ['get', 'burstIntensity'], burstCutoff],
+            0.75,
+            0.35
+          ]
         }}
       />
     </Source>

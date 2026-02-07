@@ -16,6 +16,7 @@ import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/sele
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useLogger } from '@/hooks/useLogger';
 
 type DragPoint = {
@@ -38,6 +39,7 @@ export default function MapVisualization() {
   const columns = useDataStore((state) => state.columns);
   const loadRealData = useDataStore((state) => state.loadRealData);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
+  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -256,6 +258,10 @@ export default function MapVisualization() {
             Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
           </div>
         )}
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-orange-500" />
+          <span>Burst ≥ {Math.round(burstThreshold * 100)}%</span>
+        </div>
       </div>
       <Suspense fallback={null}>
         <Controls />

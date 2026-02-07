@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
 import { 
   Play, 
@@ -8,7 +8,11 @@ import {
   ChevronLeft, 
   ChevronRight, 
   FastForward,
-  Settings2
+  Settings2,
+  Pin,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 import { Slider } from '@/components/ui/slider';
@@ -24,10 +28,12 @@ export function TimelinePanel() {
     isPlaying,
     timeWindow,
     speed,
+    timeResolution,
     timeScaleMode,
     togglePlay,
     stepTime,
     setTimeWindow,
+    setTimeResolution,
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
@@ -36,13 +42,15 @@ export function TimelinePanel() {
   
   const { log } = useLogger();
 
-  const handleWindowChange = useCallback(
+  const handleResolutionChange = useCallback(
     (value: number[]) => {
-      if (value[0] === timeWindow) return;
-      setTimeWindow(value[0]);
-      log('time_window_changed', { window: value[0] });
+      const options: typeof timeResolution[] = ['seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years'];
+      const next = options[Math.round(value[0])] ?? 'days';
+      if (next === timeResolution) return;
+      setTimeResolution(next);
+      log('time_resolution_changed', { resolution: next });
     },
-    [setTimeWindow, timeWindow, log]
+    [setTimeResolution, timeResolution, log]
   );
 
   const handleSpeedChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -72,62 +80,76 @@ export function TimelinePanel() {
 
   const formatTime = (t: number) => t.toFixed(1);
 
-  const { position, dragRef, handleMouseDown, isDragging } = useDraggable({
+  const { position, setPosition, dragRef, handleMouseDown, isDragging } = useDraggable({
     storageKey: 'adaptive-controls-position',
     initialPosition: { x: 24, y: 24 }
   });
+  const [isAdaptiveCollapsed, setIsAdaptiveCollapsed] = useState(false);
+
+  const handleDockControls = () => {
+    if (typeof window === 'undefined') return;
+    setPosition({
+      x: Math.max(16, window.innerWidth - 260),
+      y: Math.max(16, window.innerHeight - 240)
+    });
+  };
+
+  const handleResetControls = () => {
+    setPosition({ x: 24, y: 24 });
+  };
 
   return (
     <div className="w-full h-full bg-background border-t p-4 flex flex-col justify-center">
-      <div className="w-full flex flex-col gap-4">
-        
-        {/* Main Controls Row */}
-        <div className="flex items-center gap-4">
-          
-          {/* Playback Controls */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleStep(-1)}
-              className="p-2 hover:bg-accent rounded-full transition-colors"
-              title="Step Backward"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            
-            <button
-              onClick={handleTogglePlay}
-              className="p-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-sm"
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 fill-current" />
-              ) : (
-                <Play className="w-6 h-6 fill-current ml-1" />
-              )}
-            </button>
-            
-            <button
-              onClick={() => handleStep(1)}
-              className="p-2 hover:bg-accent rounded-full transition-colors"
-              title="Step Forward"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleStep(-1)}
+                className="p-2 hover:bg-accent rounded-full transition-colors"
+                title="Step Backward"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <button
+                onClick={handleTogglePlay}
+                className="p-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-sm"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? (
+                  <Pause className="w-6 h-6 fill-current" />
+                ) : (
+                  <Play className="w-6 h-6 fill-current ml-1" />
+                )}
+              </button>
+              
+              <button
+                onClick={() => handleStep(1)}
+                className="p-2 hover:bg-accent rounded-full transition-colors"
+                title="Step Forward"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col leading-none">
+              <span className="text-[10px] text-muted-foreground">Current Time</span>
+              <span className="font-mono text-xl font-medium">{formatTime(currentTime)}</span>
+            </div>
           </div>
 
-          {/* Time Display */}
-          <div className="font-mono text-xl font-medium w-20 text-center">
-            {formatTime(currentTime)}
-          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Time Scale</span>
+              <button
+                onClick={handleScaleModeToggle}
+                className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium transition-colors"
+              >
+                {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
+              </button>
+            </div>
 
-          {/* Dual Timeline */}
-          <div className="flex-1 min-w-0 flex flex-col">
-            <DualTimeline />
-          </div>
-
-          {/* Settings Trigger */}
-          <div className="flex items-center gap-4 border-l pl-4">
-             {/* Speed Selector */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <FastForward className="w-4 h-4" />
               <select 
@@ -144,30 +166,32 @@ export function TimelinePanel() {
           </div>
         </div>
 
-        {/* Secondary Controls Row (Time Window) */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground px-2">
-          <div className="flex items-center gap-2 min-w-[120px]">
-            <Settings2 className="w-4 h-4" />
-            <span>Time Window</span>
+        <div className="rounded-md border bg-muted/10 px-3 py-2">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pb-2">
+            <span>Timeline Overview + Detail</span>
+            <span>Drag overview to zoom • Click detail to select</span>
           </div>
-          <div className="flex-1 max-w-xs" />
-          <div className="w-12 text-right font-mono">
-            {timeWindow}u
-          </div>
-
-          {/* Time Scale Mode Toggle */}
-          <div className="flex items-center gap-2 border-l pl-4">
-            <span>Time Scale:</span>
-            <button
-              onClick={handleScaleModeToggle}
-              className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium transition-colors"
-            >
-              {timeScaleMode === 'linear' ? 'Linear' : 'Adaptive'}
-            </button>
-          </div>
+          <DualTimeline />
         </div>
 
-
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 min-w-[120px]">
+              <Settings2 className="w-4 h-4" />
+            <span>Time Resolution</span>
+            </div>
+            <div className="flex-1 max-w-lg">
+              <Slider
+              min={0}
+              max={6}
+              step={1}
+              value={[['seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years'].indexOf(timeResolution)]}
+              onValueChange={handleResolutionChange}
+              />
+            </div>
+            <div className="w-12 text-right font-mono">
+            {timeResolution}
+            </div>
+          </div>
       </div>
       <div
         ref={dragRef}
@@ -176,12 +200,52 @@ export function TimelinePanel() {
         className="fixed z-[60] w-[220px] rounded-md border bg-background/90 backdrop-blur shadow-sm"
       >
         <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground border-b cursor-move select-none">
-          <span>Adaptive Warp</span>
-          <span>{isDragging ? 'Moving' : 'Drag'}</span>
+          <span>Adaptive Controls</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDockControls();
+              }}
+              className="p-1 rounded hover:bg-muted"
+              title="Dock bottom-right"
+            >
+              <Pin className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleResetControls();
+              }}
+              className="p-1 rounded hover:bg-muted"
+              title="Reset position"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsAdaptiveCollapsed((prev) => !prev);
+              }}
+              className="p-1 rounded hover:bg-muted"
+              title={isAdaptiveCollapsed ? 'Expand' : 'Collapse'}
+            >
+              {isAdaptiveCollapsed ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
         </div>
-        <div className="p-3">
-          <AdaptiveControls />
-        </div>
+        {!isAdaptiveCollapsed && (
+          <div className="p-3">
+            <AdaptiveControls />
+          </div>
+        )}
       </div>
     </div>
   );

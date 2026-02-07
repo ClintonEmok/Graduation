@@ -5,6 +5,7 @@ import { bin, max } from 'd3-array';
 import { brushX } from 'd3-brush';
 import { select } from 'd3-selection';
 import { scaleUtc } from 'd3-scale';
+import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useDataStore } from '@/store/useDataStore';
@@ -30,7 +31,7 @@ export const DualTimeline: React.FC = () => {
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
-  const { currentTime, setTime, setRange } = useTimeStore();
+  const { currentTime, setTime, setRange, timeResolution } = useTimeStore();
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
@@ -142,6 +143,34 @@ export const DualTimeline: React.FC = () => {
     },
     [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange]
   );
+
+  useEffect(() => {
+    const resolutionSeconds: Record<typeof timeResolution, number> = {
+      seconds: 1,
+      minutes: 60,
+      hours: 3600,
+      days: 86400,
+      weeks: 604800,
+      months: 2592000,
+      years: 31536000
+    };
+    const visibleUnits: Record<typeof timeResolution, number> = {
+      seconds: 60,
+      minutes: 60,
+      hours: 24,
+      days: 14,
+      weeks: 12,
+      months: 12,
+      years: 10
+    };
+
+    const unitSeconds = resolutionSeconds[timeResolution] ?? 86400;
+    const span = unitSeconds * (visibleUnits[timeResolution] ?? 14);
+    const centerSec = normalizedToEpochSeconds(currentTime, domainStart, domainEnd);
+    isSyncingRef.current = true;
+    applyRangeToStores(centerSec - span / 2, centerSec + span / 2);
+    isSyncingRef.current = false;
+  }, [applyRangeToStores, currentTime, domainEnd, domainStart, timeResolution]);
 
   useEffect(() => {
     if (!overviewInnerWidth || !detailInnerWidth) return;
@@ -322,7 +351,46 @@ export const DualTimeline: React.FC = () => {
   );
 
   const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
-  const detailTicks = detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
+  const detailTicks = useMemo(() => {
+    switch (timeResolution) {
+      case 'seconds':
+        return detailScale.ticks(timeSecond.every(10) ?? timeSecond);
+      case 'minutes':
+        return detailScale.ticks(timeMinute.every(5) ?? timeMinute);
+      case 'hours':
+        return detailScale.ticks(timeHour.every(2) ?? timeHour);
+      case 'days':
+        return detailScale.ticks(timeDay.every(2) ?? timeDay);
+      case 'weeks':
+        return detailScale.ticks(timeWeek.every(1) ?? timeWeek);
+      case 'months':
+        return detailScale.ticks(timeMonth.every(1) ?? timeMonth);
+      case 'years':
+        return detailScale.ticks(timeYear.every(1) ?? timeYear);
+      default:
+        return detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
+    }
+  }, [detailInnerWidth, detailScale, timeResolution]);
+  const detailTickFormat = useMemo(() => {
+    switch (timeResolution) {
+      case 'seconds':
+        return (date: Date) => date.toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
+      case 'minutes':
+        return (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case 'hours':
+        return (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case 'days':
+        return (date: Date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      case 'weeks':
+        return (date: Date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      case 'months':
+        return (date: Date) => date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+      case 'years':
+        return (date: Date) => date.getFullYear().toString();
+      default:
+        return (date: Date) => date.toLocaleDateString();
+    }
+  }, [timeResolution]);
 
   return (
     <div ref={containerRef} className="w-full">
@@ -425,7 +493,7 @@ export const DualTimeline: React.FC = () => {
                       fontSize={10}
                       fill="currentColor"
                     >
-                      {tick.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {detailTickFormat(tick)}
                     </text>
                   </g>
                 );

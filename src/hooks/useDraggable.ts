@@ -86,6 +86,7 @@ export function useDraggable(options: UseDraggableOptions = {}) {
 
   return {
     position,
+    setPosition,
     isDragging,
     dragRef,
     handleMouseDown,

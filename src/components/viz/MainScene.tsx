@@ -55,14 +55,41 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
       const timestamps = new Float32Array(count);
       let minT = Infinity;
       let maxT = -Infinity;
+
+      const yValues = new Float32Array(count);
+      let minY = Infinity;
+      let maxY = -Infinity;
       
       for(let i=0; i<count; i++) {
-        const t = data[i].timestamp;
-        timestamps[i] = t;
-        if (t < minT) minT = t;
-        if (t > maxT) maxT = t;
+        const point = data[i];
+        const y = typeof point.y === 'number' ? point.y : NaN;
+        yValues[i] = y;
+        if (Number.isFinite(y)) {
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+
+        let t = point.timestamp as number | Date;
+        let tValue: number;
+        if (t instanceof Date) {
+          tValue = t.getTime();
+        } else {
+          tValue = typeof t === 'number' ? t : NaN;
+        }
+
+        timestamps[i] = tValue;
+        if (Number.isFinite(tValue)) {
+          if (tValue < minT) minT = tValue;
+          if (tValue > maxT) maxT = tValue;
+        }
       }
-      
+
+      const hasValidY = minY !== Infinity && maxY > minY;
+      if (hasValidY) {
+        useAdaptiveStore.getState().computeMaps(yValues, [minY, maxY]);
+        return;
+      }
+
       if (minT !== Infinity && maxT > minT) {
         useAdaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
       }
