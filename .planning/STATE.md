@@ -10,7 +10,7 @@
 Phase: 25 of 25 (Adaptive Time Intervals & Burstiness)
 Plan: 2 of 2 in current phase
 Status: Phase complete
-Last activity: 2026-02-06 - Completed 25-03-SUMMARY.md
+Last activity: 2026-02-07 - Simplified 3D view and restored filter UX
 **Next:** Project Complete (or Maintenance)
 
 Progress: █████████████████████████ 100%
@@ -54,6 +54,8 @@ Progress: ███████████████████████�
 
 - **Timeline Stack:** Migrated to Visx/D3 for "Focus+Context" interactions.
 - **Responsiveness:** Implemented mobile blocking overlay.
+- **3D Reset:** Simplified 3D rendering to a color-coded point cloud for stable iteration.
+- **Map Modes:** Added burst/type color modes with interactive type legend and filter highlights.
 
 ## Decisions Made
 
@@ -80,6 +82,7 @@ Progress: ███████████████████████�
 | 25 | Texture Warp | Using DataTexture for GPU warp lookup ensures performance with complex adaptive maps. |
 | 25 | Debounced Raycast | Updating CPU matrices only after warp settles (500ms) preserves interaction accuracy without lag. |
 | 25 | Density Heatmap | Canvas-based strip visualizes density (Red=High, Blue=Low) for intuitive understanding of warp. |
+| 25 | Filter UX | Active filter pill + inline filter summaries keep state visible across views. |
 
 ## Blockers/Concerns Carried Forward
 
@@ -89,7 +92,7 @@ Progress: ███████████████████████�
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Session resumed, proceeding to execute Phase 25 Plan 04
+Stopped at: Simplified 3D view, map color modes, filter interactions restored
 Resume file: None
 
 ## Phase 25 - Adaptive Time Intervals & Burstiness
