@@ -6,28 +6,21 @@ import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
 
-type BurstWindow = {
+export type BurstWindow = {
   id: string;
   start: number;
   end: number;
   peak: number;
 };
 
-export function BurstList() {
+export const useBurstWindows = () => {
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
-  const setTimeRange = useFilterStore((state) => state.setTimeRange);
-  const setRange = useTimeStore((state) => state.setRange);
-  const setTime = useTimeStore((state) => state.setTime);
-  const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
-  const setSelectedBurstWindow = useCoordinationStore((state) => state.setSelectedBurstWindow);
 
-  const burstWindows = useMemo(() => {
+  return useMemo(() => {
     const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
     if (!selectedMap || selectedMap.length === 0) return [] as BurstWindow[];
 
@@ -60,6 +53,25 @@ export function BurstList() {
 
     return windows.sort((a, b) => b.peak - a.peak).slice(0, 10);
   }, [burstCutoff, burstMetric, burstinessMap, densityMap, mapDomain]);
+};
+
+export function BurstList() {
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
+  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const setTimeRange = useFilterStore((state) => state.setTimeRange);
+  const setRange = useTimeStore((state) => state.setRange);
+  const setTime = useTimeStore((state) => state.setTime);
+  const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
+  const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
+  const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
+  const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
+
+  const burstWindows = useBurstWindows();
 
   if (burstWindows.length === 0) return null;
 
@@ -75,7 +87,8 @@ export function BurstList() {
   };
 
   const handleSelectWindow = (window: BurstWindow) => {
-    setSelectedBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
+    toggleBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
+    setDetailsOpen(true);
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       const startEpoch = normalizedToEpochSeconds(window.start, minTimestampSec, maxTimestampSec);
       const endEpoch = normalizedToEpochSeconds(window.end, minTimestampSec, maxTimestampSec);
@@ -103,12 +116,18 @@ export function BurstList() {
         <span className="text-[10px] text-muted-foreground">Top {burstWindows.length}</span>
       </div>
       <div className="mt-3 space-y-2">
-        {burstWindows.map((window, index) => (
+        {burstWindows.map((window, index) => {
+          const isSelected = selectedBurstWindows.some(
+            (item) => item.start === window.start && item.end === window.end && item.metric === burstMetric
+          );
+          return (
           <button
             key={window.id}
             type="button"
             onClick={() => handleSelectWindow(window)}
-            className="w-full text-left rounded-md border px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
+            className={`w-full text-left rounded-md border px-3 py-2 text-xs transition-colors ${
+              isSelected ? 'border-primary/60 bg-primary/10' : 'hover:bg-muted/40'
+            }`}
           >
             <div className="flex items-center justify-between text-muted-foreground">
               <span>Burst {index + 1}</span>
@@ -118,7 +137,8 @@ export function BurstList() {
               {formatWindow(window.start, window.end)}
             </div>
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

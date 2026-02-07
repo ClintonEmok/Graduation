@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
 import { 
   Play, 
@@ -8,18 +8,12 @@ import {
   ChevronLeft, 
   ChevronRight, 
   FastForward,
-  Settings2,
-  Pin,
-  RotateCcw,
-  ChevronDown,
-  ChevronUp
+  Settings2
 } from 'lucide-react';
 
 import { Slider } from '@/components/ui/slider';
 import { DualTimeline } from './DualTimeline';
 import { useLogger } from '@/hooks/useLogger';
-import { AdaptiveControls } from './AdaptiveControls';
-import { useDraggable } from '@/hooks/useDraggable';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore } from '@/store/useDataStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
@@ -91,24 +85,6 @@ export function TimelinePanel() {
       return new Date(epochSec * 1000).toLocaleString();
     }
     return t.toFixed(2);
-  };
-
-  const { position, setPosition, dragRef, handleMouseDown, isDragging } = useDraggable({
-    storageKey: 'adaptive-controls-position',
-    initialPosition: { x: 24, y: 24 }
-  });
-  const [isAdaptiveCollapsed, setIsAdaptiveCollapsed] = useState(false);
-
-  const handleDockControls = () => {
-    if (typeof window === 'undefined') return;
-    setPosition({
-      x: Math.max(16, window.innerWidth - 260),
-      y: Math.max(16, window.innerHeight - 240)
-    });
-  };
-
-  const handleResetControls = () => {
-    setPosition({ x: 24, y: 24 });
   };
 
   return (
@@ -205,60 +181,6 @@ export function TimelinePanel() {
             {timeResolution}
             </div>
           </div>
-      </div>
-      <div
-        ref={dragRef}
-        onMouseDown={handleMouseDown}
-        style={{ left: position.x, top: position.y }}
-        className="fixed z-[60] w-[220px] rounded-md border bg-background/90 backdrop-blur shadow-sm"
-      >
-        <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground border-b cursor-move select-none">
-          <span>Adaptive Controls</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleDockControls();
-              }}
-              className="p-1 rounded hover:bg-muted"
-              title="Dock bottom-right"
-            >
-              <Pin className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleResetControls();
-              }}
-              className="p-1 rounded hover:bg-muted"
-              title="Reset position"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsAdaptiveCollapsed((prev) => !prev);
-              }}
-              className="p-1 rounded hover:bg-muted"
-              title={isAdaptiveCollapsed ? 'Expand' : 'Collapse'}
-            >
-              {isAdaptiveCollapsed ? (
-                <ChevronUp className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5" />
-              )}
-            </button>
-          </div>
-        </div>
-        {!isAdaptiveCollapsed && (
-          <div className="p-3">
-            <AdaptiveControls />
-          </div>
-        )}
       </div>
     </div>
   );

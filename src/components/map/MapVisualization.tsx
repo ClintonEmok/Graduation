@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import MapBase from './MapBase';
 import MapEventLayer from './MapEventLayer';
@@ -10,7 +10,6 @@ import MapDebugOverlay from './MapDebugOverlay';
 import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
-import { Controls } from '../viz/Controls';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
@@ -263,9 +262,6 @@ export default function MapVisualization() {
           <span>Burst ≥ {Math.round(burstThreshold * 100)}%</span>
         </div>
       </div>
-      <Suspense fallback={null}>
-        <Controls />
-      </Suspense>
     </div>
   );
 }

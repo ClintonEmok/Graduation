@@ -5,7 +5,6 @@ import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
 import { Grid } from './Grid';
 import { DataPoints } from './DataPoints';
-import { TimePlane } from './TimePlane';
 import { TimeLoop } from './TimeLoop';
 import { TimeSlices } from './TimeSlices';
 import { TimeGrid } from './TimeGrid';
@@ -39,7 +38,6 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const isAggregatedBinsEnabled = useFeatureFlagsStore((state) => state.isEnabled('aggregatedBins'));
   
   const pointsRef = useRef<THREE.InstancedMesh>(null);
-  const planeRef = useRef<THREE.Mesh>(null);
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
 
@@ -117,12 +115,14 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         {/* Canvas needs pointer-events-auto for controls to work */}
         <div className="h-full w-full pointer-events-auto">
           <Scene transparent={mode === 'map'}>
-             {/* Abstract Mode: Show Grid */}
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[60, 100, 40]} intensity={0.6} />
+            <directionalLight position={[-60, 60, -40]} intensity={0.4} />
+            {/* Abstract Mode: Show Grid */}
             {mode === 'abstract' && <Grid />}
             
             <DataPoints data={data} ref={pointsRef} />
             <TimeGrid />
-            <TimePlane ref={planeRef} />
             {isTimeSlicesEnabled && <TimeSlices />}
             {isHeatmapEnabled && <HeatmapOverlay />}
             {isClusteringEnabled && (
@@ -140,7 +140,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
               </>
             )}
             {isTrajectoriesEnabled && <TrajectoryLayer />}
-            <TimeLoop pointsRef={pointsRef} planeRef={planeRef} />
+            <TimeLoop pointsRef={pointsRef} />
 
             
             <CameraControls

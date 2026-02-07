@@ -1,3 +1,5 @@
+"use client";
+
 import React, {
   useRef,
   useLayoutEffect,
@@ -14,7 +16,7 @@ import { MathUtils } from 'three';
 import { RaycastLine } from './RaycastLine';
 import { DataPoint, useDataStore } from '@/store/useDataStore';
 // import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale'; // Removed
-import { getCrimeTypeId } from '@/lib/category-maps';
+import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useAggregationStore } from '@/store/useAggregationStore';
 import { useUIStore } from '@/store/ui';
@@ -42,6 +44,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
 
   const theme = useThemeStore((state) => state.theme);
   const colorMap = useMemo(() => PALETTES[theme].categoryColors, [theme]);
+  const useWhitePoints = theme === 'dark';
 
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const showContext = useUIStore((state) => state.showContext);
@@ -172,10 +175,22 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     const districts = new Float32Array(count);
 
     if (columns) {
+      const colorArr = new Float32Array(columns.length * 3);
+      for (let i = 0; i < columns.length; i += 1) {
+        const typeName = getCrimeTypeName(columns.type[i]);
+        const typeKey = typeName.toUpperCase();
+        const colorHex = useWhitePoints
+          ? '#FFFFFF'
+          : colorMap[typeKey] || colorMap[typeName] || colorMap['OTHER'] || '#FFFFFF';
+        const c = new THREE.Color(colorHex);
+        colorArr[i * 3] = c.r;
+        colorArr[i * 3 + 1] = c.g;
+        colorArr[i * 3 + 2] = c.b;
+      }
       return {
         filterType: columns.type,
         filterDistrict: columns.district,
-        colors: new Float32Array(columns.length * 3), // Handled by attributes-colX/Z logic or pre-computed colors?
+        colors: colorArr,
         colX: columns.x,
         colZ: columns.z,
         colLinearY: columns.timestamp
@@ -189,7 +204,9 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       // Use colorMap from store, normalize point type to UPPERCASE
       const typeKey = point.type.toUpperCase();
       // Try exact match, or 'OTHER'
-      const colorHex = colorMap[typeKey] || colorMap[point.type] || colorMap['OTHER'] || '#FFFFFF';
+      const colorHex = useWhitePoints
+        ? '#FFFFFF'
+        : colorMap[typeKey] || colorMap[point.type] || colorMap['OTHER'] || '#FFFFFF';
       
       const c = new THREE.Color(colorHex);
       colorArr[i * 3] = c.r;
@@ -205,7 +222,7 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
       colZ: null,
       colLinearY: null
     };
-  }, [data, columns, colorMap]);
+  }, [data, columns, colorMap, useWhitePoints]);
 
   // Update uniforms on context changes
   useEffect(() => {
@@ -673,11 +690,11 @@ const count = columns ? columns.length : data.length;
             <instancedBufferAttribute attach="attributes-colX" args={[colX!, 1]} />
             <instancedBufferAttribute attach="attributes-colZ" args={[colZ!, 1]} />
             <instancedBufferAttribute attach="attributes-colLinearY" args={[colLinearY!, 1]} />
-            <instancedBufferAttribute attach="instanceColor" args={[colors!, 3]} />
           </>
         )}
+        {colors && <instancedBufferAttribute attach="instanceColor" args={[colors, 3]} />}
       </sphereGeometry>
-      <meshStandardMaterial onBeforeCompile={onBeforeCompile} />
+      <meshStandardMaterial vertexColors onBeforeCompile={onBeforeCompile} />
     </instancedMesh>
     
     {/* Raycast line visualization - shows briefly when clicking a point */}

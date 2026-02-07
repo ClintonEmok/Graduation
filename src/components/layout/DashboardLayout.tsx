@@ -29,7 +29,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className={`h-screen w-full bg-background text-foreground overflow-hidden ${className}`}>
+    <div className={`h-full w-full bg-background text-foreground overflow-hidden ${className}`}>
       {/* Outer Group: Vertical Split (Top vs Bottom) */}
       <Group orientation="vertical" onLayoutChange={setOuterLayout} id="outer-group">
         

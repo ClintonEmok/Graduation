@@ -172,6 +172,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     '#include <dithering_fragment>',
     `
     #include <dithering_fragment>
+
+    vec3 baseColor = vec3(1.0);
+    #ifdef USE_COLOR
+      baseColor = vColor;
+    #endif
+    gl_FragColor = vec4(baseColor, 1.0);
     
     // Global LOD fade out
     if (uLodFactor > 0.05) {
@@ -183,9 +189,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     }
 
     float dist = abs(vWorldY - uTimePlane);
-    if (dist > uRange) {
-      gl_FragColor.rgb *= 0.2;
-    }
+    float focus = smoothstep(uRange, 0.0, dist);
+    gl_FragColor.rgb = mix(gl_FragColor.rgb * 0.6, gl_FragColor.rgb * 1.25, focus);
 
     // Determine if point is selected/focused
     bool isSelected = true;

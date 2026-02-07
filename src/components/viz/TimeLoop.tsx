@@ -6,10 +6,9 @@ import * as THREE from 'three';
 
 interface TimeLoopProps {
   pointsRef: React.RefObject<THREE.InstancedMesh | null>;
-  planeRef: React.RefObject<THREE.Mesh | null>;
 }
 
-export function TimeLoop({ pointsRef, planeRef }: TimeLoopProps) {
+export function TimeLoop({ pointsRef }: TimeLoopProps) {
   useFrame((state, delta) => {
     const { 
       isPlaying, 
@@ -37,12 +36,7 @@ export function TimeLoop({ pointsRef, planeRef }: TimeLoopProps) {
     
     // Update visual elements directly (bypassing React state for performance)
     
-    // 1. Update TimePlane position
-    if (planeRef.current) {
-      planeRef.current.position.y = nextTime;
-    }
-
-    // 2. Update DataPoints shader uniforms
+    // Update DataPoints shader uniforms
     if (pointsRef.current) {
       const material = pointsRef.current.material as THREE.MeshStandardMaterial;
       // Access the shader we attached in DataPoints.tsx onBeforeCompile

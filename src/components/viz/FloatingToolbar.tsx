@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Filter, Home, Layers, Settings, Eye, EyeOff, GripVertical } from 'lucide-react';
+import { Filter, Home, Layers, Settings, Eye, EyeOff, GripVertical, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { FilterOverlay } from './FilterOverlay';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { SliceManagerUI } from './SliceManagerUI';
@@ -12,7 +12,13 @@ import { URLConflictDialog } from '@/components/settings/URLConflictDialog';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export function FloatingToolbar() {
+type FloatingToolbarProps = {
+  variant?: 'floating' | 'docked';
+  onDetach?: () => void;
+  onDock?: () => void;
+};
+
+export function FloatingToolbar({ variant = 'floating', onDetach, onDock }: FloatingToolbarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSliceManagerOpen, setIsSliceManagerOpen] = useState(false);
@@ -20,9 +26,14 @@ export function FloatingToolbar() {
   const showContext = useUIStore((state) => state.showContext);
   const toggleContext = useUIStore((state) => state.toggleContext);
   
+  const initialToolbarPosition =
+    typeof window !== 'undefined' && window.innerWidth
+      ? { x: window.innerWidth - 250, y: 16 }
+      : { x: 16, y: 16 };
+
   const { position, isDragging, dragRef, handleMouseDown } = useDraggable({
     storageKey: 'toolbar-position-v1',
-    initialPosition: { x: window?.innerWidth ? window.innerWidth - 250 : 16, y: 16 },
+    initialPosition: initialToolbarPosition,
   });
 
   const {
@@ -32,32 +43,38 @@ export function FloatingToolbar() {
     rejectURLFlags,
   } = useURLFeatureFlags();
 
+  const isFloating = variant === 'floating';
+
   return (
     <TooltipProvider>
       <div
         id="tour-toolbar"
-        ref={dragRef}
-        onMouseDown={handleMouseDown}
+        ref={isFloating ? dragRef : undefined}
+        onMouseDown={isFloating ? handleMouseDown : undefined}
         className={cn(
-          'fixed z-20 flex items-center gap-4 rounded-full border border-border bg-background/90 px-6 py-3 shadow-md backdrop-blur transition-shadow hover:shadow-lg',
-          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+          isFloating
+            ? 'fixed z-20 flex items-center gap-4 rounded-full border border-border bg-background/90 px-6 py-3 shadow-md backdrop-blur transition-shadow hover:shadow-lg'
+            : 'flex items-center gap-3 rounded-full px-2 py-1',
+          isFloating ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''
         )}
         style={{
-          left: position.x,
-          top: position.y,
+          left: isFloating ? position.x : undefined,
+          top: isFloating ? position.y : undefined,
         }}
       >
         {/* Drag handle indicator */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="cursor-grab active:cursor-grabbing p-1">
-              <GripVertical className="h-5 w-5 text-muted-foreground/50" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Drag to move</p>
-          </TooltipContent>
-        </Tooltip>
+        {isFloating && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="cursor-grab active:cursor-grabbing p-1">
+                <GripVertical className="h-5 w-5 text-muted-foreground/50" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Drag to move</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
         
         <Tooltip>
           <TooltipTrigger asChild>
@@ -139,6 +156,42 @@ export function FloatingToolbar() {
             <p>Filters</p>
           </TooltipContent>
         </Tooltip>
+
+        {(isFloating && onDock) && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                aria-label="Dock toolbar"
+                onClick={onDock}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Dock toolbar</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {(!isFloating && onDetach) && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                aria-label="Detach toolbar"
+                onClick={onDetach}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Detach toolbar</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       <FilterOverlay isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />

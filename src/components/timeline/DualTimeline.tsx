@@ -14,6 +14,8 @@ import { useTimeStore } from '@/store/useTimeStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
+import { useBurstWindows } from '@/components/viz/BurstList';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -36,6 +38,9 @@ export const DualTimeline: React.FC = () => {
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
+  const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
+  const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -340,6 +345,28 @@ export const DualTimeline: React.FC = () => {
     return detailScale(new Date(selectionPoint.timestampSec * 1000));
   }, [detailScale, selectionPoint]);
 
+  const burstWindows = useBurstWindows();
+  const burstRects = useMemo(() => {
+    if (burstWindows.length === 0) return [] as { start: number; end: number; key: string }[];
+    return burstWindows.map((window) => {
+      const x0 = detailScale(new Date(window.start * 1000));
+      const x1 = detailScale(new Date(window.end * 1000));
+      return { start: Math.min(x0, x1), end: Math.max(x0, x1), key: window.id };
+    });
+  }, [burstWindows, detailScale]);
+
+  const handleBurstClick = useCallback(
+    (event: React.MouseEvent<SVGRectElement>, index: number) => {
+      event.stopPropagation();
+      const window = burstWindows[index];
+      if (!window) return;
+      toggleBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
+      applyRangeToStores(window.start, window.end);
+      setTime((window.start + window.end) / 2);
+    },
+    [applyRangeToStores, burstWindows, toggleBurstWindow, setTime, burstMetric]
+  );
+
   const handleSelectFromEvent = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
       if (!detailInnerWidth) return;
@@ -492,6 +519,31 @@ export const DualTimeline: React.FC = () => {
                   cy={DETAIL_HEIGHT - 6}
                   r={2}
                   className="fill-primary/60"
+                />
+              );
+            })}
+
+            {burstRects.map((rect, index) => {
+              const window = burstWindows[index];
+              const isSelected = window
+                ? selectedBurstWindows.some(
+                    (item) =>
+                      item.start === window.start &&
+                      item.end === window.end &&
+                      item.metric === burstMetric
+                  )
+                : false;
+              return (
+                <rect
+                  key={`burst-${rect.key}`}
+                  x={rect.start}
+                  y={0}
+                  width={Math.max(0, rect.end - rect.start)}
+                  height={DETAIL_HEIGHT}
+                  fill={isSelected ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.08)'}
+                  stroke={isSelected ? 'rgba(249, 115, 22, 0.9)' : 'rgba(249, 115, 22, 0.5)'}
+                  strokeWidth={1}
+                  onClick={(event) => handleBurstClick(event, index)}
                 />
               );
             })}
