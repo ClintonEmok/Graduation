@@ -3,25 +3,11 @@
 import { useRef, useEffect } from 'react';
 import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
-import { Grid } from './Grid';
-import { DataPoints } from './DataPoints';
-import { TimeLoop } from './TimeLoop';
-import { TimeSlices } from './TimeSlices';
-import { TimeGrid } from './TimeGrid';
-import { HeatmapOverlay } from './HeatmapOverlay';
-import { ClusterManager } from './ClusterManager';
-import { ClusterHighlights } from './ClusterHighlights';
-import { ClusterLabels } from './ClusterLabels';
-import { AggregationManager } from './AggregationManager';
-import { AggregatedBars } from './AggregatedBars';
-import { LODController } from './LODController';
-import { TrajectoryLayer } from './TrajectoryLayer';
+import { SimpleCrimePoints } from './SimpleCrimePoints';
 import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
-import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
-import * as THREE from 'three';
 import { CameraControls } from '@react-three/drei';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
@@ -31,13 +17,6 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const mode = useUIStore((state) => state.mode);
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
-  const isTimeSlicesEnabled = useFeatureFlagsStore((state) => state.isEnabled('timeSlices'));
-  const isHeatmapEnabled = useFeatureFlagsStore((state) => state.isEnabled('heatmap'));
-  const isClusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
-  const isTrajectoriesEnabled = useFeatureFlagsStore((state) => state.isEnabled('trajectories'));
-  const isAggregatedBinsEnabled = useFeatureFlagsStore((state) => state.isEnabled('aggregatedBins'));
-  
-  const pointsRef = useRef<THREE.InstancedMesh>(null);
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
 
@@ -115,32 +94,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         {/* Canvas needs pointer-events-auto for controls to work */}
         <div className="h-full w-full pointer-events-auto">
           <Scene transparent={mode === 'map'}>
-            <ambientLight intensity={0.7} />
-            <directionalLight position={[60, 100, 40]} intensity={0.6} />
-            <directionalLight position={[-60, 60, -40]} intensity={0.4} />
-            {/* Abstract Mode: Show Grid */}
-            {mode === 'abstract' && <Grid />}
-            
-            <DataPoints data={data} ref={pointsRef} />
-            <TimeGrid />
-            {isTimeSlicesEnabled && <TimeSlices />}
-            {isHeatmapEnabled && <HeatmapOverlay />}
-            {isClusteringEnabled && (
-              <>
-                <ClusterManager />
-                <ClusterHighlights />
-                 <ClusterLabels />
-              </>
-            )}
-            {isAggregatedBinsEnabled && (
-              <>
-                <AggregationManager />
-                <AggregatedBars />
-                <LODController />
-              </>
-            )}
-            {isTrajectoriesEnabled && <TrajectoryLayer />}
-            <TimeLoop pointsRef={pointsRef} />
+            <SimpleCrimePoints />
 
             
             <CameraControls

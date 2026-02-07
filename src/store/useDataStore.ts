@@ -70,15 +70,21 @@ export const useDataStore = create<DataState>((set, get) => ({
   
   generateMockData: (count) => {
     const crimeTypes = ['Theft', 'Assault', 'Burglary', 'Robbery', 'Vandalism'];
-    const data: DataPoint[] = Array.from({ length: count }).map((_, i) => ({
+    const data: DataPoint[] = Array.from({ length: count }).map((_, i) => {
+      let type = crimeTypes[Math.floor(Math.random() * crimeTypes.length)];
+      if (getCrimeTypeId(type) === 0) {
+        type = 'Theft';
+      }
+      return {
       id: String(i),
       timestamp: TIME_MIN + Math.random() * (TIME_MAX - TIME_MIN),
       x: (Math.random() - 0.5) * 100,
       y: 0, // Will be computed
       z: (Math.random() - 0.5) * 100,
-      type: crimeTypes[Math.floor(Math.random() * crimeTypes.length)],
+      type,
       value: Math.random()
-    }));
+    };
+    });
     // Sort by timestamp
     data.sort((a, b) => a.timestamp - b.timestamp);
     set({ data, columns: null, minTimestampSec: null, maxTimestampSec: null, minX: -50, maxX: 50, minZ: -50, maxZ: 50 }); 
@@ -119,7 +125,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       const xCol = table.getChild('x');
       const yCol = table.getChild('y'); // This is Z (depth/latitude projection) in our 3D space
       const timeCol = table.getChild('timestamp'); // Raw timestamp
-      const typeCol = table.getChild('primary_type');
+      const typeCol = table.getChild('primary_type') || table.getChild('type');
       const districtCol = table.getChild('district');
       const blockCol = table.getChild('block');
       const latCol = table.getChild('lat');

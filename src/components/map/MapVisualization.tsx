@@ -10,6 +10,7 @@ import MapDebugOverlay from './MapDebugOverlay';
 import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
+import { MapTypeLegend } from './MapTypeLegend';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
@@ -42,6 +43,7 @@ export default function MapVisualization() {
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [colorMode, setColorMode] = useState<'burst' | 'type'>('burst');
   const [dragStart, setDragStart] = useState<DragPoint | null>(null);
   const [dragCurrent, setDragCurrent] = useState<DragPoint | null>(null);
   const [lastClick, setLastClick] = useState<{lat: number, lon: number} | null>(null);
@@ -217,7 +219,7 @@ export default function MapVisualization() {
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >
-         <MapEventLayer />
+         <MapEventLayer colorMode={colorMode} />
         <MapHeatmapOverlay />
         <MapClusterHighlights />
         <MapTrajectoryLayer />
@@ -233,6 +235,30 @@ export default function MapVisualization() {
       <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
         <h2 className="text-sm font-semibold">Map View</h2>
         <div className="mt-2 flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setColorMode('burst')}
+              className={`rounded px-2 py-0.5 transition-colors ${
+                colorMode === 'burst'
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Burst
+            </button>
+            <button
+              type="button"
+              onClick={() => setColorMode('type')}
+              className={`rounded px-2 py-0.5 transition-colors ${
+                colorMode === 'type'
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Type
+            </button>
+          </div>
           <button
             type="button"
             onClick={toggleSelectionMode}
@@ -257,10 +283,16 @@ export default function MapVisualization() {
             Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
           </div>
         )}
-        <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-orange-500" />
-          <span>Burst ≥ {Math.round(burstThreshold * 100)}%</span>
-        </div>
+        {colorMode === 'burst' ? (
+          <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-orange-500" />
+            <span>Burst ≥ {Math.round(burstThreshold * 100)}%</span>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <MapTypeLegend />
+          </div>
+        )}
       </div>
     </div>
   );

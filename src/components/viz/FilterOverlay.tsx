@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useFilterStore } from "@/store/useFilterStore";
 import { getCrimeTypeId, getDistrictId } from "@/lib/category-maps";
 import { PresetManager } from "@/components/viz/PresetManager";
@@ -247,9 +248,10 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   }, [parsedStart, parsedEnd, selectedTimeRange, setTimeRange, log]);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[999] flex items-start justify-end p-4">
       <button
         aria-label="Close filters"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -471,5 +473,5 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
         </div>
       </div>
     </div>
-  );
+  , document.body);
 }

@@ -18,6 +18,7 @@ const START_TIME = END_TIME - 365 * 24 * 60 * 60 * 1000;
 
 const NUM_POINTS = 100000;
 const TYPES = ['Theft', 'Assault', 'Burglary', 'Robbery', 'Vandalism'];
+const SAFE_TYPES = TYPES.filter((type) => type.toLowerCase() !== 'unknown');
 const BLOCKS = Array.from({length: 100}).map((_, i) => `BLOCK_${i}`);
 
 function generateCSV() {
@@ -28,7 +29,9 @@ function generateCSV() {
 
     for (let i = 0; i < NUM_POINTS; i++) {
       const id = `evt_${i}`;
-      const type = TYPES[Math.floor(Math.random() * TYPES.length)];
+      const type = SAFE_TYPES.length
+        ? SAFE_TYPES[Math.floor(Math.random() * SAFE_TYPES.length)]
+        : 'Theft';
       
       // Reuse blocks for trajectory pillars
       const blockIndex = Math.floor(Math.random() * BLOCKS.length);

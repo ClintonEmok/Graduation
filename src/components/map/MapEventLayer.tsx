@@ -5,6 +5,9 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
 import { unproject } from '@/lib/projection';
+import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
+import { useThemeStore } from '@/store/useThemeStore';
+import { PALETTES } from '@/lib/palettes';
 
 const MAX_POINTS = 20000;
 
@@ -14,18 +17,27 @@ type ScenePoint = {
   index: number;
 };
 
-export default function MapEventLayer() {
+interface MapEventLayerProps {
+  colorMode: 'burst' | 'type';
+}
+
+export default function MapEventLayer({ colorMode }: MapEventLayerProps) {
   const columns = useDataStore((state) => state.columns);
   const data = useDataStore((state) => state.data);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const selectedTypes = useFilterStore((state) => state.selectedTypes);
+  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
   const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const theme = useThemeStore((state) => state.theme);
+  const palette = PALETTES[theme];
 
   const filteredPoints = useMemo<ScenePoint[]>(() => {
     const points: ScenePoint[] = [];
@@ -41,7 +53,7 @@ export default function MapEventLayer() {
           const normalizedEnd = epochSecondsToNormalized(rangeEnd, minTimestampSec, maxTimestampSec);
           minTime = Math.min(normalizedStart, normalizedEnd);
           maxTime = Math.max(normalizedStart, normalizedEnd);
-        } else {
+        } else if (rangeStart >= 0 && rangeEnd <= 100) {
           minTime = Math.min(rangeStart, rangeEnd);
           maxTime = Math.max(rangeStart, rangeEnd);
         }
@@ -50,6 +62,21 @@ export default function MapEventLayer() {
       for (let i = 0; i < columns.length; i += 1) {
         const timestamp = columns.timestamp[i];
         if (timestamp < minTime || timestamp > maxTime) continue;
+        if (selectedTypes.length > 0 && !selectedTypes.includes(columns.type[i])) continue;
+        if (selectedDistricts.length > 0 && !selectedDistricts.includes(columns.district[i])) continue;
+
+        if (selectedSpatialBounds && columns.lat && columns.lon) {
+          const lat = columns.lat[i];
+          const lon = columns.lon[i];
+          if (
+            lat < selectedSpatialBounds.minLat ||
+            lat > selectedSpatialBounds.maxLat ||
+            lon < selectedSpatialBounds.minLon ||
+            lon > selectedSpatialBounds.maxLon
+          ) {
+            continue;
+          }
+        }
         points.push({ x: columns.x[i], z: columns.z[i], index: i });
       }
     } else if (data.length > 0) {
@@ -58,13 +85,33 @@ export default function MapEventLayer() {
 
       if (selectedTimeRange) {
         const [rangeStart, rangeEnd] = selectedTimeRange;
-        minTime = Math.min(rangeStart, rangeEnd);
-        maxTime = Math.max(rangeStart, rangeEnd);
+        if (rangeStart >= 0 && rangeEnd <= 100) {
+          minTime = Math.min(rangeStart, rangeEnd);
+          maxTime = Math.max(rangeStart, rangeEnd);
+        }
       }
 
       for (let i = 0; i < data.length; i += 1) {
         const point = data[i];
         if (point.timestamp < minTime || point.timestamp > maxTime) continue;
+        const typeId = getCrimeTypeId(point.type);
+        if (selectedTypes.length > 0 && !selectedTypes.includes(typeId)) continue;
+
+        const districtId = point.districtId;
+        if (selectedDistricts.length > 0 && typeof districtId === 'number' && !selectedDistricts.includes(districtId)) {
+          continue;
+        }
+
+        if (selectedSpatialBounds && typeof point.lat === 'number' && typeof point.lon === 'number') {
+          if (
+            point.lat < selectedSpatialBounds.minLat ||
+            point.lat > selectedSpatialBounds.maxLat ||
+            point.lon < selectedSpatialBounds.minLon ||
+            point.lon > selectedSpatialBounds.maxLon
+          ) {
+            continue;
+          }
+        }
         points.push({ x: point.x, z: point.z, index: i });
       }
     }
@@ -79,7 +126,16 @@ export default function MapEventLayer() {
       sampled.push(points[i]);
     }
     return sampled;
-  }, [columns, data, maxTimestampSec, minTimestampSec, selectedTimeRange]);
+  }, [
+    columns,
+    data,
+    maxTimestampSec,
+    minTimestampSec,
+    selectedDistricts,
+    selectedSpatialBounds,
+    selectedTimeRange,
+    selectedTypes
+  ]);
 
   const geoJson = useMemo(() => {
     if (filteredPoints.length === 0) return null;
@@ -124,7 +180,8 @@ export default function MapEventLayer() {
             },
             properties: {
               index: point.index,
-              burstIntensity
+              burstIntensity,
+              typeId: columns ? columns.type[point.index] : getCrimeTypeId(data[point.index]?.type)
             }
           };
         })
@@ -135,6 +192,49 @@ export default function MapEventLayer() {
     };
   }, [burstMetric, burstinessMap, columns, data, densityMap, filteredPoints, mapDomain]);
 
+  const typeColorExpression = useMemo(() => {
+    const entries: (string | number)[] = [];
+    for (let id = 1; id <= 35; id += 1) {
+      const label = getCrimeTypeName(id);
+      const key = label.toUpperCase();
+      const color =
+        palette.categoryColors[key] ||
+        palette.categoryColors[label] ||
+        palette.categoryColors['OTHER'] ||
+        '#94a3b8';
+      entries.push(id, color);
+    }
+    const fallback = palette.categoryColors['OTHER'] || '#94a3b8';
+    return ['match', ['get', 'typeId'], ...entries, fallback] as unknown as any[];
+  }, [palette]);
+
+  const paint = (colorMode === 'burst'
+    ? {
+        'circle-radius': [
+          'case',
+          ['>=', ['get', 'burstIntensity'], burstCutoff],
+          4,
+          3
+        ],
+        'circle-color': [
+          'case',
+          ['>=', ['get', 'burstIntensity'], burstCutoff],
+          '#f97316',
+          '#94a3b8'
+        ],
+        'circle-opacity': [
+          'case',
+          ['>=', ['get', 'burstIntensity'], burstCutoff],
+          0.75,
+          0.35
+        ]
+      }
+    : {
+        'circle-radius': 3,
+        'circle-color': typeColorExpression,
+        'circle-opacity': 0.7
+      }) as any;
+
   if (!geoJson) return null;
 
   return (
@@ -142,26 +242,7 @@ export default function MapEventLayer() {
       <Layer
         id="map-events-layer"
         type="circle"
-        paint={{
-          'circle-radius': [
-            'case',
-            ['>=', ['get', 'burstIntensity'], burstCutoff],
-            4,
-            3
-          ],
-          'circle-color': [
-            'case',
-            ['>=', ['get', 'burstIntensity'], burstCutoff],
-            '#f97316',
-            '#94a3b8'
-          ],
-          'circle-opacity': [
-            'case',
-            ['>=', ['get', 'burstIntensity'], burstCutoff],
-            0.75,
-            0.35
-          ]
-        }}
+        paint={paint}
       />
     </Source>
   );

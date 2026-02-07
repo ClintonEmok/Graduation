@@ -7,12 +7,14 @@ import { FloatingToolbar } from '@/components/viz/FloatingToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDraggable } from '@/hooks/useDraggable';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useDataStore } from '@/store/useDataStore';
 
 export function TopBar() {
   const [adaptiveDocked, setAdaptiveDocked] = useState(true);
   const [toolbarDocked, setToolbarDocked] = useState(true);
   const [adaptiveOpen, setAdaptiveOpen] = useState(false);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
+  const { columns, data, generateMockData } = useDataStore();
 
   const { position, dragRef, handleMouseDown, isDragging } = useDraggable({
     storageKey: 'adaptive-controls-floating',
@@ -36,6 +38,16 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
+        {!columns && (
+          <button
+            type="button"
+            onClick={() => generateMockData(data.length > 0 ? data.length : 2000)}
+            className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+            title="Regenerate mock data"
+          >
+            Regen mock
+          </button>
+        )}
         <Popover open={adaptiveOpen} onOpenChange={setAdaptiveOpen}>
           <PopoverTrigger asChild>
             <button
