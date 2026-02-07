@@ -8,6 +8,7 @@ The app links a 3D space-time cube, a 2D map, and a dual timeline. Adaptive time
 
 - Timeline supports overview + detail brushing and point selection.
 - Time Resolution slider changes the timeline granularity (seconds → years) and updates the detail window span.
+- Playback and step controls advance by the selected time resolution.
 - Adaptive Controls adjust warp strength and burst highlighting percentile.
 - Bursty points are highlighted in both 3D and 2D views.
 

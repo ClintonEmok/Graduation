@@ -352,25 +352,48 @@ export const DualTimeline: React.FC = () => {
 
   const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
   const detailTicks = useMemo(() => {
+    const spanSeconds = Math.max(1, detailRangeSec[1] - detailRangeSec[0]);
+    const maxTicks = Math.max(2, Math.floor(detailInnerWidth / 140));
+    const pickStep = (unitSeconds: number, steps: number[]) => {
+      for (const step of steps) {
+        if (spanSeconds / (unitSeconds * step) <= maxTicks) return step;
+      }
+      return steps[steps.length - 1];
+    };
+
     switch (timeResolution) {
-      case 'seconds':
-        return detailScale.ticks(timeSecond.every(10) ?? timeSecond);
-      case 'minutes':
-        return detailScale.ticks(timeMinute.every(5) ?? timeMinute);
-      case 'hours':
-        return detailScale.ticks(timeHour.every(2) ?? timeHour);
-      case 'days':
-        return detailScale.ticks(timeDay.every(2) ?? timeDay);
-      case 'weeks':
-        return detailScale.ticks(timeWeek.every(1) ?? timeWeek);
-      case 'months':
-        return detailScale.ticks(timeMonth.every(1) ?? timeMonth);
-      case 'years':
-        return detailScale.ticks(timeYear.every(1) ?? timeYear);
+      case 'seconds': {
+        const step = pickStep(1, [1, 2, 5, 10, 15, 30]);
+        return detailScale.ticks(timeSecond.every(step) ?? timeSecond);
+      }
+      case 'minutes': {
+        const step = pickStep(60, [1, 2, 5, 10, 15, 30]);
+        return detailScale.ticks(timeMinute.every(step) ?? timeMinute);
+      }
+      case 'hours': {
+        const step = pickStep(3600, [1, 2, 3, 6, 12]);
+        return detailScale.ticks(timeHour.every(step) ?? timeHour);
+      }
+      case 'days': {
+        const step = pickStep(86400, [1, 2, 3, 7, 14]);
+        return detailScale.ticks(timeDay.every(step) ?? timeDay);
+      }
+      case 'weeks': {
+        const step = pickStep(604800, [1, 2, 4, 8]);
+        return detailScale.ticks(timeWeek.every(step) ?? timeWeek);
+      }
+      case 'months': {
+        const step = pickStep(2592000, [1, 2, 3, 6]);
+        return detailScale.ticks(timeMonth.every(step) ?? timeMonth);
+      }
+      case 'years': {
+        const step = pickStep(31536000, [1, 2, 5, 10]);
+        return detailScale.ticks(timeYear.every(step) ?? timeYear);
+      }
       default:
         return detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
     }
-  }, [detailInnerWidth, detailScale, timeResolution]);
+  }, [detailInnerWidth, detailRangeSec, detailScale, timeResolution]);
   const detailTickFormat = useMemo(() => {
     switch (timeResolution) {
       case 'seconds':

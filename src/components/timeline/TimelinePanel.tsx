@@ -21,6 +21,8 @@ import { useLogger } from '@/hooks/useLogger';
 import { AdaptiveControls } from './AdaptiveControls';
 import { useDraggable } from '@/hooks/useDraggable';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useDataStore } from '@/store/useDataStore';
+import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
 
 export function TimelinePanel() {
   const {
@@ -31,12 +33,15 @@ export function TimelinePanel() {
     timeResolution,
     timeScaleMode,
     togglePlay,
+    setTime,
     stepTime,
     setTimeWindow,
     setTimeResolution,
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
   
@@ -65,8 +70,10 @@ export function TimelinePanel() {
   };
 
   const handleStep = (direction: number) => {
-    stepTime(direction);
-    log(direction > 0 ? 'time_step_forward' : 'time_step_backward', { time: currentTime });
+    const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
+    const next = currentTime + direction * stepSize;
+    setTime(next);
+    log(direction > 0 ? 'time_step_forward' : 'time_step_backward', { time: next });
   };
 
   const handleScaleModeToggle = () => {
@@ -78,7 +85,13 @@ export function TimelinePanel() {
     log('time_scale_mode_changed', { mode: nextMode });
   };
 
-  const formatTime = (t: number) => t.toFixed(1);
+  const formatTime = (t: number) => {
+    if (minTimestampSec !== null && maxTimestampSec !== null) {
+      const epochSec = normalizedToEpochSeconds(t, minTimestampSec, maxTimestampSec);
+      return new Date(epochSec * 1000).toLocaleString();
+    }
+    return t.toFixed(2);
+  };
 
   const { position, setPosition, dragRef, handleMouseDown, isDragging } = useDraggable({
     storageKey: 'adaptive-controls-position',

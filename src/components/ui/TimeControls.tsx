@@ -2,6 +2,8 @@
 
 import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useDataStore } from '@/store/useDataStore';
+import { resolutionToNormalizedStep } from '@/lib/time-domain';
 import { TimelineContainer } from '@/components/timeline/TimelineContainer';
 import { 
   Play, 
@@ -21,11 +23,13 @@ export function TimeControls() {
     timeScaleMode,
     togglePlay,
     setTime,
-    stepTime,
     setTimeWindow,
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const timeResolution = useTimeStore((state) => state.timeResolution);
 
   const handleTimeChange = useCallback(
     (value: number[]) => {
@@ -59,7 +63,10 @@ export function TimeControls() {
           {/* Playback Controls */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => stepTime(-1)}
+              onClick={() => {
+                const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
+                setTime(currentTime - stepSize);
+              }}
               className="p-2 hover:bg-accent rounded-full transition-colors"
               title="Step Backward"
             >
@@ -79,7 +86,10 @@ export function TimeControls() {
             </button>
             
             <button
-              onClick={() => stepTime(1)}
+              onClick={() => {
+                const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
+                setTime(currentTime + stepSize);
+              }}
               className="p-2 hover:bg-accent rounded-full transition-colors"
               title="Step Forward"
             >

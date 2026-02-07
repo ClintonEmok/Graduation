@@ -1,5 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useDataStore } from '@/store/useDataStore';
+import { resolutionToNormalizedStep } from '@/lib/time-domain';
 import * as THREE from 'three';
 
 interface TimeLoopProps {
@@ -15,22 +17,20 @@ export function TimeLoop({ pointsRef, planeRef }: TimeLoopProps) {
       currentTime, 
       timeRange, 
       timeWindow, 
-      setTime 
+      setTime,
+      timeResolution
     } = useTimeStore.getState();
+    const { minTimestampSec, maxTimestampSec } = useDataStore.getState();
     
     let nextTime = currentTime;
 
     if (isPlaying) {
-      // Advance time
-      // Base speed: 10 units per second at 1x speed
-      // Adjust multiplier as needed for good UX
-      nextTime += delta * speed * 10; 
-      
-      // Loop handling
-      if (nextTime > timeRange[1]) {
-        nextTime = timeRange[0];
-      }
-      
+      const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
+      const span = Math.max(0.0001, timeRange[1] - timeRange[0]);
+      const deltaNorm = delta * speed * stepSize;
+      const offset = (currentTime - timeRange[0] + deltaNorm) % span;
+      nextTime = timeRange[0] + (offset < 0 ? offset + span : offset);
+
       // Update store (this triggers UI updates)
       setTime(nextTime);
     }
