@@ -1,38 +1,95 @@
-### Phase 23: Map Interaction & Debugging
+# Roadmap: Adaptive Space-Time Cube
 
-**Goal:** Enable point selection on the 2D map and add debug visualization lines.
-**Depends on:** Phase 22
-**Plans:** 1 plan
+## Milestones
 
-Plans:
-- [x] 23-01-PLAN.md — Map Interaction & Debugging
+- ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
+- 📋 **v1.1 Study Mode** — Guided tasks and tutorial system (planned)
+- 📋 **v2.0** — Performance optimizations and additional datasets (future)
 
-### Phase 24: Interaction Synthesis & 3D Debugging
+---
 
-**Goal:** Harmonize interactions across Timeline, Map (2D), and Space-Time Cube (3D). Fix selection state syncing and 3D click targeting.
-**Depends on:** Phase 23
-**Plans:** 5 plans (3 completed, 2 gap closure)
+## Completed Milestone
 
-Plans:
-- [x] 24-01-PLAN.md — Coordination Store & Focus+Context
-- [x] 24-02-PLAN.md — 3D Click Targeting & Raycast Debug
-- [x] 24-03-PLAN.md — Conductor Logic (useSelectionSync hook)
-- [x] 24-04-PLAN.md — Gap: Connect Brush Range to Coordination Store
-- [x] 24-05-PLAN.md — Gap: Add Visual Raycast Line
+<details>
+<summary>✅ v1.0 Thesis Prototype (Phases 01-25) — SHIPPED 2026-02-07</summary>
 
-### Phase 25: Adaptive Time Intervals & Burstiness
+Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
-**Goal:** Implement adaptive time scaling based on burstiness intervals.
-**Depends on:** Phase 24
-**Plans:** 3 plans
+**Summary:**
+- 25 phases, 82 plans
+- 3D Space-Time Cube with React Three Fiber
+- GPU-accelerated adaptive time scaling
+- Coordinated Map-Cube-Timeline views
+- Advanced filtering with presets
+- Feature flags system
+- Interaction logging
+- Performance: 1.2M records at 60fps
 
-Plans:
-- [ ] 25-01-PLAN.md — Foundation (Worker & Store)
-- [ ] 25-02-PLAN.md — 3D Adaptive Visualization (Shader & Interaction)
-- [ ] 25-03-PLAN.md — Timeline Density & Controls
+**Key Deliverables:**
+- Core 3D visualization with camera controls
+- Temporal controls (play/pause/scrub)
+- Adaptive scaling (KDE-based warping)
+- Data backend (DuckDB + Arrow)
+- Advanced filtering (type, district, time, spatial)
+- Coordinated views (selection sync)
+- Time slices, heatmap, trajectories, clusters
+- Timeline redesign (Visx focus+context)
+- Adaptive intervals & burstiness
+
+</details>
+
+---
+
+## Next Milestone: v1.1 Study Mode
+
+### Phase 26: Guided Tutorial System
+
+**Goal:** Create an interactive onboarding tutorial for first-time users.
+**Depends on:** Phase 25
+**Plans:** TBD (to be planned)
 
 **Details:**
-- Implement KDE-based time warping with Linear Blend (Option C).
-- Upgrade Timeline to use Screen Pixel Density binning.
-- Add Slider to blend between Uniform and Adaptive time.
-- Synchronize 3D Cube and Timeline in adaptive mode.
+- Multi-step tutorial highlighting key features
+- Interactive guided tour of the interface
+- Contextual help system
+- Progress tracking through tutorial
+
+### Phase 27: Task-Based Study Mode
+
+**Goal:** Implement structured task presentation for user study.
+**Depends on:** Phase 26
+**Plans:** TBD (to be planned)
+
+**Details:**
+- Task definition system (JSON/config-based)
+- Task presentation UI with instructions
+- Success/failure criteria evaluation
+- Automatic task progression
+
+### Phase 28: Study Metrics & Analytics
+
+**Goal:** Capture and analyze study performance metrics.
+**Depends on:** Phase 27
+**Plans:** TBD (to be planned)
+
+**Details:**
+- Time-on-task measurement
+- Success rate tracking
+- Path/exploration analysis
+- Results export (CSV/JSON)
+
+---
+
+## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
+| 26 | v1.1 | 0/TBD | 📋 Planned | - |
+| 27 | v1.1 | 0/TBD | 📋 Planned | - |
+| 28 | v1.1 | 0/TBD | 📋 Planned | - |
+
+---
+
+*For current project status, see .planning/PROJECT.md*  
+*For milestone history, see .planning/MILESTONES.md*
