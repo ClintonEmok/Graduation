@@ -2,105 +2,109 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** Milestone v1.0 Complete
-**Status:** Ready for next milestone planning
-**Next:** v1.1 Study Mode (Phases 26-28)
+**Current Phase:** v1.1 Manual Timeslicing - Planning
+**Status:** Ready to plan Phase 26
+**Next:** Timeline Density Visualization
 
 ## Current Position
 
-Milestone: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
-Phases: 01-25 Complete (25/25)
-Plans: 82 Complete (82/82)
-Status: ✅ **Milestone Complete**
-Last activity: 2026-02-07 - v1.0 milestone shipped
+Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
+Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
+Phases: 26-30 Planned (5 phases for v1.1)
+Plans: 0/TBD
+Status: 🚧 **Planning Phase**
+Last activity: 2026-02-16 - v1.1 scope defined
 
-Progress: █████████████████████████ 100%
+Progress: v1.0 █████████████████████████ 100% | v1.1 🚧░░░░░░░░░░░░░░░░░░░ 0%
 
 ```
-[x] Phase 1: Core 3D
-[x] Phase 2: Temporal
-[x] Phase 3: Adaptive Logic
-[x] Phase 4: UI Layout
-[x] Phase 5: Adaptive Visualization Aids
-[x] Phase 6: Data Backend
-[x] Phase 7: Filtering
-[x] Phase 8: Coordinated
-[x] Phase 9: Logging/Study (Partial)
-[x] Phase 10: Study Content (Deferred)
-[x] Phase 11: Focus+Context
-[x] Phase 12: Feature Flags
-[x] Phase 13: UI Polish
-[x] Phase 14: Color Schemes & Accessibility
-[x] Phase 15: Time Slices Visualization
-[x] Phase 16: Heatmap Layer
-[x] Phase 17: Cluster Highlighting
-[x] Phase 18: Trajectories Visualization
-[x] Phase 19: Aggregated Bins (LOD)
-[x] Phase 20: Server-Side Aggregation
-[x] Phase 21: Timeline Redesign
-[x] Phase 22: Contextual Slice Analysis
-[x] Phase 23: Map Interaction & Debugging
-[x] Phase 24: Interaction Synthesis & 3D Debugging
-[x] Phase 25: Adaptive Time Intervals & Burstiness
+v1.0 Complete:
+[x] Phase 1-25: All thesis prototype phases
+
+v1.1 Planned:
+[ ] Phase 26: Timeline Density Visualization
+[ ] Phase 27: Manual Slice Creation
+[ ] Phase 28: Slice Boundary Adjustment
+[ ] Phase 29: Multi-Slice Management
+[ ] Phase 30: Slice Metadata & UI
+
+v1.2 Planned:
+[ ] Phase 31-35: Semi-Automated Timeslicing
+
+v1.3 Planned:
+[ ] Phase 36-40: Fully Automated Timeslicing
 ```
 
 ## Performance Metrics
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Requirement Coverage | 25/26 core (96%) | 100% |
-| Phase Completion | 25/25 | 25/25 |
-| Milestone Status | ✅ v1.0 Shipped | - |
+| Metric | v1.0 | v1.1 Target |
+|--------|------|-------------|
+| Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
+| Phase Completion | 25/25 | 0/5 |
+| Milestone Status | ✅ Shipped | 🚧 Planning |
 
 ## Project Reference
 
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
-**Core value:** Users can visually compare uniform vs adaptive time mapping
-**Current focus:** Planning v1.1 Study Mode
+**Core value:** Timeline as active analysis engine
+**Current focus:** Planning Phase 26 - Timeline Density Visualization
+**Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
 
-**Validated Technical Stack:**
-- React Three Fiber for 3D rendering
-- Visx/D3 for timeline
-- DuckDB + Arrow for data
-- Web Workers for computation
-- Zustand for state management
+**v1.1 Scope Defined:**
+- Manual timeslicing strictly on timeline
+- Visual density regions
+- Click/drag slice creation
+- Boundary adjustment handles
+- Multi-slice support
+- Metadata (name, color, notes)
+- NO 2D/3D sync (v1.2+)
 
-**Key Outcomes from v1.0:**
-- GPU-accelerated adaptive time warping (60fps)
-- 1.2M record dataset handled smoothly
-- Full cross-view synchronization
-- Comprehensive filtering system
-- Feature flags for experimentation
+**Technical Foundation:**
+- Visx/D3 timeline established (Phase 21)
+- Density data available (Phase 25 adaptive store)
+- Zustand patterns proven
+- Ready for timeline enhancements
 
-## Blockers/Concerns Carried Forward
+**Three-Milestone Roadmap:**
+1. v1.1: Manual (user creates/adjusts everything)
+2. v1.2: Semi-automated (AI suggests, user confirms)
+3. v1.3: Fully automated (system creates, user reviews)
 
-**Technical Debt (Non-blocking):**
-- 2 feature flags defined but not enforced
-- /api/crime/facets endpoint unused
-- LSP false positives (lucide-react, r3f)
-- React 19 vs Visx peer deps
+## Blockers/Concerns
 
-**No Critical Blockers**
+**None currently**
+
+All blockers from v1.0 were non-blocking technical debt.
+v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: v1.0 milestone complete
+Last session: 2026-02-16
+Stopped at: v1.1 scope defined, ready for Phase 26 planning
 Resume file: None
 
 ## Accumulated Context
 
-### Roadmap Evolution
-- v1.0 shipped with Phases 1-25
-- v1.1 planned: Phases 26-28 (Study Mode)
+### Milestone Evolution
+- v1.0: Complete thesis prototype shipped
+- v1.1: Manual timeslicing (current focus)
+- v1.2: Semi-automated (future)
+- v1.3: Fully automated (future)
 
-### Next Milestone Goals (v1.1)
-- Guided tutorial system (Phase 26)
-- Task-based study mode (Phase 27)
-- Study metrics & analytics (Phase 28)
+### Phase 26 Readiness
+**Prerequisites from v1.0:**
+- ✅ Visx/D3 timeline component
+- ✅ KDE density data in adaptive store
+- ✅ Filter store for data updates
+- ✅ TypeScript codebase established
+
+**New for Phase 26:**
+- Timeline density visualization layer
+- Density data binding to timeline
+- Visual encoding (bars/gradient/heat)
 
 ---
-*Last updated: 2026-02-16 - v1.0 milestone complete, ready for v1.1 planning*
+*Last updated: 2026-02-16 - v1.1 planning, ready for Phase 26*

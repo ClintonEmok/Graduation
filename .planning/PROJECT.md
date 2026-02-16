@@ -8,44 +8,62 @@ An interactive web prototype that redesigns the Space-Time Cube visualization to
 
 Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 
-## Current State (v1.0)
+## Current State (v1.1 In Progress)
 
-**Shipped:** 2026-02-07  
-**Milestone:** v1.0 Thesis Prototype  
-**Status:** ✅ Complete - Ready for thesis evaluation
+**Shipped:** v1.0 Thesis Prototype (2026-02-07)
+**Active:** v1.1 Manual Timeslicing
+**Status:** 🚧 Planning Phase
 
-**Capabilities:**
-- Full 3D Space-Time Cube with 1.2M point rendering
-- GPU-accelerated adaptive time scaling (KDE-based warping)
-- Coordinated Map-Cube-Timeline with bidirectional sync
-- Advanced filtering (type, district, time, spatial) with presets
-- Feature flags for experimental features
-- Interaction logging for study analysis
-- Multiple visualization aids (slices, heatmap, trajectories, clusters)
+**v1.1 Goal:** Transform the timeline from a passive navigation tool into an active analysis instrument where users manually create, visualize, and adjust time regions based on event density patterns.
 
-**Tech Stack:** Next.js 15, React Three Fiber, Visx, DuckDB, Apache Arrow
+**Timeline-First Approach:**
+- Visual density regions on timeline
+- Manual slice creation (click/drag)
+- Boundary adjustment with handles
+- Multi-slice support with metadata
+- Timeline-only (2D/3D sync in v1.2+)
 
 ## Requirements
 
 ### Validated (v1.0)
 
 - ✅ **Preprocessed Chicago crime dataset** — existing (`datapreprocessing/`)
-- ✅ **Space-Time Cube with React Three Fiber** — v1.0, 3D rendering with InstancedMesh
-- ✅ **Adaptive time scaling on Z-axis** — v1.0, KDE-based density warping
-- ✅ **Uniform vs adaptive toggle** — v1.0, animated transition via shader
-- ✅ **Dual-scale timeline** — v1.0, Visx focus+context with brush
-- ✅ **2D spatial view with map toggle** — v1.0, MapLibre integration
-- ✅ **Full bidirectional sync** — v1.0, selection/time sync across all views
-- ✅ **Advanced filtering with presets** — v1.0, multi-faceted with localStorage
-- ✅ **Backend API for large dataset** — v1.0, DuckDB + Arrow streaming
-- ✅ **Interaction logging** — v1.0, comprehensive event tracking
-- ✅ **Free exploration mode** — v1.0, fully functional
+- ✅ **Space-Time Cube with React Three Fiber** — v1.0
+- ✅ **Adaptive time scaling on Z-axis** — v1.0
+- ✅ **Uniform vs adaptive toggle** — v1.0
+- ✅ **Dual-scale timeline** — v1.0
+- ✅ **2D spatial view with map toggle** — v1.0
+- ✅ **Full bidirectional sync** — v1.0
+- ✅ **Advanced filtering with presets** — v1.0
+- ✅ **Backend API for large dataset** — v1.0
+- ✅ **Interaction logging** — v1.0
+- ✅ **Free exploration mode** — v1.0
 
-### Active (v1.1)
+### Active (v1.1 - Manual Timeslicing)
 
-- [ ] **Guided task mode** — tutorial and task system for structured study
-- [ ] **Time-on-task measurement** — automatic timing metrics
-- [ ] **Study progress tracking** — participant session management
+- [ ] **DENS-01 to DENS-04**: Timeline density visualization
+- [ ] **SLICE-01 to SLICE-05**: Manual slice creation
+- [ ] **ADJUST-01 to ADJUST-06**: Boundary adjustment
+- [ ] **MULTI-01 to MULTI-06**: Multi-slice management
+- [ ] **META-01 to META-05**: Slice metadata
+- [ ] **INTEG-01 to INTEG-04**: Timeline integration
+
+### Planned (Future Milestones)
+
+**v1.2 Semi-Automated:**
+- [ ] AI-assisted slice suggestions
+- [ ] User review/confirm/adjust workflow
+- [ ] Confidence scores
+
+**v1.3 Fully Automated:**
+- [ ] Optimal automatic generation
+- [ ] Multiple algorithm options
+- [ ] Complete user review
+
+**v1.2+ Cross-View:**
+- [ ] 2D/3D slice visualization
+- [ ] Cross-view synchronization
+- [ ] Slice statistics/analytics
 
 ### Out of Scope
 
@@ -59,62 +77,63 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 **Shipped v1.0 with:**
 - 14,813 LOC TypeScript
 - 25 phases, 82 plans executed
-- 8 days active development
 - 1.2M record dataset handled smoothly
+- GPU-accelerated adaptive scaling
 
-**Key Technical Achievements:**
-- Web Worker for non-blocking density calculation
-- GPU texture-based time warping (60fps)
-- Columnar Arrow format for efficient data transfer
-- Server-side aggregation for large-scale queries
+**v1.1 Foundation:**
+- Existing Visx/D3 timeline (Phase 21)
+- Existing density data from KDE (Phase 25)
+- Zustand state management pattern established
 
-**User Study Approach (v1.0):**
-- Free exploration mode with logging
-- Researcher observation for task evaluation
-- Participant ID management for data association
-- Export capability for interaction analysis
-
-**User Study Improvements (v1.1 planned):**
-- Guided tutorial for first-time users
-- Specific task presentation with instructions
-- Automatic time-on-task measurement
-- Progress tracking through study session
+**Key Insight:** "Timeline is the engine"
+- Timeline becomes primary interaction surface
+- All logic timeline-centric in v1.1
+- 2D/3D visualization deferred to v1.2+
+- This ensures solid foundation before cross-view complexity
 
 ## Constraints
 
-- **Tech stack**: Next.js with React Three Fiber ✓ Validated at scale
-- **Data scale**: Handles 1.2M records with aggregation
-- **Backend**: Next.js API routes with DuckDB integration
+- **Tech stack**: Next.js with React Three Fiber (proven at scale)
+- **Data scale**: 1.2M records with aggregation
+- **Backend**: Next.js API routes with DuckDB
 - **Rendering**: Three.js via React Three Fiber
 - **Maps**: MapLibre GL for 2D spatial view
+- **Timeline**: Visx/D3 (established in v1.0)
 
 ## Key Decisions
+
+### From v1.0 (Validated)
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | React Three Fiber for 3D | React ecosystem integration | ✅ Excellent DX and performance |
-| Local density-based scaling | Intuitive: more events = more space | ✅ Reveals hidden patterns effectively |
-| Toggle with transition | Same data morphing, clearer comparison | ✅ Smooth 60fps animation |
-| Extensible data architecture | Generalizable thesis claim | ✅ Proven with multiple viz modes |
-| Next.js API routes | Simpler than separate service | ✅ DuckDB integration successful |
 | Visx for Timeline | React-native D3 | ✅ Focus+Context working well |
 | Web Worker + Store | Non-blocking computation | ✅ UI stays responsive |
 | Texture-based GPU warp | Performance at scale | ✅ 60fps with complex warping |
 | Arrow IPC streaming | Binary columnar format | ✅ Efficient 1.2M record handling |
 | Phase 10 deferred | Prioritize core visualization | ✅ Thesis answerable without guided tasks |
 
+### For v1.1 (New)
+
+| Decision | Rationale | Status |
+|----------|-----------|--------|
+| Timeline-first approach | Solid foundation before cross-view | 🚧 Decided |
+| Manual before automated | Learn user needs, then optimize | 🚧 Decided |
+| Three milestone approach | Clarity, incremental complexity | 🚧 Decided |
+| v1.1 = manual only | Focus, avoid scope creep | 🚧 Decided |
+
 ## Technical Debt
 
-**Non-blocking for thesis:**
-- 2 feature flags defined but not enforced (timeSlices, trajectories)
+**From v1.0 (Non-blocking):**
+- 2 feature flags defined but not enforced
 - /api/crime/facets endpoint unused
 - Console.log statements in debug paths
-- LSP false positives (non-blocking)
-- React 19 vs Visx peer deps (workaround acceptable)
+- LSP false positives
+- React 19 vs Visx peer deps
 
-**Address in v1.1:**
-- Implement or remove orphaned feature flags
-- Add guided study mode infrastructure
+**v1.1 Opportunities:**
+- Clean up orphaned feature flags or implement gating
+- Consider removing unused /api/crime/facets endpoint
 
 ---
-*Last updated: 2026-02-16 after v1.0 milestone*
+*Last updated: 2026-02-16 - v1.1 Manual Timeslicing planning*

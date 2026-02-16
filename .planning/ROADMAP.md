@@ -3,8 +3,10 @@
 ## Milestones
 
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
-- 📋 **v1.1 Study Mode** — Guided tasks and tutorial system (planned)
-- 📋 **v2.0** — Performance optimizations and additional datasets (future)
+- 🚧 **v1.1 Manual Timeslicing** — Timeline-based manual region selection (in progress)
+- 📋 **v1.2 Semi-Automated Timeslicing** — AI-assisted suggestions (planned)
+- 📋 **v1.3 Fully Automated Timeslicing** — Optimal automatic generation (planned)
+- 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
 
@@ -25,58 +27,114 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - Interaction logging
 - Performance: 1.2M records at 60fps
 
-**Key Deliverables:**
-- Core 3D visualization with camera controls
-- Temporal controls (play/pause/scrub)
-- Adaptive scaling (KDE-based warping)
-- Data backend (DuckDB + Arrow)
-- Advanced filtering (type, district, time, spatial)
-- Coordinated views (selection sync)
-- Time slices, heatmap, trajectories, clusters
-- Timeline redesign (Visx focus+context)
-- Adaptive intervals & burstiness
-
 </details>
 
 ---
 
-## Next Milestone: v1.1 Study Mode
+## Active Milestone: v1.1 Manual Timeslicing
 
-### Phase 26: Guided Tutorial System
+**Goal:** Transform timeline into active analysis tool for manual region selection.
 
-**Goal:** Create an interactive onboarding tutorial for first-time users.
-**Depends on:** Phase 25
-**Plans:** TBD (to be planned)
+**Core Principle:** "Timeline is the engine" — all logic timeline-centric, no 2D/3D yet.
+
+### Phase 26: Timeline Density Visualization
+
+**Goal:** Render clear density regions on the timeline.
+**Depends on:** Phase 25 (adaptive store with density data)
+**Plans:** TBD
+
+**Requirements:** DENS-01 through DENS-04
 
 **Details:**
-- Multi-step tutorial highlighting key features
-- Interactive guided tour of the interface
-- Contextual help system
-- Progress tracking through tutorial
+- Leverage existing KDE density data from Phase 25
+- Visual representation: bars, heat strip, or gradient
+- Must work with both overview and detail timeline views
+- Update when filters change
 
-### Phase 27: Task-Based Study Mode
+### Phase 27: Manual Slice Creation
 
-**Goal:** Implement structured task presentation for user study.
+**Goal:** Enable users to create time slices via click or drag.
 **Depends on:** Phase 26
-**Plans:** TBD (to be planned)
+**Plans:** TBD
+
+**Requirements:** SLICE-01 through SLICE-05
 
 **Details:**
-- Task definition system (JSON/config-based)
-- Task presentation UI with instructions
-- Success/failure criteria evaluation
-- Automatic task progression
+- Click-to-create (default duration)
+- Drag-to-create (custom duration)
+- Visual preview during creation
+- Immediate visual feedback
 
-### Phase 28: Study Metrics & Analytics
+### Phase 28: Slice Boundary Adjustment
 
-**Goal:** Capture and analyze study performance metrics.
+**Goal:** Allow precise adjustment of slice boundaries.
 **Depends on:** Phase 27
-**Plans:** TBD (to be planned)
+**Plans:** TBD
+
+**Requirements:** ADJUST-01 through ADJUST-06
 
 **Details:**
-- Time-on-task measurement
-- Success rate tracking
-- Path/exploration analysis
-- Results export (CSV/JSON)
+- Draggable start/end handles
+- Real-time boundary updates
+- Minimum duration constraints
+- Optional snap behavior
+
+### Phase 29: Multi-Slice Management
+
+**Goal:** Support multiple simultaneous slices with management tools.
+**Depends on:** Phase 28
+**Plans:** TBD
+
+**Requirements:** MULTI-01 through MULTI-06
+
+**Details:**
+- Overlap visualization
+- Merge adjacent slices
+- Selection mechanism
+- Individual and bulk delete
+
+### Phase 30: Slice Metadata & UI
+
+**Goal:** Enable naming, coloring, and annotating slices.
+**Depends on:** Phase 29
+**Plans:** TBD
+
+**Requirements:** META-01 through META-05, INTEG-01 through INTEG-04
+
+**Details:**
+- Inline editing panel
+- Color picker
+- Notes/annotation field
+- Hover tooltips
+- Session persistence
+
+---
+
+## Planned Milestones
+
+### v1.2 Semi-Automated Timeslicing
+
+**Goal:** AI-assisted region detection with user confirmation.
+
+**Key Features:**
+- System suggests slice boundaries based on density peaks
+- User reviews and adjusts suggestions
+- "Accept/Modify/Reject" workflow
+- Confidence scores for suggestions
+
+**Phases:** 31-35 (planned)
+
+### v1.3 Fully Automated Timeslicing
+
+**Goal:** Optimal automatic generation with user review.
+
+**Key Features:**
+- System creates complete slice set automatically
+- Optimization for coverage, relevance, minimal overlap
+- User reviews and fine-tunes
+- Multiple algorithm options (density-based, event-based, etc.)
+
+**Phases:** 36-40 (planned)
 
 ---
 
@@ -85,11 +143,16 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
-| 26 | v1.1 | 0/TBD | 📋 Planned | - |
-| 27 | v1.1 | 0/TBD | 📋 Planned | - |
-| 28 | v1.1 | 0/TBD | 📋 Planned | - |
+| 26 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 27 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 28 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 29 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 30 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 31-35 | v1.2 | 0/TBD | 📋 Planned | - |
+| 36-40 | v1.3 | 0/TBD | 📋 Planned | - |
 
 ---
 
 *For current project status, see .planning/PROJECT.md*  
-*For milestone history, see .planning/MILESTONES.md*
+*For milestone history, see .planning/MILESTONES.md*  
+*For v1.1 scope details, see .planning/milestones/v1.1-manual-timeslicing-SCOPE.md*
