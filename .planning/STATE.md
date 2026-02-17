@@ -2,27 +2,27 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 26 in progress
-**Status:** Executing Phase 26 plans
-**Next:** 26-03 Filter synchronization & polish
+**Current Phase:** v1.1 Manual Timeslicing - Phase 26 complete
+**Status:** Phase 26 delivered, ready for Phase 27 kickoff
+**Next:** 27-01 Manual Slice Creation
 
 ## Current Position
 
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 26 of 40 (Timeline Density Visualization)
-Plan: 2 of 3 in current phase
-Status: 🚧 **In Progress**
-Last activity: 2026-02-17 - Completed 26-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: ✅ **Phase Complete**
+Last activity: 2026-02-17 - Completed 26-03-PLAN.md
 
-Progress: overall ████████████████████████░ 95% (81/85 known plans) | v1.1 █░░░░ 20% phases
+Progress: overall ████████████████████████░ 96% (82/85 known plans) | v1.1 █░░░░ 20% phases
 
 ```
 v1.0 Complete:
 [x] Phase 1-25: All thesis prototype phases
 
 v1.1 Planned:
-[~] Phase 26: Timeline Density Visualization (2/3 plans complete)
+[x] Phase 26: Timeline Density Visualization (3/3 plans complete)
 [ ] Phase 27: Manual Slice Creation
 [ ] Phase 28: Slice Boundary Adjustment
 [ ] Phase 29: Multi-Slice Management
@@ -40,15 +40,15 @@ v1.3 Planned:
 | Metric | v1.0 | v1.1 Target |
 |--------|------|-------------|
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
-| Phase Completion | 25/25 | 0/5 |
-| Milestone Status | ✅ Shipped | 🚧 Execution Started |
+| Phase Completion | 25/25 | 1/5 |
+| Milestone Status | ✅ Shipped | 🚧 Execution In Progress |
 
 ## Project Reference
 
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Executing Phase 26 - Timeline Density Visualization
+**Current focus:** Transitioning from Phase 26 completion to Phase 27 implementation
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -78,6 +78,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Established `/timeline-test` as isolated density visualization harness with adaptive-store fallback to mock `Float32Array` data.
 - Integrated `DensityHeatStrip` as a 12px Canvas density context track above DualTimeline overview/detail views.
 - Standardized blue→red density interpolation with devicePixelRatio scaling and minimum-opacity empty baseline behavior.
+- Added `useDebouncedDensity` with 400ms lodash debounce tied to filter-store changes and adaptive recomputation.
+- Standardized loading-state UX with opacity fade + `aria-busy` while preserving previous density visuals to prevent flash.
+- Wired test-route simulation controls and DualTimeline loading integration to validate end-to-end density recomputation feedback.
 
 ## Blockers/Concerns
 
@@ -88,8 +91,8 @@ v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-17 22:21 UTC
-Stopped at: Completed 26-02-PLAN.md
+Last session: 2026-02-17 22:27 UTC
+Stopped at: Completed 26-03-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -100,7 +103,7 @@ Resume file: None
 - v1.2: Semi-automated (future)
 - v1.3: Fully automated (future)
 
-### Phase 26 Readiness
+### Phase 26 Completion
 **Prerequisites from v1.0:**
 - ✅ Visx/D3 timeline component
 - ✅ KDE density data in adaptive store
@@ -114,8 +117,14 @@ Resume file: None
 - Expanded isolated test route (`/timeline-test`) with standalone and integrated checks
 - Gradient visualization dependency (`@visx/gradient`)
 
-**Next in Phase 26:**
-- Filter synchronization and polish (26-03)
+**Delivered in 26-03:**
+- Debounced density recomputation hook (`useDebouncedDensity`) with 400ms delay and cleanup cancellation
+- Loading-aware `DensityAreaChart`/`DensityHeatStrip` props with visual continuity during recompute
+- `/timeline-test` controls for filter simulation and live compute status visibility
+- DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
+
+**Next focus:**
+- Begin Phase 27 (Manual Slice Creation)
 
 ---
-*Last updated: 2026-02-17 - completed 26-02 execution*
+*Last updated: 2026-02-17 - completed 26-03 execution*
