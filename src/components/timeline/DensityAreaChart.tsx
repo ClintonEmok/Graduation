@@ -14,6 +14,7 @@ export interface DensityAreaChartProps {
   data: DensityPoint[];
   width: number;
   height?: number;
+  isLoading?: boolean;
   margin?: {
     top: number;
     right: number;
@@ -32,6 +33,7 @@ export function DensityAreaChart({
   data,
   width,
   height = DEFAULT_HEIGHT,
+  isLoading = false,
   margin = DEFAULT_MARGIN
 }: DensityAreaChartProps) {
   const gradientId = useId().replace(/:/g, '_');
@@ -105,7 +107,13 @@ export function DensityAreaChart({
   const showArea = hasData && densityMax > 0;
 
   return (
-    <svg width={safeWidth} height={safeHeight} viewBox={`0 0 ${safeWidth} ${safeHeight}`}>
+    <svg
+      width={safeWidth}
+      height={safeHeight}
+      viewBox={`0 0 ${safeWidth} ${safeHeight}`}
+      className={isLoading ? 'opacity-60 transition-opacity duration-200' : 'opacity-100 transition-opacity duration-200'}
+      aria-busy={isLoading}
+    >
       <defs>
         <LinearGradient
           id={`density-gradient-${gradientId}`}

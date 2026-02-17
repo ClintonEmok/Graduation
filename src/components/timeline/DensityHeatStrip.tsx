@@ -7,6 +7,7 @@ export interface DensityHeatStripProps {
   densityMap: Float32Array | null;
   width: number;
   height?: number;
+  isLoading?: boolean;
   colorLow?: [number, number, number];
   colorHigh?: [number, number, number];
 }
@@ -20,6 +21,7 @@ export function DensityHeatStrip({
   densityMap,
   width,
   height = 12,
+  isLoading = false,
   colorLow = DEFAULT_COLOR_LOW,
   colorHigh = DEFAULT_COLOR_HIGH
 }: DensityHeatStripProps) {
@@ -111,5 +113,12 @@ export function DensityHeatStrip({
     ctx.drawImage(tempCanvas, 0, 0, logicalWidth, 1, 0, 0, logicalWidth, logicalHeight);
   }, [activeDensityMap, colorHigh, colorLow, densityRange.max, densityRange.min, densityRange.range, logicalHeight, logicalWidth]);
 
-  return <canvas ref={canvasRef} className="block rounded-sm opacity-80" aria-label="Density heat strip" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`block rounded-sm transition-opacity duration-200 ${isLoading ? 'opacity-55' : 'opacity-80'}`}
+      aria-label="Density heat strip"
+      aria-busy={isLoading}
+    />
+  );
 }
