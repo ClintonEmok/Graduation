@@ -43,6 +43,7 @@ export const DualTimeline: React.FC = () => {
   const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const isComputing = useAdaptiveStore((state) => state.isComputing);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -476,7 +477,7 @@ export const DualTimeline: React.FC = () => {
           }}
         >
           {width > 0 ? (
-            <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} height={12} />
+            <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} height={12} isLoading={isComputing} />
           ) : (
             <div className="h-3" />
           )}
