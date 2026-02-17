@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const db = await getDb();
     const dataPath = join(process.cwd(), 'data', 'crime.parquet');
+    if (!existsSync(dataPath)) {
+      return NextResponse.json(
+        {
+          error: 'Dataset not found',
+          path: dataPath,
+          hint: 'Place crime.parquet under data/ or use mock-data flows.'
+        },
+        { status: 404 }
+      );
+    }
+
+    const db = await getDb();
     
     // DuckDB query to get metadata instantly from Parquet footer/stats
     const result: {
