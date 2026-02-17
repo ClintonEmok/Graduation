@@ -23,8 +23,13 @@ export function useDebouncedDensity(options: UseDebouncedDensityOptions = {}) {
   const computeMapsRef = useRef(computeMaps);
   const columnsRef = useRef(columns);
 
-  computeMapsRef.current = computeMaps;
-  columnsRef.current = columns;
+  useEffect(() => {
+    computeMapsRef.current = computeMaps;
+  }, [computeMaps]);
+
+  useEffect(() => {
+    columnsRef.current = columns;
+  }, [columns]);
 
   const filterSignature = useMemo(() => {
     const timeRange = selectedTimeRange ? `${selectedTimeRange[0]}:${selectedTimeRange[1]}` : 'none';
@@ -35,6 +40,11 @@ export function useDebouncedDensity(options: UseDebouncedDensityOptions = {}) {
     return [selectedTypes.join(','), selectedDistricts.join(','), timeRange, spatial].join('|');
   }, [selectedDistricts, selectedSpatialBounds, selectedTimeRange, selectedTypes]);
 
+  const columnsSignature = useMemo(() => {
+    if (!columns?.timestamp || columns.timestamp.length === 0) return 'none';
+    return String(columns.timestamp.length);
+  }, [columns]);
+
   const runCompute = useCallback(() => {
     const activeColumns = columnsRef.current;
     if (!activeColumns || activeColumns.length === 0) return;
@@ -42,13 +52,13 @@ export function useDebouncedDensity(options: UseDebouncedDensityOptions = {}) {
     computeMapsRef.current(activeColumns.timestamp, [0, 100]);
   }, []);
 
-  const debouncedComputeRef = useRef(debounce(runCompute, delay));
+  const debouncedComputeRef = useRef<ReturnType<typeof debounce> | null>(null);
 
   useEffect(() => {
     const nextDebounced = debounce(runCompute, delay);
     const previousDebounced = debouncedComputeRef.current;
     debouncedComputeRef.current = nextDebounced;
-    previousDebounced.cancel();
+    previousDebounced?.cancel();
 
     return () => {
       nextDebounced.cancel();
@@ -56,16 +66,17 @@ export function useDebouncedDensity(options: UseDebouncedDensityOptions = {}) {
   }, [delay, runCompute]);
 
   const triggerUpdate = useCallback(() => {
-    debouncedComputeRef.current();
+    debouncedComputeRef.current?.();
   }, []);
 
   useEffect(() => {
+    if (columnsSignature === 'none') return;
     triggerUpdate();
-  }, [columns, filterSignature, triggerUpdate]);
+  }, [columnsSignature, filterSignature, triggerUpdate]);
 
   useEffect(() => {
     return () => {
-      debouncedComputeRef.current.cancel();
+      debouncedComputeRef.current?.cancel();
     };
   }, []);
 

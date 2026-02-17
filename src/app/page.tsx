@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
@@ -9,7 +10,9 @@ import { TopBar } from '@/components/layout/TopBar';
 export default function Home() {
   return (
     <main className="h-screen w-screen overflow-hidden bg-black text-white relative flex flex-col">
-      <TopBar />
+      <Suspense fallback={null}>
+        <TopBar />
+      </Suspense>
       <div className="flex-1">
         <DashboardLayout
           leftPanel={<MapVisualization />}
