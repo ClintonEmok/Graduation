@@ -16,6 +16,7 @@ import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -41,6 +42,7 @@ export const DualTimeline: React.FC = () => {
   const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
   const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -466,6 +468,20 @@ export const DualTimeline: React.FC = () => {
   return (
     <div ref={containerRef} className="w-full">
       <div className="flex flex-col gap-6">
+        <div
+          className="w-full"
+          style={{
+            paddingLeft: OVERVIEW_MARGIN.left,
+            paddingRight: OVERVIEW_MARGIN.right
+          }}
+        >
+          {width > 0 ? (
+            <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} height={12} />
+          ) : (
+            <div className="h-3" />
+          )}
+        </div>
+
         <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
           <g transform={`translate(${OVERVIEW_MARGIN.left},${OVERVIEW_MARGIN.top})`}>
             {overviewBins.map((bucket, index) => {
