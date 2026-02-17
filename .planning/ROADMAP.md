@@ -41,15 +41,20 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Goal:** Render clear density regions on the timeline.
 **Depends on:** Phase 25 (adaptive store with density data)
-**Plans:** TBD
+**Plans:** 3 plans (26-01, 26-02, 26-03)
 
 **Requirements:** DENS-01 through DENS-04
 
 **Details:**
 - Leverage existing KDE density data from Phase 25
-- Visual representation: bars, heat strip, or gradient
+- Visual representation: area chart + heat strip
 - Must work with both overview and detail timeline views
 - Update when filters change
+
+**Plan Overview:**
+- **26-01:** Test route & area chart setup
+- **26-02:** Heat strip & timeline integration
+- **26-03:** Filter sync & polish
 
 ### Phase 27: Manual Slice Creation
 
@@ -143,7 +148,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
-| 26 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 26 | v1.1 | 0/3 | 🚧 Ready | - |
 | 27 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 28 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 29 | v1.1 | 0/TBD | 🚧 Planned | - |
