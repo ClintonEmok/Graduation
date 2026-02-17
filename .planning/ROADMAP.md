@@ -41,7 +41,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Goal:** Render clear density regions on the timeline.
 **Depends on:** Phase 25 (adaptive store with density data)
-**Plans:** 3 plans (26-01, 26-02, 26-03)
+**Plans:** 4 plans (26-01, 26-02, 26-03, 26-04)
 
 **Requirements:** DENS-01 through DENS-04
 
@@ -55,6 +55,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - **26-01:** Test route & area chart setup
 - **26-02:** Heat strip & timeline integration
 - **26-03:** Filter sync & polish
+- **26-04:** Production debounced density wiring
 
 ### Phase 27: Manual Slice Creation
 
@@ -148,7 +149,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
-| 26 | v1.1 | 0/3 | 🚧 Ready | - |
+| 26 | v1.1 | 4/4 | ✅ Complete | 2026-02-17 |
 | 27 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 28 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 29 | v1.1 | 0/TBD | 🚧 Planned | - |
