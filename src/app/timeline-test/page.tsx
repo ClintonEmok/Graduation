@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMeasure } from '@/hooks/useMeasure';
+import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { DensityAreaChart, type DensityPoint } from '@/components/timeline/DensityAreaChart';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useDataStore } from '@/store/useDataStore';
+import { useFilterStore } from '@/store/useFilterStore';
 
 const SAMPLE_POINT_COUNT = 160;
 
@@ -49,9 +52,14 @@ const toDensityPoints = (density: Float32Array, startMs: number, endMs: number):
 export default function TimelineTestPage() {
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const [mockVariant, setMockVariant] = useState(0);
+  const { isComputing, triggerUpdate } = useDebouncedDensity({ delay: 400 });
+
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
-  const isComputing = useAdaptiveStore((state) => state.isComputing);
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const setTimeRange = useFilterStore((state) => state.setTimeRange);
+  const resetFilters = useFilterStore((state) => state.resetFilters);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const sourceDensity = densityMap && densityMap.length > 0 ? densityMap : mockDensity;
@@ -84,6 +92,25 @@ export default function TimelineTestPage() {
 
   const chartWidth = Math.max(0, Math.floor(bounds.width));
 
+  const simulateFilterChange = useCallback(() => {
+    const defaultEnd = Math.floor(Date.now() / 1000);
+    const defaultStart = defaultEnd - 7 * 24 * 60 * 60;
+    const start = minTimestampSec ?? defaultStart;
+    const end = maxTimestampSec ?? defaultEnd;
+    const span = Math.max(60, end - start);
+    const windowSize = Math.max(300, Math.floor(span * 0.25));
+    const offsetMax = Math.max(0, span - windowSize);
+    const offset = Math.floor(Math.random() * (offsetMax + 1));
+
+    setTimeRange([start + offset, start + offset + windowSize]);
+    triggerUpdate();
+  }, [maxTimestampSec, minTimestampSec, setTimeRange, triggerUpdate]);
+
+  const clearFilters = useCallback(() => {
+    resetFilters();
+    triggerUpdate();
+  }, [resetFilters, triggerUpdate]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -98,6 +125,10 @@ export default function TimelineTestPage() {
         <section className="space-y-5 rounded-xl border border-slate-700/60 bg-slate-900/65 p-5" ref={containerRef}>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
             <div className="flex flex-wrap items-center gap-4">
+              <span className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${isComputing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                <strong className="text-slate-100">{isComputing ? 'Computing density...' : 'Density ready'}</strong>
+              </span>
               <span>
                 Source: <strong className="text-slate-100">{densityMap && densityMap.length > 0 ? 'adaptive store' : 'mock density'}</strong>
               </span>
@@ -114,22 +145,38 @@ export default function TimelineTestPage() {
                 isComputing: <strong className="text-slate-100">{isComputing ? 'true' : 'false'}</strong>
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setMockVariant((value) => value + 1)}
-              className="rounded border border-slate-600 bg-slate-800 px-3 py-1 font-medium text-slate-100 transition hover:border-slate-400"
-            >
-              Regenerate Mock Density
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={simulateFilterChange}
+                className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-1 font-medium text-amber-100 transition hover:border-amber-400"
+              >
+                Simulate Filter Change
+              </button>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded border border-slate-600 bg-slate-800 px-3 py-1 font-medium text-slate-100 transition hover:border-slate-400"
+              >
+                Clear Filters
+              </button>
+              <button
+                type="button"
+                onClick={() => setMockVariant((value) => value + 1)}
+                className="rounded border border-slate-600 bg-slate-800 px-3 py-1 font-medium text-slate-100 transition hover:border-slate-400"
+              >
+                Regenerate Mock Density
+              </button>
+            </div>
           </div>
 
           <div>
             <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">1. Density Area Chart (Detail View)</h2>
-            <p className="mt-1 text-xs text-slate-400">Gradient-filled curve should show clear peaks and valleys.</p>
+            <p className="mt-1 text-xs text-slate-400">Gradient-filled curve should show clear peaks and valleys with subtle fade while loading.</p>
           </div>
           <div className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
             {chartWidth > 0 ? (
-              <DensityAreaChart data={chartData} width={chartWidth - 24} height={72} />
+              <DensityAreaChart data={chartData} width={chartWidth - 24} height={72} isLoading={isComputing} />
             ) : (
               <div className="h-[72px]" />
             )}
@@ -137,11 +184,11 @@ export default function TimelineTestPage() {
 
           <div>
             <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">2. Density Heat Strip (Overview)</h2>
-            <p className="mt-1 text-xs text-slate-400">Canvas strip uses blue-to-red interpolation with compact 12px height.</p>
+            <p className="mt-1 text-xs text-slate-400">Canvas strip uses blue-to-red interpolation with compact 12px height and loading fade.</p>
           </div>
           <div className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
             {chartWidth > 0 ? (
-              <DensityHeatStrip densityMap={sourceDensity} width={chartWidth - 24} height={12} />
+              <DensityHeatStrip densityMap={sourceDensity} width={chartWidth - 24} height={12} isLoading={isComputing} />
             ) : (
               <div className="h-3" />
             )}
