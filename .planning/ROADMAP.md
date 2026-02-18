@@ -62,7 +62,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Goal:** Enable users to create time slices via click or drag.
 **Depends on:** Phase 26
-**Plans:** TBD
+**Plans:** 3 plans (27-01, 27-02, 27-03)
 
 **Requirements:** SLICE-01 through SLICE-05
 
@@ -71,6 +71,11 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - Drag-to-create (custom duration)
 - Visual preview during creation
 - Immediate visual feedback
+
+**Plan Overview:**
+- **27-01:** Foundation — Mode toggle, transient store, slice list
+- **27-02:** Interaction — Drag handling, ghost preview, click/drag discrimination
+- **27-03:** Polish — Snap behavior, duration constraints, edge cases
 
 ### Phase 28: Slice Boundary Adjustment
 
@@ -151,7 +156,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 |-------|-----------|----------------|--------|-----------|
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
-| 27 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 27 | v1.1 | 0/3 | 🚧 Planned | - |
 | 28 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 29 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
