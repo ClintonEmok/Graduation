@@ -8,10 +8,10 @@
 
 ### Timeline Density Visualization
 
-- [ ] **DENS-01**: Timeline renders event density as clear visual regions (bars, gradient, or heat)
-- [ ] **DENS-02**: High-density areas are visually distinct from low-density areas
-- [ ] **DENS-03**: Density visualization updates when filters change
-- [ ] **DENS-04**: Density scale is consistent and readable
+- [x] **DENS-01**: Timeline renders event density as clear visual regions (bars, gradient, or heat)
+- [x] **DENS-02**: High-density areas are visually distinct from low-density areas
+- [x] **DENS-03**: Density visualization updates when filters change
+- [x] **DENS-04**: Density scale is consistent and readable
 
 ### Manual Slice Creation
 

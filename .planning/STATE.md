@@ -81,6 +81,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added `useDebouncedDensity` with 400ms lodash debounce tied to filter-store changes and adaptive recomputation.
 - Standardized loading-state UX with opacity fade + `aria-busy` while preserving previous density visuals to prevent flash.
 - Wired test-route simulation controls and DualTimeline loading integration to validate end-to-end density recomputation feedback.
+- Confirmed production density path is `TimelinePanel` → `DualTimeline`; `TimelineContainer` remains a legacy wrapper for TimeControls.
 - Mounted debounced density recompute hook in production timeline panel and surfaced compute state via `aria-busy`.
 - Added filter/column signature triggers for production debounced recompute flow.
 - Adopted normalized density domain (0-1) as the stable scale contract for timeline density rendering.
