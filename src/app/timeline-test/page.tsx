@@ -1,17 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { scaleUtc } from 'd3-scale';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { DensityAreaChart, type DensityPoint } from '@/components/timeline/DensityAreaChart';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
+import { SliceCreationLayer } from '@/app/timeline-test/components/SliceCreationLayer';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useSliceCreationStore } from '@/store/useSliceCreationStore';
+import { useSliceStore } from '@/store/useSliceStore';
 
 const SAMPLE_POINT_COUNT = 160;
 const MOCK_EVENT_COUNT = 2400;
+const DETAIL_HEIGHT = 60;
+const DETAIL_MARGIN = { left: 12, right: 12 };
 
 const buildMockDensity = (pointCount: number, variant: number): Float32Array => {
   const values = new Float32Array(pointCount);
@@ -102,6 +108,7 @@ const toDensityPoints = (density: Float32Array, startMs: number, endMs: number):
 
 export default function TimelineTestPage() {
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
+  const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
   const [mockVariant, setMockVariant] = useState(0);
   const [useMockData, setUseMockData] = useState(true);
   const { isComputing, triggerUpdate } = useDebouncedDensity({ delay: 400 });
@@ -112,8 +119,14 @@ export default function TimelineTestPage() {
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const setData = useDataStore((state) => state.setData);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const resetFilters = useFilterStore((state) => state.resetFilters);
+  const isCreatingSlice = useSliceCreationStore((state) => state.isCreating);
+  const startCreation = useSliceCreationStore((state) => state.startCreation);
+  const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
+  const slices = useSliceStore((state) => state.slices);
+  const activeSliceId = useSliceStore((state) => state.activeSliceId);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
@@ -152,6 +165,36 @@ export default function TimelineTestPage() {
   }, [sourceDensity]);
 
   const chartWidth = Math.max(0, Math.floor(bounds.width));
+  const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
+  const detailInnerWidth = Math.max(0, timelineWidth - DETAIL_MARGIN.left - DETAIL_MARGIN.right);
+
+  const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
+    if (minTimestampSec !== null && maxTimestampSec !== null) {
+      return [minTimestampSec, maxTimestampSec];
+    }
+    return [0, 100];
+  }, [maxTimestampSec, minTimestampSec]);
+
+  const detailRangeSec = useMemo<[number, number]>(() => {
+    if (selectedTimeRange) {
+      const [rawStart, rawEnd] = selectedTimeRange;
+      const start = Math.min(rawStart, rawEnd);
+      const end = Math.max(rawStart, rawEnd);
+      const overlaps = end >= domainStart && start <= domainEnd;
+      if (Number.isFinite(start) && Number.isFinite(end) && overlaps) {
+        return [start, end];
+      }
+    }
+    return [domainStart, domainEnd];
+  }, [domainEnd, domainStart, selectedTimeRange]);
+
+  const detailXScale = useMemo(
+    () =>
+      scaleUtc()
+        .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
+        .range([0, detailInnerWidth]),
+    [detailInnerWidth, detailRangeSec]
+  );
 
   const simulateFilterChange = useCallback(() => {
     const defaultEnd = Math.floor(Date.now() / 1000);
@@ -184,6 +227,8 @@ export default function TimelineTestPage() {
         </header>
 
         <section className="space-y-5 rounded-xl border border-slate-700/60 bg-slate-900/65 p-5" ref={containerRef}>
+          <SliceToolbar />
+
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
             <div className="flex flex-wrap items-center gap-4">
               <span className="flex items-center gap-2">
@@ -271,8 +316,66 @@ export default function TimelineTestPage() {
               Integrated view should render the same density context above overview/detail timelines with brush and zoom interactions.
             </p>
           </div>
-          <div className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
+            <span>
+              Manual Slice Creation:{' '}
+              <strong className="text-slate-100">
+                {isCreatingSlice ? 'active (click or drag on timeline)' : 'inactive'}
+              </strong>
+            </span>
+            <button
+              type="button"
+              onClick={isCreatingSlice ? cancelCreation : () => startCreation('drag')}
+              className={`rounded border px-3 py-1 font-medium transition ${
+                isCreatingSlice
+                  ? 'border-rose-400/70 bg-rose-500/10 text-rose-100 hover:border-rose-300'
+                  : 'border-amber-500/60 bg-amber-500/10 text-amber-100 hover:border-amber-400'
+              }`}
+            >
+              {isCreatingSlice ? 'Cancel' : 'Create Slice'}
+            </button>
+          </div>
+          <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
             <DualTimeline />
+            {detailInnerWidth > 0 && (
+              <div
+                className="pointer-events-none absolute z-10"
+                style={{
+                  left: DETAIL_MARGIN.left + 12,
+                  right: DETAIL_MARGIN.right + 12,
+                  bottom: 40,
+                  height: DETAIL_HEIGHT,
+                }}
+              >
+                <SliceCreationLayer
+                  scale={detailXScale}
+                  height={DETAIL_HEIGHT}
+                  containerRef={timelineContainerRef}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Created slices</h3>
+            {slices.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-400">No slices yet. Click &quot;Create Slice&quot; and click or drag on timeline.</p>
+            ) : (
+              <ul className="mt-2 space-y-2 text-xs">
+                {slices.map((slice, index) => (
+                  <li
+                    key={slice.id}
+                    className={`rounded border px-2 py-1 ${
+                      slice.id === activeSliceId
+                        ? 'border-amber-400/70 bg-amber-500/10 text-amber-100'
+                        : 'border-slate-700 bg-slate-900/70 text-slate-200'
+                    }`}
+                  >
+                    Slice {index + 1}: {slice.range ? `${slice.range[0].toFixed(2)} - ${slice.range[1].toFixed(2)}` : slice.time.toFixed(2)}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       </div>
