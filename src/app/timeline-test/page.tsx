@@ -1,33 +1,84 @@
 "use client";
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { DensityAreaChart, type DensityPoint } from '@/components/timeline/DensityAreaChart';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 
 const SAMPLE_POINT_COUNT = 160;
+const MOCK_EVENT_COUNT = 2400;
 
 const buildMockDensity = (pointCount: number, variant: number): Float32Array => {
   const values = new Float32Array(pointCount);
   const shift = (variant % 12) * 0.03;
-  const modulation = 0.85 + (variant % 5) * 0.08;
+  const modulation = 0.85 + (variant % 5) * 0.1;
 
   for (let i = 0; i < pointCount; i += 1) {
     const t = i / (pointCount - 1);
-    const morningWave = Math.exp(-Math.pow((t - (0.2 + shift * 0.3)) / 0.09, 2));
-    const middayWave = Math.exp(-Math.pow((t - (0.52 - shift * 0.2)) / 0.12, 2));
-    const eveningWave = Math.exp(-Math.pow((t - (0.78 + shift * 0.4)) / 0.07, 2));
-    const noise = 0.06 * Math.sin(i * (0.45 + shift));
+    const morningWave = Math.exp(-Math.pow((t - (0.18 + shift * 0.25)) / 0.06, 2));
+    const middayWave = Math.exp(-Math.pow((t - (0.5 - shift * 0.2)) / 0.13, 2));
+    const eveningWave = Math.exp(-Math.pow((t - (0.8 + shift * 0.35)) / 0.05, 2));
+    const spikeA = Math.exp(-Math.pow((t - (0.33 + shift * 0.15)) / 0.018, 2)) * 1.6;
+    const spikeB = Math.exp(-Math.pow((t - (0.67 - shift * 0.1)) / 0.02, 2)) * 1.9;
+    const valley = 1 - 0.65 * Math.exp(-Math.pow((t - 0.42) / 0.08, 2));
+    const noise = 0.04 * Math.sin(i * (0.65 + shift));
 
-    values[i] = Math.max(0.02, (morningWave * 0.9 + middayWave * 0.55 + eveningWave * 1.2 + noise) * modulation);
+    const base = (morningWave * 0.6 + middayWave * 0.35 + eveningWave * 1.4 + spikeA + spikeB + noise) * valley;
+    const contrasted = Math.pow(Math.max(0, base), 1.4);
+
+    values[i] = Math.max(0.015, contrasted * modulation);
   }
 
   return values;
+};
+
+const buildMockTimestamps = (eventCount: number, variant: number): Float32Array => {
+  const timestamps = new Float32Array(eventCount);
+  const shift = (variant % 10) * 1.5;
+
+  const gaussian = (mean: number, std: number) => {
+    let u = 0;
+    let v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    return mean + z * std;
+  };
+
+  for (let i = 0; i < eventCount; i += 1) {
+    const r = Math.random();
+    let value = 0;
+    if (r < 0.35) value = gaussian(18 + shift * 0.2, 3.2);
+    else if (r < 0.5) value = gaussian(33 - shift * 0.15, 2.4);
+    else if (r < 0.75) value = gaussian(50 + shift * 0.05, 4.8);
+    else if (r < 0.87) value = gaussian(67 - shift * 0.1, 2.2);
+    else value = gaussian(82 + shift * 0.2, 3.0);
+
+    const clamped = Math.max(0, Math.min(100, value));
+    timestamps[i] = clamped;
+  }
+
+  return timestamps.sort();
+};
+
+const buildMockPoints = (timestamps: Float32Array): DataPoint[] => {
+  const points: DataPoint[] = new Array(timestamps.length);
+  for (let i = 0; i < timestamps.length; i += 1) {
+    points[i] = {
+      id: `mock-${i}`,
+      timestamp: timestamps[i],
+      x: (Math.random() - 0.5) * 100,
+      y: 0,
+      z: (Math.random() - 0.5) * 100,
+      type: 'Theft'
+    };
+  }
+  return points;
 };
 
 const toDensityPoints = (density: Float32Array, startMs: number, endMs: number): DensityPoint[] => {
@@ -52,16 +103,20 @@ const toDensityPoints = (density: Float32Array, startMs: number, endMs: number):
 export default function TimelineTestPage() {
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const [mockVariant, setMockVariant] = useState(0);
+  const [useMockData, setUseMockData] = useState(true);
   const { isComputing, triggerUpdate } = useDebouncedDensity({ delay: 400 });
 
+  const computeMaps = useAdaptiveStore((state) => state.computeMaps);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const setData = useDataStore((state) => state.setData);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const resetFilters = useFilterStore((state) => state.resetFilters);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
+  const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
   const sourceDensity = densityMap && densityMap.length > 0 ? densityMap : mockDensity;
 
   const [domainStartSec, domainEndSec] = mapDomain;
@@ -73,6 +128,12 @@ export default function TimelineTestPage() {
     () => toDensityPoints(sourceDensity, chartStartMs, chartEndMs),
     [sourceDensity, chartStartMs, chartEndMs]
   );
+
+  useEffect(() => {
+    if (!useMockData) return;
+    computeMaps(mockTimestamps, [0, 100]);
+    setData(buildMockPoints(mockTimestamps));
+  }, [computeMaps, mockTimestamps, setData, useMockData]);
 
   const densityStats = useMemo(() => {
     if (!sourceDensity.length) {
@@ -130,7 +191,10 @@ export default function TimelineTestPage() {
                 <strong className="text-slate-100">{isComputing ? 'Computing density...' : 'Density ready'}</strong>
               </span>
               <span>
-                Source: <strong className="text-slate-100">{densityMap && densityMap.length > 0 ? 'adaptive store' : 'mock density'}</strong>
+                Source:{' '}
+                <strong className="text-slate-100">
+                  {useMockData ? 'mock KDE' : densityMap && densityMap.length > 0 ? 'adaptive store' : 'mock density'}
+                </strong>
               </span>
               <span>
                 Length: <strong className="text-slate-100">{densityStats.length}</strong>
@@ -159,6 +223,13 @@ export default function TimelineTestPage() {
                 className="rounded border border-slate-600 bg-slate-800 px-3 py-1 font-medium text-slate-100 transition hover:border-slate-400"
               >
                 Clear Filters
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseMockData((value) => !value)}
+                className="rounded border border-slate-600 bg-slate-800 px-3 py-1 font-medium text-slate-100 transition hover:border-slate-400"
+              >
+                {useMockData ? 'Use Adaptive Store' : 'Use Mock KDE'}
               </button>
               <button
                 type="button"
