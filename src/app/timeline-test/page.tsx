@@ -15,13 +15,14 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
+import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 
 const SAMPLE_POINT_COUNT = 160;
 const MOCK_EVENT_COUNT = 2400;
 const DETAIL_HEIGHT = 60;
 const DETAIL_MARGIN = { left: 12, right: 12 };
-const FALLBACK_CHART_END_MS = 3 * 24 * 60 * 60 * 1000;
-const FALLBACK_CHART_START_MS = 0;
+const FALLBACK_CHART_START_MS = MOCK_START_MS;
+const FALLBACK_CHART_END_MS = MOCK_END_MS;
 
 const buildMockDensity = (pointCount: number, variant: number): Float32Array => {
   const values = new Float32Array(pointCount);
@@ -70,7 +71,8 @@ const buildMockTimestamps = (eventCount: number, variant: number): Float32Array 
     else value = gaussian(82 + shift * 0.2, 3.0);
 
     const clamped = Math.max(0, Math.min(100, value));
-    timestamps[i] = clamped;
+    const ratio = clamped / 100;
+    timestamps[i] = MOCK_START_SEC + ratio * (MOCK_END_SEC - MOCK_START_SEC);
   }
 
   return timestamps.sort();
@@ -122,7 +124,6 @@ export default function TimelineTestPage() {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
-  const setData = useDataStore((state) => state.setData);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const resetFilters = useFilterStore((state) => state.resetFilters);
@@ -152,9 +153,18 @@ export default function TimelineTestPage() {
 
   useEffect(() => {
     if (!useMockData) return;
-    computeMaps(mockTimestamps, [0, 100]);
-    setData(buildMockPoints(mockTimestamps));
-  }, [computeMaps, mockTimestamps, setData, useMockData]);
+    computeMaps(mockTimestamps, [MOCK_START_SEC, MOCK_END_SEC]);
+    useDataStore.setState({
+      data: buildMockPoints(mockTimestamps),
+      columns: null,
+      minTimestampSec: MOCK_START_SEC,
+      maxTimestampSec: MOCK_END_SEC,
+      minX: -50,
+      maxX: 50,
+      minZ: -50,
+      maxZ: 50
+    });
+  }, [computeMaps, mockTimestamps, useMockData]);
 
   const densityStats = useMemo(() => {
     if (!sourceDensity.length) {
@@ -180,7 +190,7 @@ export default function TimelineTestPage() {
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       return [minTimestampSec, maxTimestampSec];
     }
-    return [0, 100];
+    return [MOCK_START_SEC, MOCK_END_SEC];
   }, [maxTimestampSec, minTimestampSec]);
 
   const detailRangeSec = useMemo<[number, number]>(() => {
