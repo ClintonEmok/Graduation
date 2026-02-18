@@ -26,6 +26,10 @@ export function SliceList() {
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
+  const handleActivate = (sliceId: string, isActive: boolean) => {
+    setActiveSlice(isActive ? null : sliceId);
+  };
+
   if (slices.length === 0) {
     return <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">No slices created yet</p>;
   }
@@ -46,11 +50,11 @@ export function SliceList() {
                 role="button"
                 tabIndex={0}
                 aria-pressed={isActive}
-                onClick={() => setActiveSlice(slice.id)}
+                onClick={() => handleActivate(slice.id, isActive)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    setActiveSlice(slice.id);
+                    handleActivate(slice.id, isActive);
                   }
                 }}
                 className={`relative flex cursor-pointer items-start justify-between gap-3 rounded-md border px-3 py-2 pl-5 text-xs transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
