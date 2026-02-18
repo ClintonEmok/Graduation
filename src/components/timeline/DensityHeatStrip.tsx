@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 
+export type DensityDomain = [number, number];
+
 export interface DensityHeatStripProps {
   densityMap: Float32Array | null;
   width: number;
@@ -10,10 +12,15 @@ export interface DensityHeatStripProps {
   isLoading?: boolean;
   colorLow?: [number, number, number];
   colorHigh?: [number, number, number];
+  densityDomain?: DensityDomain;
+  legendLabels?: { low: string; high: string };
+  showLegend?: boolean;
 }
 
 const DEFAULT_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DEFAULT_COLOR_HIGH: [number, number, number] = [239, 68, 68];
+export const DEFAULT_DENSITY_DOMAIN: DensityDomain = [0, 1];
+export const DEFAULT_DENSITY_LEGEND = { low: 'Low density', high: 'High density' } as const;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -23,7 +30,10 @@ export function DensityHeatStrip({
   height = 12,
   isLoading = false,
   colorLow = DEFAULT_COLOR_LOW,
-  colorHigh = DEFAULT_COLOR_HIGH
+  colorHigh = DEFAULT_COLOR_HIGH,
+  densityDomain,
+  legendLabels = DEFAULT_DENSITY_LEGEND,
+  showLegend = false
 }: DensityHeatStripProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const storeDensityMap = useAdaptiveStore((state) => state.densityMap);
@@ -32,28 +42,13 @@ export function DensityHeatStrip({
   const logicalWidth = Math.max(1, Math.floor(width));
   const logicalHeight = Math.max(1, Math.floor(height));
 
-  const densityRange = useMemo(() => {
-    if (!activeDensityMap || activeDensityMap.length === 0) {
-      return { min: 0, max: 1, range: 1 };
-    }
-
-    let min = Number.POSITIVE_INFINITY;
-    let max = Number.NEGATIVE_INFINITY;
-
-    for (let i = 0; i < activeDensityMap.length; i += 1) {
-      const value = activeDensityMap[i];
-      if (!Number.isFinite(value)) continue;
-      if (value < min) min = value;
-      if (value > max) max = value;
-    }
-
-    if (!Number.isFinite(min) || !Number.isFinite(max)) {
-      return { min: 0, max: 1, range: 1 };
-    }
-
-    const range = max - min || 1;
-    return { min, max, range };
-  }, [activeDensityMap]);
+  const resolvedDomain = useMemo<DensityDomain>(() => {
+    if (!densityDomain) return DEFAULT_DENSITY_DOMAIN;
+    const [rawMin, rawMax] = densityDomain;
+    if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax)) return DEFAULT_DENSITY_DOMAIN;
+    if (rawMin === rawMax) return DEFAULT_DENSITY_DOMAIN;
+    return rawMin < rawMax ? [rawMin, rawMax] : [rawMax, rawMin];
+  }, [densityDomain]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -88,8 +83,9 @@ export function DensityHeatStrip({
         Math.floor(ratio * (activeDensityMap.length - 1))
       );
 
-      const rawValue = activeDensityMap[sourceIndex] ?? densityRange.min;
-      const normalized = clamp01((rawValue - densityRange.min) / densityRange.range);
+      const rawValue = activeDensityMap[sourceIndex] ?? resolvedDomain[0];
+      const range = resolvedDomain[1] - resolvedDomain[0] || 1;
+      const normalized = clamp01((rawValue - resolvedDomain[0]) / range);
 
       const red = Math.round(colorLow[0] + normalized * (colorHigh[0] - colorLow[0]));
       const green = Math.round(colorLow[1] + normalized * (colorHigh[1] - colorLow[1]));
@@ -111,14 +107,23 @@ export function DensityHeatStrip({
     tempContext.putImageData(rowImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(tempCanvas, 0, 0, logicalWidth, 1, 0, 0, logicalWidth, logicalHeight);
-  }, [activeDensityMap, colorHigh, colorLow, densityRange.max, densityRange.min, densityRange.range, logicalHeight, logicalWidth]);
+  }, [activeDensityMap, colorHigh, colorLow, logicalHeight, logicalWidth, resolvedDomain]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={`block rounded-sm transition-opacity duration-200 ${isLoading ? 'opacity-55' : 'opacity-80'}`}
-      aria-label="Density heat strip"
-      aria-busy={isLoading}
-    />
+    <div className="flex items-center gap-3">
+      <canvas
+        ref={canvasRef}
+        className={`block rounded-sm transition-opacity duration-200 ${isLoading ? 'opacity-55' : 'opacity-80'}`}
+        aria-label="Density heat strip"
+        aria-busy={isLoading}
+      />
+      {showLegend && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{legendLabels.low}</span>
+          <span aria-hidden="true">→</span>
+          <span>{legendLabels.high}</span>
+        </div>
+      )}
+    </div>
   );
 }
