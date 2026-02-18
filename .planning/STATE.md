@@ -3,7 +3,7 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 28 ready to plan
-**Status:** Phase 27 verified complete (must-haves 7/7)
+**Status:** Phase 27 fully complete (including 27-06 UAT closure)
 **Next:** Phase 28 Slice Boundary Adjustment
 
 ## Current Position
@@ -13,9 +13,9 @@ Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 28 of 40 (Slice Boundary Adjustment)
 Plan: 0 of TBD in current phase
 Status: 🚧 **Ready for Phase 28 Planning**
-Last activity: 2026-02-18 - Verified completion of Phase 27
+Last activity: 2026-02-18 - Completed 27-06 plan after approved human checkpoint
 
-Progress: overall ████████████████████████░ 97% (89/92 known plans) | v1.1 ██░░░ 40% phases
+Progress: overall ████████████████████████░ 98% (90/92 known plans) | v1.1 ██░░░ 40% phases
 
 ```
 v1.0 Complete:
@@ -96,6 +96,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Removed drag-only commit guard so click-created previews with valid start/end persist as range slices.
 - Added fixed 2024 UTC mock time constants (`MOCK_START_*`, `MOCK_END_*`) for timeline mock generation.
 - Updated mock timestamp/domain wiring so timeline-test renders date-based axes and tooltips from real epoch ranges.
+- Added committed slice timeline overlay subscribed to persisted `useSliceStore` slices and active selection state.
+- Aligned committed slice geometry with live detail timeline scale/domain for zoom-safe rendering.
+- Ensured active overlay highlight remains visible in overlaps and made list selection state explicit/toggleable.
 
 ## Blockers/Concerns
 
@@ -106,8 +109,8 @@ v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-18 18:25 UTC
-Stopped at: Verified Phase 27 completion (7/7 must-haves)
+Last session: 2026-02-18 20:15 UTC
+Stopped at: Completed 27-06-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -142,4 +145,4 @@ Resume file: None
 - Begin Phase 28 planning/execution for slice boundary adjustment
 
 ---
-*Last updated: 2026-02-18 - phase 27 verified complete*
+*Last updated: 2026-02-18 - completed 27-06 summary + state refresh*
