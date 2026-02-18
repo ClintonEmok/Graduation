@@ -8,11 +8,12 @@ import { DensityAreaChart, type DensityPoint } from '@/components/timeline/Densi
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { SliceCreationLayer } from '@/app/timeline-test/components/SliceCreationLayer';
+import { SliceToolbar } from '@/app/timeline-test/components/SliceToolbar';
+import { SliceList } from '@/app/timeline-test/components/SliceList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
-import { useSliceStore } from '@/store/useSliceStore';
 
 const SAMPLE_POINT_COUNT = 160;
 const MOCK_EVENT_COUNT = 2400;
@@ -125,8 +126,6 @@ export default function TimelineTestPage() {
   const isCreatingSlice = useSliceCreationStore((state) => state.isCreating);
   const startCreation = useSliceCreationStore((state) => state.startCreation);
   const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
-  const slices = useSliceStore((state) => state.slices);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
@@ -227,7 +226,6 @@ export default function TimelineTestPage() {
         </header>
 
         <section className="space-y-5 rounded-xl border border-slate-700/60 bg-slate-900/65 p-5" ref={containerRef}>
-          <SliceToolbar />
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
             <div className="flex flex-wrap items-center gap-4">
@@ -353,28 +351,6 @@ export default function TimelineTestPage() {
                   containerRef={timelineContainerRef}
                 />
               </div>
-            )}
-          </div>
-
-          <div className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Created slices</h3>
-            {slices.length === 0 ? (
-              <p className="mt-2 text-xs text-slate-400">No slices yet. Click &quot;Create Slice&quot; and click or drag on timeline.</p>
-            ) : (
-              <ul className="mt-2 space-y-2 text-xs">
-                {slices.map((slice, index) => (
-                  <li
-                    key={slice.id}
-                    className={`rounded border px-2 py-1 ${
-                      slice.id === activeSliceId
-                        ? 'border-amber-400/70 bg-amber-500/10 text-amber-100'
-                        : 'border-slate-700 bg-slate-900/70 text-slate-200'
-                    }`}
-                  >
-                    Slice {index + 1}: {slice.range ? `${slice.range[0].toFixed(2)} - ${slice.range[1].toFixed(2)}` : slice.time.toFixed(2)}
-                  </li>
-                ))}
-              </ul>
             )}
           </div>
         </section>
