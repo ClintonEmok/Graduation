@@ -3,17 +3,17 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 27 in progress
-**Status:** Phase 27 interaction core delivered in timeline test route
-**Next:** 27-03 Manual Slice Creation Polish
+**Status:** Phase 27 foundation delivered in timeline test route
+**Next:** 27-02 Manual Slice Creation Interaction
 
 ## Current Position
 
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 27 of 40 (Manual Slice Creation)
-Plan: 2 of 3 in current phase
+Plan: 1 of 3 in current phase
 Status: 🚧 **In Progress**
-Last activity: 2026-02-18 - Completed 27-02-PLAN.md
+Last activity: 2026-02-18 - Completed 27-01-PLAN.md
 
 Progress: overall ████████████████████████░ 98% (85/87 known plans) | v1.1 █░░░░ 20% phases
 
@@ -23,7 +23,7 @@ v1.0 Complete:
 
 v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
-[~] Phase 27: Manual Slice Creation (2/3 plans complete)
+[~] Phase 27: Manual Slice Creation (1/3 plans complete)
 [ ] Phase 28: Slice Boundary Adjustment
 [ ] Phase 29: Multi-Slice Management
 [ ] Phase 30: Slice Metadata & UI
@@ -87,9 +87,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Adopted normalized density domain (0-1) as the stable scale contract for timeline density rendering.
 
 **Phase 27 Decision Log (Execution):**
-- Implemented click/drag slice creation in `/timeline-test` with 10px drag threshold and pointer capture.
-- Duplicated detail scale computation in test page to avoid changing `DualTimeline` internals during test-phase implementation.
-- Added amber ghost preview layer with time-range tooltip for drag creation feedback.
+- Added non-persisted `useSliceCreationStore` for create-mode, preview, and commit/cancel lifecycle state.
+- Added mode-toggle toolbar with amber active indicators and clear-all slice control.
+- Added slice list component with auto-named slices, selection highlighting, and delete actions.
 
 ## Blockers/Concerns
 
@@ -100,8 +100,8 @@ v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-18 11:28 UTC
-Stopped at: Completed 27-02-PLAN.md
+Last session: 2026-02-18 11:29 UTC
+Stopped at: Completed 27-01-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -133,7 +133,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Complete Phase 27 plan 03 (snap, constraints, edge-case polish)
+- Continue Phase 27 with plan 02 (creation interaction wiring)
 
 ---
-*Last updated: 2026-02-18 - completed 27-02 execution*
+*Last updated: 2026-02-18 - completed 27-01 execution*
