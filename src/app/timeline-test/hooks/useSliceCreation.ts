@@ -298,9 +298,9 @@ export function useSliceCreation(
 
   useEffect(() => {
     if (isCreating) return;
-    if (!dragStartRef.current && !isDraggingRef.current) return;
-    resetDragState();
-  }, [isCreating, resetDragState]);
+    dragStartRef.current = null;
+    isDraggingRef.current = false;
+  }, [isCreating]);
 
   useEffect(() => {
     const onResize = () => {
@@ -322,9 +322,9 @@ export function useSliceCreation(
     previewDurationLabel,
     previewTimeRangeLabel,
     snapInterval,
-    isDragging,
-    isNearEdge,
-    ghostPosition,
+    isDragging: isCreating ? isDragging : false,
+    isNearEdge: isCreating ? isNearEdge : false,
+    ghostPosition: isCreating ? ghostPosition : null,
     currentRange,
     handlers: {
       onPointerDown,

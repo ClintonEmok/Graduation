@@ -16,6 +16,7 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
   const previewEnd = useSliceCreationStore((state) => state.previewEnd);
   const {
     isDragging,
+    isNearEdge,
     ghostPosition,
     currentRange,
     isPreviewValid,
@@ -34,6 +35,17 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
   const hasGhost = Boolean(ghostPosition) || Boolean(previewRange);
   const ghostWidth = Math.max(2, ghostPosition?.width ?? 2);
   const tooltipLabel = previewTimeRangeLabel;
+  const [rangeStart, rangeEnd] = scale.range();
+  const rangeWidth = Math.max(rangeStart, rangeEnd) - Math.min(rangeStart, rangeEnd);
+  const ghostLeft = ghostPosition?.x ?? 0;
+  const ghostRight = ghostLeft + ghostWidth;
+
+  const tooltipPositionClass =
+    ghostLeft < 80
+      ? 'left-0 translate-x-0'
+      : ghostRight > rangeWidth - 80
+        ? 'right-0 left-auto translate-x-0'
+        : 'left-1/2 -translate-x-1/2';
 
   if (!isCreating) {
     return null;
@@ -52,7 +64,7 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
 
       {hasGhost && ghostPosition && (
         <div
-          className={`pointer-events-none absolute top-0 rounded-sm border-2 transition-all duration-75 ${
+          className={`pointer-events-none absolute top-0 rounded-sm border-2 transition-all duration-100 ${
             isPreviewValid
               ? 'border-amber-500/60 bg-amber-500/20'
               : 'border-red-500/40 bg-red-500/10'
@@ -65,17 +77,26 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
         >
           {isDragging && tooltipLabel && (
             <div
-              className={`pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-2 py-1 text-xs text-white ${
+              className={`pointer-events-none absolute -top-11 whitespace-nowrap rounded px-2 py-1 text-xs text-white ${tooltipPositionClass} ${
                 isPreviewValid ? 'bg-amber-500' : 'bg-red-500'
               }`}
               aria-live="polite"
             >
               {previewDurationLabel ? `${tooltipLabel} (${previewDurationLabel})` : tooltipLabel}
               {previewReason ? <span className="ml-2 font-semibold">{previewReason}</span> : null}
+              <span
+                className={`absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 ${
+                  isPreviewValid ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+              />
             </div>
           )}
         </div>
       )}
+
+      {isNearEdge ? (
+        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 border-x-2 border-amber-400/30" />
+      ) : null}
     </div>
   );
 }

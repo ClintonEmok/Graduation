@@ -10,6 +10,7 @@ import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { SliceCreationLayer } from '@/app/timeline-test/components/SliceCreationLayer';
 import { SliceToolbar } from '@/app/timeline-test/components/SliceToolbar';
 import { SliceList } from '@/app/timeline-test/components/SliceList';
+import { SNAP_INTERVALS } from '@/app/timeline-test/lib/slice-utils';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
@@ -128,6 +129,12 @@ export default function TimelineTestPage() {
   const isCreatingSlice = useSliceCreationStore((state) => state.isCreating);
   const startCreation = useSliceCreationStore((state) => state.startCreation);
   const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
+  const creationMode = useSliceCreationStore((state) => state.creationMode);
+  const dragActive = useSliceCreationStore((state) => state.dragActive);
+  const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
+  const snapInterval = useSliceCreationStore((state) => state.snapInterval);
+  const previewIsValid = useSliceCreationStore((state) => state.previewIsValid);
+  const previewReason = useSliceCreationStore((state) => state.previewReason);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
@@ -216,6 +223,22 @@ export default function TimelineTestPage() {
     triggerUpdate();
   }, [resetFilters, triggerUpdate]);
 
+  const snapIntervalLabel = useMemo(() => {
+    if (snapInterval === null) return 'off';
+    if (!snapEnabled) return 'disabled';
+    if (snapInterval === SNAP_INTERVALS.minutes) return '1 minute';
+    if (snapInterval === SNAP_INTERVALS.hours) return '1 hour';
+    if (snapInterval === SNAP_INTERVALS.days) return '1 day';
+    return `${snapInterval}s`;
+  }, [snapEnabled, snapInterval]);
+
+  const creationAnnouncement = useMemo(() => {
+    if (!isCreatingSlice) return 'Slice creation mode inactive.';
+    if (!previewIsValid && previewReason) return `Slice preview warning: ${previewReason}.`;
+    if (dragActive) return 'Creating slice by drag in progress.';
+    return 'Slice creation mode active. Click or drag to create a slice.';
+  }, [dragActive, isCreatingSlice, previewIsValid, previewReason]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -229,6 +252,9 @@ export default function TimelineTestPage() {
 
         <section className="space-y-5 rounded-xl border border-slate-700/60 bg-slate-900/65 p-5" ref={containerRef}>
           <SliceToolbar />
+          <div className="sr-only" aria-live="polite">
+            {creationAnnouncement}
+          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
             <div className="flex flex-wrap items-center gap-4">
@@ -327,6 +353,7 @@ export default function TimelineTestPage() {
             <button
               type="button"
               onClick={isCreatingSlice ? cancelCreation : () => startCreation('drag')}
+              aria-pressed={isCreatingSlice}
               className={`rounded border px-3 py-1 font-medium transition ${
                 isCreatingSlice
                   ? 'border-rose-400/70 bg-rose-500/10 text-rose-100 hover:border-rose-300'
@@ -336,6 +363,28 @@ export default function TimelineTestPage() {
               {isCreatingSlice ? 'Cancel' : 'Create Slice'}
             </button>
           </div>
+
+          <div className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
+            <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Slice Creation Debug</h3>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>
+                Mode: <strong className="text-slate-100">{isCreatingSlice ? creationMode ?? 'create' : 'view'}</strong>
+              </span>
+              <span>
+                Drag state: <strong className="text-slate-100">{dragActive ? 'dragging' : 'idle'}</strong>
+              </span>
+              <span>
+                Snap: <strong className="text-slate-100">{snapIntervalLabel}</strong>
+              </span>
+              <span>
+                Constraint:{' '}
+                <strong className={previewIsValid ? 'text-emerald-300' : 'text-red-300'}>
+                  {previewIsValid ? 'valid' : `invalid${previewReason ? ` (${previewReason})` : ''}`}
+                </strong>
+              </span>
+            </div>
+          </div>
+
           <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
             <DualTimeline />
             {detailInnerWidth > 0 && (

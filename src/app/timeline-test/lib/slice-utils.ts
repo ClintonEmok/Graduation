@@ -54,8 +54,10 @@ export function constrainDuration(
 
   let start = clamp(Math.min(startTime, endTime), minDomain, maxDomain);
   let end = clamp(Math.max(startTime, endTime), minDomain, maxDomain);
+  let minAdjusted = false;
 
   if (end - start < MIN_SLICE_DURATION) {
+    minAdjusted = true;
     end = Math.min(maxDomain, start + MIN_SLICE_DURATION);
     if (end - start < MIN_SLICE_DURATION) {
       start = Math.max(minDomain, end - MIN_SLICE_DURATION);
@@ -81,6 +83,7 @@ export function constrainDuration(
     start,
     end,
     isValid: true,
+    reason: minAdjusted ? 'Minimum duration: 1 minute' : undefined,
   };
 }
 
