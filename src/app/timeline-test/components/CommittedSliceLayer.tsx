@@ -83,18 +83,23 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
       .filter((geometry): geometry is SliceGeometry => geometry !== null);
   }, [activeSliceId, domainSec, scale, slices]);
 
-  if (geometries.length === 0) {
+  const orderedGeometries = useMemo(
+    () => [...geometries].sort((a, b) => Number(a.isActive) - Number(b.isActive)),
+    [geometries]
+  );
+
+  if (orderedGeometries.length === 0) {
     return null;
   }
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
-      {geometries.map((geometry) => (
+      {orderedGeometries.map((geometry) => (
         <div
           key={geometry.id}
-          className={`absolute top-0 rounded-sm border transition-colors ${
+          className={`absolute top-0 rounded-sm border transition-[background-color,border-color,box-shadow] ${
             geometry.isActive
-              ? 'border-amber-300/95 bg-amber-400/35 shadow-[0_0_0_1px_rgba(251,191,36,0.45)]'
+              ? 'border-amber-200 bg-amber-300/60 shadow-[0_0_0_2px_rgba(251,191,36,0.55)]'
               : geometry.isPoint
                 ? 'border-cyan-200/70 bg-cyan-300/50'
                 : 'border-cyan-300/45 bg-cyan-400/20'
@@ -103,6 +108,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
             left: geometry.left,
             width: geometry.width,
             height,
+            zIndex: geometry.isActive ? 2 : 1,
           }}
         />
       ))}
