@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { TIME_MIN, TIME_MAX } from '@/lib/constants';
+import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 import { toEpochSeconds } from '@/lib/time-domain';
 import { RecordBatchReader, Table } from 'apache-arrow';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
@@ -77,7 +77,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       }
       return {
       id: String(i),
-      timestamp: TIME_MIN + Math.random() * (TIME_MAX - TIME_MIN),
+      timestamp: MOCK_START_MS + Math.random() * (MOCK_END_MS - MOCK_START_MS),
       x: (Math.random() - 0.5) * 100,
       y: 0, // Will be computed
       z: (Math.random() - 0.5) * 100,
@@ -87,7 +87,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
     // Sort by timestamp
     data.sort((a, b) => a.timestamp - b.timestamp);
-    set({ data, columns: null, minTimestampSec: null, maxTimestampSec: null, minX: -50, maxX: 50, minZ: -50, maxZ: 50 }); 
+    set({ data, columns: null, minTimestampSec: MOCK_START_SEC, maxTimestampSec: MOCK_END_SEC, minX: -50, maxX: 50, minZ: -50, maxZ: 50 }); 
   },
 
   loadRealData: async () => {
