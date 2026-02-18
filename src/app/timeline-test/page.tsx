@@ -7,6 +7,7 @@ import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { DensityAreaChart, type DensityPoint } from '@/components/timeline/DensityAreaChart';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
+import { CommittedSliceLayer } from '@/app/timeline-test/components/CommittedSliceLayer';
 import { SliceCreationLayer } from '@/app/timeline-test/components/SliceCreationLayer';
 import { SliceToolbar } from '@/app/timeline-test/components/SliceToolbar';
 import { SliceList } from '@/app/timeline-test/components/SliceList';
@@ -398,21 +399,34 @@ export default function TimelineTestPage() {
           <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
             <DualTimeline />
             {detailInnerWidth > 0 && (
-              <div
-                className="pointer-events-none absolute z-10"
-                style={{
-                  left: DETAIL_MARGIN.left + 12,
-                  right: DETAIL_MARGIN.right + 12,
-                  bottom: 40,
-                  height: DETAIL_HEIGHT,
-                }}
-              >
-                <SliceCreationLayer
-                  scale={detailXScale}
-                  height={DETAIL_HEIGHT}
-                  containerRef={timelineContainerRef}
-                />
-              </div>
+              <>
+                <div
+                  className="pointer-events-none absolute z-10"
+                  style={{
+                    left: DETAIL_MARGIN.left + 12,
+                    right: DETAIL_MARGIN.right + 12,
+                    bottom: 40,
+                    height: DETAIL_HEIGHT,
+                  }}
+                >
+                  <CommittedSliceLayer scale={detailXScale} height={DETAIL_HEIGHT} />
+                </div>
+                <div
+                  className="pointer-events-none absolute z-20"
+                  style={{
+                    left: DETAIL_MARGIN.left + 12,
+                    right: DETAIL_MARGIN.right + 12,
+                    bottom: 40,
+                    height: DETAIL_HEIGHT,
+                  }}
+                >
+                  <SliceCreationLayer
+                    scale={detailXScale}
+                    height={DETAIL_HEIGHT}
+                    containerRef={timelineContainerRef}
+                  />
+                </div>
+              </>
             )}
           </div>
 
