@@ -5,6 +5,7 @@ import { useSliceStore } from '@/store/useSliceStore';
 interface CommittedSliceLayerProps {
   scale: ScaleTime<number, number>;
   height: number;
+  domainSec: [number, number];
 }
 
 interface SliceGeometry {
@@ -17,18 +18,23 @@ interface SliceGeometry {
 
 const clampNormalized = (value: number) => Math.max(0, Math.min(100, value));
 
-export function CommittedSliceLayer({ scale, height }: CommittedSliceLayerProps) {
+export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSliceLayerProps) {
   const slices = useSliceStore((state) => state.slices);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
 
   const geometries = useMemo<SliceGeometry[]>(() => {
-    const [domainStartDate, domainEndDate] = scale.domain();
-    const domainStartMs = domainStartDate.getTime();
-    const domainEndMs = domainEndDate.getTime();
-    const spanMs = Math.max(1, domainEndMs - domainStartMs);
+    const [domainStartSec, domainEndSec] = domainSec;
+    const minDomainSec = Math.min(domainStartSec, domainEndSec);
+    const maxDomainSec = Math.max(domainStartSec, domainEndSec);
+    const spanSec = Math.max(1, maxDomainSec - minDomainSec);
+    const [rangeStart, rangeEnd] = scale.range();
+    const minRange = Math.min(rangeStart, rangeEnd);
+    const maxRange = Math.max(rangeStart, rangeEnd);
+
+    const clampRange = (value: number) => Math.max(minRange, Math.min(maxRange, value));
 
     const toDate = (normalized: number) =>
-      new Date(domainStartMs + (clampNormalized(normalized) / 100) * spanMs);
+      new Date((minDomainSec + (clampNormalized(normalized) / 100) * spanSec) * 1000);
 
     return slices
       .filter((slice) => slice.isVisible)
@@ -37,10 +43,18 @@ export function CommittedSliceLayer({ scale, height }: CommittedSliceLayerProps)
           const [rawStart, rawEnd] = slice.range;
           const startNorm = clampNormalized(Math.min(rawStart, rawEnd));
           const endNorm = clampNormalized(Math.max(rawStart, rawEnd));
-          const startX = scale(toDate(startNorm));
-          const endX = scale(toDate(endNorm));
-          const left = Math.min(startX, endX);
-          const width = Math.max(2, Math.abs(endX - startX));
+          const startXRaw = scale(toDate(startNorm));
+          const endXRaw = scale(toDate(endNorm));
+          const leftRaw = Math.min(startXRaw, endXRaw);
+          const rightRaw = Math.max(startXRaw, endXRaw);
+
+          if (rightRaw < minRange || leftRaw > maxRange) {
+            return null;
+          }
+
+          const left = clampRange(leftRaw);
+          const right = clampRange(rightRaw);
+          const width = Math.max(2, right - left);
 
           return {
             id: slice.id,
@@ -53,6 +67,9 @@ export function CommittedSliceLayer({ scale, height }: CommittedSliceLayerProps)
 
         const pointNorm = clampNormalized(slice.time);
         const x = scale(toDate(pointNorm));
+        if (x < minRange || x > maxRange) {
+          return null;
+        }
         const width = 2;
 
         return {
@@ -62,8 +79,9 @@ export function CommittedSliceLayer({ scale, height }: CommittedSliceLayerProps)
           isActive: activeSliceId === slice.id,
           isPoint: true,
         };
-      });
-  }, [activeSliceId, scale, slices]);
+      })
+      .filter((geometry): geometry is SliceGeometry => geometry !== null);
+  }, [activeSliceId, domainSec, scale, slices]);
 
   if (geometries.length === 0) {
     return null;

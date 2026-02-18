@@ -409,7 +409,11 @@ export default function TimelineTestPage() {
                     height: DETAIL_HEIGHT,
                   }}
                 >
-                  <CommittedSliceLayer scale={detailXScale} height={DETAIL_HEIGHT} />
+                  <CommittedSliceLayer
+                    scale={detailXScale}
+                    height={DETAIL_HEIGHT}
+                    domainSec={[domainStart, domainEnd]}
+                  />
                 </div>
                 <div
                   className="pointer-events-none absolute z-20"
