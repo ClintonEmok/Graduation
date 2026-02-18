@@ -19,6 +19,8 @@ const SAMPLE_POINT_COUNT = 160;
 const MOCK_EVENT_COUNT = 2400;
 const DETAIL_HEIGHT = 60;
 const DETAIL_MARGIN = { left: 12, right: 12 };
+const FALLBACK_CHART_END_MS = 3 * 24 * 60 * 60 * 1000;
+const FALLBACK_CHART_START_MS = 0;
 
 const buildMockDensity = (pointCount: number, variant: number): Float32Array => {
   const values = new Float32Array(pointCount);
@@ -133,8 +135,8 @@ export default function TimelineTestPage() {
 
   const [domainStartSec, domainEndSec] = mapDomain;
   const useRealDomain = densityMap && densityMap.length > 0;
-  const chartStartMs = useRealDomain ? domainStartSec * 1000 : Date.now() - 3 * 24 * 60 * 60 * 1000;
-  const chartEndMs = useRealDomain ? domainEndSec * 1000 : Date.now();
+  const chartStartMs = useRealDomain ? domainStartSec * 1000 : FALLBACK_CHART_START_MS;
+  const chartEndMs = useRealDomain ? domainEndSec * 1000 : FALLBACK_CHART_END_MS;
 
   const chartData = useMemo(
     () => toDensityPoints(sourceDensity, chartStartMs, chartEndMs),
@@ -226,6 +228,7 @@ export default function TimelineTestPage() {
         </header>
 
         <section className="space-y-5 rounded-xl border border-slate-700/60 bg-slate-900/65 p-5" ref={containerRef}>
+          <SliceToolbar />
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
             <div className="flex flex-wrap items-center gap-4">
@@ -353,6 +356,8 @@ export default function TimelineTestPage() {
               </div>
             )}
           </div>
+
+          <SliceList />
         </section>
       </div>
     </main>
