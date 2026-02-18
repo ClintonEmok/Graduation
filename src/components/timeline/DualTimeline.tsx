@@ -22,6 +22,8 @@ const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
 const AXIS_HEIGHT = 28;
 
+const DENSITY_DOMAIN: [number, number] = [0, 1];
+
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
@@ -112,6 +114,19 @@ export const DualTimeline: React.FC = () => {
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0);
   }, [timestampSeconds, detailRangeSec]);
+
+  const detailDensityMap = useMemo(() => {
+    if (!densityMap || densityMap.length === 0) return densityMap;
+    const span = domainEnd - domainStart || 1;
+    const startRatio = clamp((detailRangeSec[0] - domainStart) / span, 0, 1);
+    const endRatio = clamp((detailRangeSec[1] - domainStart) / span, 0, 1);
+    const rangeStart = Math.min(startRatio, endRatio);
+    const rangeEnd = Math.max(startRatio, endRatio);
+    const lastIndex = Math.max(0, densityMap.length - 1);
+    const startIndex = clamp(Math.floor(rangeStart * lastIndex), 0, lastIndex);
+    const endIndex = clamp(Math.ceil(rangeEnd * lastIndex), startIndex, lastIndex);
+    return densityMap.subarray(startIndex, Math.min(densityMap.length, endIndex + 1));
+  }, [densityMap, detailRangeSec, domainEnd, domainStart]);
 
   const overviewScale = useMemo(
     () =>
@@ -466,6 +481,16 @@ export const DualTimeline: React.FC = () => {
     }
   }, [timeResolution]);
 
+  const stripSelection = useMemo(() => {
+    if (!overviewInnerWidth) return null;
+    const x0 = overviewScale(new Date(detailRangeSec[0] * 1000));
+    const x1 = overviewScale(new Date(detailRangeSec[1] * 1000));
+    const left = Math.min(x0, x1);
+    const widthSpan = Math.max(2, Math.abs(x1 - x0));
+    return { left, width: widthSpan };
+  }, [detailRangeSec, overviewInnerWidth, overviewScale]);
+
+
   return (
     <div ref={containerRef} className="w-full">
       <div className="flex flex-col gap-6">
@@ -476,11 +501,27 @@ export const DualTimeline: React.FC = () => {
             paddingRight: OVERVIEW_MARGIN.right
           }}
         >
-          {width > 0 ? (
-            <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} height={12} isLoading={isComputing} />
-          ) : (
-            <div className="h-3" />
-          )}
+          <div className="relative">
+            {width > 0 ? (
+              <DensityHeatStrip
+                densityMap={densityMap}
+                width={overviewInnerWidth}
+                height={12}
+                isLoading={isComputing}
+                densityDomain={DENSITY_DOMAIN}
+              />
+            ) : (
+              <div className="h-3" />
+            )}
+            {stripSelection && (
+              <div className="pointer-events-none absolute inset-0">
+                <div
+                  className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
+                  style={{ left: stripSelection.left, width: stripSelection.width }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
@@ -525,6 +566,25 @@ export const DualTimeline: React.FC = () => {
         </svg>
 
         <div className="relative">
+          <div
+            className="mb-2"
+            style={{
+              paddingLeft: DETAIL_MARGIN.left,
+              paddingRight: DETAIL_MARGIN.right
+            }}
+          >
+            {width > 0 ? (
+              <DensityHeatStrip
+                densityMap={detailDensityMap}
+                width={detailInnerWidth}
+                height={10}
+                isLoading={isComputing}
+                densityDomain={DENSITY_DOMAIN}
+              />
+            ) : (
+              <div className="h-2" />
+            )}
+          </div>
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
             {detailPoints.map((timestamp, index) => {
