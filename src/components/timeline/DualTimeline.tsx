@@ -23,6 +23,8 @@ const DETAIL_HEIGHT = 60;
 const AXIS_HEIGHT = 28;
 
 const DENSITY_DOMAIN: [number, number] = [0, 1];
+const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
+const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
@@ -490,12 +492,20 @@ export const DualTimeline: React.FC = () => {
     return { left, width: widthSpan };
   }, [detailRangeSec, overviewInnerWidth, overviewScale]);
 
+  const densityLegend = useMemo(
+    () => ({
+      low: `Low (${DENSITY_DOMAIN[0].toFixed(2)})`,
+      high: `High (${DENSITY_DOMAIN[1].toFixed(2)})`
+    }),
+    []
+  );
+
 
   return (
     <div ref={containerRef} className="w-full">
       <div className="flex flex-col gap-6">
         <div
-          className="w-full"
+          className="flex flex-wrap items-center justify-between gap-3"
           style={{
             paddingLeft: OVERVIEW_MARGIN.left,
             paddingRight: OVERVIEW_MARGIN.right
@@ -509,6 +519,8 @@ export const DualTimeline: React.FC = () => {
                 height={12}
                 isLoading={isComputing}
                 densityDomain={DENSITY_DOMAIN}
+                colorLow={DENSITY_COLOR_LOW}
+                colorHigh={DENSITY_COLOR_HIGH}
               />
             ) : (
               <div className="h-3" />
@@ -521,6 +533,25 @@ export const DualTimeline: React.FC = () => {
                 />
               </div>
             )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-sm"
+                style={{ backgroundColor: `rgb(${DENSITY_COLOR_LOW.join(',')})` }}
+                aria-hidden="true"
+              />
+              <span>{densityLegend.low}</span>
+            </div>
+            <span aria-hidden="true">→</span>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-sm"
+                style={{ backgroundColor: `rgb(${DENSITY_COLOR_HIGH.join(',')})` }}
+                aria-hidden="true"
+              />
+              <span>{densityLegend.high}</span>
+            </div>
           </div>
         </div>
 
@@ -580,6 +611,8 @@ export const DualTimeline: React.FC = () => {
                 height={10}
                 isLoading={isComputing}
                 densityDomain={DENSITY_DOMAIN}
+                colorLow={DENSITY_COLOR_LOW}
+                colorHigh={DENSITY_COLOR_HIGH}
               />
             ) : (
               <div className="h-2" />
