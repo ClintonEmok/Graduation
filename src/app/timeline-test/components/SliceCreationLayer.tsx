@@ -10,35 +10,20 @@ interface SliceCreationLayerProps {
   containerRef: RefObject<HTMLElement | null>;
 }
 
-const formatTimeRange = (
-  range: [number, number],
-  scale: ScaleTime<number, number>
-) => {
-  const [start, end] = range;
-  const domain = scale.domain();
-  const domainStartMs = Math.min(domain[0].getTime(), domain[1].getTime());
-  const domainEndMs = Math.max(domain[0].getTime(), domain[1].getTime());
-  const spanMs = Math.max(1, domainEndMs - domainStartMs);
-
-  const toDate = (normalized: number) =>
-    new Date(domainStartMs + (normalized / 100) * spanMs);
-
-  const startDate = toDate(start);
-  const endDate = toDate(end);
-
-  const formatter = new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
-};
-
 export function SliceCreationLayer({ scale, height, containerRef }: SliceCreationLayerProps) {
   const isCreating = useSliceCreationStore((state) => state.isCreating);
   const previewStart = useSliceCreationStore((state) => state.previewStart);
   const previewEnd = useSliceCreationStore((state) => state.previewEnd);
-  const { isDragging, ghostPosition, currentRange, handlers } = useSliceCreation(scale, containerRef);
+  const {
+    isDragging,
+    ghostPosition,
+    currentRange,
+    isPreviewValid,
+    previewReason,
+    previewDurationLabel,
+    previewTimeRangeLabel,
+    handlers,
+  } = useSliceCreation(scale, containerRef);
 
   const previewRange = useMemo(() => {
     if (currentRange) return currentRange;
@@ -48,7 +33,7 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
 
   const hasGhost = Boolean(ghostPosition) || Boolean(previewRange);
   const ghostWidth = Math.max(2, ghostPosition?.width ?? 2);
-  const tooltipLabel = previewRange ? formatTimeRange(previewRange, scale) : null;
+  const tooltipLabel = previewTimeRangeLabel;
 
   if (!isCreating) {
     return null;
@@ -57,8 +42,9 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div
-        className="pointer-events-auto absolute inset-0 cursor-crosshair"
-        role="presentation"
+        className={`pointer-events-auto absolute inset-0 ${isPreviewValid ? 'cursor-crosshair' : 'cursor-not-allowed'}`}
+        aria-label="Create time slice by clicking or dragging"
+        role="application"
         onPointerDown={handlers.onPointerDown}
         onPointerMove={handlers.onPointerMove}
         onPointerUp={handlers.onPointerUp}
@@ -66,7 +52,11 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
 
       {hasGhost && ghostPosition && (
         <div
-          className="pointer-events-none absolute top-0 rounded-sm border-2 border-amber-500/60 bg-amber-500/20 transition-all duration-75"
+          className={`pointer-events-none absolute top-0 rounded-sm border-2 transition-all duration-75 ${
+            isPreviewValid
+              ? 'border-amber-500/60 bg-amber-500/20'
+              : 'border-red-500/40 bg-red-500/10'
+          }`}
           style={{
             left: ghostPosition.x,
             width: ghostWidth,
@@ -75,10 +65,13 @@ export function SliceCreationLayer({ scale, height, containerRef }: SliceCreatio
         >
           {isDragging && tooltipLabel && (
             <div
-              className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-amber-500 px-2 py-1 text-xs text-white"
+              className={`pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-2 py-1 text-xs text-white ${
+                isPreviewValid ? 'bg-amber-500' : 'bg-red-500'
+              }`}
               aria-live="polite"
             >
-              {tooltipLabel}
+              {previewDurationLabel ? `${tooltipLabel} (${previewDurationLabel})` : tooltipLabel}
+              {previewReason ? <span className="ml-2 font-semibold">{previewReason}</span> : null}
             </div>
           )}
         </div>

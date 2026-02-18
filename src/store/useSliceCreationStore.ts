@@ -8,17 +8,35 @@ type GhostPosition = {
   width: number;
 };
 
+type PreviewFeedback = {
+  isValid: boolean;
+  reason?: string;
+  durationLabel?: string;
+  timeRangeLabel?: string;
+  snapInterval?: number;
+};
+
 type SliceCreationBaseState = {
   isCreating: boolean;
   creationMode: CreationMode | null;
+  dragActive: boolean;
+  snapEnabled: boolean;
   previewStart: number | null;
   previewEnd: number | null;
   ghostPosition: GhostPosition | null;
+  previewIsValid: boolean;
+  previewReason: string | null;
+  previewDurationLabel: string | null;
+  previewTimeRangeLabel: string | null;
+  snapInterval: number | null;
 };
 
 export interface SliceCreationState extends SliceCreationBaseState {
   startCreation: (mode: CreationMode) => void;
+  setSnapEnabled: (enabled: boolean) => void;
+  setDragActive: (active: boolean) => void;
   updatePreview: (start: number, end: number) => void;
+  setPreviewFeedback: (feedback: PreviewFeedback) => void;
   commitCreation: () => TimeSlice | null;
   cancelCreation: () => void;
 }
@@ -31,10 +49,24 @@ const resetPreviewState = (): Pick<SliceCreationBaseState, 'previewStart' | 'pre
   ghostPosition: null,
 });
 
+const resetPreviewFeedback = (): Pick<
+  SliceCreationBaseState,
+  'previewIsValid' | 'previewReason' | 'previewDurationLabel' | 'previewTimeRangeLabel' | 'snapInterval'
+> => ({
+  previewIsValid: true,
+  previewReason: null,
+  previewDurationLabel: null,
+  previewTimeRangeLabel: null,
+  snapInterval: null,
+});
+
 const resetCreationState = (): SliceCreationBaseState => ({
   isCreating: false,
   creationMode: null,
+  dragActive: false,
+  snapEnabled: true,
   ...resetPreviewState(),
+  ...resetPreviewFeedback(),
 });
 
 export const useSliceCreationStore = create<SliceCreationState>()((set, get) => ({
@@ -43,8 +75,12 @@ export const useSliceCreationStore = create<SliceCreationState>()((set, get) => 
     set({
       isCreating: true,
       creationMode: mode,
+      dragActive: false,
       ...resetPreviewState(),
+      ...resetPreviewFeedback(),
     }),
+  setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
+  setDragActive: (active) => set({ dragActive: active }),
   updatePreview: (start, end) => {
     const normalizedStart = clampNormalizedTime(Math.min(start, end));
     const normalizedEnd = clampNormalizedTime(Math.max(start, end));
@@ -58,6 +94,14 @@ export const useSliceCreationStore = create<SliceCreationState>()((set, get) => 
       },
     });
   },
+  setPreviewFeedback: (feedback) =>
+    set({
+      previewIsValid: feedback.isValid,
+      previewReason: feedback.reason ?? null,
+      previewDurationLabel: feedback.durationLabel ?? null,
+      previewTimeRangeLabel: feedback.timeRangeLabel ?? null,
+      snapInterval: feedback.snapInterval ?? null,
+    }),
   commitCreation: () => {
     const { previewStart, previewEnd, creationMode } = get();
     if (previewStart === null) {
@@ -92,5 +136,9 @@ export const useSliceCreationStore = create<SliceCreationState>()((set, get) => 
     set(resetCreationState());
     return createdSlice;
   },
-  cancelCreation: () => set(resetCreationState()),
+  cancelCreation: () =>
+    set((state) => ({
+      ...resetCreationState(),
+      snapEnabled: state.snapEnabled,
+    })),
 }));

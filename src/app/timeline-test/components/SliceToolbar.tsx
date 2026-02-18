@@ -1,6 +1,6 @@
 "use client";
 
-import { Scissors, Trash2 } from 'lucide-react';
+import { Magnet, Scissors, Trash2 } from 'lucide-react';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceStore } from '@/store/useSliceStore';
 
@@ -8,6 +8,8 @@ export function SliceToolbar() {
   const isCreating = useSliceCreationStore((state) => state.isCreating);
   const startCreation = useSliceCreationStore((state) => state.startCreation);
   const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
+  const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
+  const setSnapEnabled = useSliceCreationStore((state) => state.setSnapEnabled);
   const slices = useSliceStore((state) => state.slices);
   const clearSlices = useSliceStore((state) => state.clearSlices);
 
@@ -25,6 +27,7 @@ export function SliceToolbar() {
       <button
         type="button"
         onClick={handleToggle}
+        aria-pressed={isCreating}
         className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${
           isCreating
             ? 'border-amber-500/50 bg-amber-500/20 text-amber-300 hover:border-amber-400/70 hover:bg-amber-500/25'
@@ -41,6 +44,19 @@ export function SliceToolbar() {
             Active
           </span>
           <span className="text-amber-100/90">Click or drag on timeline</span>
+          <button
+            type="button"
+            onClick={() => setSnapEnabled(!snapEnabled)}
+            aria-pressed={snapEnabled}
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium transition-all ${
+              snapEnabled
+                ? 'border-amber-500/60 bg-amber-500/15 text-amber-100 hover:border-amber-400'
+                : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-500'
+            }`}
+          >
+            <Magnet className="h-3.5 w-3.5" />
+            <span>Snap to time</span>
+          </button>
         </div>
       ) : null}
 
