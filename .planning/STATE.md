@@ -2,20 +2,20 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 27 gap-closure in progress
-**Status:** Phase 27 plan 04 completed in timeline test route
-**Next:** Phase 27 Plan 05 gap closure, then Phase 28 Slice Boundary Adjustment
+**Current Phase:** v1.1 Manual Timeslicing - Phase 27 complete
+**Status:** Phase 27 plan 05 completed in timeline test route
+**Next:** Phase 28 Slice Boundary Adjustment
 
 ## Current Position
 
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 27 of 40 (Manual Slice Creation)
-Plan: 4 of 5 in current phase
-Status: 🚧 **In progress**
-Last activity: 2026-02-18 - Completed 27-04-PLAN.md
+Plan: 5 of 5 in current phase
+Status: ✅ **Phase Complete**
+Last activity: 2026-02-18 - Completed 27-05-PLAN.md
 
-Progress: overall ████████████████████████░ 96% (88/92 known plans) | v1.1 ██░░░ 40% phases
+Progress: overall ████████████████████████░ 97% (89/92 known plans) | v1.1 ██░░░ 40% phases
 
 ```
 v1.0 Complete:
@@ -23,7 +23,7 @@ v1.0 Complete:
 
 v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
-[ ] Phase 27: Manual Slice Creation (4/5 plans complete)
+[x] Phase 27: Manual Slice Creation (5/5 plans complete)
 [ ] Phase 28: Slice Boundary Adjustment
 [ ] Phase 29: Multi-Slice Management
 [ ] Phase 30: Slice Metadata & UI
@@ -94,6 +94,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added snap toggle state and preview feedback channel to slice creation store for transient interaction polish.
 - Added Escape/resize cancellation handling and invalid-duration visual feedback in creation hook and layer.
 - Removed drag-only commit guard so click-created previews with valid start/end persist as range slices.
+- Added fixed 2024 UTC mock time constants (`MOCK_START_*`, `MOCK_END_*`) for timeline mock generation.
+- Updated mock timestamp/domain wiring so timeline-test renders date-based axes and tooltips from real epoch ranges.
 
 ## Blockers/Concerns
 
@@ -104,8 +106,8 @@ v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-18 18:20 UTC
-Stopped at: Completed 27-04-PLAN.md
+Last session: 2026-02-18 18:22 UTC
+Stopped at: Completed 27-05-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -137,7 +139,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Execute 27-05 gap closure, then begin Phase 28 planning/execution for slice boundary adjustment
+- Begin Phase 28 planning/execution for slice boundary adjustment
 
 ---
-*Last updated: 2026-02-18 - completed 27-04 execution*
+*Last updated: 2026-02-18 - completed 27-05 execution*
