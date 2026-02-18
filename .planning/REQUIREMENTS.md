@@ -15,11 +15,11 @@
 
 ### Manual Slice Creation
 
-- [ ] **SLICE-01**: User can create a time slice by clicking on timeline
-- [ ] **SLICE-02**: User can create a time slice by dragging to define range
-- [ ] **SLICE-03**: New slices have default duration (e.g., 1 hour) or match drag extent
-- [ ] **SLICE-04**: Visual feedback during creation (preview region)
-- [ ] **SLICE-05**: Slice appears immediately upon creation
+- [x] **SLICE-01**: User can create a time slice by clicking on timeline
+- [x] **SLICE-02**: User can create a time slice by dragging to define range
+- [x] **SLICE-03**: New slices have default duration (e.g., 1 hour) or match drag extent
+- [x] **SLICE-04**: Visual feedback during creation (preview region)
+- [x] **SLICE-05**: Slice appears immediately upon creation
 
 ### Slice Boundary Adjustment
 

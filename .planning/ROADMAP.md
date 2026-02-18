@@ -158,7 +158,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 |-------|-----------|----------------|--------|-----------|
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
-| 27 | v1.1 | 3/5 | 🚧 In Progress | - |
+| 27 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 29 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
