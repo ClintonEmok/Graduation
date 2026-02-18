@@ -103,7 +103,7 @@ export const useSliceCreationStore = create<SliceCreationState>()((set, get) => 
       snapInterval: feedback.snapInterval ?? null,
     }),
   commitCreation: () => {
-    const { previewStart, previewEnd, creationMode } = get();
+    const { previewStart, previewEnd } = get();
     if (previewStart === null) {
       return null;
     }
@@ -112,7 +112,7 @@ export const useSliceCreationStore = create<SliceCreationState>()((set, get) => 
     const sliceName = `Slice ${sliceStore.slices.length + 1}`;
     const id = crypto.randomUUID();
 
-    const hasRange = creationMode === 'drag' && previewEnd !== null && previewEnd !== previewStart;
+    const hasRange = previewEnd !== null && previewEnd !== previewStart;
     const createdSlice: TimeSlice = hasRange
       ? {
           id,
