@@ -1,14 +1,12 @@
 ---
 phase: 27-manual-slice-creation
-verified: 2026-02-18T18:25:37Z
+verified: 2026-02-18T20:19:36Z
 status: passed
-score: 7/7 must-haves verified
+score: 3/3 must-haves verified
 re_verification:
-  previous_status: gaps_found
-  previous_score: 5/7
-  gaps_closed:
-    - "User can click-create a slice with default duration"
-    - "Timeline displays actual dates on axis labels and tooltips"
+  previous_status: passed
+  previous_score: 7/7
+  gaps_closed: []
   gaps_remaining: []
   regressions: []
 ---
@@ -16,9 +14,9 @@ re_verification:
 # Phase 27: Manual Slice Creation Verification Report
 
 **Phase Goal:** Enable users to create time slices via click or drag.
-**Verified:** 2026-02-18T18:25:37Z
+**Verified:** 2026-02-18T20:19:36Z
 **Status:** passed
-**Re-verification:** Yes - after gap closure
+**Re-verification:** Yes - follow-up verification after plan 27-06
 
 ## Goal Achievement
 
@@ -26,56 +24,48 @@ re_verification:
 
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | User can click-create a slice with default duration | ✓ VERIFIED | Click path computes constrained default window in `src/app/timeline-test/hooks/useSliceCreation.ts:236` and `src/app/timeline-test/hooks/useSliceCreation.ts:245`; commit now persists range whenever `previewEnd !== previewStart` in `src/store/useSliceCreationStore.ts:115`. |
-| 2 | User can drag-create a custom-range slice | ✓ VERIFIED | Drag branch constrains and previews range in `src/app/timeline-test/hooks/useSliceCreation.ts:262`; commit persists range slices in `src/store/useSliceCreationStore.ts:116`. |
-| 3 | Drag ghost preview and tooltip are shown | ✓ VERIFIED | Ghost and tooltip rendering are active in `src/app/timeline-test/components/SliceCreationLayer.tsx:65` and `src/app/timeline-test/components/SliceCreationLayer.tsx:78`. |
-| 4 | 10px threshold discriminates click vs drag | ✓ VERIFIED | Threshold constant and branch logic remain in `src/app/timeline-test/hooks/useSliceCreation.ts:15` and `src/app/timeline-test/hooks/useSliceCreation.ts:181`. |
-| 5 | Pointer capture protects creation interaction | ✓ VERIFIED | Pointer capture/release remain wired in `src/app/timeline-test/hooks/useSliceCreation.ts:158` and `src/app/timeline-test/hooks/useSliceCreation.ts:276`. |
-| 6 | Slice appears immediately and is auto-selected on create | ✓ VERIFIED | Creation commits on pointer-up in `src/app/timeline-test/hooks/useSliceCreation.ts:272`; `addSlice` sets active slice in `src/store/useSliceStore.ts:47`; rendered via `src/app/timeline-test/page.tsx:419`. |
-| 7 | Timeline displays actual dates on axis labels and tooltips | ✓ VERIFIED | Mock timestamps are generated in epoch seconds from a real 2024 domain in `src/app/timeline-test/page.tsx:75` using `src/lib/constants.ts:3`; mock store bounds are set to real epoch range in `src/app/timeline-test/page.tsx:160`; timestamp labels format Date instances in `src/app/timeline-test/components/SliceList.tsx:14` and `src/app/timeline-test/lib/slice-utils.ts:119`. |
+| 1 | Click-created slices remain visible on the timeline after creation. | ✓ VERIFIED | Click path updates preview + commits on pointer up in `src/app/timeline-test/hooks/useSliceCreation.ts:232` and `src/app/timeline-test/hooks/useSliceCreation.ts:272`; commit persists to store in `src/store/useSliceCreationStore.ts:135`; committed overlays render persisted slices from store in `src/app/timeline-test/components/CommittedSliceLayer.tsx:22` and `src/app/timeline-test/components/CommittedSliceLayer.tsx:40`; layer mounted in timeline stack at `src/app/timeline-test/page.tsx:412`. |
+| 2 | Drag-created slices remain visible on the timeline after pointer release. | ✓ VERIFIED | Drag branch computes constrained range before commit in `src/app/timeline-test/hooks/useSliceCreation.ts:262`; range slices persisted in `src/store/useSliceCreationStore.ts:116`; committed range geometry renders from `slice.range` in `src/app/timeline-test/components/CommittedSliceLayer.tsx:42`. |
+| 3 | Selecting a slice from the list highlights the same slice on the timeline. | ✓ VERIFIED | List writes `activeSliceId` via `setActiveSlice` in `src/app/timeline-test/components/SliceList.tsx:26` and `src/app/timeline-test/components/SliceList.tsx:53`; timeline layer subscribes to active id in `src/app/timeline-test/components/CommittedSliceLayer.tsx:23` and applies active styling via `activeSliceId === slice.id` at `src/app/timeline-test/components/CommittedSliceLayer.tsx:63`. |
 
-**Score:** 7/7 truths verified
+**Score:** 3/3 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 | --- | --- | --- | --- |
-| `src/store/useSliceCreationStore.ts` | Creation lifecycle + commit/cancel + preview state | ✓ VERIFIED | Exists (145 lines), no stub markers, exported store, commit logic persists range based on preview bounds. |
-| `src/app/timeline-test/hooks/useSliceCreation.ts` | Pointer interaction logic for click/drag creation | ✓ VERIFIED | Exists (336 lines), substantive and wired to store actions and scale math. |
-| `src/app/timeline-test/components/SliceCreationLayer.tsx` | Overlay event capture + ghost rendering | ✓ VERIFIED | Exists (103 lines), imports hook, binds pointer handlers, renders visual preview states. |
-| `src/app/timeline-test/components/SliceToolbar.tsx` | Mode UI controls and snap toggle | ✓ VERIFIED | Exists (82 lines), wired to creation store start/cancel and snap toggle actions. |
-| `src/app/timeline-test/components/SliceList.tsx` | Created slice visibility + selection/delete | ✓ VERIFIED | Exists (77 lines), wired to slice store and renders date labels from domain. |
-| `src/app/timeline-test/lib/slice-utils.ts` | Snap + duration constraints + formatting | ✓ VERIFIED | Exists (142 lines), used by creation hook for constraints and tooltip formatting. |
-| `src/app/timeline-test/page.tsx` | Integration of toolbar/layer/list + mock time domain wiring | ✓ VERIFIED | Exists (425 lines), mounts creation layer/list and seeds mock timestamps with epoch-second domain. |
-| `src/lib/constants.ts` | Shared realistic mock date bounds | ✓ VERIFIED | Exists (12 lines), defines `MOCK_START/END` date/ms/sec constants used by timeline route/store. |
-| `src/store/useDataStore.ts` | Mock data generation aligns with real epoch range | ✓ VERIFIED | Exists (319 lines), mock timestamp generation uses `MOCK_START_MS..MOCK_END_MS` and sets min/max timestamp sec bounds. |
+| `src/app/timeline-test/components/CommittedSliceLayer.tsx` | Persistent timeline renderer for committed slices from `useSliceStore` | ✓ VERIFIED | Exists (118 lines), exports component, no placeholder/TODO stubs, subscribes to `slices` + `activeSliceId`, renders visible range and point slices, display-only layer (`pointer-events-none`). |
+| `src/app/timeline-test/page.tsx` | Mounted committed slice layer with correct stack order alongside creation layer | ✓ VERIFIED | Exists (443 lines), imports and mounts `CommittedSliceLayer` at z-10 and `SliceCreationLayer` above at z-20, preserving ghost-over-committed ordering. |
+| `src/store/useSliceCreationStore.ts` | Commit path persists created slices to shared store | ✓ VERIFIED | Exists (145 lines), substantive store implementation; `commitCreation` creates point/range slices and calls `addSlice`. |
+| `src/app/timeline-test/hooks/useSliceCreation.ts` | Click/drag pointer flow that reaches commit | ✓ VERIFIED | Exists (336 lines), pointer-up path handles click/drag branches and always calls `commitCreation()`. |
+| `src/app/timeline-test/components/SliceList.tsx` | Selection source that drives active slice id | ✓ VERIFIED | Exists (104 lines), toggles active selection and writes through `setActiveSlice`. |
+| `src/store/useSliceStore.ts` | Shared slice state consumed by list and timeline layer | ✓ VERIFIED | Exists (82 lines), exposes `slices`, `activeSliceId`, and actions (`addSlice`, `setActiveSlice`, `removeSlice`). |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 | --- | --- | --- | --- | --- |
-| `SliceToolbar` | `useSliceCreationStore` | `startCreation/cancelCreation`, `snapEnabled` | ✓ WIRED | Store selectors/actions are wired in `src/app/timeline-test/components/SliceToolbar.tsx:8`. |
-| `useSliceCreation` | `useSliceCreationStore` | preview updates + `commitCreation` | ✓ WIRED | Hook writes preview and calls commit in `src/app/timeline-test/hooks/useSliceCreation.ts:72` and `src/app/timeline-test/hooks/useSliceCreation.ts:272`. |
-| `SliceCreationLayer` | `useSliceCreation` | pointer handlers | ✓ WIRED | Overlay binds all pointer handlers in `src/app/timeline-test/components/SliceCreationLayer.tsx:60`. |
-| `useSliceCreationStore` | `useSliceStore` | `addSlice` during commit | ✓ WIRED | Commit creates `TimeSlice` and persists via `addSlice` in `src/store/useSliceCreationStore.ts:135`. |
-| `timeline-test/page` | realistic mock domain | `buildMockTimestamps` + constants | ✓ WIRED | Mock timestamps use `MOCK_START_SEC..MOCK_END_SEC` and are propagated to `computeMaps`/store in `src/app/timeline-test/page.tsx:75` and `src/app/timeline-test/page.tsx:156`. |
+| `CommittedSliceLayer` | `useSliceStore.slices` | Zustand selector subscription | ✓ WIRED | Exact selector present in `src/app/timeline-test/components/CommittedSliceLayer.tsx:22`; rendered through slice mapping at `src/app/timeline-test/components/CommittedSliceLayer.tsx:41`. |
+| `CommittedSliceLayer` | `useSliceStore.activeSliceId` | Active-slice conditional styling | ✓ WIRED | Active comparison `activeSliceId === slice.id` present for range and point branches in `src/app/timeline-test/components/CommittedSliceLayer.tsx:63` and `src/app/timeline-test/components/CommittedSliceLayer.tsx:79`. |
+| `timeline-test/page.tsx` | `CommittedSliceLayer` | Absolute detail overlay mount | ✓ WIRED | Component is imported and mounted in overlay stack at `src/app/timeline-test/page.tsx:10` and `src/app/timeline-test/page.tsx:412`. |
+| `useSliceCreation` | `useSliceCreationStore.commitCreation` | Pointer-up commit call | ✓ WIRED | Hook selects `commitCreation` (`src/app/timeline-test/hooks/useSliceCreation.ts:75`) and invokes it on pointer-up (`src/app/timeline-test/hooks/useSliceCreation.ts:272`). |
+| `SliceList` | `useSliceStore.activeSliceId` | Selection toggle -> timeline highlight loop | ✓ WIRED | List writes active id (`src/app/timeline-test/components/SliceList.tsx:30`) and committed layer reads same source of truth (`src/app/timeline-test/components/CommittedSliceLayer.tsx:23`). |
 
 ### Requirements Coverage
 
 | Requirement | Status | Blocking Issue |
 | --- | --- | --- |
-| SLICE-01 (click create) | ✓ SATISFIED | Click path commits persisted slices. |
-| SLICE-02 (drag create) | ✓ SATISFIED | Drag path commits bounded custom range. |
-| SLICE-03 (default duration or drag extent) | ✓ SATISFIED | Click commit preserves default-duration range; drag preserves drag extent after constraints. |
-| SLICE-04 (preview feedback) | ✓ SATISFIED | Ghost/tooltip/warning states are rendered during creation. |
-| SLICE-05 (immediate appearance) | ✓ SATISFIED | Slice appears immediately in list and is set active on create. |
+| SLICE-01 (click create) | ✓ SATISFIED | Click branch creates and commits persisted slices. |
+| SLICE-02 (drag create) | ✓ SATISFIED | Drag branch creates constrained range slices and commits on release. |
+| SLICE-03 (default duration or drag extent) | ✓ SATISFIED | Click path uses default-duration window; drag path preserves drag-defined constrained range. |
+| SLICE-04 (preview feedback) | ✓ SATISFIED | Ghost preview/tooltip logic remains wired in `SliceCreationLayer` + `useSliceCreation`. |
+| SLICE-05 (immediate appearance) | ✓ SATISFIED | Committed layer now continuously renders persisted slices outside create mode. |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | --- | --- | --- | --- | --- |
-| `src/store/useDataStore.ts` | 107 | `console.log` debug output | ⚠️ Warning | Non-blocking debug noise in console during real-data load. |
-| `src/store/useDataStore.ts` | 122 | `console.log` debug output | ⚠️ Warning | Non-blocking debug noise in console during real-data load. |
+| None | - | - | - | No blocker or warning stub patterns detected in plan-27-06 touched artifacts. |
 
 ### Human Verification Required
 
@@ -83,9 +73,9 @@ No blocking human-only checks required for structural goal verification.
 
 ### Gaps Summary
 
-All previously identified gaps are closed. Click creation now persists default-duration ranges, and mock timeline time-domain wiring now uses real epoch dates, enabling meaningful date labels/tooltips while preserving drag creation behavior.
+No remaining structural gaps found for plan 27-06 must-haves. Committed slice rendering is present, wired to persisted slice state, and synced to list-driven active selection.
 
 ---
 
-_Verified: 2026-02-18T18:25:37Z_
+_Verified: 2026-02-18T20:19:36Z_
 _Verifier: Claude (gsd-verifier)_

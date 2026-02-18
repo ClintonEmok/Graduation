@@ -62,7 +62,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Goal:** Enable users to create time slices via click or drag.
 **Depends on:** Phase 26
-**Plans:** 5 plans (27-01, 27-02, 27-03, 27-04, 27-05)
+**Plans:** 6 plans (27-01, 27-02, 27-03, 27-04, 27-05, 27-06)
 
 **Requirements:** SLICE-01 through SLICE-05
 
@@ -78,6 +78,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - **27-03:** Polish — Snap behavior, duration constraints, edge cases
 - **27-04:** Gap Closure — Fix click-to-create range persistence (stores as point instead of range)
 - **27-05:** Gap Closure — Fix mock data date realism (0-100 normalized → real Date objects)
+- **27-06:** Gap Closure — Render committed slices on timeline + sync active highlight with list selection
 
 ### Phase 28: Slice Boundary Adjustment
 
@@ -158,7 +159,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 |-------|-----------|----------------|--------|-----------|
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
-| 27 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
+| 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 29 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
