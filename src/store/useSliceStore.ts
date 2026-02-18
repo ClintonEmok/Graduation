@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export interface TimeSlice {
   id: string;
+  name?: string;
   type: 'point' | 'range';
   time: number; // Normalized time 0-100 (for point)
   range?: [number, number]; // Normalized start/end (for range)
