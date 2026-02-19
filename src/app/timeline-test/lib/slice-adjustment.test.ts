@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import {
   adjustBoundary,
+  normalizedToSec,
   pickNearest,
+  resolveSnapIntervalSec,
   resolveNeighborCandidates,
   resolveSnap,
+  secToNormalized,
   type SnapCandidate,
 } from './slice-adjustment';
 
@@ -116,6 +119,49 @@ describe('adjustBoundary', () => {
     expect(result.snapSource).toBe('none');
   });
 
+  test('keeps domain hard stops with bypass active', () => {
+    const result = adjustBoundary({
+      handle: 'end',
+      rawPointerSec: 1005,
+      fixedBoundarySec: 800,
+      domainStartSec,
+      domainEndSec,
+      minDurationSec,
+      snap: {
+        enabled: true,
+        bypass: true,
+        toleranceSec: 10,
+        gridCandidatesSec: [990],
+      },
+    });
+
+    expect(result.startSec).toBe(800);
+    expect(result.endSec).toBe(1000);
+    expect(result.limitCue).toBe('domainEnd');
+    expect(result.snapSource).toBe('none');
+  });
+
+  test('keeps minimum duration enforcement with snap disabled', () => {
+    const result = adjustBoundary({
+      handle: 'start',
+      rawPointerSec: 592,
+      fixedBoundarySec: 600,
+      domainStartSec,
+      domainEndSec,
+      minDurationSec,
+      snap: {
+        enabled: false,
+        toleranceSec: 10,
+        gridCandidatesSec: [580],
+      },
+    });
+
+    expect(result.startSec).toBe(500);
+    expect(result.endSec).toBe(600);
+    expect(result.limitCue).toBe('minDuration');
+    expect(result.snapSource).toBe('none');
+  });
+
   test('falls back to unclamped raw sec when candidate list is empty', () => {
     const result = adjustBoundary({
       handle: 'start',
@@ -140,6 +186,28 @@ describe('adjustBoundary', () => {
 });
 
 describe('snap helpers', () => {
+  test('fixed preset interval wins over adaptive interval selection', () => {
+    const interval = resolveSnapIntervalSec({
+      mode: 'fixed',
+      fixedPresetSec: 300,
+      domainStartSec: 0,
+      domainEndSec: 10 * 86400,
+    });
+
+    expect(interval).toBe(300);
+  });
+
+  test('falls back to adaptive interval when fixed preset is missing', () => {
+    const interval = resolveSnapIntervalSec({
+      mode: 'fixed',
+      fixedPresetSec: null,
+      domainStartSec: 0,
+      domainEndSec: 18 * 3600,
+    });
+
+    expect(interval).toBe(900);
+  });
+
   test('prefers neighbor candidate over grid on equal distance tie', () => {
     const candidates: SnapCandidate[] = [
       { valueSec: 490, source: 'grid' },
@@ -148,6 +216,44 @@ describe('snap helpers', () => {
 
     const winner = pickNearest(500, candidates, 20);
     expect(winner).toEqual({ valueSec: 510, source: 'neighbor' });
+  });
+
+  test('adjustBoundary prefers neighbor snap source on tie', () => {
+    const result = adjustBoundary({
+      handle: 'end',
+      rawPointerSec: 500,
+      fixedBoundarySec: 200,
+      domainStartSec,
+      domainEndSec,
+      minDurationSec,
+      snap: {
+        enabled: true,
+        toleranceSec: 20,
+        gridCandidatesSec: [490],
+        neighborCandidatesSec: [510],
+      },
+    });
+
+    expect(result.endSec).toBe(510);
+    expect(result.snapSource).toBe('neighbor');
+  });
+
+  test('resolves deterministic winner with dense overlapping candidates', () => {
+    const denseCandidates: SnapCandidate[] = [
+      { valueSec: 505, source: 'grid' },
+      { valueSec: 503, source: 'neighbor' },
+      { valueSec: 504, source: 'grid' },
+      { valueSec: 503, source: 'grid' },
+      { valueSec: 502, source: 'neighbor' },
+      { valueSec: 503, source: 'neighbor' },
+      { valueSec: 506, source: 'grid' },
+      { valueSec: 504, source: 'neighbor' },
+    ];
+
+    for (let i = 0; i < 20; i += 1) {
+      const winner = pickNearest(503.4, denseCandidates, 10);
+      expect(winner).toEqual({ valueSec: 503, source: 'neighbor' });
+    }
   });
 
   test('resolveSnap returns none when no candidate passes tolerance', () => {
@@ -177,5 +283,18 @@ describe('snap helpers', () => {
     });
 
     expect(candidates).toEqual([0, 50, 160, 320, 480]);
+  });
+
+  test('round-trips normalized ranges with stable conversion', () => {
+    const domainA = 1_704_067_200;
+    const domainB = 1_704_153_600;
+    const sec = 1_704_103_215;
+
+    const normalized = secToNormalized(sec, domainA, domainB);
+    const restored = normalizedToSec(normalized, domainA, domainB);
+
+    expect(normalized).toBeGreaterThanOrEqual(0);
+    expect(normalized).toBeLessThanOrEqual(100);
+    expect(restored).toBeCloseTo(sec, 6);
   });
 });

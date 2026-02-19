@@ -105,6 +105,19 @@ export function getAdaptiveIntervalSec(domainStartSec: number, domainEndSec: num
   return 86400;
 }
 
+export function resolveSnapIntervalSec(params: {
+  mode: SnapMode;
+  fixedPresetSec: number | null;
+  domainStartSec: number;
+  domainEndSec: number;
+}): number {
+  if (params.mode === 'fixed' && params.fixedPresetSec && params.fixedPresetSec > 0) {
+    return params.fixedPresetSec;
+  }
+
+  return getAdaptiveIntervalSec(params.domainStartSec, params.domainEndSec);
+}
+
 export function resolveNeighborCandidates(params: {
   boundaries: SliceBoundary[];
   activeSliceId: string;
