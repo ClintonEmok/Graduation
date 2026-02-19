@@ -23,12 +23,12 @@
 
 ### Slice Boundary Adjustment
 
-- [ ] **ADJUST-01**: Each slice has draggable start handle
-- [ ] **ADJUST-02**: Each slice has draggable end handle
-- [ ] **ADJUST-03**: Handles are visually distinct and easy to target
-- [ ] **ADJUST-04**: Dragging updates slice boundary in real-time
-- [ ] **ADJUST-05**: Minimum slice duration enforced (e.g., 5 minutes)
-- [ ] **ADJUST-06**: Snap-to-neighboring-slice option
+- [x] **ADJUST-01**: Each slice has draggable start handle
+- [x] **ADJUST-02**: Each slice has draggable end handle
+- [x] **ADJUST-03**: Handles are visually distinct and easy to target
+- [x] **ADJUST-04**: Dragging updates slice boundary in real-time
+- [x] **ADJUST-05**: Minimum slice duration enforced (e.g., 5 minutes)
+- [x] **ADJUST-06**: Snap-to-neighboring-slice option
 
 ### Multi-Slice Management
 
