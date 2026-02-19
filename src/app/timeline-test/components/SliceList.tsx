@@ -6,16 +6,29 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
 import { BURST_CHIP_CLASSNAME, BURST_CHIP_ICON_CLASSNAME } from './SliceToolbar';
 
-const toTimestampLabel = (normalizedTime: number, domain: [number, number]): string => {
+const toTimestampLabel = (timeValue: number, domain: [number, number]): string => {
   const [startSec, endSec] = domain;
-  if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || endSec <= startSec) {
-    return `${normalizedTime.toFixed(2)}%`;
+  
+  // Check if timeValue is already an epoch timestamp (large number) or normalized (0-100)
+  // Epoch timestamps for 2024 are around 1.7 billion (seconds) or 1.7 trillion (milliseconds)
+  const isEpochTimestamp = timeValue > 1000000000; // Greater than ~year 2000 in seconds
+  
+  let epochSec: number;
+  
+  if (isEpochTimestamp) {
+    // Value is already an epoch timestamp
+    epochSec = timeValue > 1000000000000 ? timeValue / 1000 : timeValue; // Convert ms to seconds if needed
+  } else {
+    // Value is normalized 0-100, convert using domain
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || endSec <= startSec) {
+      return `${timeValue.toFixed(2)}%`;
+    }
+    epochSec = startSec + ((endSec - startSec) * timeValue) / 100;
   }
-
-  const epochSec = startSec + ((endSec - startSec) * normalizedTime) / 100;
+  
   const timestamp = new Date(epochSec * 1000);
   if (Number.isNaN(timestamp.getTime())) {
-    return `${normalizedTime.toFixed(2)}%`;
+    return isEpochTimestamp ? String(timeValue) : `${timeValue.toFixed(2)}%`;
   }
 
   return timestamp.toLocaleString();
