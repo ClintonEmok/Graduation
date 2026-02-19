@@ -2,20 +2,20 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 28 ready to plan
-**Status:** Phase 27 fully complete (including 27-06 UAT closure)
-**Next:** Phase 28 Slice Boundary Adjustment
+**Current Phase:** v1.1 Manual Timeslicing - Phase 28 in progress
+**Status:** Phase 28 execution underway (28-01 complete)
+**Next:** Execute 28-02 handle layer and drag wiring
 
 ## Current Position
 
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 28 of 40 (Slice Boundary Adjustment)
-Plan: 0 of TBD in current phase
-Status: 🚧 **Ready for Phase 28 Planning**
-Last activity: 2026-02-18 - Completed 27-06 plan after approved human checkpoint
+Plan: 1 of 3 in current phase
+Status: 🚧 **In progress**
+Last activity: 2026-02-19 - Completed 28-01-PLAN.md
 
-Progress: overall ████████████████████████░ 98% (90/92 known plans) | v1.1 ██░░░ 40% phases
+Progress: overall ███████████████████░ 95% (91/96 plans) | v1.1 ██░░░ 40% phases
 
 ```
 v1.0 Complete:
@@ -24,7 +24,7 @@ v1.0 Complete:
 v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
 [x] Phase 27: Manual Slice Creation (6/6 plans complete)
-[ ] Phase 28: Slice Boundary Adjustment
+[ ] Phase 28: Slice Boundary Adjustment (1/3 plans complete)
 [ ] Phase 29: Multi-Slice Management
 [ ] Phase 30: Slice Metadata & UI
 
@@ -48,7 +48,7 @@ v1.3 Planned:
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Transitioning from Phase 27 completion to Phase 28 boundary-adjustment planning
+**Current focus:** Executing Phase 28 boundary-adjustment plan sequence (math/store foundation complete)
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -109,8 +109,8 @@ v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-18 20:15 UTC
-Stopped at: Completed 27-06-PLAN.md
+Last session: 2026-02-19 00:56 UTC
+Stopped at: Completed 28-01-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -142,7 +142,8 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Begin Phase 28 planning/execution for slice boundary adjustment
+- Execute 28-02 handle layer and real-time drag wiring on top of the new adjustment math/store foundation.
+- Keep deterministic constraint/snap behavior centralized in `slice-adjustment.ts` and avoid coupling transient drag state into `useSliceStore`.
 
 ---
-*Last updated: 2026-02-18 - completed 27-06 summary + state refresh*
+*Last updated: 2026-02-19 - completed 28-01 summary + state refresh*
