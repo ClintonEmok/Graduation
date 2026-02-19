@@ -3,18 +3,18 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 29 in progress
-**Status:** Phase 29 started (29-01 shipped)
-**Next:** Plan 29-02 unified burst/manual slice list UI
+**Status:** Phase 29 in progress (29-02 shipped)
+**Next:** Plan 29-03 burst interaction wiring
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 29 of 41 (Remake burstlist as first-class slices)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-19 - Completed 29-01-PLAN.md
+Last activity: 2026-02-19 - Completed 29-02-PLAN.md
 
-Progress: overall ████████████████████ 97% (95/98 plans) | v1.1 ███░░ 60% phases
+Progress: overall ███████████████████░ 95% (96/101 plans) | v1.1 ███░░ 60% phases
 
 ```
 v1.0 Complete:
@@ -112,6 +112,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Standardized burst range matching tolerance at 0.5% of range span (`0.005 * span`) to absorb float jitter while preventing duplicate burst slices.
 - Added shared `src/lib/slice-utils.ts` range matching helpers with dedicated unit coverage.
 - Moved slice ordering to store-level timeline start sorting with manual-before-burst tie-breaking, and aligned `SliceList` fallback naming to store order.
+- Added a subtle `Burst` chip treatment in `SliceList` for burst-derived slices that still use default Burst naming.
+- Added defensive UI sorting and accessibility labels in `SliceList` so mixed manual/burst entries stay chronological and announce burst origin.
 
 ## Blockers/Concerns
 
@@ -119,8 +121,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-19 14:51 UTC
-Stopped at: Completed 29-01-PLAN.md
+Last session: 2026-02-19 14:57 UTC
+Stopped at: Completed 29-02-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -155,7 +157,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Plan Phase 29 burstlist-as-slices behavior before continuing multi-slice management.
+- Execute 29-03 burst interaction wiring, then continue multi-slice management planning.
 
 ---
-*Last updated: 2026-02-19 - completed 29-01 burstlist-to-slice foundation*
+*Last updated: 2026-02-19 - completed 29-02 unified burst/manual slice list UI*
