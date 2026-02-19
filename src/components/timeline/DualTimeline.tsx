@@ -19,7 +19,6 @@ import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-import { focusTimelineRange, rangesMatch, normalizeRange } from '@/lib/slice-utils';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -48,9 +47,6 @@ export const DualTimeline: React.FC = () => {
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
-  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const slices = useSliceStore((state) => state.slices);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -373,68 +369,6 @@ export const DualTimeline: React.FC = () => {
   // Auto-create burst slices when burst data becomes available
   useAutoBurstSlices(burstWindows);
   
-  const burstRects = useMemo(() => {
-    if (burstWindows.length === 0) return [] as { start: number; end: number; key: string }[];
-    return burstWindows.map((window) => {
-      const x0 = detailScale(new Date(window.start * 1000));
-      const x1 = detailScale(new Date(window.end * 1000));
-      return { start: Math.min(x0, x1), end: Math.max(x0, x1), key: window.id };
-    });
-  }, [burstWindows, detailScale]);
-
-  const activeBurstRange = useMemo<[number, number] | null>(() => {
-    if (!activeSliceId) {
-      return null;
-    }
-
-    const activeSlice = slices.find((slice) => slice.id === activeSliceId);
-    if (!activeSlice || !activeSlice.isBurst || activeSlice.type !== 'range' || !activeSlice.range) {
-      return null;
-    }
-
-    return [Math.min(activeSlice.range[0], activeSlice.range[1]), Math.max(activeSlice.range[0], activeSlice.range[1])];
-  }, [activeSliceId, slices]);
-
-  const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
-
-  const handleBurstClick = useCallback(
-    (event: React.MouseEvent<SVGRectElement>, index: number) => {
-      event.stopPropagation();
-      const window = burstWindows[index];
-      if (!window) return;
-
-      // Find matching existing burst slice (auto-created)
-      const [rangeStart, rangeEnd] = normalizeRange([window.start, window.end]);
-      const matchingSlice = findMatchingSlice(rangeStart, rangeEnd, undefined, { burstOnly: true });
-
-      if (matchingSlice) {
-        setActiveSlice(matchingSlice.id);
-      }
-
-      // Always focus timeline to the burst range
-      focusTimelineRange({
-        start: window.start,
-        end: window.end,
-        minTimestampSec,
-        maxTimestampSec,
-        setTimeRange,
-        setRange,
-        setBrushRange,
-        setTime,
-      });
-    },
-    [
-      burstWindows,
-      findMatchingSlice,
-      maxTimestampSec,
-      minTimestampSec,
-      setActiveSlice,
-      setBrushRange,
-      setRange,
-      setTime,
-      setTimeRange,
-    ]
-  );
 
   const handleSelectFromEvent = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
@@ -713,27 +647,6 @@ export const DualTimeline: React.FC = () => {
               onPointerUp={handlePointerUpWithSelection}
               onPointerLeave={handlePointerCancel}
             />
-            {/* Burst overlays - visual only, actual burst slices are interactive via CommittedSliceLayer */}
-            {burstRects.map((rect, index) => {
-              const window = burstWindows[index];
-              const isSelected =
-                !!window &&
-                !!activeBurstRange &&
-                rangesMatch(activeBurstRange, [window.start, window.end]);
-              return (
-                <rect
-                  key={`burst-${rect.key}`}
-                  x={rect.start}
-                  y={0}
-                  width={Math.max(0, rect.end - rect.start)}
-                  height={DETAIL_HEIGHT}
-                  fill={isSelected ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.05)'}
-                  stroke={isSelected ? 'rgba(249, 115, 22, 0.6)' : 'rgba(249, 115, 22, 0.3)'}
-                  strokeWidth={1}
-                  pointerEvents="none"
-                />
-              );
-            })}
             <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
               {detailTicks.map((tick, index) => {
                 const x = detailScale(tick);
