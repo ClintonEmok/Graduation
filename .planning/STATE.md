@@ -3,19 +3,18 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 28 in progress
-**Status:** Phase 28 execution underway (28-01 complete)
-**Next:** Execute 28-02 handle layer and drag wiring
+**Status:** Phase 28 execution underway (28-02 complete)
+**Next:** Execute 28-03 snap controls + refinement pass
 
 ## Current Position
-
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 28 of 40 (Slice Boundary Adjustment)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-19 - Completed 28-01-PLAN.md
+Last activity: 2026-02-19 - Completed 28-02-PLAN.md
 
-Progress: overall ███████████████████░ 95% (91/96 plans) | v1.1 ██░░░ 40% phases
+Progress: overall ███████████████████░ 96% (92/96 plans) | v1.1 ██░░░ 40% phases
 
 ```
 v1.0 Complete:
@@ -24,7 +23,7 @@ v1.0 Complete:
 v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
 [x] Phase 27: Manual Slice Creation (6/6 plans complete)
-[ ] Phase 28: Slice Boundary Adjustment (1/3 plans complete)
+[ ] Phase 28: Slice Boundary Adjustment (2/3 plans complete)
 [ ] Phase 29: Multi-Slice Management
 [ ] Phase 30: Slice Metadata & UI
 
@@ -36,7 +35,6 @@ v1.3 Planned:
 ```
 
 ## Performance Metrics
-
 | Metric | v1.0 | v1.1 Target |
 |--------|------|-------------|
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
@@ -44,7 +42,6 @@ v1.3 Planned:
 | Milestone Status | ✅ Shipped | 🚧 Execution In Progress |
 
 ## Project Reference
-
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
@@ -52,7 +49,6 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
-
 **v1.1 Scope Defined:**
 - Manual timeslicing strictly on timeline
 - Visual density regions
@@ -100,6 +96,11 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Aligned committed slice geometry with live detail timeline scale/domain for zoom-safe rendering.
 - Ensured active overlay highlight remains visible in overlaps and made list selection state explicit/toggleable.
 
+**Phase 28 Decision Log (Execution):**
+- Kept boundary adjustment lifecycle in dedicated `useSliceBoundaryAdjustment` with pointer capture and real-time constrained writes through `useSliceStore.updateSlice`.
+- Added an interactive `SliceBoundaryHandlesLayer` with distinct start/end handles (8px visual / 12px hit) and drag-time boundary+duration tooltip feedback.
+- Used transient drag state from `useSliceAdjustmentStore` to dim non-active committed slices only while adjustment drag is active.
+
 ## Blockers/Concerns
 
 **None currently**
@@ -109,8 +110,8 @@ v1.1 has clean slate for implementation.
 
 ## Session Continuity
 
-Last session: 2026-02-19 00:56 UTC
-Stopped at: Completed 28-01-PLAN.md
+Last session: 2026-02-19 01:11 UTC
+Stopped at: Completed 28-02-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -142,8 +143,8 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Execute 28-02 handle layer and real-time drag wiring on top of the new adjustment math/store foundation.
-- Keep deterministic constraint/snap behavior centralized in `slice-adjustment.ts` and avoid coupling transient drag state into `useSliceStore`.
+- Execute 28-03 snap controls and interaction refinements on top of the new boundary-handle layer.
+- Preserve pure boundary math ownership in `slice-adjustment.ts` and keep transient drag state decoupled from persisted slice data.
 
 ---
-*Last updated: 2026-02-19 - completed 28-01 summary + state refresh*
+*Last updated: 2026-02-19 - completed 28-02 summary + state refresh*
