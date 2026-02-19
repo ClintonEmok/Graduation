@@ -104,13 +104,14 @@ Plans:
 
 **Goal:** Transform burst windows into first-class timeline slices with full UX parity.
 **Depends on:** Phase 28
-**Plans:** 4 plans (29-01, 29-02, 29-03, 29-04)
+**Plans:** 5 plans (29-01, 29-02, 29-03, 29-04, 29-05)
 
 Plans:
-- [ ] 29-01-PLAN.md — Burst-to-slice mapping foundation (range matching, creation/reuse)
-- [ ] 29-02-PLAN.md — Unified slice list with burst chip indicator
-- [ ] 29-03-PLAN.md — Burst interaction wiring (create/select slices on click)
-- [ ] 29-04-PLAN.md — Full lifecycle parity (edit, delete, recreate, sync)
+- [x] 29-01-PLAN.md — Burst-to-slice mapping foundation (range matching, creation/reuse)
+- [x] 29-02-PLAN.md — Unified slice list with burst chip indicator
+- [x] 29-03-PLAN.md — Burst interaction wiring (create/select slices on click)
+- [x] 29-04-PLAN.md — Full lifecycle parity (edit, delete, recreate, sync)
+- [ ] 29-05-PLAN.md — Gap closure: Slice rename UI/UX
 
 **Details:**
 - Burst windows become selectable, listed slices like manual ones
