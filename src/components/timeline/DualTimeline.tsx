@@ -19,7 +19,7 @@ import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-import { focusTimelineRange, rangesMatch } from '@/lib/slice-utils';
+import { focusTimelineRange, rangesMatch, normalizeRange } from '@/lib/slice-utils';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -48,7 +48,6 @@ export const DualTimeline: React.FC = () => {
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
-  const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
   const slices = useSliceStore((state) => state.slices);
@@ -396,18 +395,23 @@ export const DualTimeline: React.FC = () => {
     return [Math.min(activeSlice.range[0], activeSlice.range[1]), Math.max(activeSlice.range[0], activeSlice.range[1])];
   }, [activeSliceId, slices]);
 
+  const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
+
   const handleBurstClick = useCallback(
     (event: React.MouseEvent<SVGRectElement>, index: number) => {
       event.stopPropagation();
       const window = burstWindows[index];
       if (!window) return;
 
-      const slice = addBurstSlice({ start: window.start, end: window.end });
-      if (!slice) {
-        return;
+      // Find matching existing burst slice (auto-created)
+      const [rangeStart, rangeEnd] = normalizeRange([window.start, window.end]);
+      const matchingSlice = findMatchingSlice(rangeStart, rangeEnd, undefined, { burstOnly: true });
+
+      if (matchingSlice) {
+        setActiveSlice(matchingSlice.id);
       }
 
-      setActiveSlice(slice.id);
+      // Always focus timeline to the burst range
       focusTimelineRange({
         start: window.start,
         end: window.end,
@@ -420,8 +424,8 @@ export const DualTimeline: React.FC = () => {
       });
     },
     [
-      addBurstSlice,
       burstWindows,
+      findMatchingSlice,
       maxTimestampSec,
       minTimestampSec,
       setActiveSlice,

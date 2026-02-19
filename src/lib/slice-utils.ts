@@ -2,7 +2,7 @@ import { epochSecondsToNormalized, normalizedToEpochSeconds } from './time-domai
 
 const DEFAULT_TOLERANCE_PERCENT = 0.005;
 
-const normalizeRange = (range: [number, number]): [number, number] =>
+export const normalizeRange = (range: [number, number]): [number, number] =>
   range[0] <= range[1] ? range : [range[1], range[0]];
 
 export function withinTolerance(value: number, target: number, tolerance: number): boolean {

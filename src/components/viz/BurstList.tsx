@@ -65,7 +65,6 @@ export function BurstList() {
   const setTime = useTimeStore((state) => state.setTime);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
-  const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
   const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
@@ -94,14 +93,15 @@ export function BurstList() {
   };
 
   const handleSelectWindow = (window: BurstWindow) => {
-    const slice = addBurstSlice({ start: window.start, end: window.end });
-    if (!slice) {
-      return;
+    // Find matching existing burst slice (auto-created by useAutoBurstSlices effect)
+    const matchingSlice = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
+
+    if (matchingSlice) {
+      setActiveSlice(matchingSlice.id);
+      setDetailsOpen(true);
     }
 
-    setActiveSlice(slice.id);
-    setDetailsOpen(true);
-
+    // Always focus timeline to the burst range
     focusTimelineRange({
       start: window.start,
       end: window.end,
@@ -131,7 +131,7 @@ export function BurstList() {
             type="button"
             onClick={() => handleSelectWindow(window)}
             aria-pressed={isSelected}
-            aria-label={`Burst ${index + 1}. Peak ${Math.round(window.peak * 100)}%. ${isLinked ? 'Linked to slice.' : 'Creates new slice.'} ${isSelected ? 'Selected.' : 'Not selected.'}`}
+            aria-label={`Burst ${index + 1}. Peak ${Math.round(window.peak * 100)}%. Selects existing burst slice. ${isSelected ? 'Selected.' : 'Not selected.'}`}
             className={`w-full text-left rounded-md border px-3 py-2 text-xs transition-colors ${
               isSelected
                 ? 'border-primary/60 bg-primary/10'
