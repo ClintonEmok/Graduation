@@ -71,6 +71,14 @@ export function BurstList() {
   const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
 
   const burstWindows = useBurstWindows();
+  const burstMatches = useMemo(() => {
+    const lookup = new Map<string, string | null>();
+    for (const window of burstWindows) {
+      const match = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
+      lookup.set(window.id, match?.id ?? null);
+    }
+    return lookup;
+  }, [burstWindows, findMatchingSlice]);
 
   if (burstWindows.length === 0) return null;
 
@@ -114,20 +122,32 @@ export function BurstList() {
       </div>
       <div className="mt-3 space-y-2">
         {burstWindows.map((window, index) => {
-          const matchingSlice = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
-          const isSelected = matchingSlice?.id === activeSliceId;
+          const matchingSliceId = burstMatches.get(window.id) ?? null;
+          const isSelected = matchingSliceId === activeSliceId;
+          const isLinked = matchingSliceId !== null;
           return (
           <button
             key={window.id}
             type="button"
             onClick={() => handleSelectWindow(window)}
+            aria-pressed={isSelected}
+            aria-label={`Burst ${index + 1}. Peak ${Math.round(window.peak * 100)}%. ${isLinked ? 'Linked to slice.' : 'Creates new slice.'} ${isSelected ? 'Selected.' : 'Not selected.'}`}
             className={`w-full text-left rounded-md border px-3 py-2 text-xs transition-colors ${
-              isSelected ? 'border-primary/60 bg-primary/10' : 'hover:bg-muted/40'
+              isSelected
+                ? 'border-primary/60 bg-primary/10'
+                : 'border-border/70 hover:border-primary/40 hover:bg-muted/40'
             }`}
           >
             <div className="flex items-center justify-between text-muted-foreground">
               <span>Burst {index + 1}</span>
-              <span>Peak {Math.round(window.peak * 100)}%</span>
+              <span className="inline-flex items-center gap-2">
+                <span>Peak {Math.round(window.peak * 100)}%</span>
+                {isLinked ? (
+                  <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                    Linked
+                  </span>
+                ) : null}
+              </span>
             </div>
             <div className="mt-1 text-foreground">
               {formatWindow(window.start, window.end)}
