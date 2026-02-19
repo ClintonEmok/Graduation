@@ -3,15 +3,15 @@ status: testing
 phase: 29-remake-burstlist-as-first-class-slices
 source: 29-01-SUMMARY.md, 29-02-SUMMARY.md, 29-03-SUMMARY.md, 29-04-SUMMARY.md, 29-05-SUMMARY.md
 started: 2026-02-19T16:03:00Z
-updated: 2026-02-19T16:05:00Z
+updated: 2026-02-19T16:06:00Z
 ---
 
 ## Current Test
 
-number: 2
-name: Duplicate Burst Clicks Reuse Existing Slices
+number: 3
+name: Unified List Shows Manual and Burst Slices
 expected: |
-  Clicking the same burst window again does not create a duplicate slice; it selects/reuses the existing slice with matching range.
+  The slice list shows both manual and burst-derived slices in one chronological list, sorted by timeline start time. Both types use consistent card styling.
 awaiting: user response
 
 ## Tests
@@ -24,7 +24,8 @@ severity: major
 
 ### 2. Duplicate Burst Clicks Reuse Existing Slices
 expected: Clicking the same burst window again does not create a duplicate slice; it selects/reuses the existing slice with matching range.
-result: pending
+result: skipped
+reason: "Depends on Test 1 functionality"
 
 ### 3. Unified List Shows Manual and Burst Slices
 expected: The slice list shows both manual and burst-derived slices in one chronological list, sorted by timeline start time. Both types use consistent card styling.
@@ -71,8 +72,8 @@ result: pending
 total: 12
 passed: 0
 issues: 1
-pending: 11
-skipped: 0
+pending: 10
+skipped: 1
 
 ## Gaps
 
