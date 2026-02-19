@@ -110,11 +110,15 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
           className={`absolute top-0 rounded-sm border transition-[background-color,border-color,box-shadow,opacity] ${
             geometry.isRange ? 'pointer-events-auto' : 'pointer-events-none'
           } ${
-            geometry.isActive
-              ? 'border-amber-200 bg-amber-300/60 shadow-[0_0_0_2px_rgba(251,191,36,0.55)]'
-              : geometry.isPoint
-                ? 'border-cyan-200/70 bg-cyan-300/50'
-                : 'border-cyan-300/45 bg-cyan-400/20'
+            geometry.isActive && geometry.isBurst
+              ? 'border-orange-300 bg-orange-400/60 shadow-[0_0_0_2px_rgba(251,146,60,0.55)]'
+              : geometry.isActive
+                ? 'border-amber-200 bg-amber-300/60 shadow-[0_0_0_2px_rgba(251,191,36,0.55)]'
+                : geometry.isBurst
+                  ? 'border-orange-400/60 bg-orange-500/30'
+                  : geometry.isPoint
+                    ? 'border-cyan-200/70 bg-cyan-300/50'
+                    : 'border-cyan-300/45 bg-cyan-400/20'
           }`}
           style={{
             left: geometry.left,

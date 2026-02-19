@@ -713,6 +713,7 @@ export const DualTimeline: React.FC = () => {
               onPointerUp={handlePointerUpWithSelection}
               onPointerLeave={handlePointerCancel}
             />
+            {/* Burst overlays - visual only, actual burst slices are interactive via CommittedSliceLayer */}
             {burstRects.map((rect, index) => {
               const window = burstWindows[index];
               const isSelected =
@@ -726,11 +727,10 @@ export const DualTimeline: React.FC = () => {
                   y={0}
                   width={Math.max(0, rect.end - rect.start)}
                   height={DETAIL_HEIGHT}
-                  fill={isSelected ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.08)'}
-                  stroke={isSelected ? 'rgba(249, 115, 22, 0.9)' : 'rgba(249, 115, 22, 0.5)'}
+                  fill={isSelected ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.05)'}
+                  stroke={isSelected ? 'rgba(249, 115, 22, 0.6)' : 'rgba(249, 115, 22, 0.3)'}
                   strokeWidth={1}
-                  pointerEvents="all"
-                  onClick={(event) => handleBurstClick(event, index)}
+                  pointerEvents="none"
                 />
               );
             })}
