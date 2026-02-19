@@ -115,7 +115,10 @@ export function SliceList() {
 
   return (
     <div className="space-y-2 rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Created slices</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Created slices</h3>
+        <span className="text-[10px] text-slate-500">Click to select, drag handles to adjust</span>
+      </div>
       <ul className="space-y-2">
         {sortedSlices.map((slice) => {
           const isActive = activeSliceId === slice.id;
