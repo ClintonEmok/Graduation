@@ -88,7 +88,11 @@ skipped: 11
   reason: "User reported: cant create bursts onclick and the UX is not logical when can we do this."
   severity: major
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "SVG element stacking order - zoom/pan overlay rendered AFTER burst windows, blocking all click events"
+  artifacts:
+    - path: "src/components/timeline/DualTimeline.tsx"
+      issue: "Burst window rects rendered at lines 676-695, zoom overlay at lines 715-725. SVG document order puts zoom rect on top, capturing all pointer events."
+  missing:
+    - "Reorder rendering so burst rects appear after zoom overlay (on top) to receive clicks"
+    - "Or add pointer-events CSS logic to allow clicks through zoom overlay"
+  debug_session: ".planning/debug/resolved/burst-window-click.md"
