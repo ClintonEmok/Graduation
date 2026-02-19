@@ -3,23 +3,24 @@ status: testing
 phase: 29-remake-burstlist-as-first-class-slices
 source: 29-01-SUMMARY.md, 29-02-SUMMARY.md, 29-03-SUMMARY.md, 29-04-SUMMARY.md, 29-05-SUMMARY.md
 started: 2026-02-19T16:03:00Z
-updated: 2026-02-19T16:03:00Z
+updated: 2026-02-19T16:05:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Burst Windows Create Slices on Click
+number: 2
+name: Duplicate Burst Clicks Reuse Existing Slices
 expected: |
-  Clicking a burst window in the burst list or on the timeline creates a new time slice with matching range.
-  The slice appears in the unified slice list with a "Burst" chip.
+  Clicking the same burst window again does not create a duplicate slice; it selects/reuses the existing slice with matching range.
 awaiting: user response
 
 ## Tests
 
 ### 1. Burst Windows Create Slices on Click
 expected: Clicking a burst window in the burst list or on the timeline creates a new time slice with matching range. The slice appears in the unified slice list with a "Burst" chip.
-result: pending
+result: issue
+reported: "cant create bursts onclick and the UX is not logical when can we do this."
+severity: major
 
 ### 2. Duplicate Burst Clicks Reuse Existing Slices
 expected: Clicking the same burst window again does not create a duplicate slice; it selects/reuses the existing slice with matching range.
@@ -69,10 +70,18 @@ result: pending
 
 total: 12
 passed: 0
-issues: 0
-pending: 12
+issues: 1
+pending: 11
 skipped: 0
 
 ## Gaps
 
-[none yet]
+- truth: "Clicking a burst window in the burst list or on the timeline creates a new time slice with matching range"
+  status: failed
+  reason: "User reported: cant create bursts onclick and the UX is not logical when can we do this."
+  severity: major
+  test: 1
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
