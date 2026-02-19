@@ -82,6 +82,7 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
         {geometries.map((geometry) => {
           const isDraggingHandle = draggingSliceId === geometry.sliceId && draggingHandle === geometry.handle;
           const isHoveredHandle = hoverSliceId === geometry.sliceId && hoverHandle === geometry.handle;
+          const handleX = isDraggingHandle && tooltip ? tooltip.x : geometry.x;
 
           const handleClass = isDraggingHandle
             ? 'fill-amber-200/95 stroke-amber-50'
@@ -92,15 +93,15 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
           return (
             <g key={`${geometry.sliceId}-${geometry.handle}`}>
               <rect
-                x={geometry.x - VISUAL_WIDTH / 2}
+                x={handleX - VISUAL_WIDTH / 2}
                 y={0}
                 width={VISUAL_WIDTH}
                 height={height}
                 rx={2}
-                className={`${handleClass} pointer-events-none stroke-[1.25] transition-all duration-75`}
+                className={`${handleClass} pointer-events-none stroke-[1.25] transition-colors duration-75`}
               />
               <rect
-                x={geometry.x - HIT_WIDTH / 2}
+                x={handleX - HIT_WIDTH / 2}
                 y={0}
                 width={HIT_WIDTH}
                 height={height}

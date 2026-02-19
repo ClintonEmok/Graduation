@@ -205,12 +205,15 @@ export function useSliceBoundaryAdjustment(
         modifierBypass,
       });
 
+      const activeBoundarySec = context.handle === 'start' ? result.startSec : result.endSec;
+      const boundaryX = clamp(scale(new Date(activeBoundarySec * 1000)), rangeStart, rangeEnd);
+
       updateTooltip({
-        x: clamp(pointerX, rangeStart, rangeEnd),
+        x: boundaryX,
         y: 8,
-        boundarySec: context.handle === 'start' ? result.startSec : result.endSec,
+        boundarySec: activeBoundarySec,
         durationSec: Math.max(0, result.endSec - result.startSec),
-        label: toBoundaryLabel(context.handle === 'start' ? result.startSec : result.endSec),
+        label: toBoundaryLabel(activeBoundarySec),
         snapState: modifierBypass ? 'bypass' : result.snapSource === 'none' ? 'free' : 'snapped',
       });
 
