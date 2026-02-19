@@ -3,7 +3,7 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 30 ready
-**Status:** Phase 29 complete (29-04 shipped)
+**Status:** Phase 29 complete (29-05 shipped)
 **Next:** Plan 30-01 multi-slice management kickoff
 
 ## Current Position
@@ -12,9 +12,9 @@ Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 30 of 41 (Multi-Slice Management)
 Plan: Not started (next: 30-01)
 Status: ✅ **Phase 29 complete / Ready for next phase**
-Last activity: 2026-02-19 - Completed 29-04-PLAN.md
+Last activity: 2026-02-19 - Completed 29-05-PLAN.md
 
-Progress: overall ███████████████████░ 97% (98/101 plans) | v1.1 ████░ 67% phases
+Progress: overall ████████████████████░ 98% (99/101 plans) | v1.1 ████░ 67% phases
 
 ```
 v1.0 Complete:
@@ -24,7 +24,7 @@ v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
 [x] Phase 27: Manual Slice Creation (6/6 plans complete)
 [x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
-[x] Phase 29: Remake burstlist as first-class slices (4/4 plans complete)
+[x] Phase 29: Remake burstlist as first-class slices (5/5 plans complete)
 [ ] Phase 30: Multi-Slice Management
 [ ] Phase 31: Slice Metadata & UI
 
@@ -119,6 +119,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Restricted burst reuse matching to burst-derived slices so manual ranges do not block burst deletion/recreation lifecycle.
 - Synced burst overlay highlighting from active burst slice range matching, preventing manual-only selections from lighting burst overlays.
 - Added burst lifecycle verification and accessibility affordances (pressed states, labels, origin metadata) across burst list and timeline-test layers.
+- Added inline rename controls in `SliceList` (edit button + Enter/Escape/blur behavior) wired to `updateSlice` for accessible in-list editing.
+- Added per-slice rename input in `SliceManagerUI` wired to `updateSlice`, with empty-name clearing to preserve fallback naming and burst chip behavior.
 
 ## Blockers/Concerns
 
@@ -126,8 +128,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-19 15:11 UTC
-Stopped at: Completed 29-04-PLAN.md
+Last session: 2026-02-19 15:55 UTC
+Stopped at: Completed 29-05-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -165,4 +167,4 @@ Resume file: None
 - Start 30-01 multi-slice management execution.
 
 ---
-*Last updated: 2026-02-19 - completed 29-04 burst lifecycle parity*
+*Last updated: 2026-02-19 - completed 29-05 rename parity*
