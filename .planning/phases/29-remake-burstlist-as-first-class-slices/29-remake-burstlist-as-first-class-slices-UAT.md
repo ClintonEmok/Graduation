@@ -3,15 +3,15 @@ status: testing
 phase: 29-remake-burstlist-as-first-class-slices
 source: 29-01-SUMMARY.md, 29-02-SUMMARY.md, 29-03-SUMMARY.md, 29-04-SUMMARY.md, 29-05-SUMMARY.md
 started: 2026-02-19T16:03:00Z
-updated: 2026-02-19T16:06:00Z
+updated: 2026-02-19T16:07:00Z
 ---
 
 ## Current Test
 
-number: 3
-name: Unified List Shows Manual and Burst Slices
+number: 4
+name: Burst Chip Appears on Unrenamed Burst Slices
 expected: |
-  The slice list shows both manual and burst-derived slices in one chronological list, sorted by timeline start time. Both types use consistent card styling.
+  Burst-derived slices that still have default "Burst N" names show a small "Burst" chip badge. Renamed burst slices hide the chip.
 awaiting: user response
 
 ## Tests
@@ -29,7 +29,8 @@ reason: "Depends on Test 1 functionality"
 
 ### 3. Unified List Shows Manual and Burst Slices
 expected: The slice list shows both manual and burst-derived slices in one chronological list, sorted by timeline start time. Both types use consistent card styling.
-result: pending
+result: skipped
+reason: "Depends on Test 1 functionality"
 
 ### 4. Burst Chip Appears on Unrenamed Burst Slices
 expected: Burst-derived slices that still have default "Burst N" names show a small "Burst" chip badge. Renamed burst slices hide the chip.
@@ -72,8 +73,8 @@ result: pending
 total: 12
 passed: 0
 issues: 1
-pending: 10
-skipped: 1
+pending: 9
+skipped: 2
 
 ## Gaps
 
