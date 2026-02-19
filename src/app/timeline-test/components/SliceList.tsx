@@ -74,7 +74,11 @@ export function SliceList() {
   };
 
   if (slices.length === 0) {
-    return <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">No slices created yet</p>;
+    return (
+      <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
+        No slices yet. Create one manually or from a burst.
+      </p>
+    );
   }
 
   return (
@@ -89,6 +93,7 @@ export function SliceList() {
           const rangeLabel = slice.range
             ? `${toTimestampLabel(slice.range[0], mapDomain)} -> ${toTimestampLabel(slice.range[1], mapDomain)}`
             : toTimestampLabel(slice.time, mapDomain);
+          const interactionLabel = `${a11yLabel}. ${rangeLabel}. ${isActive ? 'Selected.' : 'Not selected.'}`;
 
           return (
             <li key={slice.id}>
@@ -96,7 +101,7 @@ export function SliceList() {
                 role="button"
                 tabIndex={0}
                 aria-pressed={isActive}
-                aria-label={a11yLabel}
+                aria-label={interactionLabel}
                 onClick={() => handleActivate(slice.id, isActive)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -117,7 +122,7 @@ export function SliceList() {
                 />
                 <span className="min-w-0 space-y-1">
                   <span className="flex min-w-0 items-center gap-2 font-semibold">
-                    <span className="truncate">{displayName}</span>
+                    <span className="truncate" title={displayName}>{displayName}</span>
                     {showsBurstChip ? (
                       <span className={BURST_CHIP_CLASSNAME}>
                         <Sparkles className={BURST_CHIP_ICON_CLASSNAME} />
