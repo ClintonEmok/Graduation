@@ -8,6 +8,7 @@ import { DensityAreaChart, type DensityPoint } from '@/components/timeline/Densi
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { CommittedSliceLayer } from '@/app/timeline-test/components/CommittedSliceLayer';
+import { SliceBoundaryHandlesLayer } from '@/app/timeline-test/components/SliceBoundaryHandlesLayer';
 import { SliceCreationLayer } from '@/app/timeline-test/components/SliceCreationLayer';
 import { SliceToolbar } from '@/app/timeline-test/components/SliceToolbar';
 import { SliceList } from '@/app/timeline-test/components/SliceList';
@@ -417,6 +418,21 @@ export default function TimelineTestPage() {
                 </div>
                 <div
                   className="pointer-events-none absolute z-20"
+                  style={{
+                    left: DETAIL_MARGIN.left + 12,
+                    right: DETAIL_MARGIN.right + 12,
+                    bottom: 40,
+                    height: DETAIL_HEIGHT,
+                  }}
+                >
+                  <SliceBoundaryHandlesLayer
+                    scale={detailXScale}
+                    height={DETAIL_HEIGHT}
+                    domainSec={[domainStart, domainEnd]}
+                  />
+                </div>
+                <div
+                  className="pointer-events-none absolute z-30"
                   style={{
                     left: DETAIL_MARGIN.left + 12,
                     right: DETAIL_MARGIN.right + 12,

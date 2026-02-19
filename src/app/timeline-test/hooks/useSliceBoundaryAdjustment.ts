@@ -40,7 +40,7 @@ const toPointerX = (
   scale: ScaleTime<number, number>
 ): number => {
   const [rangeStart, rangeEnd] = toRangeBounds(scale);
-  const rect = event.currentTarget.getBoundingClientRect();
+  const rect = event.currentTarget.ownerSVGElement?.getBoundingClientRect() ?? event.currentTarget.getBoundingClientRect();
   const localX = event.clientX - rect.left;
   return clamp(localX, rangeStart, rangeEnd);
 };
@@ -206,7 +206,7 @@ export function useSliceBoundaryAdjustment(
 
   const onHandlePointerDown = useCallback(
     (event: ReactPointerEvent<SVGRectElement>, sliceId: string, handle: AdjustmentHandle) => {
-      const targetSliceId = activeSliceId === sliceId ? sliceId : activeSliceId;
+      const targetSliceId = sliceId;
       const selected = slices.find(
         (slice) => slice.id === targetSliceId && slice.type === 'range' && slice.range && !slice.isLocked
       );
