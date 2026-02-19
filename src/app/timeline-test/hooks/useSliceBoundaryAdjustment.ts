@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ScaleTime } from 'd3-scale';
 import {
@@ -21,6 +21,8 @@ type DragContext = {
   fixedBoundarySec: number;
   domainStartSec: number;
   domainEndSec: number;
+  scaleDomainStartSec: number;
+  scaleDomainEndSec: number;
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
@@ -34,6 +36,13 @@ const toDomainBounds = (domainSec: [number, number]): [number, number] => [
   Math.min(domainSec[0], domainSec[1]),
   Math.max(domainSec[0], domainSec[1]),
 ];
+
+const toScaleDomainBounds = (scale: ScaleTime<number, number>): [number, number] => {
+  const [start, end] = scale.domain();
+  const startSec = start.getTime() / 1000;
+  const endSec = end.getTime() / 1000;
+  return [Math.min(startSec, endSec), Math.max(startSec, endSec)];
+};
 
 const toPointerX = (
   event: ReactPointerEvent<SVGRectElement>,
@@ -106,6 +115,7 @@ export function useSliceBoundaryAdjustment(
 
   const dragContextRef = useRef<DragContext | null>(null);
   const [domainStartSec, domainEndSec] = toDomainBounds(domainSec);
+  const [scaleDomainStartSec, scaleDomainEndSec] = toScaleDomainBounds(scale);
 
   const rangeBoundaries = useMemo(
     () =>
@@ -125,6 +135,23 @@ export function useSliceBoundaryAdjustment(
     endDrag();
     updateTooltip(null);
   }, [endDrag, updateTooltip]);
+
+  useEffect(() => {
+    const context = dragContextRef.current;
+    if (!context) {
+      return;
+    }
+
+    const domainChanged =
+      context.domainStartSec !== domainStartSec ||
+      context.domainEndSec !== domainEndSec ||
+      context.scaleDomainStartSec !== scaleDomainStartSec ||
+      context.scaleDomainEndSec !== scaleDomainEndSec;
+
+    if (domainChanged) {
+      finishDrag();
+    }
+  }, [domainEndSec, domainStartSec, finishDrag, scaleDomainEndSec, scaleDomainStartSec]);
 
   const applyDragUpdate = useCallback(
     (event: ReactPointerEvent<SVGRectElement>) => {
@@ -208,11 +235,19 @@ export function useSliceBoundaryAdjustment(
     (event: ReactPointerEvent<SVGRectElement>, sliceId: string, handle: AdjustmentHandle) => {
       const targetSliceId = sliceId;
       const selected = slices.find(
-        (slice) => slice.id === targetSliceId && slice.type === 'range' && slice.range && !slice.isLocked
+        (slice) =>
+          slice.id === targetSliceId &&
+          slice.type === 'range' &&
+          slice.range &&
+          slice.isVisible &&
+          !slice.isLocked
       );
       if (!selected?.range) {
         return;
       }
+
+      event.preventDefault();
+      event.stopPropagation();
 
       const selectedStartSec = normalizedToSec(
         Math.min(selected.range[0], selected.range[1]),
@@ -236,6 +271,8 @@ export function useSliceBoundaryAdjustment(
         fixedBoundarySec: handle === 'start' ? selectedEndSec : selectedStartSec,
         domainStartSec,
         domainEndSec,
+        scaleDomainStartSec,
+        scaleDomainEndSec,
       };
 
       beginDrag({ sliceId: selected.id, handle });
@@ -249,6 +286,8 @@ export function useSliceBoundaryAdjustment(
       beginDrag,
       domainEndSec,
       domainStartSec,
+      scaleDomainEndSec,
+      scaleDomainStartSec,
       setActiveSlice,
       slices,
       updateTooltip,
@@ -295,6 +334,8 @@ export function useSliceBoundaryAdjustment(
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
 
+      event.preventDefault();
+      event.stopPropagation();
       finishDrag();
     },
     [finishDrag]

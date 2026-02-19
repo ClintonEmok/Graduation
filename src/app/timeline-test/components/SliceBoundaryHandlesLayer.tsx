@@ -50,7 +50,7 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
 
     const handles: HandleGeometry[] = [];
     for (const slice of slices) {
-      if (slice.type !== 'range' || !slice.range || !slice.isVisible) {
+      if (slice.type !== 'range' || !slice.range || !slice.isVisible || slice.isLocked) {
         continue;
       }
 
@@ -106,6 +106,7 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
                 height={height}
                 fill="transparent"
                 className="pointer-events-auto cursor-ew-resize"
+                style={{ touchAction: 'none' }}
                 onPointerEnter={() => handlers.onHandlePointerEnter(geometry.sliceId, geometry.handle)}
                 onPointerLeave={handlers.onHandlePointerLeave}
                 onPointerDown={(event: ReactPointerEvent<SVGRectElement>) =>
@@ -143,7 +144,11 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
                   : 'bg-slate-700 text-slate-200'
             }`}
           >
-            {tooltip.snapState}
+            {tooltip.snapState === 'snapped'
+              ? 'Snapped'
+              : tooltip.snapState === 'bypass'
+                ? 'Snap bypass'
+                : 'Free'}
           </span>
         </div>
       ) : null}
