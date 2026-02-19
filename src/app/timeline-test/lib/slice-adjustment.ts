@@ -183,6 +183,8 @@ export function resolveSnap(rawSec: number, snap?: SnapConfig): { snappedSec: nu
 export function adjustBoundary(input: AdjustBoundaryInput): AdjustBoundaryResult {
   const [minDomain, maxDomain] = normalizeDomain(input.domainStartSec, input.domainEndSec);
   const minDurationSec = Math.max(0, input.minDurationSec);
+  const rawWasBelowDomain = input.rawPointerSec < minDomain;
+  const rawWasAboveDomain = input.rawPointerSec > maxDomain;
   const rawClampedSec = clamp(input.rawPointerSec, minDomain, maxDomain);
   const snapResolved = resolveSnap(rawClampedSec, input.snap);
   const snappedClampedSec = clamp(snapResolved.snappedSec, minDomain, maxDomain);
@@ -204,6 +206,8 @@ export function adjustBoundary(input: AdjustBoundaryInput): AdjustBoundaryResult
       startSec = minDomain;
       appliedSec = startSec;
       limitCue = 'domainStart';
+    } else if (rawWasBelowDomain && limitCue === 'none') {
+      limitCue = 'domainStart';
     }
 
     endSec = input.fixedBoundarySec;
@@ -218,6 +222,8 @@ export function adjustBoundary(input: AdjustBoundaryInput): AdjustBoundaryResult
     if (endSec > maxDomain) {
       endSec = maxDomain;
       appliedSec = endSec;
+      limitCue = 'domainEnd';
+    } else if (rawWasAboveDomain && limitCue === 'none') {
       limitCue = 'domainEnd';
     }
 
