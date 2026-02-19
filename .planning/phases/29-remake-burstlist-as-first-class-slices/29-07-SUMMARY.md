@@ -78,6 +78,7 @@ Each task was committed atomically:
 **Post-plan fixes:**
 4. **Fix burst date display in BurstList** - `b568614` (fix)
 5. **Fix slice date display in SliceList** - `7a52ee0` (fix)
+6. **Fix infinite burst slice creation loop** - `fcf6bca` (fix)
 
 **Plan metadata:** `521a1c3` (docs: complete plan)
 
@@ -123,16 +124,32 @@ Each task was committed atomically:
 - **Verification:** Build passes
 - **Committed in:** `7a52ee0` (post-plan fix)
 
+**3. [Rule 1 - Bug] Fixed infinite burst slice creation loop creating 174+ slices**
+
+- **Found during:** Post-implementation verification (user report)
+- **Issue:** `useAutoBurstSlices` effect was creating 174+ burst slices instead of the expected ~10
+- **Root cause:** The effect depended on `addBurstSlice` from the store. Every time a slice was added, the store updated, potentially creating new function references and triggering the effect again, causing an infinite loop
+- **Fix:** Added processed window tracking mechanism:
+  - Use `useRef` to maintain a Set of processed window signatures
+  - Generate signatures using rounded coordinates (3 decimal places) to handle floating-point precision
+  - Skip windows that have already been processed
+  - Clear tracking when all burst slices are removed (to allow re-creation after full reset)
+- **Files modified:** `src/store/useSliceStore.ts`
+- **Verification:** Build passes
+- **Committed in:** `fcf6bca` (post-plan fix)
+
 ---
 
-**Total deviations:** 2 auto-fixed (2 bugs)
-**Impact on plan:** Both fixes necessary for correct date display across different data formats. No scope creep.
+**Total deviations:** 3 auto-fixed (3 bugs)
+**Impact on plan:** All fixes necessary for correct burst slice behavior. No scope creep.
 
 ## Issues Encountered
 
 1. **Burst date display issue in BurstList (post-implementation):** BurstList showed percentages instead of dates due to inconsistent mapDomain formats across different data loading paths (columnar vs mock data). Fixed by detecting domain type and converting appropriately.
 
 2. **Slice date display issue in SliceList (post-implementation):** SliceList showed epoch timestamps with % suffix (e.g., `1713773390.90% → 1715102582.64%`) instead of dates. Fixed by detecting epoch timestamp values in `toTimestampLabel` function and formatting them as dates.
+
+3. **Infinite burst slice creation loop (post-implementation):** The auto-creation effect was creating 174+ burst slices instead of the expected ~10. This was caused by the effect re-triggering every time the store updated. Fixed by adding processed window tracking with `useRef` to ensure each unique burst window is only processed once.
 
 ## User Setup Required
 
