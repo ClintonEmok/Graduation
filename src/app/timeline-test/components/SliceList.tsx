@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from 'react';
-import { Check, Sparkles, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Check, Pencil, Sparkles, X } from 'lucide-react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
 import { BURST_CHIP_CLASSNAME, BURST_CHIP_ICON_CLASSNAME } from './SliceToolbar';
@@ -26,7 +26,10 @@ export function SliceList() {
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
   const removeSlice = useSliceStore((state) => state.removeSlice);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
+  const updateSlice = useSliceStore((state) => state.updateSlice);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const [editingSliceId, setEditingSliceId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const handleActivate = (sliceId: string, isActive: boolean) => {
     setActiveSlice(isActive ? null : sliceId);
@@ -73,6 +76,22 @@ export function SliceList() {
     return slice.isBurst ? `Burst ${ordinal}` : `Slice ${ordinal}`;
   };
 
+  const startEditing = (slice: TimeSlice) => {
+    setEditingSliceId(slice.id);
+    setEditingName(slice.name ?? getSliceDisplayName(slice));
+  };
+
+  const cancelEditing = () => {
+    setEditingSliceId(null);
+    setEditingName('');
+  };
+
+  const saveEditing = (slice: TimeSlice) => {
+    const trimmedName = editingName.trim();
+    updateSlice(slice.id, { name: trimmedName || undefined });
+    cancelEditing();
+  };
+
   if (slices.length === 0) {
     return (
       <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
@@ -87,6 +106,7 @@ export function SliceList() {
       <ul className="space-y-2">
         {sortedSlices.map((slice) => {
           const isActive = activeSliceId === slice.id;
+          const isEditing = editingSliceId === slice.id;
           const displayName = getSliceDisplayName(slice);
           const showsBurstChip = !!slice.isBurst && displayName.startsWith('Burst');
           const a11yLabel = showsBurstChip ? `${displayName} (burst-derived slice)` : `${displayName} (manual slice)`;
@@ -120,12 +140,49 @@ export function SliceList() {
                     isActive ? 'bg-amber-300' : 'bg-transparent'
                   }`}
                 />
-                <span className="min-w-0 space-y-1">
-                  <span className="flex min-w-0 items-center gap-2 font-semibold">
-                    <span className="truncate" title={displayName}>{displayName}</span>
-                    {showsBurstChip ? (
-                      <span className={BURST_CHIP_CLASSNAME}>
-                        <Sparkles className={BURST_CHIP_ICON_CLASSNAME} />
+                  <span className="min-w-0 space-y-1">
+                    <span className="flex min-w-0 items-center gap-2 font-semibold">
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editingName}
+                          onChange={(event) => setEditingName(event.target.value)}
+                          onClick={(event) => event.stopPropagation()}
+                          onBlur={() => saveEditing(slice)}
+                          onKeyDown={(event) => {
+                            event.stopPropagation();
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              saveEditing(slice);
+                            }
+                            if (event.key === 'Escape') {
+                              event.preventDefault();
+                              cancelEditing();
+                            }
+                          }}
+                          aria-label={`Edit name for ${displayName}`}
+                          className="h-6 min-w-0 flex-1 rounded border border-amber-300/70 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none ring-offset-2 ring-offset-slate-950 focus-visible:ring-2 focus-visible:ring-amber-300/70"
+                        />
+                      ) : (
+                        <span className="truncate" title={displayName}>{displayName}</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startEditing(slice);
+                        }}
+                        className={`rounded p-1 transition hover:bg-amber-500/10 hover:text-amber-200 ${
+                          isActive ? 'text-amber-200/80' : 'text-slate-400'
+                        }`}
+                        aria-label={`Rename ${displayName}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      {showsBurstChip ? (
+                        <span className={BURST_CHIP_CLASSNAME}>
+                          <Sparkles className={BURST_CHIP_ICON_CLASSNAME} />
                         Burst
                       </span>
                     ) : null}
