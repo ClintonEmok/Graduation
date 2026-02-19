@@ -111,7 +111,7 @@ Plans:
 - [x] 29-02-PLAN.md — Unified slice list with burst chip indicator
 - [x] 29-03-PLAN.md — Burst interaction wiring (create/select slices on click)
 - [x] 29-04-PLAN.md — Full lifecycle parity (edit, delete, recreate, sync)
-- [ ] 29-05-PLAN.md — Gap closure: Slice rename UI/UX
+- [x] 29-05-PLAN.md — Gap closure: Slice rename UI/UX
 
 **Details:**
 - Burst windows become selectable, listed slices like manual ones
@@ -187,7 +187,7 @@ Plans:
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
-| 29 | v1.1 | 0/4 | 🚧 Planned | - |
+| 29 | v1.1 | 5/5 | ✅ Complete | 2026-02-19 |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 31 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 32-36 | v1.2 | 0/TBD | 📋 Planned | - |
