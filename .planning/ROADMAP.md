@@ -84,7 +84,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Goal:** Allow precise adjustment of slice boundaries.
 **Depends on:** Phase 27
-**Plans:** TBD
+**Plans:** 3 plans (28-01, 28-02, 28-03)
 
 **Requirements:** ADJUST-01 through ADJUST-06
 
@@ -93,6 +93,11 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - Real-time boundary updates
 - Minimum duration constraints
 - Optional snap behavior
+
+Plans:
+- [ ] 28-01-PLAN.md — Boundary adjustment math + transient interaction store
+- [ ] 28-02-PLAN.md — Handle layer and real-time drag wiring
+- [ ] 28-03-PLAN.md — Snap controls, bypass behavior, and edge-case hardening
 
 ### Phase 29: Multi-Slice Management
 
@@ -160,7 +165,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
-| 28 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 28 | v1.1 | 0/3 | 🚧 Planned | - |
 | 29 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 31-35 | v1.2 | 0/TBD | 📋 Planned | - |
