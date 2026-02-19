@@ -60,6 +60,7 @@ export const useBurstWindows = () => {
 export function BurstList() {
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const setRange = useTimeStore((state) => state.setRange);
   const setTime = useTimeStore((state) => state.setTime);
@@ -81,15 +82,31 @@ export function BurstList() {
 
   if (burstWindows.length === 0) return null;
 
+  // Check if mapDomain is normalized (0-100) or actual epoch timestamps
+  // Epoch timestamps are large numbers (billions for seconds, trillions for ms)
+  const isNormalizedDomain = mapDomain[1] < 1000;
+
   const formatWindow = (start: number, end: number) => {
-    if (minTimestampSec !== null && maxTimestampSec !== null) {
-      const startEpoch = normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec);
-      const endEpoch = normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec);
-      const startLabel = new Date(startEpoch * 1000).toLocaleString();
-      const endLabel = new Date(endEpoch * 1000).toLocaleString();
-      return `${startLabel} → ${endLabel}`;
+    let startEpoch: number;
+    let endEpoch: number;
+
+    if (isNormalizedDomain) {
+      // Domain is normalized 0-100, need to convert using data store timestamps
+      if (minTimestampSec !== null && maxTimestampSec !== null) {
+        startEpoch = normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec);
+        endEpoch = normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec);
+      } else {
+        return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+      }
+    } else {
+      // Domain is already epoch timestamps (milliseconds)
+      startEpoch = start / 1000; // Convert ms to seconds
+      endEpoch = end / 1000;
     }
-    return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+
+    const startLabel = new Date(startEpoch * 1000).toLocaleString();
+    const endLabel = new Date(endEpoch * 1000).toLocaleString();
+    return `${startLabel} → ${endLabel}`;
   };
 
   const handleSelectWindow = (window: BurstWindow) => {
