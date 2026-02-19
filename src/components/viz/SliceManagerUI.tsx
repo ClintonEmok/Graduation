@@ -90,6 +90,18 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
     return new Date(seconds * 1000);
   };
 
+  const getSliceFallbackName = (sliceId: string) => {
+    const slice = slices.find((candidate) => candidate.id === sliceId);
+    if (!slice) {
+      return 'Slice name';
+    }
+
+    const peers = slices.filter((candidate) => !!candidate.isBurst === !!slice.isBurst);
+    const ordinal = peers.findIndex((candidate) => candidate.id === slice.id) + 1;
+
+    return slice.isBurst ? `Burst ${ordinal}` : `Slice ${ordinal}`;
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-[400px] overflow-y-auto">
@@ -224,6 +236,17 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
                 )}
                 {slices.map((slice) => (
                     <div key={slice.id} className="flex flex-col gap-2 border p-3 rounded-md bg-accent/5">
+                        <input
+                            type="text"
+                            value={slice.name || ''}
+                            onChange={(event) => {
+                                const nextName = event.target.value.trim();
+                                updateSlice(slice.id, { name: nextName || undefined });
+                            }}
+                            placeholder={getSliceFallbackName(slice.id)}
+                            aria-label={`Slice name for ${getSliceFallbackName(slice.id)}`}
+                            className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        />
                         <div className="flex items-center gap-2">
                             <div className="flex-1 flex items-center gap-2">
                                 <span className="text-[10px] font-bold uppercase text-muted-foreground px-1.5 py-0.5 bg-accent rounded">
