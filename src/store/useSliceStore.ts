@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { calculateRangeTolerance, rangesMatch } from '../lib/slice-utils';
+import { useEffect } from 'react';
+import { useAdaptiveStore } from './useAdaptiveStore';
 
 export interface TimeSlice {
   id: string;
@@ -176,3 +178,24 @@ export const useSliceStore = create<SliceStore>()(
     }
   )
 );
+
+// Auto-create burst slices when burst data becomes available
+export const useAutoBurstSlices = (
+  burstWindows: { start: number; end: number }[]
+) => {
+  const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
+  const isComputing = useAdaptiveStore((state) => state.isComputing);
+
+  useEffect(() => {
+    // Only auto-create when:
+    // 1. Burst windows exist (computed/available)
+    // 2. Not currently computing (avoid creating mid-computation)
+    if (!burstWindows.length || isComputing) return;
+
+    // Auto-create burst slices for each burst window
+    // addBurstSlice handles reuse if matching slice exists
+    burstWindows.forEach((window) => {
+      addBurstSlice({ start: window.start, end: window.end });
+    });
+  }, [burstWindows, isComputing, addBurstSlice]);
+};

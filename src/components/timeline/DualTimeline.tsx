@@ -17,6 +17,7 @@ import { useSliceStore } from '@/store/useSliceStore';
 import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { focusTimelineRange, rangesMatch } from '@/lib/slice-utils';
 
@@ -369,6 +370,10 @@ export const DualTimeline: React.FC = () => {
   }, [detailScale, selectionPoint]);
 
   const burstWindows = useBurstWindows();
+  
+  // Auto-create burst slices when burst data becomes available
+  useAutoBurstSlices(burstWindows);
+  
   const burstRects = useMemo(() => {
     if (burstWindows.length === 0) return [] as { start: number; end: number; key: string }[];
     return burstWindows.map((window) => {
