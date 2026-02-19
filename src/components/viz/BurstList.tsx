@@ -4,6 +4,7 @@ import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useSliceStore } from '@/store/useSliceStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
 
 export type BurstWindow = {
@@ -56,20 +57,17 @@ export const useBurstWindows = () => {
 };
 
 export function BurstList() {
-  const densityMap = useAdaptiveStore((state) => state.densityMap);
-  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
-  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
-  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const setRange = useTimeStore((state) => state.setRange);
   const setTime = useTimeStore((state) => state.setTime);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
-  const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
-  const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
+  const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
+  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
+  const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
 
   const burstWindows = useBurstWindows();
 
@@ -87,8 +85,14 @@ export function BurstList() {
   };
 
   const handleSelectWindow = (window: BurstWindow) => {
-    toggleBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
+    const slice = addBurstSlice({ start: window.start, end: window.end });
+    if (!slice) {
+      return;
+    }
+
+    setActiveSlice(slice.id);
     setDetailsOpen(true);
+
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       const startEpoch = normalizedToEpochSeconds(window.start, minTimestampSec, maxTimestampSec);
       const endEpoch = normalizedToEpochSeconds(window.end, minTimestampSec, maxTimestampSec);
@@ -117,9 +121,8 @@ export function BurstList() {
       </div>
       <div className="mt-3 space-y-2">
         {burstWindows.map((window, index) => {
-          const isSelected = selectedBurstWindows.some(
-            (item) => item.start === window.start && item.end === window.end && item.metric === burstMetric
-          );
+          const matchingSlice = findMatchingSlice(window.start, window.end);
+          const isSelected = matchingSlice?.id === activeSliceId;
           return (
           <button
             key={window.id}
