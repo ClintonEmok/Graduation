@@ -18,7 +18,7 @@ import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-import { focusTimelineRange } from '@/lib/slice-utils';
+import { focusTimelineRange, rangesMatch } from '@/lib/slice-utils';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -50,7 +50,7 @@ export const DualTimeline: React.FC = () => {
   const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
+  const slices = useSliceStore((state) => state.slices);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -378,6 +378,19 @@ export const DualTimeline: React.FC = () => {
     });
   }, [burstWindows, detailScale]);
 
+  const activeBurstRange = useMemo<[number, number] | null>(() => {
+    if (!activeSliceId) {
+      return null;
+    }
+
+    const activeSlice = slices.find((slice) => slice.id === activeSliceId);
+    if (!activeSlice || !activeSlice.isBurst || activeSlice.type !== 'range' || !activeSlice.range) {
+      return null;
+    }
+
+    return [Math.min(activeSlice.range[0], activeSlice.range[1]), Math.max(activeSlice.range[0], activeSlice.range[1])];
+  }, [activeSliceId, slices]);
+
   const handleBurstClick = useCallback(
     (event: React.MouseEvent<SVGRectElement>, index: number) => {
       event.stopPropagation();
@@ -662,8 +675,10 @@ export const DualTimeline: React.FC = () => {
 
             {burstRects.map((rect, index) => {
               const window = burstWindows[index];
-              const matchingSlice = window ? findMatchingSlice(window.start, window.end) : undefined;
-              const isSelected = matchingSlice?.id === activeSliceId;
+              const isSelected =
+                !!window &&
+                !!activeBurstRange &&
+                rangesMatch(activeBurstRange, [window.start, window.end]);
               return (
                 <rect
                   key={`burst-${rect.key}`}
