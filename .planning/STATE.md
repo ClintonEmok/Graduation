@@ -2,19 +2,19 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 29 ready
-**Status:** Phase 28 complete (28-01/02/03/04 shipped)
-**Next:** Plan 29-01 burstlist-as-slices baseline
+**Current Phase:** v1.1 Manual Timeslicing - Phase 29 in progress
+**Status:** Phase 29 started (29-01 shipped)
+**Next:** Plan 29-02 unified burst/manual slice list UI
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 29 of 41 (Remake burstlist as first-class slices)
-Plan: Not started in current phase
+Plan: 1 of 4 in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-19 - Completed 28-04-PLAN.md
+Last activity: 2026-02-19 - Completed 29-01-PLAN.md
 
-Progress: overall ████████████████████ 97% (94/98 plans) | v1.1 ███░░ 60% phases
+Progress: overall ████████████████████ 97% (95/98 plans) | v1.1 ███░░ 60% phases
 
 ```
 v1.0 Complete:
@@ -107,14 +107,20 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Removed active handle movement interpolation during drag and switched visual lock to live pointer-update boundary positions.
 - Added transient `liveBoundarySec`/`liveBoundaryX` drag fields with regression coverage for update and reset lifecycle behavior.
 
+**Phase 29 Decision Log (Execution):**
+- Extended `TimeSlice` with burst metadata (`isBurst`, `burstSliceId`) and added store APIs for burst creation/reuse (`addBurstSlice`, `findMatchingSlice`).
+- Standardized burst range matching tolerance at 0.5% of range span (`0.005 * span`) to absorb float jitter while preventing duplicate burst slices.
+- Added shared `src/lib/slice-utils.ts` range matching helpers with dedicated unit coverage.
+- Moved slice ordering to store-level timeline start sorting with manual-before-burst tie-breaking, and aligned `SliceList` fallback naming to store order.
+
 ## Blockers/Concerns
 
 **None currently**
 
 ## Session Continuity
 
-Last session: 2026-02-19 11:54 UTC
-Stopped at: Completed 28-04-PLAN.md
+Last session: 2026-02-19 14:51 UTC
+Stopped at: Completed 29-01-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -152,4 +158,4 @@ Resume file: None
 - Plan Phase 29 burstlist-as-slices behavior before continuing multi-slice management.
 
 ---
-*Last updated: 2026-02-19 - inserted Phase 29 burstlist-as-slices and shifted downstream numbering*
+*Last updated: 2026-02-19 - completed 29-01 burstlist-to-slice foundation*
