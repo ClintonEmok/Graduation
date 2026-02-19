@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { calculateRangeTolerance, rangesMatch } from '../lib/slice-utils';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAdaptiveStore } from './useAdaptiveStore';
 
 export interface TimeSlice {
@@ -185,6 +185,17 @@ export const useAutoBurstSlices = (
 ) => {
   const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
+  const slices = useSliceStore((state) => state.slices);
+  
+  // Track which burst window signatures we've already processed to avoid duplicates
+  const processedRef = useRef<Set<string>>(new Set());
+  
+  // Create a signature for a burst window for tracking
+  const getWindowSignature = (start: number, end: number) => {
+    // Round to avoid floating point precision issues with epoch timestamps
+    const precision = 1000; // 3 decimal places
+    return `${Math.round(start * precision) / precision}-${Math.round(end * precision) / precision}`;
+  };
 
   useEffect(() => {
     // Only auto-create when:
@@ -195,7 +206,25 @@ export const useAutoBurstSlices = (
     // Auto-create burst slices for each burst window
     // addBurstSlice handles reuse if matching slice exists
     burstWindows.forEach((window) => {
+      const signature = getWindowSignature(window.start, window.end);
+      
+      // Skip if we've already processed this window signature
+      if (processedRef.current.has(signature)) {
+        return;
+      }
+      
+      // Mark as processed before calling to prevent race conditions
+      processedRef.current.add(signature);
+      
       addBurstSlice({ start: window.start, end: window.end });
     });
   }, [burstWindows, isComputing, addBurstSlice]);
+  
+  // Clear processed set when all burst slices are removed
+  useEffect(() => {
+    const hasBurstSlices = slices.some(s => s.isBurst);
+    if (!hasBurstSlices && processedRef.current.size > 0) {
+      processedRef.current.clear();
+    }
+  }, [slices]);
 };
