@@ -5,6 +5,8 @@ const resetStore = () => {
   useSliceAdjustmentStore.setState({
     draggingSliceId: null,
     draggingHandle: null,
+    liveBoundarySec: null,
+    liveBoundaryX: null,
     hoverSliceId: null,
     hoverHandle: null,
     tooltip: null,
@@ -29,6 +31,8 @@ describe('useSliceAdjustmentStore', () => {
     expect(state.fixedSnapPresetSec).toBeNull();
     expect(state.limitCue).toBe('none');
     expect(state.draggingSliceId).toBeNull();
+    expect(state.liveBoundarySec).toBeNull();
+    expect(state.liveBoundaryX).toBeNull();
     expect(state.tooltip).toBeNull();
   });
 
@@ -41,6 +45,8 @@ describe('useSliceAdjustmentStore', () => {
     const state = useSliceAdjustmentStore.getState();
     expect(state.draggingSliceId).toBe('slice-1');
     expect(state.draggingHandle).toBe('start');
+    expect(state.liveBoundarySec).toBeNull();
+    expect(state.liveBoundaryX).toBeNull();
     expect(state.hoverSliceId).toBe('slice-1');
     expect(state.hoverHandle).toBe('start');
     expect(state.limitCue).toBe('none');
@@ -60,6 +66,7 @@ describe('useSliceAdjustmentStore', () => {
       snapState: 'snapped',
     });
     store.updateDrag({ limitCue: 'minDuration', modifierBypass: true });
+    store.updateDrag({ liveBoundarySec: 420, liveBoundaryX: 120 });
 
     const state = useSliceAdjustmentStore.getState();
     expect(state.tooltip).toEqual({
@@ -72,6 +79,8 @@ describe('useSliceAdjustmentStore', () => {
     });
     expect(state.limitCue).toBe('minDuration');
     expect(state.modifierBypass).toBe(true);
+    expect(state.liveBoundarySec).toBe(420);
+    expect(state.liveBoundaryX).toBe(120);
   });
 
   test('setSnap updates enabled flag, mode, and fixed preset', () => {
@@ -103,6 +112,7 @@ describe('useSliceAdjustmentStore', () => {
       snapState: 'bypass',
     });
     store.updateDrag({ limitCue: 'domainStart', modifierBypass: true });
+    store.updateDrag({ liveBoundarySec: 100, liveBoundaryX: 10 });
     store.setHover('slice-3', 'start');
 
     store.endDrag();
@@ -110,6 +120,8 @@ describe('useSliceAdjustmentStore', () => {
     const state = useSliceAdjustmentStore.getState();
     expect(state.draggingSliceId).toBeNull();
     expect(state.draggingHandle).toBeNull();
+    expect(state.liveBoundarySec).toBeNull();
+    expect(state.liveBoundaryX).toBeNull();
     expect(state.tooltip).toBeNull();
     expect(state.limitCue).toBe('none');
     expect(state.modifierBypass).toBe(false);

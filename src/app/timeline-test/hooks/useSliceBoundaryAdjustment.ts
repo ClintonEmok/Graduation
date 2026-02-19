@@ -200,13 +200,15 @@ export function useSliceBoundaryAdjustment(
         range: [result.startNorm, result.endNorm],
       });
 
+      const activeBoundarySec = context.handle === 'start' ? result.startSec : result.endSec;
+      const boundaryX = clamp(scale(new Date(activeBoundarySec * 1000)), rangeStart, rangeEnd);
+
       updateDrag({
         limitCue: result.limitCue,
         modifierBypass,
+        liveBoundarySec: activeBoundarySec,
+        liveBoundaryX: boundaryX,
       });
-
-      const activeBoundarySec = context.handle === 'start' ? result.startSec : result.endSec;
-      const boundaryX = clamp(scale(new Date(activeBoundarySec * 1000)), rangeStart, rangeEnd);
 
       updateTooltip({
         x: boundaryX,
