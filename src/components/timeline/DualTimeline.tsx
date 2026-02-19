@@ -13,6 +13,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useSliceStore } from '@/store/useSliceStore';
 import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -43,11 +44,12 @@ export const DualTimeline: React.FC = () => {
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
-  const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
-  const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
-  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
+  const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
+  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
+  const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -380,11 +382,17 @@ export const DualTimeline: React.FC = () => {
       event.stopPropagation();
       const window = burstWindows[index];
       if (!window) return;
-      toggleBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
+
+      const slice = addBurstSlice({ start: window.start, end: window.end });
+      if (!slice) {
+        return;
+      }
+
+      setActiveSlice(slice.id);
       applyRangeToStores(window.start, window.end);
       setTime((window.start + window.end) / 2);
     },
-    [applyRangeToStores, burstWindows, toggleBurstWindow, setTime, burstMetric]
+    [addBurstSlice, applyRangeToStores, burstWindows, setActiveSlice, setTime]
   );
 
   const handleSelectFromEvent = useCallback(
@@ -635,14 +643,8 @@ export const DualTimeline: React.FC = () => {
 
             {burstRects.map((rect, index) => {
               const window = burstWindows[index];
-              const isSelected = window
-                ? selectedBurstWindows.some(
-                    (item) =>
-                      item.start === window.start &&
-                      item.end === window.end &&
-                      item.metric === burstMetric
-                  )
-                : false;
+              const matchingSlice = window ? findMatchingSlice(window.start, window.end) : undefined;
+              const isSelected = matchingSlice?.id === activeSliceId;
               return (
                 <rect
                   key={`burst-${rect.key}`}
