@@ -75,8 +75,9 @@ Each task was committed atomically:
 2. **Task 2: Convert burst interactions from create to select** - `5ca3fd3` (feat)
 3. **Task 3: Verify end-to-end automatic behavior** - (verification only, no commit)
 
-**Post-plan fix:**
-4. **Fix burst date display** - `b568614` (fix)
+**Post-plan fixes:**
+4. **Fix burst date display in BurstList** - `b568614` (fix)
+5. **Fix slice date display in SliceList** - `7a52ee0` (fix)
 
 **Plan metadata:** `521a1c3` (docs: complete plan)
 
@@ -84,8 +85,9 @@ Each task was committed atomically:
 
 - `src/store/useSliceStore.ts` - Added `useAutoBurstSlices` hook for automatic burst slice creation
 - `src/components/timeline/DualTimeline.tsx` - Mounted auto-creation effect; updated burst click to select existing slice
-- `src/components/viz/BurstList.tsx` - Updated burst list click to select existing slice instead of create
+- `src/components/viz/BurstList.tsx` - Updated burst list click to select existing slice instead of create; fixed date display for dual mapDomain formats
 - `src/lib/slice-utils.ts` - Exported `normalizeRange` for range normalization
+- `src/app/timeline-test/components/SliceList.tsx` - Fixed `toTimestampLabel` to handle both normalized and epoch timestamp formats
 
 ## Decisions Made
 
@@ -109,14 +111,28 @@ Each task was committed atomically:
 - **Verification:** Build passes, code review confirms correct handling of both data formats
 - **Committed in:** `b568614` (post-plan fix)
 
+**2. [Rule 1 - Bug] Fixed SliceList showing epoch timestamps with % instead of dates**
+
+- **Found during:** Post-implementation verification (user report)
+- **Issue:** SliceList displayed `1713773390.90% → 1715102582.64%` (epoch timestamps with % suffix) instead of actual dates
+- **Root cause:** The `toTimestampLabel` function assumed all time values were normalized (0-100), but burst slice ranges store actual epoch timestamps when mapDomain is in epoch format
+- **Fix:** Added epoch timestamp detection (`isEpochTimestamp = timeValue > 1000000000`) in `toTimestampLabel`:
+  - For epoch timestamps: convert milliseconds to seconds if needed, then format as date
+  - For normalized values: use existing domain-based conversion
+- **Files modified:** `src/app/timeline-test/components/SliceList.tsx`
+- **Verification:** Build passes
+- **Committed in:** `7a52ee0` (post-plan fix)
+
 ---
 
-**Total deviations:** 1 auto-fixed (1 bug)
-**Impact on plan:** Fix necessary for correct date display. No scope creep.
+**Total deviations:** 2 auto-fixed (2 bugs)
+**Impact on plan:** Both fixes necessary for correct date display across different data formats. No scope creep.
 
 ## Issues Encountered
 
-1. **Burst date display issue (post-implementation):** BurstList showed percentages instead of dates due to inconsistent mapDomain formats across different data loading paths (columnar vs mock data). Fixed by detecting domain type and converting appropriately.
+1. **Burst date display issue in BurstList (post-implementation):** BurstList showed percentages instead of dates due to inconsistent mapDomain formats across different data loading paths (columnar vs mock data). Fixed by detecting domain type and converting appropriately.
+
+2. **Slice date display issue in SliceList (post-implementation):** SliceList showed epoch timestamps with % suffix (e.g., `1713773390.90% → 1715102582.64%`) instead of dates. Fixed by detecting epoch timestamp values in `toTimestampLabel` function and formatting them as dates.
 
 ## User Setup Required
 
