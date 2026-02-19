@@ -697,6 +697,7 @@ export const DualTimeline: React.FC = () => {
               width={detailInnerWidth}
               height={DETAIL_HEIGHT}
               fill="transparent"
+              pointerEvents="auto"
               className="cursor-crosshair"
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
