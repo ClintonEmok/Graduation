@@ -673,26 +673,6 @@ export const DualTimeline: React.FC = () => {
               );
             })}
 
-            {burstRects.map((rect, index) => {
-              const window = burstWindows[index];
-              const isSelected =
-                !!window &&
-                !!activeBurstRange &&
-                rangesMatch(activeBurstRange, [window.start, window.end]);
-              return (
-                <rect
-                  key={`burst-${rect.key}`}
-                  x={rect.start}
-                  y={0}
-                  width={Math.max(0, rect.end - rect.start)}
-                  height={DETAIL_HEIGHT}
-                  fill={isSelected ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.08)'}
-                  stroke={isSelected ? 'rgba(249, 115, 22, 0.9)' : 'rgba(249, 115, 22, 0.5)'}
-                  strokeWidth={1}
-                  onClick={(event) => handleBurstClick(event, index)}
-                />
-              );
-            })}
             <line
               x1={cursorX}
               x2={cursorX}
@@ -723,6 +703,27 @@ export const DualTimeline: React.FC = () => {
               onPointerUp={handlePointerUpWithSelection}
               onPointerLeave={handlePointerCancel}
             />
+            {burstRects.map((rect, index) => {
+              const window = burstWindows[index];
+              const isSelected =
+                !!window &&
+                !!activeBurstRange &&
+                rangesMatch(activeBurstRange, [window.start, window.end]);
+              return (
+                <rect
+                  key={`burst-${rect.key}`}
+                  x={rect.start}
+                  y={0}
+                  width={Math.max(0, rect.end - rect.start)}
+                  height={DETAIL_HEIGHT}
+                  fill={isSelected ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.08)'}
+                  stroke={isSelected ? 'rgba(249, 115, 22, 0.9)' : 'rgba(249, 115, 22, 0.5)'}
+                  strokeWidth={1}
+                  pointerEvents="all"
+                  onClick={(event) => handleBurstClick(event, index)}
+                />
+              );
+            })}
             <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
               {detailTicks.map((tick, index) => {
                 const x = detailScale(tick);
