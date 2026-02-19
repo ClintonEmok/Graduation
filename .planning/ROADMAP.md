@@ -102,15 +102,22 @@ Plans:
 
 ### Phase 29: Remake burstlist as first-class slices
 
-**Goal:** [To be planned]
+**Goal:** Transform burst windows into first-class timeline slices with full UX parity.
 **Depends on:** Phase 28
-**Plans:** 0 plans
+**Plans:** 4 plans (29-01, 29-02, 29-03, 29-04)
 
 Plans:
-- [ ] TBD (run /gsd/plan-phase 29 to break down)
+- [ ] 29-01-PLAN.md — Burst-to-slice mapping foundation (range matching, creation/reuse)
+- [ ] 29-02-PLAN.md — Unified slice list with burst chip indicator
+- [ ] 29-03-PLAN.md — Burst interaction wiring (create/select slices on click)
+- [ ] 29-04-PLAN.md — Full lifecycle parity (edit, delete, recreate, sync)
 
 **Details:**
-[To be added during planning]
+- Burst windows become selectable, listed slices like manual ones
+- Unified slice list with subtle "Burst" chip for burst-derived slices
+- Clicking burst creates/selects slice, focuses timeline
+- Full editability: boundaries, rename, lock/visibility
+- Deletion and recreation work seamlessly
 
 ### Phase 30: Multi-Slice Management
 
@@ -179,7 +186,7 @@ Plans:
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
-| 29 | v1.1 | 0/0 | 🚧 Not Planned | - |
+| 29 | v1.1 | 0/4 | 🚧 Planned | - |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 31 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 32-36 | v1.2 | 0/TBD | 📋 Planned | - |
