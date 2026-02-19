@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 import { calculateRangeTolerance, rangesMatch } from '../lib/slice-utils';
 import { useEffect, useRef } from 'react';
 import { useAdaptiveStore } from './useAdaptiveStore';
+import { useDataStore } from './useDataStore';
+import { epochSecondsToNormalized, toEpochSeconds } from '../lib/time-domain';
 
 export interface TimeSlice {
   id: string;
@@ -39,6 +41,35 @@ const BURST_TOLERANCE_RATIO = 0.005;
 
 const normalizeRange = (start: number, end: number): [number, number] =>
   start <= end ? [start, end] : [end, start];
+
+const clampNormalized = (value: number): number => Math.min(100, Math.max(0, value));
+
+const toNormalizedStoreRange = (start: number, end: number): [number, number] => {
+  const [rawStart, rawEnd] = normalizeRange(start, end);
+
+  if (rawStart >= 0 && rawEnd <= 100) {
+    return [rawStart, rawEnd];
+  }
+
+  const { minTimestampSec, maxTimestampSec } = useDataStore.getState();
+  if (minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec) {
+    const startSec = toEpochSeconds(rawStart);
+    const endSec = toEpochSeconds(rawEnd);
+    const normalizedStart = epochSecondsToNormalized(startSec, minTimestampSec, maxTimestampSec);
+    const normalizedEnd = epochSecondsToNormalized(endSec, minTimestampSec, maxTimestampSec);
+    return normalizeRange(clampNormalized(normalizedStart), clampNormalized(normalizedEnd));
+  }
+
+  const mapDomain = useAdaptiveStore.getState().mapDomain;
+  if (mapDomain[1] > mapDomain[0]) {
+    const span = mapDomain[1] - mapDomain[0];
+    const normalizedStart = ((rawStart - mapDomain[0]) / span) * 100;
+    const normalizedEnd = ((rawEnd - mapDomain[0]) / span) * 100;
+    return normalizeRange(clampNormalized(normalizedStart), clampNormalized(normalizedEnd));
+  }
+
+  return [clampNormalized(rawStart), clampNormalized(rawEnd)];
+};
 
 const getSliceStart = (slice: TimeSlice): number => {
   if (slice.type === 'range' && slice.range) {
@@ -98,7 +129,7 @@ export const useSliceStore = create<SliceStore>()(
           };
         }),
       findMatchingSlice: (start, end, tolerance, options) => {
-        const [targetStart, targetEnd] = normalizeRange(start, end);
+        const [targetStart, targetEnd] = toNormalizedStoreRange(start, end);
         const resolvedTolerance =
           tolerance ?? calculateRangeTolerance([targetStart, targetEnd], BURST_TOLERANCE_RATIO);
         const burstOnly = options?.burstOnly ?? false;
@@ -116,7 +147,7 @@ export const useSliceStore = create<SliceStore>()(
         });
       },
       addBurstSlice: (burstWindow) => {
-        const [rangeStart, rangeEnd] = normalizeRange(burstWindow.start, burstWindow.end);
+        const [rangeStart, rangeEnd] = toNormalizedStoreRange(burstWindow.start, burstWindow.end);
         const existing = get().findMatchingSlice(rangeStart, rangeEnd, undefined, { burstOnly: true });
         if (existing) {
           set({ activeSliceId: existing.id });
@@ -184,6 +215,7 @@ export const useAutoBurstSlices = (
   burstWindows: { start: number; end: number }[]
 ) => {
   const addBurstSlice = useSliceStore((state) => state.addBurstSlice);
+  const updateSlice = useSliceStore((state) => state.updateSlice);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
   const slices = useSliceStore((state) => state.slices);
   
@@ -219,6 +251,29 @@ export const useAutoBurstSlices = (
       addBurstSlice({ start: window.start, end: window.end });
     });
   }, [burstWindows, isComputing, addBurstSlice]);
+
+  useEffect(() => {
+    const burstSlicesNeedingNormalization = slices.filter(
+      (slice) =>
+        slice.isBurst &&
+        slice.type === 'range' &&
+        !!slice.range &&
+        (slice.range[0] < 0 || slice.range[0] > 100 || slice.range[1] < 0 || slice.range[1] > 100)
+    );
+
+    if (burstSlicesNeedingNormalization.length === 0) {
+      return;
+    }
+
+    burstSlicesNeedingNormalization.forEach((slice) => {
+      if (!slice.range) return;
+      const [normalizedStart, normalizedEnd] = toNormalizedStoreRange(slice.range[0], slice.range[1]);
+      updateSlice(slice.id, {
+        range: [normalizedStart, normalizedEnd],
+        time: (normalizedStart + normalizedEnd) / 2,
+      });
+    });
+  }, [slices, updateSlice]);
   
   // Clear processed set when all burst slices are removed
   useEffect(() => {
