@@ -3,7 +3,7 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 29 ready
-**Status:** Phase 28 complete (28-01/02/03 shipped)
+**Status:** Phase 28 complete (28-01/02/03/04 shipped)
 **Next:** Execute 29-01 multi-slice management baseline
 
 ## Current Position
@@ -12,9 +12,9 @@ Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 29 of 40 (Multi-Slice Management)
 Plan: Not started in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-19 - Completed 28-03-PLAN.md
+Last activity: 2026-02-19 - Completed 28-04-PLAN.md
 
-Progress: overall ████████████████████ 97% (93/96 plans) | v1.1 ███░░ 60% phases
+Progress: overall ████████████████████ 97% (94/97 plans) | v1.1 ███░░ 60% phases
 
 ```
 v1.0 Complete:
@@ -23,7 +23,7 @@ v1.0 Complete:
 v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
 [x] Phase 27: Manual Slice Creation (6/6 plans complete)
-[x] Phase 28: Slice Boundary Adjustment (3/3 plans complete)
+[x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
 [ ] Phase 29: Multi-Slice Management
 [ ] Phase 30: Slice Metadata & UI
 
@@ -103,6 +103,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added inline boundary snap controls in `SliceToolbar` for default-on enable state, adaptive/fixed mode switching, and compact fixed presets.
 - Added Alt/Option per-move snap bypass and cancellation of active drags when scale/domain context changes.
 - Expanded deterministic snap tests for fixed-precedence, neighbor tie preference, dense-candidate stability, and normalized conversion round-trips.
+- Removed active handle movement interpolation during drag and switched visual lock to live pointer-update boundary positions.
+- Added transient `liveBoundarySec`/`liveBoundaryX` drag fields with regression coverage for update and reset lifecycle behavior.
 
 ## Blockers/Concerns
 
@@ -110,8 +112,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-19 01:24 UTC
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-02-19 11:54 UTC
+Stopped at: Completed 28-04-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -146,4 +148,4 @@ Resume file: None
 - Begin Phase 29 multi-slice management on top of stabilized boundary controls and deterministic snap behavior.
 
 ---
-*Last updated: 2026-02-19 - completed 28-03 summary + state refresh*
+*Last updated: 2026-02-19 - completed 28-04 summary + state refresh*
