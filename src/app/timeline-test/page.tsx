@@ -17,6 +17,7 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
+import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
 import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 
 const SAMPLE_POINT_COUNT = 160;
@@ -138,6 +139,9 @@ export default function TimelineTestPage() {
   const snapInterval = useSliceCreationStore((state) => state.snapInterval);
   const previewIsValid = useSliceCreationStore((state) => state.previewIsValid);
   const previewReason = useSliceCreationStore((state) => state.previewReason);
+  const boundarySnapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
+  const boundarySnapMode = useSliceAdjustmentStore((state) => state.snapMode);
+  const boundaryFixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
@@ -250,6 +254,17 @@ export default function TimelineTestPage() {
     if (dragActive) return 'Creating slice by drag in progress.';
     return 'Slice creation mode active. Click or drag to create a slice.';
   }, [dragActive, isCreatingSlice, previewIsValid, previewReason]);
+
+  const boundarySnapLabel = useMemo(() => {
+    if (!boundarySnapEnabled) return 'disabled';
+    if (boundarySnapMode === 'adaptive') return 'adaptive';
+    if (boundaryFixedSnapPresetSec === 60) return 'fixed 1m';
+    if (boundaryFixedSnapPresetSec === 300) return 'fixed 5m';
+    if (boundaryFixedSnapPresetSec === 900) return 'fixed 15m';
+    if (boundaryFixedSnapPresetSec === 3600) return 'fixed 1h';
+    if (boundaryFixedSnapPresetSec === 86400) return 'fixed 1d';
+    return boundaryFixedSnapPresetSec ? `fixed ${boundaryFixedSnapPresetSec}s` : 'fixed';
+  }, [boundaryFixedSnapPresetSec, boundarySnapEnabled, boundarySnapMode]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
@@ -387,6 +402,9 @@ export default function TimelineTestPage() {
               </span>
               <span>
                 Snap: <strong className="text-slate-100">{snapIntervalLabel}</strong>
+              </span>
+              <span>
+                Boundary snap: <strong className="text-slate-100">{boundarySnapLabel}</strong>
               </span>
               <span>
                 Constraint:{' '}

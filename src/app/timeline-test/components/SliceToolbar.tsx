@@ -2,7 +2,18 @@
 
 import { Magnet, Scissors, Trash2 } from 'lucide-react';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
+import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
 import { useSliceStore } from '@/store/useSliceStore';
+
+const SNAP_PRESETS = [
+  { label: '1m', valueSec: 60 },
+  { label: '5m', valueSec: 5 * 60 },
+  { label: '15m', valueSec: 15 * 60 },
+  { label: '1h', valueSec: 60 * 60 },
+  { label: '1d', valueSec: 24 * 60 * 60 },
+] as const;
+
+const DEFAULT_FIXED_PRESET_SEC = 5 * 60;
 
 export function SliceToolbar() {
   const isCreating = useSliceCreationStore((state) => state.isCreating);
@@ -10,6 +21,10 @@ export function SliceToolbar() {
   const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
   const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
   const setSnapEnabled = useSliceCreationStore((state) => state.setSnapEnabled);
+  const adjustmentSnapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
+  const adjustmentSnapMode = useSliceAdjustmentStore((state) => state.snapMode);
+  const fixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
+  const setAdjustmentSnap = useSliceAdjustmentStore((state) => state.setSnap);
   const slices = useSliceStore((state) => state.slices);
   const clearSlices = useSliceStore((state) => state.clearSlices);
 
@@ -20,6 +35,24 @@ export function SliceToolbar() {
     }
 
     startCreation('click');
+  };
+
+  const handleAdjustmentSnapToggle = () => {
+    setAdjustmentSnap({
+      snapEnabled: !adjustmentSnapEnabled,
+      fixedSnapPresetSec:
+        !adjustmentSnapEnabled && adjustmentSnapMode === 'fixed' && !fixedSnapPresetSec
+          ? DEFAULT_FIXED_PRESET_SEC
+          : fixedSnapPresetSec,
+    });
+  };
+
+  const handleModeChange = (mode: 'adaptive' | 'fixed') => {
+    setAdjustmentSnap({
+      snapMode: mode,
+      fixedSnapPresetSec:
+        mode === 'fixed' && !fixedSnapPresetSec ? DEFAULT_FIXED_PRESET_SEC : fixedSnapPresetSec,
+    });
   };
 
   return (
@@ -59,6 +92,63 @@ export function SliceToolbar() {
           </button>
         </div>
       ) : null}
+
+      <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-slate-700/80 bg-slate-950/70 px-2 py-1">
+        <button
+          type="button"
+          onClick={handleAdjustmentSnapToggle}
+          aria-pressed={adjustmentSnapEnabled}
+          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-all ${
+            adjustmentSnapEnabled
+              ? 'border-cyan-500/60 bg-cyan-500/15 text-cyan-100 hover:border-cyan-400'
+              : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-500'
+          }`}
+        >
+          <Magnet className="h-3.5 w-3.5" />
+          <span>Boundary snap</span>
+        </button>
+
+        <div className="inline-flex rounded-md border border-slate-700/80 bg-slate-900/70 p-0.5">
+          {(['adaptive', 'fixed'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => handleModeChange(mode)}
+              className={`rounded px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition ${
+                adjustmentSnapMode === mode
+                  ? 'bg-slate-200 text-slate-900'
+                  : 'text-slate-300 hover:bg-slate-700/80'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+
+        {adjustmentSnapMode === 'fixed' ? (
+          <div className="inline-flex items-center gap-1">
+            {SNAP_PRESETS.map((preset) => (
+              <button
+                key={preset.valueSec}
+                type="button"
+                onClick={() =>
+                  setAdjustmentSnap({
+                    snapMode: 'fixed',
+                    fixedSnapPresetSec: preset.valueSec,
+                  })
+                }
+                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium transition ${
+                  fixedSnapPresetSec === preset.valueSec
+                    ? 'border-cyan-500/70 bg-cyan-500/20 text-cyan-100'
+                    : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-500'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       {slices.length > 0 ? (
         <>
