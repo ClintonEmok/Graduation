@@ -14,6 +14,8 @@ interface SliceBoundaryHandlesLayerProps {
 
 interface HandleGeometry {
   sliceId: string;
+  sliceLabel: string;
+  isBurst: boolean;
   handle: AdjustmentHandle;
   x: number;
 }
@@ -64,9 +66,10 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
       const endSec = toBoundarySec(Math.max(slice.range[0], slice.range[1]), domainStartSec, domainEndSec);
       const startX = clamp(scale(new Date(startSec * 1000)), minRange, maxRange);
       const endX = clamp(scale(new Date(endSec * 1000)), minRange, maxRange);
+      const sliceLabel = slice.name || (slice.isBurst ? 'Burst slice' : 'Slice');
 
-      handles.push({ sliceId: slice.id, handle: 'start', x: startX });
-      handles.push({ sliceId: slice.id, handle: 'end', x: endX });
+      handles.push({ sliceId: slice.id, sliceLabel, isBurst: !!slice.isBurst, handle: 'start', x: startX });
+      handles.push({ sliceId: slice.id, sliceLabel, isBurst: !!slice.isBurst, handle: 'end', x: endX });
     }
 
     return handles;
@@ -108,6 +111,8 @@ export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBou
                 fill="transparent"
                 className="pointer-events-auto cursor-ew-resize"
                 style={{ touchAction: 'none' }}
+                aria-label={`${geometry.handle} boundary handle for ${geometry.sliceLabel}`}
+                data-slice-origin={geometry.isBurst ? 'burst' : 'manual'}
                 onPointerEnter={() => handlers.onHandlePointerEnter(geometry.sliceId, geometry.handle)}
                 onPointerLeave={handlers.onHandlePointerLeave}
                 onPointerDown={(event: ReactPointerEvent<SVGRectElement>) =>
