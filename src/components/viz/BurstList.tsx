@@ -5,7 +5,8 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useSliceStore } from '@/store/useSliceStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { focusTimelineRange } from '@/lib/slice-utils';
 
 export type BurstWindow = {
   id: string;
@@ -93,24 +94,16 @@ export function BurstList() {
     setActiveSlice(slice.id);
     setDetailsOpen(true);
 
-    if (minTimestampSec !== null && maxTimestampSec !== null) {
-      const startEpoch = normalizedToEpochSeconds(window.start, minTimestampSec, maxTimestampSec);
-      const endEpoch = normalizedToEpochSeconds(window.end, minTimestampSec, maxTimestampSec);
-      setTimeRange([startEpoch, endEpoch]);
-      const startNorm = epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec);
-      const endNorm = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
-      const range: [number, number] = startNorm <= endNorm ? [startNorm, endNorm] : [endNorm, startNorm];
-      setRange(range);
-      setBrushRange(range);
-      setTime((range[0] + range[1]) / 2);
-      return;
-    }
-
-    const range: [number, number] = window.start <= window.end ? [window.start, window.end] : [window.end, window.start];
-    setTimeRange(range);
-    setRange(range);
-    setBrushRange(range);
-    setTime((range[0] + range[1]) / 2);
+    focusTimelineRange({
+      start: window.start,
+      end: window.end,
+      minTimestampSec,
+      maxTimestampSec,
+      setTimeRange,
+      setRange,
+      setBrushRange,
+      setTime,
+    });
   };
 
   return (

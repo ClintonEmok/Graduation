@@ -1,3 +1,5 @@
+import { epochSecondsToNormalized, normalizedToEpochSeconds } from './time-domain';
+
 const DEFAULT_TOLERANCE_PERCENT = 0.005;
 
 const normalizeRange = (range: [number, number]): [number, number] =>
@@ -34,3 +36,48 @@ export function rangesMatch(
 }
 
 export const slicesOverlapWithinTolerance = rangesMatch;
+
+type TimelineFocusRangeOptions = {
+  start: number;
+  end: number;
+  minTimestampSec: number | null;
+  maxTimestampSec: number | null;
+  setTimeRange: (range: [number, number]) => void;
+  setRange: (range: [number, number]) => void;
+  setBrushRange: (range: [number, number]) => void;
+  setTime: (time: number) => void;
+};
+
+export function focusTimelineRange({
+  start,
+  end,
+  minTimestampSec,
+  maxTimestampSec,
+  setTimeRange,
+  setRange,
+  setBrushRange,
+  setTime,
+}: TimelineFocusRangeOptions): void {
+  const [rangeStart, rangeEnd] = normalizeRange([start, end]);
+
+  if (minTimestampSec !== null && maxTimestampSec !== null) {
+    const startEpoch = normalizedToEpochSeconds(rangeStart, minTimestampSec, maxTimestampSec);
+    const endEpoch = normalizedToEpochSeconds(rangeEnd, minTimestampSec, maxTimestampSec);
+    setTimeRange([startEpoch, endEpoch]);
+
+    const normalizedStart = epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec);
+    const normalizedEnd = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
+    const normalizedRange: [number, number] = normalizeRange([normalizedStart, normalizedEnd]);
+
+    setRange(normalizedRange);
+    setBrushRange(normalizedRange);
+    setTime((normalizedRange[0] + normalizedRange[1]) / 2);
+    return;
+  }
+
+  const fallbackRange: [number, number] = [rangeStart, rangeEnd];
+  setTimeRange(fallbackRange);
+  setRange(fallbackRange);
+  setBrushRange(fallbackRange);
+  setTime((fallbackRange[0] + fallbackRange[1]) / 2);
+}

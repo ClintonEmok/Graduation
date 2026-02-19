@@ -18,6 +18,7 @@ import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
+import { focusTimelineRange } from '@/lib/slice-utils';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -389,10 +390,28 @@ export const DualTimeline: React.FC = () => {
       }
 
       setActiveSlice(slice.id);
-      applyRangeToStores(window.start, window.end);
-      setTime((window.start + window.end) / 2);
+      focusTimelineRange({
+        start: window.start,
+        end: window.end,
+        minTimestampSec,
+        maxTimestampSec,
+        setTimeRange,
+        setRange,
+        setBrushRange,
+        setTime,
+      });
     },
-    [addBurstSlice, applyRangeToStores, burstWindows, setActiveSlice, setTime]
+    [
+      addBurstSlice,
+      burstWindows,
+      maxTimestampSec,
+      minTimestampSec,
+      setActiveSlice,
+      setBrushRange,
+      setRange,
+      setTime,
+      setTimeRange,
+    ]
   );
 
   const handleSelectFromEvent = useCallback(
