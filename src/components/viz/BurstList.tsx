@@ -7,6 +7,8 @@ import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { focusTimelineRange } from '@/lib/slice-utils';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 
 export type BurstWindow = {
   id: string;
@@ -69,6 +71,12 @@ export function BurstList() {
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
   const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
+  
+  // Burst adjustment controls
+  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
+  const setBurstThreshold = useAdaptiveStore((state) => state.setBurstThreshold);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
+  const setBurstMetric = useAdaptiveStore((state) => state.setBurstMetric);
 
   const burstWindows = useBurstWindows();
   const burstMatches = useMemo(() => {
@@ -137,6 +145,40 @@ export function BurstList() {
         <h3 className="text-sm font-semibold">Burst Windows</h3>
         <span className="text-[10px] text-muted-foreground">Top {burstWindows.length}</span>
       </div>
+      
+      {/* Burst Adjustment Controls */}
+      <div className="mt-3 space-y-3 pb-3 border-b">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Threshold</Label>
+            <span className="text-[10px] font-mono text-muted-foreground">{Math.round(burstThreshold * 100)}%</span>
+          </div>
+          <Slider
+            min={0}
+            max={1}
+            step={0.01}
+            value={[burstThreshold]}
+            onValueChange={(vals) => setBurstThreshold(vals[0])}
+            className="w-full"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Adjust to show more or fewer bursts
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <Label className="text-xs">Metric</Label>
+          <select
+            value={burstMetric}
+            onChange={(e) => setBurstMetric(e.target.value as 'density' | 'burstiness')}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          >
+            <option value="density">Density (event count)</option>
+            <option value="burstiness">Burstiness (clustering)</option>
+          </select>
+        </div>
+      </div>
+      
       <div className="mt-3 space-y-2">
         {burstWindows.map((window, index) => {
           const matchingSliceId = burstMatches.get(window.id) ?? null;
