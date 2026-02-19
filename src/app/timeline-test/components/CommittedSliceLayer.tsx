@@ -14,6 +14,7 @@ interface SliceGeometry {
   left: number;
   width: number;
   isActive: boolean;
+  isBurst: boolean;
   isPoint: boolean;
   isRange: boolean;
 }
@@ -66,6 +67,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
             left,
             width,
             isActive: activeSliceId === slice.id,
+            isBurst: !!slice.isBurst,
             isPoint: false,
             isRange: true,
           };
@@ -80,9 +82,10 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
 
         return {
           id: slice.id,
-          left: x - width / 2,
+          left: clampRange(x - width / 2),
           width,
           isActive: activeSliceId === slice.id,
+          isBurst: !!slice.isBurst,
           isPoint: true,
           isRange: false,
         };
@@ -143,6 +146,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
           role={geometry.isRange ? 'presentation' : undefined}
           data-slice-id={geometry.id}
           data-slice-kind={geometry.isRange ? 'range' : 'point'}
+          data-slice-origin={geometry.isBurst ? 'burst' : 'manual'}
           data-adjustment-dimmed={
             isAdjustmentDragActive && draggingSliceId !== geometry.id ? 'true' : 'false'
           }
