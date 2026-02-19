@@ -28,8 +28,10 @@ describe('slice store actions', () => {
 
     store.addSlice({ type: 'range', range: [20, 40] });
     expect(useSliceStore.getState().slices.length).toBe(2);
-    expect(useSliceStore.getState().slices[1].type).toBe('range');
-    expect(useSliceStore.getState().slices[1].range).toEqual([20, 40]);
+    const rangeSlice = useSliceStore
+      .getState()
+      .slices.find((slice) => slice.type === 'range');
+    expect(rangeSlice?.range).toEqual([20, 40]);
 
     store.removeSlice(id);
     expect(useSliceStore.getState().slices.length).toBe(1);
@@ -70,5 +72,27 @@ describe('burst slice', () => {
     expect(exact).toBeDefined();
     expect(nearWithTolerance?.id).toBe(exact?.id);
     expect(outsideTolerance).toBeUndefined();
+  });
+
+  test('keeps slices sorted by start time', () => {
+    const store = useSliceStore.getState();
+
+    store.addSlice({ type: 'range', range: [60, 80], name: 'Late' });
+    store.addSlice({ type: 'point', time: 20, name: 'Early Point' });
+    store.addBurstSlice({ start: 40, end: 55 });
+
+    const orderedNames = useSliceStore.getState().slices.map((slice) => slice.name);
+    expect(orderedNames).toEqual(['Early Point', 'Burst 1', 'Late']);
+  });
+
+  test('sorts manual slices before burst slices when start times are equal', () => {
+    const store = useSliceStore.getState();
+
+    store.addBurstSlice({ start: 30, end: 40 });
+    store.addSlice({ type: 'range', range: [30, 45], name: 'Manual at 30' });
+
+    const ordered = useSliceStore.getState().slices;
+    expect(ordered[0].name).toBe('Manual at 30');
+    expect(ordered[1].isBurst).toBe(true);
   });
 });

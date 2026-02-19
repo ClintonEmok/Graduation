@@ -30,6 +30,8 @@ export function SliceList() {
     setActiveSlice(isActive ? null : sliceId);
   };
 
+  const sliceOrdinalById = new Map(slices.map((slice, index) => [slice.id, index + 1]));
+
   if (slices.length === 0) {
     return <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">No slices created yet</p>;
   }
@@ -38,8 +40,9 @@ export function SliceList() {
     <div className="space-y-2 rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
       <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Created slices</h3>
       <ul className="space-y-2">
-        {slices.map((slice, index) => {
+        {slices.map((slice) => {
           const isActive = activeSliceId === slice.id;
+          const sliceOrdinal = sliceOrdinalById.get(slice.id) ?? 1;
           const rangeLabel = slice.range
             ? `${toTimestampLabel(slice.range[0], mapDomain)} -> ${toTimestampLabel(slice.range[1], mapDomain)}`
             : toTimestampLabel(slice.time, mapDomain);
@@ -70,7 +73,7 @@ export function SliceList() {
                 />
                 <span className="space-y-1">
                   <span className="flex items-center gap-2 font-semibold">
-                    {slice.name ?? `Slice ${index + 1}`}
+                    {slice.name ?? `Slice ${sliceOrdinal}`}
                     {isActive ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-300/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100">
                         <Check className="h-2.5 w-2.5" />
@@ -89,7 +92,7 @@ export function SliceList() {
                   className={`rounded p-1 transition hover:bg-red-500/10 hover:text-red-300 ${
                     isActive ? 'text-amber-200/80' : 'text-slate-400'
                   }`}
-                  aria-label={`Delete ${slice.name ?? `Slice ${index + 1}`}`}
+                  aria-label={`Delete ${slice.name ?? `Slice ${sliceOrdinal}`}`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

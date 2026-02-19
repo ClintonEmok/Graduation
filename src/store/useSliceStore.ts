@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { calculateRangeTolerance, rangesMatch } from '../lib/slice-utils';
 
 export interface TimeSlice {
   id: string;
@@ -32,8 +33,34 @@ const BURST_TOLERANCE_RATIO = 0.005;
 const normalizeRange = (start: number, end: number): [number, number] =>
   start <= end ? [start, end] : [end, start];
 
-const withinTolerance = (value: number, target: number, tolerance: number): boolean =>
-  Math.abs(value - target) <= Math.abs(tolerance);
+const getSliceStart = (slice: TimeSlice): number => {
+  if (slice.type === 'range' && slice.range) {
+    return Math.min(slice.range[0], slice.range[1]);
+  }
+
+  return slice.time;
+};
+
+const sortSlices = (slices: TimeSlice[]): TimeSlice[] =>
+  slices
+    .map((slice, index) => ({ slice, index }))
+    .sort((a, b) => {
+      const startDelta = getSliceStart(a.slice) - getSliceStart(b.slice);
+      if (startDelta !== 0) {
+        return startDelta;
+      }
+
+      if (!a.slice.isBurst && b.slice.isBurst) {
+        return -1;
+      }
+
+      if (a.slice.isBurst && !b.slice.isBurst) {
+        return 1;
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ slice }) => slice);
 
 const buildBurstSliceId = (start: number, end: number): string => {
   const [normalizedStart, normalizedEnd] = normalizeRange(start, end);
@@ -48,37 +75,32 @@ export const useSliceStore = create<SliceStore>()(
       addSlice: (initial) =>
         set((state) => {
           const id = crypto.randomUUID();
+          const nextSlice: TimeSlice = {
+            id,
+            type: initial.type || 'point',
+            time: initial.time ?? 50,
+            range: initial.range || [40, 60],
+            isLocked: false,
+            isVisible: true,
+            ...initial,
+          };
+
           return {
-            slices: [
-              ...state.slices,
-              {
-                id,
-                type: initial.type || 'point',
-                time: initial.time ?? 50,
-                range: initial.range || [40, 60],
-                isLocked: false,
-                isVisible: true,
-                ...initial,
-              },
-            ],
+            slices: sortSlices([...state.slices, nextSlice]),
             activeSliceId: id, // Automatically set as active on creation
           };
         }),
       findMatchingSlice: (start, end, tolerance) => {
         const [targetStart, targetEnd] = normalizeRange(start, end);
         const resolvedTolerance =
-          tolerance ?? Math.abs(targetEnd - targetStart) * BURST_TOLERANCE_RATIO;
+          tolerance ?? calculateRangeTolerance([targetStart, targetEnd], BURST_TOLERANCE_RATIO);
 
         return get().slices.find((slice) => {
           if (slice.type !== 'range' || !slice.range) {
             return false;
           }
 
-          const [sliceStart, sliceEnd] = normalizeRange(slice.range[0], slice.range[1]);
-          return (
-            withinTolerance(sliceStart, targetStart, resolvedTolerance) &&
-            withinTolerance(sliceEnd, targetEnd, resolvedTolerance)
-          );
+          return rangesMatch(slice.range, [targetStart, targetEnd], resolvedTolerance);
         });
       },
       addBurstSlice: (burstWindow) => {
@@ -104,7 +126,7 @@ export const useSliceStore = create<SliceStore>()(
         };
 
         set((state) => ({
-          slices: [...state.slices, burstSlice],
+          slices: sortSlices([...state.slices, burstSlice]),
           activeSliceId: id,
         }));
 
@@ -117,8 +139,10 @@ export const useSliceStore = create<SliceStore>()(
         })),
       updateSlice: (id, updates) =>
         set((state) => ({
-          slices: state.slices.map((s) =>
-            s.id === id ? { ...s, ...updates } : s
+          slices: sortSlices(
+            state.slices.map((s) =>
+              s.id === id ? { ...s, ...updates } : s
+            )
           ),
         })),
       toggleLock: (id) =>
