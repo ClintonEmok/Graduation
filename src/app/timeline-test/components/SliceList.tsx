@@ -1,8 +1,10 @@
 "use client";
 
-import { Check, X } from 'lucide-react';
+import { useMemo } from 'react';
+import { Check, Sparkles, X } from 'lucide-react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useSliceStore } from '@/store/useSliceStore';
+import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
+import { BURST_CHIP_CLASSNAME, BURST_CHIP_ICON_CLASSNAME } from './SliceToolbar';
 
 const toTimestampLabel = (normalizedTime: number, domain: [number, number]): string => {
   const [startSec, endSec] = domain;
@@ -30,7 +32,46 @@ export function SliceList() {
     setActiveSlice(isActive ? null : sliceId);
   };
 
-  const sliceOrdinalById = new Map(slices.map((slice, index) => [slice.id, index + 1]));
+  const sortedSlices = useMemo(() => {
+    const getSliceStart = (slice: TimeSlice): number => {
+      if (slice.type === 'range' && slice.range) {
+        return Math.min(slice.range[0], slice.range[1]);
+      }
+
+      return slice.time;
+    };
+
+    return slices
+      .map((slice, index) => ({ slice, index }))
+      .sort((a, b) => {
+        const startDelta = getSliceStart(a.slice) - getSliceStart(b.slice);
+        if (startDelta !== 0) {
+          return startDelta;
+        }
+
+        if (!a.slice.isBurst && b.slice.isBurst) {
+          return -1;
+        }
+
+        if (a.slice.isBurst && !b.slice.isBurst) {
+          return 1;
+        }
+
+        return a.index - b.index;
+      })
+      .map(({ slice }) => slice);
+  }, [slices]);
+
+  const getSliceDisplayName = (slice: TimeSlice): string => {
+    if (slice.name) {
+      return slice.name;
+    }
+
+    const peers = sortedSlices.filter((candidate) => candidate.isBurst === !!slice.isBurst);
+    const ordinal = peers.findIndex((candidate) => candidate.id === slice.id) + 1;
+
+    return slice.isBurst ? `Burst ${ordinal}` : `Slice ${ordinal}`;
+  };
 
   if (slices.length === 0) {
     return <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">No slices created yet</p>;
@@ -40,9 +81,11 @@ export function SliceList() {
     <div className="space-y-2 rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
       <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Created slices</h3>
       <ul className="space-y-2">
-        {slices.map((slice) => {
+        {sortedSlices.map((slice) => {
           const isActive = activeSliceId === slice.id;
-          const sliceOrdinal = sliceOrdinalById.get(slice.id) ?? 1;
+          const displayName = getSliceDisplayName(slice);
+          const showsBurstChip = !!slice.isBurst && displayName.startsWith('Burst');
+          const a11yLabel = showsBurstChip ? `${displayName} (burst-derived slice)` : `${displayName} (manual slice)`;
           const rangeLabel = slice.range
             ? `${toTimestampLabel(slice.range[0], mapDomain)} -> ${toTimestampLabel(slice.range[1], mapDomain)}`
             : toTimestampLabel(slice.time, mapDomain);
@@ -53,6 +96,7 @@ export function SliceList() {
                 role="button"
                 tabIndex={0}
                 aria-pressed={isActive}
+                aria-label={a11yLabel}
                 onClick={() => handleActivate(slice.id, isActive)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -71,9 +115,15 @@ export function SliceList() {
                     isActive ? 'bg-amber-300' : 'bg-transparent'
                   }`}
                 />
-                <span className="space-y-1">
-                  <span className="flex items-center gap-2 font-semibold">
-                    {slice.name ?? `Slice ${sliceOrdinal}`}
+                <span className="min-w-0 space-y-1">
+                  <span className="flex min-w-0 items-center gap-2 font-semibold">
+                    <span className="truncate">{displayName}</span>
+                    {showsBurstChip ? (
+                      <span className={BURST_CHIP_CLASSNAME}>
+                        <Sparkles className={BURST_CHIP_ICON_CLASSNAME} />
+                        Burst
+                      </span>
+                    ) : null}
                     {isActive ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-300/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100">
                         <Check className="h-2.5 w-2.5" />
@@ -92,7 +142,7 @@ export function SliceList() {
                   className={`rounded p-1 transition hover:bg-red-500/10 hover:text-red-300 ${
                     isActive ? 'text-amber-200/80' : 'text-slate-400'
                   }`}
-                  aria-label={`Delete ${slice.name ?? `Slice ${sliceOrdinal}`}`}
+                  aria-label={`Delete ${displayName}`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

@@ -15,6 +15,11 @@ const SNAP_PRESETS = [
 
 const DEFAULT_FIXED_PRESET_SEC = 5 * 60;
 
+export const BURST_CHIP_CLASSNAME =
+  'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-slate-600/60 bg-slate-800/65 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300';
+
+export const BURST_CHIP_ICON_CLASSNAME = 'h-2.5 w-2.5 text-slate-400';
+
 export function SliceToolbar() {
   const isCreating = useSliceCreationStore((state) => state.isCreating);
   const startCreation = useSliceCreationStore((state) => state.startCreation);
