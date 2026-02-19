@@ -66,6 +66,7 @@ completed: 2026-02-19
 - Exported `normalizeRange` from slice-utils for consistent range normalization across components
 - Verified burst slice reuse logic prevents duplicates during recomputation
 - All UI interactions now navigate to existing slices rather than creating new ones
+- Added user-adjustable burst threshold slider and metric selector to BurstList component
 
 ## Task Commits
 
@@ -80,13 +81,16 @@ Each task was committed atomically:
 5. **Fix slice date display in SliceList** - `7a52ee0` (fix)
 6. **Fix infinite burst slice creation loop** - `fcf6bca` (fix)
 
+**Post-plan features:**
+7. **Add user-adjustable burst controls** - `0d7084f` (feat)
+
 **Plan metadata:** `521a1c3` (docs: complete plan)
 
 ## Files Created/Modified
 
 - `src/store/useSliceStore.ts` - Added `useAutoBurstSlices` hook for automatic burst slice creation
 - `src/components/timeline/DualTimeline.tsx` - Mounted auto-creation effect; updated burst click to select existing slice
-- `src/components/viz/BurstList.tsx` - Updated burst list click to select existing slice instead of create; fixed date display for dual mapDomain formats
+- `src/components/viz/BurstList.tsx` - Updated burst list click to select existing slice instead of create; fixed date display for dual mapDomain formats; added user-adjustable burst threshold and metric controls
 - `src/lib/slice-utils.ts` - Exported `normalizeRange` for range normalization
 - `src/app/timeline-test/components/SliceList.tsx` - Fixed `toTimestampLabel` to handle both normalized and epoch timestamp formats
 
