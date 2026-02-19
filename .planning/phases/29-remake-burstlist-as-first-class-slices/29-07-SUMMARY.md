@@ -75,7 +75,10 @@ Each task was committed atomically:
 2. **Task 2: Convert burst interactions from create to select** - `5ca3fd3` (feat)
 3. **Task 3: Verify end-to-end automatic behavior** - (verification only, no commit)
 
-**Plan metadata:** pending
+**Post-plan fix:**
+4. **Fix burst date display** - `b568614` (fix)
+
+**Plan metadata:** `521a1c3` (docs: complete plan)
 
 ## Files Created/Modified
 
@@ -93,11 +96,27 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Fixed BurstList showing percentages instead of dates**
+
+- **Found during:** Post-implementation verification (user report)
+- **Issue:** BurstList displayed `t=xx.xx → yy.yy` (percentages) instead of actual dates because it didn't handle the dual nature of mapDomain (normalized 0-100 vs epoch timestamps)
+- **Fix:** Added domain type detection (`isNormalizedDomain = mapDomain[1] < 1000`) and conditional conversion:
+  - For normalized domain: use `normalizedToEpochSeconds()` with min/max timestamps
+  - For epoch domain: divide by 1000 to convert ms to seconds
+- **Files modified:** `src/components/viz/BurstList.tsx`
+- **Verification:** Build passes, code review confirms correct handling of both data formats
+- **Committed in:** `b568614` (post-plan fix)
+
+---
+
+**Total deviations:** 1 auto-fixed (1 bug)
+**Impact on plan:** Fix necessary for correct date display. No scope creep.
 
 ## Issues Encountered
 
-None.
+1. **Burst date display issue (post-implementation):** BurstList showed percentages instead of dates due to inconsistent mapDomain formats across different data loading paths (columnar vs mock data). Fixed by detecting domain type and converting appropriately.
 
 ## User Setup Required
 
