@@ -104,7 +104,7 @@ Plans:
 
 **Goal:** Transform burst windows into first-class timeline slices with full UX parity.
 **Depends on:** Phase 28
-**Plans:** 5 plans (29-01, 29-02, 29-03, 29-04, 29-05)
+**Plans:** 7 plans (29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07)
 
 Plans:
 - [x] 29-01-PLAN.md — Burst-to-slice mapping foundation (range matching, creation/reuse)
@@ -112,11 +112,13 @@ Plans:
 - [x] 29-03-PLAN.md — Burst interaction wiring (create/select slices on click)
 - [x] 29-04-PLAN.md — Full lifecycle parity (edit, delete, recreate, sync)
 - [x] 29-05-PLAN.md — Gap closure: Slice rename UI/UX
+- [x] 29-06-PLAN.md — Gap closure: Timeline burst click SVG layering fix
+- [x] 29-07-PLAN.md — Gap closure: Automatic burst-to-slice conversion (no interaction required)
 
 **Details:**
-- Burst windows become selectable, listed slices like manual ones
+- Burst windows automatically appear as slices without user interaction
 - Unified slice list with subtle "Burst" chip for burst-derived slices
-- Clicking burst creates/selects slice, focuses timeline
+- Clicking burst selects existing slice (creates automatically when computed)
 - Full editability: boundaries, rename, lock/visibility
 - Deletion and recreation work seamlessly
 
@@ -187,7 +189,7 @@ Plans:
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
-| 29 | v1.1 | 5/5 | ✅ Complete | 2026-02-19 |
+| 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 31 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 32-36 | v1.2 | 0/TBD | 📋 Planned | - |
