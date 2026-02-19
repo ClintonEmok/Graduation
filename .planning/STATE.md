@@ -4,17 +4,17 @@
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 29 ready
 **Status:** Phase 28 complete (28-01/02/03/04 shipped)
-**Next:** Execute 29-01 multi-slice management baseline
+**Next:** Plan 29-01 burstlist-as-slices baseline
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
-Phase: 29 of 40 (Multi-Slice Management)
+Phase: 29 of 41 (Remake burstlist as first-class slices)
 Plan: Not started in current phase
 Status: 🚧 **In progress**
 Last activity: 2026-02-19 - Completed 28-04-PLAN.md
 
-Progress: overall ████████████████████ 97% (94/97 plans) | v1.1 ███░░ 60% phases
+Progress: overall ████████████████████ 97% (94/98 plans) | v1.1 ███░░ 60% phases
 
 ```
 v1.0 Complete:
@@ -24,28 +24,29 @@ v1.1 Planned:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
 [x] Phase 27: Manual Slice Creation (6/6 plans complete)
 [x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
-[ ] Phase 29: Multi-Slice Management
-[ ] Phase 30: Slice Metadata & UI
+[ ] Phase 29: Remake burstlist as first-class slices
+[ ] Phase 30: Multi-Slice Management
+[ ] Phase 31: Slice Metadata & UI
 
 v1.2 Planned:
-[ ] Phase 31-35: Semi-Automated Timeslicing
+[ ] Phase 32-36: Semi-Automated Timeslicing
 
 v1.3 Planned:
-[ ] Phase 36-40: Fully Automated Timeslicing
+[ ] Phase 37-41: Fully Automated Timeslicing
 ```
 
 ## Performance Metrics
 | Metric | v1.0 | v1.1 Target |
 |--------|------|-------------|
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
-| Phase Completion | 25/25 | 3/5 |
+| Phase Completion | 25/25 | 3/6 |
 | Milestone Status | ✅ Shipped | 🚧 Execution In Progress |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Transitioning from completed Phase 28 boundary adjustment into Phase 29 multi-slice workflows
+**Current focus:** Transitioning from completed Phase 28 boundary adjustment into new Phase 29 burstlist-as-slices workflows
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -124,6 +125,9 @@ Resume file: None
 - v1.2: Semi-automated (future)
 - v1.3: Fully automated (future)
 
+### Roadmap Evolution
+- Phase 29 inserted: remake burstlist as first-class slices (downstream phases shifted)
+
 ### Phase 26 Completion
 **Prerequisites from v1.0:**
 - ✅ Visx/D3 timeline component
@@ -145,7 +149,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Begin Phase 29 multi-slice management on top of stabilized boundary controls and deterministic snap behavior.
+- Plan Phase 29 burstlist-as-slices behavior before continuing multi-slice management.
 
 ---
-*Last updated: 2026-02-19 - completed 28-04 summary + state refresh*
+*Last updated: 2026-02-19 - inserted Phase 29 burstlist-as-slices and shifted downstream numbering*

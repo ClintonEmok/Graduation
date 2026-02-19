@@ -100,10 +100,22 @@ Plans:
 - [x] 28-03-PLAN.md — Snap controls, bypass behavior, and edge-case hardening
 - [x] 28-04-PLAN.md — Gap closure: eliminate fast-drag handle trailing and re-verify precision UX
 
-### Phase 29: Multi-Slice Management
+### Phase 29: Remake burstlist as first-class slices
+
+**Goal:** [To be planned]
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd/plan-phase 29 to break down)
+
+**Details:**
+[To be added during planning]
+
+### Phase 30: Multi-Slice Management
 
 **Goal:** Support multiple simultaneous slices with management tools.
-**Depends on:** Phase 28
+**Depends on:** Phase 29
 **Plans:** TBD
 
 **Requirements:** MULTI-01 through MULTI-06
@@ -114,10 +126,10 @@ Plans:
 - Selection mechanism
 - Individual and bulk delete
 
-### Phase 30: Slice Metadata & UI
+### Phase 31: Slice Metadata & UI
 
 **Goal:** Enable naming, coloring, and annotating slices.
-**Depends on:** Phase 29
+**Depends on:** Phase 30
 **Plans:** TBD
 
 **Requirements:** META-01 through META-05, INTEG-01 through INTEG-04
@@ -143,7 +155,7 @@ Plans:
 - "Accept/Modify/Reject" workflow
 - Confidence scores for suggestions
 
-**Phases:** 31-35 (planned)
+**Phases:** 32-36 (planned)
 
 ### v1.3 Fully Automated Timeslicing
 
@@ -155,7 +167,7 @@ Plans:
 - User reviews and fine-tunes
 - Multiple algorithm options (density-based, event-based, etc.)
 
-**Phases:** 36-40 (planned)
+**Phases:** 37-41 (planned)
 
 ---
 
@@ -167,10 +179,11 @@ Plans:
 | 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
-| 29 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 29 | v1.1 | 0/0 | 🚧 Not Planned | - |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
-| 31-35 | v1.2 | 0/TBD | 📋 Planned | - |
-| 36-40 | v1.3 | 0/TBD | 📋 Planned | - |
+| 31 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 32-36 | v1.2 | 0/TBD | 📋 Planned | - |
+| 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
 
 ---
 
