@@ -61,6 +61,17 @@ describe('burst slice', () => {
     expect(useSliceStore.getState().activeSliceId).toBe(first?.id);
   });
 
+  test('creates a burst slice when only a manual match exists', () => {
+    const store = useSliceStore.getState();
+    store.addSlice({ type: 'range', range: [20, 40], name: 'Manual Window' });
+
+    const burst = store.addBurstSlice({ start: 20, end: 40 });
+
+    expect(burst).not.toBeNull();
+    expect(burst?.isBurst).toBe(true);
+    expect(useSliceStore.getState().slices).toHaveLength(2);
+  });
+
   test('finds matching slices using explicit tolerance', () => {
     const store = useSliceStore.getState();
     store.addSlice({ type: 'range', range: [30, 50] });

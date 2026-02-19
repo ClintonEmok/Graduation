@@ -114,7 +114,7 @@ export function BurstList() {
       </div>
       <div className="mt-3 space-y-2">
         {burstWindows.map((window, index) => {
-          const matchingSlice = findMatchingSlice(window.start, window.end);
+          const matchingSlice = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
           const isSelected = matchingSlice?.id === activeSliceId;
           return (
           <button

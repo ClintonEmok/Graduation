@@ -19,7 +19,12 @@ interface SliceStore {
   activeSliceId: string | null;
   addSlice: (initial: Partial<TimeSlice>) => void;
   addBurstSlice: (burstWindow: { start: number; end: number }) => TimeSlice | null;
-  findMatchingSlice: (start: number, end: number, tolerance?: number) => TimeSlice | undefined;
+  findMatchingSlice: (
+    start: number,
+    end: number,
+    tolerance?: number,
+    options?: { burstOnly?: boolean }
+  ) => TimeSlice | undefined;
   removeSlice: (id: string) => void;
   updateSlice: (id: string, updates: Partial<TimeSlice>) => void;
   toggleLock: (id: string) => void;
@@ -90,13 +95,18 @@ export const useSliceStore = create<SliceStore>()(
             activeSliceId: id, // Automatically set as active on creation
           };
         }),
-      findMatchingSlice: (start, end, tolerance) => {
+      findMatchingSlice: (start, end, tolerance, options) => {
         const [targetStart, targetEnd] = normalizeRange(start, end);
         const resolvedTolerance =
           tolerance ?? calculateRangeTolerance([targetStart, targetEnd], BURST_TOLERANCE_RATIO);
+        const burstOnly = options?.burstOnly ?? false;
 
         return get().slices.find((slice) => {
           if (slice.type !== 'range' || !slice.range) {
+            return false;
+          }
+
+          if (burstOnly && !slice.isBurst) {
             return false;
           }
 
@@ -105,7 +115,7 @@ export const useSliceStore = create<SliceStore>()(
       },
       addBurstSlice: (burstWindow) => {
         const [rangeStart, rangeEnd] = normalizeRange(burstWindow.start, burstWindow.end);
-        const existing = get().findMatchingSlice(rangeStart, rangeEnd);
+        const existing = get().findMatchingSlice(rangeStart, rangeEnd, undefined, { burstOnly: true });
         if (existing) {
           set({ activeSliceId: existing.id });
           return existing;
