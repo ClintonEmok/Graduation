@@ -14,7 +14,7 @@ Plan: Not started (next: 31-01)
 Status: ✅ **Phase 30 complete / Ready for next phase**
 Last activity: 2026-02-20 - Completed 30-03-PLAN.md
 
-Progress: overall ███████████████████░ 97% (104/107 plans) | v1.1 ██████ 100% phases (26-30)
+Progress: overall ███████████████████░ 97% (104/107 plans) | v1.1 █████░ 71% phases (5/7)
 
 ```
 v1.0 Complete:
@@ -26,10 +26,11 @@ v1.1 Planned:
 [x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
 [x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
-[ ] Phase 31: Slice Metadata & UI
+[ ] Phase 31: Multi-Slice Management
+[ ] Phase 32: Slice Metadata & UI
 
 v1.2 Planned:
-[ ] Phase 32-36: Semi-Automated Timeslicing
+[ ] Phase 33-36: Semi-Automated Timeslicing
 
 v1.3 Planned:
 [ ] Phase 37-41: Fully Automated Timeslicing
@@ -39,7 +40,7 @@ v1.3 Planned:
 | Metric | v1.0 | v1.1 Target |
 |--------|------|-------------|
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
-| Phase Completion | 25/25 | 5/6 |
+| Phase Completion | 25/25 | 5/7 |
 | Milestone Status | ✅ Shipped | 🚧 Execution In Progress |
 
 ## Project Reference
