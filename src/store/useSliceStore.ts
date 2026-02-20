@@ -30,6 +30,7 @@ interface SliceStore {
     options?: { burstOnly?: boolean }
   ) => TimeSlice | undefined;
   removeSlice: (id: string) => void;
+  mergeSlices: (ids: string[]) => string | null;
   updateSlice: (id: string, updates: Partial<TimeSlice>) => void;
   toggleLock: (id: string) => void;
   toggleVisibility: (id: string) => void;
@@ -43,6 +44,7 @@ const normalizeRange = (start: number, end: number): [number, number] =>
   start <= end ? [start, end] : [end, start];
 
 const clampNormalized = (value: number): number => Math.min(100, Math.max(0, value));
+const MERGE_TOUCH_TOLERANCE = 0.5;
 
 const toNormalizedStoreRange = (start: number, end: number): [number, number] => {
   const [rawStart, rawEnd] = normalizeRange(start, end);
@@ -180,6 +182,63 @@ export const useSliceStore = create<SliceStore>()(
           slices: state.slices.filter((s) => s.id !== id),
           activeSliceId: state.activeSliceId === id ? null : state.activeSliceId,
         })),
+      mergeSlices: (ids) => {
+        if (ids.length < 2) {
+          return null;
+        }
+
+        const uniqueIds = new Set(ids);
+        const candidateSlices = get().slices
+          .filter((slice) => uniqueIds.has(slice.id))
+          .map((slice) => {
+            if (slice.type === 'range' && slice.range) {
+              const [start, end] = toNormalizedStoreRange(slice.range[0], slice.range[1]);
+              return { slice, start, end };
+            }
+
+            const point = clampNormalized(slice.time);
+            return { slice, start: point, end: point };
+          });
+
+        if (candidateSlices.length < 2) {
+          return null;
+        }
+
+        const sortedCandidates = [...candidateSlices].sort((a, b) => a.start - b.start);
+        for (let index = 1; index < sortedCandidates.length; index += 1) {
+          const previous = sortedCandidates[index - 1];
+          const current = sortedCandidates[index];
+          if (current.start - previous.end > MERGE_TOUCH_TOLERANCE) {
+            return null;
+          }
+        }
+
+        const mergedStart = Math.min(...sortedCandidates.map((candidate) => candidate.start));
+        const mergedEnd = Math.max(...sortedCandidates.map((candidate) => candidate.end));
+        const mergedRange = toNormalizedStoreRange(mergedStart, mergedEnd);
+        const mergedCount = get().slices.filter((slice) => slice.name?.startsWith('Merged Slice ')).length;
+        const mergedId = crypto.randomUUID();
+
+        const mergedSlice: TimeSlice = {
+          id: mergedId,
+          name: `Merged Slice ${mergedCount + 1}`,
+          type: 'range',
+          time: (mergedRange[0] + mergedRange[1]) / 2,
+          range: mergedRange,
+          isLocked: false,
+          isVisible: true,
+        };
+
+        set((state) => ({
+          slices: sortSlices([
+            ...state.slices.filter((slice) => !uniqueIds.has(slice.id)),
+            mergedSlice,
+          ]),
+          activeSliceId: mergedId,
+        }));
+
+        return mergedId;
+      },
       updateSlice: (id, updates) =>
         set((state) => ({
           slices: sortSlices(

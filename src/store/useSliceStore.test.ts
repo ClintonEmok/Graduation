@@ -106,4 +106,34 @@ describe('burst slice', () => {
     expect(ordered[0].name).toBe('Manual at 30');
     expect(ordered[1].isBurst).toBe(true);
   });
+
+  test('merges touching or overlapping slices into one merged range', () => {
+    const store = useSliceStore.getState();
+
+    store.addSlice({ type: 'range', range: [10, 20], name: 'Window A' });
+    store.addSlice({ type: 'range', range: [20.3, 28], name: 'Window B' });
+
+    const selectedIds = useSliceStore.getState().slices.map((slice) => slice.id);
+    const mergedId = useSliceStore.getState().mergeSlices(selectedIds);
+
+    expect(mergedId).not.toBeNull();
+    const merged = useSliceStore.getState().slices.find((slice) => slice.id === mergedId);
+    expect(merged).toBeDefined();
+    expect(merged?.type).toBe('range');
+    expect(merged?.range).toEqual([10, 28]);
+    expect(useSliceStore.getState().slices).toHaveLength(1);
+  });
+
+  test('returns null for non-overlapping slice selections', () => {
+    const store = useSliceStore.getState();
+
+    store.addSlice({ type: 'range', range: [5, 10], name: 'Early' });
+    store.addSlice({ type: 'range', range: [30, 40], name: 'Late' });
+
+    const selectedIds = useSliceStore.getState().slices.map((slice) => slice.id);
+    const mergedId = useSliceStore.getState().mergeSlices(selectedIds);
+
+    expect(mergedId).toBeNull();
+    expect(useSliceStore.getState().slices).toHaveLength(2);
+  });
 });
