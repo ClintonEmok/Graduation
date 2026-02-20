@@ -683,6 +683,12 @@ export const DualTimeline: React.FC = () => {
         </div>
 
         <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
+          <defs>
+            <linearGradient id="adaptiveAxisGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.03" />
+              <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.09" />
+            </linearGradient>
+          </defs>
           <g transform={`translate(${OVERVIEW_MARGIN.left},${OVERVIEW_MARGIN.top})`}>
             {overviewBins.map((bucket, index) => {
               if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
@@ -703,6 +709,15 @@ export const DualTimeline: React.FC = () => {
             })}
             <g ref={brushRef} className="text-primary/60" />
             <g transform={`translate(0, ${OVERVIEW_HEIGHT})`} className="text-muted-foreground">
+              {timeScaleMode === 'adaptive' ? (
+                <rect
+                  x={0}
+                  y={0}
+                  width={overviewInnerWidth}
+                  height={AXIS_HEIGHT}
+                  fill="url(#adaptiveAxisGradient)"
+                />
+              ) : null}
               {overviewTicks.map((tick, index) => {
                 const x = overviewScale(tick);
                 return (
@@ -792,6 +807,15 @@ export const DualTimeline: React.FC = () => {
               onPointerLeave={handlePointerCancel}
             />
             <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
+              {timeScaleMode === 'adaptive' ? (
+                <rect
+                  x={0}
+                  y={0}
+                  width={detailInnerWidth}
+                  height={AXIS_HEIGHT}
+                  fill="url(#adaptiveAxisGradient)"
+                />
+              ) : null}
               {detailTicks.map((tick, index) => {
                 const x = detailScale(tick);
                 return (
