@@ -1,9 +1,12 @@
 "use client";
 
 import { Magnet, Scissors, Trash2 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
 import { useSliceStore } from '@/store/useSliceStore';
+import { useTimeStore } from '@/store/useTimeStore';
 
 const SNAP_PRESETS = [
   { label: '1m', valueSec: 60 },
@@ -32,6 +35,10 @@ export function SliceToolbar() {
   const setAdjustmentSnap = useSliceAdjustmentStore((state) => state.setSnap);
   const slices = useSliceStore((state) => state.slices);
   const clearSlices = useSliceStore((state) => state.clearSlices);
+  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+  const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
 
   const handleToggle = () => {
     if (isCreating) {
@@ -58,6 +65,13 @@ export function SliceToolbar() {
       fixedSnapPresetSec:
         mode === 'fixed' && !fixedSnapPresetSec ? DEFAULT_FIXED_PRESET_SEC : fixedSnapPresetSec,
     });
+  };
+
+  const handleTimeScaleModeChange = (mode: 'linear' | 'adaptive') => {
+    setTimeScaleMode(mode);
+    if (mode === 'adaptive' && warpFactor === 0) {
+      setWarpFactor(1);
+    }
   };
 
   return (
@@ -153,6 +167,59 @@ export function SliceToolbar() {
             ))}
           </div>
         ) : null}
+      </div>
+
+      <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-slate-700/80 bg-slate-950/70 px-2 py-1">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Time scale</span>
+
+        <div className="inline-flex rounded-md border border-slate-700/80 bg-slate-900/70 p-0.5">
+          {([
+            { key: 'linear', label: 'Linear' },
+            { key: 'adaptive', label: 'Adaptive' },
+          ] as const).map((mode) => (
+            <button
+              key={mode.key}
+              type="button"
+              onClick={() => handleTimeScaleModeChange(mode.key)}
+              aria-pressed={timeScaleMode === mode.key}
+              className={`rounded px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition ${
+                timeScaleMode === mode.key
+                  ? 'bg-amber-500/20 text-amber-200'
+                  : 'text-slate-300 hover:bg-slate-700/80'
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            timeScaleMode === 'adaptive'
+              ? 'border-amber-500/60 bg-amber-500/20 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+              : 'border-slate-600 bg-slate-800 text-slate-300'
+          }`}
+        >
+          {timeScaleMode === 'adaptive' ? 'Adaptive' : 'Linear'}
+        </span>
+
+        <div className="inline-flex items-center gap-2 pl-1">
+          <span className="text-[11px] text-slate-400">Warp</span>
+          <div className="w-28">
+            <Slider
+              min={0}
+              max={2}
+              step={0.1}
+              value={[warpFactor]}
+              onValueChange={(vals) => setWarpFactor(vals[0] ?? warpFactor)}
+              disabled={timeScaleMode === 'linear'}
+              className="w-full"
+            />
+          </div>
+          <span className="w-12 text-right font-mono text-[11px] text-slate-300">
+            {Math.round(warpFactor * 100)}%
+          </span>
+        </div>
       </div>
 
       {slices.length > 0 ? (
