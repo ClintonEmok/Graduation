@@ -2,19 +2,19 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 30 complete
-**Status:** Phase 30 complete (30-01 through 30-03 shipped)
-**Next:** Phase 31 multi-slice management kickoff
+**Current Phase:** v1.1 Manual Timeslicing - Phase 31 in progress
+**Status:** Phase 31 in progress (31-01 complete)
+**Next:** Continue Phase 31 with 31-02
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 31 of 41 (Multi-Slice Management)
-Plan: Not started (next: 31-01)
-Status: ✅ **Phase 30 complete / Ready for next phase**
-Last activity: 2026-02-20 - Completed 30-03-PLAN.md
+Plan: 1 of 3 in current phase
+Status: 🚧 **In progress**
+Last activity: 2026-02-20 - Completed 31-01-PLAN.md
 
-Progress: overall ███████████████████░ 97% (104/107 plans) | v1.1 █████░ 71% phases (5/7)
+Progress: overall ███████████████████░ 98% (105/107 plans) | v1.1 █████░ 71% phases (5/7)
 
 ```
 v1.0 Complete:
@@ -26,7 +26,7 @@ v1.1 Planned:
 [x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
 [x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
-[ ] Phase 31: Multi-Slice Management
+[ ] Phase 31: Multi-Slice Management (1/3 plans complete)
 [ ] Phase 32: Slice Metadata & UI
 
 v1.2 Planned:
@@ -47,7 +47,7 @@ v1.3 Planned:
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Transitioning from completed Phase 30 adaptive timeline parity into Phase 31 multi-slice management workflows
+**Current focus:** Executing Phase 31 multi-slice management workflows after adaptive timeline parity delivery
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -136,14 +136,18 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added adaptive-only axis tint gradient to overview/detail axis bands as a subtle visual mode cue.
 - Mirrored adaptive scale wrapping in timeline-test overlay scale so slice creation/display/boundary drag remain aligned in both modes.
 
+**Phase 31 Decision Log (Execution):**
+- Added optional injected `scale` support to `DensityHeatStrip` so density rendering can follow the same warped coordinate system as timeline axes.
+- Wired `DualTimeline` overview and detail heat strips to use adaptive-aware scales (`overviewScale`, `detailScale`) for consistent tick alignment.
+
 ## Blockers/Concerns
 
 **None currently**
 
 ## Session Continuity
 
-Last session: 2026-02-20 15:39 UTC
-Stopped at: Completed 30-03-PLAN.md
+Last session: 2026-02-20 16:08 UTC
+Stopped at: Completed 31-01-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -178,7 +182,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Start 31-01 multi-slice management execution.
+- Continue with 31-02 multi-slice management execution.
 
 ---
-*Last updated: 2026-02-20 - completed 30-03 adaptive slice parity and axis polish*
+*Last updated: 2026-02-20 - completed 31-01 adaptive density strip alignment*
