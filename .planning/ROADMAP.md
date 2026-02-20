@@ -126,7 +126,7 @@ Plans:
 
 **Goal:** Add adaptive (non-uniform) time scaling to timeline-test for visual comparison with uniform time.
 **Depends on:** Phase 29
-**Plans:** TBD
+**Plans:** 3 plans (30-01, 30-02, 30-03)
 
 **Details:**
 - Add time scale mode toggle (linear/adaptive) to timeline-test
@@ -134,6 +134,11 @@ Plans:
 - Integrate warp factor control
 - Show density-based time warping on timeline axis
 - Enable A/B comparison between uniform and adaptive views
+
+Plans:
+- [ ] 30-01-PLAN.md — Add toggle and warp factor slider to SliceToolbar
+- [ ] 30-02-PLAN.md — Make DualTimeline respond to timeScaleMode with adaptive scaling
+- [ ] 30-03-PLAN.md — Polish: visual indicators, verify slice functionality in both modes
 
 ### Phase 31: Multi-Slice Management
 
@@ -203,7 +208,7 @@ Plans:
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
 | 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
-| 30 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 30 | v1.1 | 3/3 | 🚧 In Progress | - |
 | 31 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 32 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
