@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { scaleUtc } from 'd3-scale';
+import { scaleUtc, type ScaleTime } from 'd3-scale';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { DensityAreaChart, type DensityPoint } from '@/components/timeline/DensityAreaChart';
@@ -18,6 +18,7 @@ import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
+import { useTimeStore } from '@/store/useTimeStore';
 import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 
 const SAMPLE_POINT_COUNT = 160;
@@ -26,6 +27,8 @@ const DETAIL_HEIGHT = 60;
 const DETAIL_MARGIN = { left: 12, right: 12 };
 const FALLBACK_CHART_START_MS = MOCK_START_MS;
 const FALLBACK_CHART_END_MS = MOCK_END_MS;
+type StrictTimelineScale = ScaleTime<number, number>;
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const buildMockDensity = (pointCount: number, variant: number): Float32Array => {
   const values = new Float32Array(pointCount);
@@ -125,6 +128,9 @@ export default function TimelineTestPage() {
   const computeMaps = useAdaptiveStore((state) => state.computeMaps);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const warpMap = useAdaptiveStore((state) => state.warpMap);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
@@ -212,13 +218,118 @@ export default function TimelineTestPage() {
     return [domainStart, domainEnd];
   }, [domainEnd, domainStart, selectedTimeRange]);
 
-  const detailXScale = useMemo(
-    () =>
-      scaleUtc()
-        .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
-        .range([0, detailInnerWidth]),
-    [detailInnerWidth, detailRangeSec]
+  const sampleWarpSeconds = useCallback(
+    (linearSec: number, warpMapVal: Float32Array, warpDomain: [number, number]) => {
+      if (warpMapVal.length === 0) return linearSec;
+      const [warpStartSec, warpEndSec] = warpDomain;
+      const warpSpan = Math.max(1e-9, warpEndSec - warpStartSec);
+      const normalized = clamp((linearSec - warpStartSec) / warpSpan, 0, 1);
+      const rawIndex = normalized * (warpMapVal.length - 1);
+      const low = Math.floor(rawIndex);
+      const high = Math.min(low + 1, warpMapVal.length - 1);
+      const frac = rawIndex - low;
+      const lowVal = warpMapVal[Math.max(0, low)] ?? linearSec;
+      const highVal = warpMapVal[Math.max(0, high)] ?? lowVal;
+      return lowVal * (1 - frac) + highVal * frac;
+    },
+    []
   );
+
+  const toDisplaySeconds = useCallback(
+    (
+      linearSec: number,
+      warpFactorVal: number,
+      warpMapVal: Float32Array,
+      warpDomain: [number, number]
+    ) => {
+      const warpedSec = sampleWarpSeconds(linearSec, warpMapVal, warpDomain);
+      return linearSec * (1 - warpFactorVal) + warpedSec * warpFactorVal;
+    },
+    [sampleWarpSeconds]
+  );
+
+  const toLinearSeconds = useCallback(
+    (
+      displaySec: number,
+      linearDomain: [number, number],
+      warpFactorVal: number,
+      warpMapVal: Float32Array,
+      warpDomain: [number, number]
+    ) => {
+      const [domainMin, domainMax] = linearDomain;
+      let low = domainMin;
+      let high = domainMax;
+
+      for (let i = 0; i < 24; i += 1) {
+        const mid = (low + high) / 2;
+        const mapped = toDisplaySeconds(mid, warpFactorVal, warpMapVal, warpDomain);
+        if (mapped < displaySec) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+
+      return (low + high) / 2;
+    },
+    [toDisplaySeconds]
+  );
+
+  const detailXScale = useMemo(() => {
+    const linearScale = scaleUtc()
+      .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
+      .range([0, detailInnerWidth]);
+
+    if (
+      timeScaleMode !== 'adaptive' ||
+      warpFactor <= 0 ||
+      !warpMap ||
+      warpMap.length < 2 ||
+      detailInnerWidth <= 0
+    ) {
+      return linearScale;
+    }
+
+    const [domainStartDate, domainEndDate] = linearScale.domain();
+    const linearStartSec = domainStartDate.getTime() / 1000;
+    const linearEndSec = domainEndDate.getTime() / 1000;
+    const safeDomain: [number, number] =
+      linearStartSec <= linearEndSec
+        ? [linearStartSec, linearEndSec]
+        : [linearEndSec, linearStartSec];
+
+    const displayStartSec = toDisplaySeconds(safeDomain[0], warpFactor, warpMap, mapDomain);
+    const displayEndSec = toDisplaySeconds(safeDomain[1], warpFactor, warpMap, mapDomain);
+    const displaySpan = Math.max(1e-9, displayEndSec - displayStartSec);
+
+    const adaptiveScale = ((value: Date | number) => {
+      const date = value instanceof Date ? value : new Date(value);
+      const linearSec = date.getTime() / 1000;
+      const displaySec = toDisplaySeconds(linearSec, warpFactor, warpMap, mapDomain);
+      const t = clamp((displaySec - displayStartSec) / displaySpan, 0, 1);
+      return t * detailInnerWidth;
+    }) as StrictTimelineScale;
+
+    Object.assign(adaptiveScale, linearScale);
+
+    adaptiveScale.invert = (x: number) => {
+      const t = clamp(detailInnerWidth <= 0 ? 0 : x / detailInnerWidth, 0, 1);
+      const displaySec = displayStartSec + t * displaySpan;
+      const linearSec = toLinearSeconds(displaySec, safeDomain, warpFactor, warpMap, mapDomain);
+      return new Date(linearSec * 1000);
+    };
+
+    return adaptiveScale;
+  }, [
+    detailInnerWidth,
+    detailRangeSec,
+    mapDomain,
+    timeScaleMode,
+    toDisplaySeconds,
+    toLinearSeconds,
+    warpFactor,
+    warpMap,
+  ]);
 
   const simulateFilterChange = useCallback(() => {
     const defaultEnd = Math.floor(Date.now() / 1000);
