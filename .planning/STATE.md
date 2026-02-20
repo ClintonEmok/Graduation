@@ -2,19 +2,19 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 31 in progress
-**Status:** Phase 31 in progress (31-01 and 31-02 complete)
-**Next:** Continue Phase 31 with 31-03
+**Current Phase:** v1.1 Manual Timeslicing - Phase 31 complete
+**Status:** Phase 31 complete (31-01 through 31-03 shipped)
+**Next:** Start Phase 32 slice metadata UI
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 31 of 41 (Multi-Slice Management)
-Plan: 2 of 3 in current phase
-Status: 🚧 **In progress**
-Last activity: 2026-02-20 - Completed 31-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: ✅ **Phase complete**
+Last activity: 2026-02-20 - Completed 31-03-PLAN.md
 
-Progress: overall ████████████████████ 99% (106/107 plans) | v1.1 █████░ 71% phases (5/7)
+Progress: overall ████████████████████ 100% (107/107 plans) | v1.1 ██████░ 86% phases (6/7)
 
 ```
 v1.0 Complete:
@@ -26,7 +26,7 @@ v1.1 Planned:
 [x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
 [x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
-[ ] Phase 31: Multi-Slice Management (1/3 plans complete)
+[x] Phase 31: Multi-Slice Management (3/3 plans complete)
 [ ] Phase 32: Slice Metadata & UI
 
 v1.2 Planned:
@@ -47,7 +47,7 @@ v1.3 Planned:
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Executing Phase 31 multi-slice management workflows after adaptive timeline parity delivery
+**Current focus:** Transitioning from completed Phase 31 bulk operations into Phase 32 slice metadata workflows
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -142,6 +142,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added dedicated `useSliceSelectionStore` with Set-backed `selectedIds` and derived `selectedCount` for transient multi-select state.
 - Implemented overlay click UX for multi-select: click selects one, Ctrl/Cmd click toggles, and empty-area click clears selection.
 - Added blue selected-state styling and toolbar `selectedCount` indicator while keeping amber active-slice emphasis.
+- Added `mergeSlices(ids)` store action that merges contiguous touching/overlapping selections into a single normalized range slice.
+- Added toolbar bulk actions `Delete Selected (N)` and `Merge Selected`, both gated by explicit selection count.
+- Standardized bulk-operation cleanup to clear transient selection state after merge/delete and clear-all actions.
 
 ## Blockers/Concerns
 
@@ -149,8 +152,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-20 16:07 UTC
-Stopped at: Completed 31-02-PLAN.md
+Last session: 2026-02-20 16:11 UTC
+Stopped at: Completed 31-03-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -185,7 +188,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Continue with 31-03 multi-slice management execution.
+- Start 32-01 slice metadata and UI execution.
 
 ---
-*Last updated: 2026-02-20 - completed 31-02 multi-select foundation*
+*Last updated: 2026-02-20 - completed 31-03 bulk merge/delete operations*
