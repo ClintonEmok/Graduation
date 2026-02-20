@@ -1,9 +1,9 @@
 ---
 status: complete
 phase: 29-remake-burstlist-as-first-class-slices
-source: 29-01-SUMMARY.md, 29-02-SUMMARY.md, 29-03-SUMMARY.md, 29-04-SUMMARY.md, 29-05-SUMMARY.md
-started: 2026-02-19T16:03:00Z
-updated: 2026-02-19T16:08:00Z
+source: 29-01-SUMMARY.md, 29-02-SUMMARY.md, 29-03-SUMMARY.md, 29-04-SUMMARY.md, 29-05-SUMMARY.md, 29-06-SUMMARY.md, 29-07-SUMMARY.md
+started: 2026-02-19T22:40:00Z
+updated: 2026-02-19T22:45:00Z
 ---
 
 ## Current Test
@@ -12,87 +12,50 @@ updated: 2026-02-19T16:08:00Z
 
 ## Tests
 
-### 1. Burst Windows Create Slices on Click
-expected: Clicking a burst window in the burst list or on the timeline creates a new time slice with matching range. The slice appears in the unified slice list with a "Burst" chip.
-result: issue
-reported: "cant create bursts onclick and the UX is not logical when can we do this."
-severity: major
+### 1. Automatic burst slices appear
+expected: When burst data is available/computed, burst slices appear automatically in the unified slice list without any user interaction. No clicking required.
+result: pass
 
-### 2. Duplicate Burst Clicks Reuse Existing Slices
-expected: Clicking the same burst window again does not create a duplicate slice; it selects/reuses the existing slice with matching range.
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 2. Burst list items select slices
+expected: Clicking a burst item in the burst list selects the existing auto-created burst slice (not creating a new one). The slice becomes highlighted/active.
+result: pass
 
-### 3. Unified List Shows Manual and Burst Slices
-expected: The slice list shows both manual and burst-derived slices in one chronological list, sorted by timeline start time. Both types use consistent card styling.
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 3. Timeline burst overlays select slices
+expected: Clicking a burst overlay on the timeline selects the corresponding existing auto-created burst slice (not creating a new one).
+result: pass
 
-### 4. Burst Chip Appears on Unrenamed Burst Slices
-expected: Burst-derived slices that still have default "Burst N" names show a small "Burst" chip badge. Renamed burst slices hide the chip.
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 4. Burst chips appear on auto-created slices
+expected: Auto-created burst slices that still have default "Burst N" names display a small "Burst" chip/badge in the slice list. Renamed burst slices hide the chip.
+result: pass
 
-### 5. Burst Click Focuses Timeline to Slice Range
-expected: After clicking a burst window, the timeline automatically zooms/focuses to show the burst's time range.
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 5. Timeline renders auto-created burst slices
+expected: Both manual and auto-created burst slices appear as overlays on the detail timeline. Burst slices use the same visual treatment as manual slices.
+result: pass
 
-### 6. Burst Slices Render on Timeline
-expected: Both manual and burst slices appear as overlays on the detail timeline view. Burst slices use the same visual treatment as manual slices.
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 6. Boundary adjustment works on burst slices
+expected: Selecting an auto-created burst slice shows draggable start/end boundary handles. Dragging a handle adjusts the slice boundaries in real-time.
+result: pass
 
-### 7. Boundary Adjustment Works for Burst Slices
-expected: Clicking on a burst slice in the list or timeline selects it and shows draggable start/end boundary handles. Dragging a handle adjusts the slice boundaries in real-time.
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 7. Rename works on auto-created burst slices
+expected: Clicking the edit button next to an auto-created burst slice allows renaming it inline. The new name persists and hides the "Burst" chip.
+result: pass
 
-### 8. Burst Slice Delete and Recreate Lifecycle
-expected: Deleting a burst slice from the slice list removes it. Clicking the original burst window again recreates a new burst slice (not reusing the deleted one).
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 8. Delete and recreate works
+expected: Deleting an auto-created burst slice removes it from the list. The slice can be recreated automatically when burst data recomputes (or via click select).
+result: pass
 
-### 9. Inline Rename in SliceList
-expected: In the unified slice list, clicking the edit button next to a slice name opens an inline text field. Typing a new name and pressing Enter saves it. Escape cancels. The renamed slice updates immediately across all UI surfaces.
-result: skipped
-reason: "Depends on Test 1 functionality"
-
-### 10. Rename in SliceManagerUI
-expected: Opening the Slice Manager UI (via sheet/panel) shows a name input field for each slice. Typing updates the name in real-time. Clearing the input restores the fallback name (Slice N or Burst N).
-result: skipped
-reason: "Depends on Test 1 functionality"
-
-### 11. Burst Chip Visibility Responds to Rename
-expected: Renaming a burst slice from "Burst 1" to "My Event" immediately hides the Burst chip. Renaming back to "Burst 1" makes it reappear.
-result: skipped
-reason: "Depends on Test 1 functionality"
-
-### 12. Accessibility - Burst Origin Announcements
-expected: Screen readers announce the burst origin when focusing on burst-derived slice list items (e.g., "Burst 1, burst slice, selected").
-result: skipped
-reason: "Depends on Test 1 functionality"
+### 9. No duplicate slices on recompute
+expected: When burst data recomputes or the page refreshes, the reuse logic prevents creating duplicate burst slices. Existing slices are reused.
+result: pass
 
 ## Summary
 
-total: 12
-passed: 0
-issues: 1
+total: 9
+passed: 9
+issues: 0
 pending: 0
-skipped: 11
+skipped: 0
 
 ## Gaps
 
-- truth: "Clicking a burst window in the burst list or on the timeline creates a new time slice with matching range"
-  status: failed
-  reason: "User reported: cant create bursts onclick and the UX is not logical when can we do this."
-  severity: major
-  test: 1
-  root_cause: "SVG element stacking order - zoom/pan overlay rendered AFTER burst windows, blocking all click events"
-  artifacts:
-    - path: "src/components/timeline/DualTimeline.tsx"
-      issue: "Burst window rects rendered at lines 676-695, zoom overlay at lines 715-725. SVG document order puts zoom rect on top, capturing all pointer events."
-  missing:
-    - "Reorder rendering so burst rects appear after zoom overlay (on top) to receive clicks"
-    - "Or add pointer-events CSS logic to allow clicks through zoom overlay"
-  debug_session: ".planning/debug/resolved/burst-window-click.md"
+[none]
