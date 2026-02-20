@@ -122,10 +122,23 @@ Plans:
 - Full editability: boundaries, rename, lock/visibility
 - Deletion and recreation work seamlessly
 
-### Phase 30: Multi-Slice Management
+### Phase 30: Timeline Adaptive Time Scaling
+
+**Goal:** Add adaptive (non-uniform) time scaling to timeline-test for visual comparison with uniform time.
+**Depends on:** Phase 29
+**Plans:** TBD
+
+**Details:**
+- Add time scale mode toggle (linear/adaptive) to timeline-test
+- Make DualTimeline respond to timeScaleMode from time store
+- Integrate warp factor control
+- Show density-based time warping on timeline axis
+- Enable A/B comparison between uniform and adaptive views
+
+### Phase 31: Multi-Slice Management
 
 **Goal:** Support multiple simultaneous slices with management tools.
-**Depends on:** Phase 29
+**Depends on:** Phase 30
 **Plans:** TBD
 
 **Requirements:** MULTI-01 through MULTI-06
@@ -136,10 +149,10 @@ Plans:
 - Selection mechanism
 - Individual and bulk delete
 
-### Phase 31: Slice Metadata & UI
+### Phase 32: Slice Metadata & UI
 
 **Goal:** Enable naming, coloring, and annotating slices.
-**Depends on:** Phase 30
+**Depends on:** Phase 31
 **Plans:** TBD
 
 **Requirements:** META-01 through META-05, INTEG-01 through INTEG-04
@@ -192,7 +205,8 @@ Plans:
 | 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
 | 30 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 31 | v1.1 | 0/TBD | 🚧 Planned | - |
-| 32-36 | v1.2 | 0/TBD | 📋 Planned | - |
+| 32 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
 | 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
 
 ---
