@@ -144,7 +144,7 @@ Plans:
 
 **Goal:** Support multiple simultaneous slices with management tools.
 **Depends on:** Phase 30
-**Plans:** TBD
+**Plans:** 3 plans (31-01, 31-02, 31-03)
 
 **Requirements:** MULTI-01 through MULTI-06
 
@@ -153,6 +153,11 @@ Plans:
 - Merge adjacent slices
 - Selection mechanism
 - Individual and bulk delete
+
+Plans:
+- [x] 31-01-PLAN.md — Gap closure: Adaptive DensityHeatStrip
+- [x] 31-02-PLAN.md — Multi-select foundation (store + UI)
+- [x] 31-03-PLAN.md — Merge and bulk delete functionality
 
 ### Phase 32: Slice Metadata & UI
 
@@ -209,7 +214,7 @@ Plans:
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
 | 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
 | 30 | v1.1 | 3/3 | ✅ Complete | 2026-02-20 |
-| 31 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 31 | v1.1 | 0/3 | 🚧 Planned | - |
 | 32 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
 | 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
