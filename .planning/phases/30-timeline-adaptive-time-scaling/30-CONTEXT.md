@@ -1,68 +1,69 @@
-# Phase 30 Context: Timeline Adaptive Time Scaling
+# Phase 30: Timeline Adaptive Time Scaling - Context
 
-## Phase Overview
+**Gathered:** 2026-02-20
+**Status:** Ready for planning
 
-**Goal:** Add adaptive (non-uniform) time scaling visualization to timeline-test, enabling users to compare uniform vs adaptive time mapping on the timeline axis itself.
+<domain>
+## Phase Boundary
 
-## Background
+Add adaptive (non-uniform) time scaling visualization to timeline-test. Users can toggle between linear and adaptive time display on the timeline axis itself, seeing how density-based time warping expands dense regions and compresses sparse ones. This is purely a visualization enhancement — slice creation/manipulation works in both modes.
 
-The timeline-test (`/timeline-test`) currently uses uniform (linear) time scaling via `scaleUtc()`. The main application has adaptive time scaling infrastructure:
-- `timeScaleMode` in time store ('linear' | 'adaptive')
-- `warpFactor` in adaptive store (controls warping intensity)
-- Density-based time warping computed in adaptive store
+</domain>
 
-However, DualTimeline doesn't utilize this - it's hardcoded to linear time.
+<decisions>
+## Implementation Decisions
 
-## User Need
+### Toggle UI
+- Toggle lives in SliceToolbar alongside existing snap controls
+- Simple button or segmented control: "Linear | Adaptive"
 
-Users need to see HOW time is being mapped on the timeline, not just in the 3D cube. The adaptive time scaling should be visible as:
-- Non-linear tick spacing on the axis (expanded dense regions, compressed sparse ones)
-- Visual indication of time warping
-- Toggle to switch between uniform and adaptive views
+### Warp Factor Control
+- Slider in toolbar (0-2 range, default 1)
+- 0 = linear (no warping)
+- 1 = standard adaptive (matches 3D cube)
+- 2 = exaggerated warping for visibility
 
-## Technical Requirements
+### Visual Indicator
+- Color badge in toolbar:
+  - Linear mode: Gray badge "Linear"
+  - Adaptive mode: Amber badge "Adaptive" with subtle glow
+- Axis gets subtle gradient tint when in adaptive mode
 
-### Must Have
-1. **Time scale toggle** - Button/control to switch between linear and adaptive
-2. **Adaptive time axis** - DualTimeline renders with warping when adaptive mode active
-3. **Warp factor control** - Slider or input to adjust warping intensity (0-2 range)
-4. **Visual feedback** - Clear indication when adaptive mode is active
-5. **Sync with main app** - Optionally share state with main time store
+### Axis Behavior
+- Tick spacing adapts based on warping (dense = expanded, sparse = compressed)
+- Show original time as primary labels
+- Warping visible through tick distribution, not dual labels
 
-### Should Have
-1. **Comparison mode** - Show both side-by-side or toggle quickly
-2. **Density integration** - Use existing density data for warping
-3. **Responsive updates** - Axis updates smoothly when toggling
+### Zoom Interaction
+- Same zoom/brush behavior in both modes
+- Zoom operates on warped scale, not linear
+- Preserves adaptive visualization during exploration
 
-### Could Have
-1. **Axis tick labels** - Show original time alongside warped position
-2. **Gradient overlay** - Visual density heat on the axis
+### State Management
+- Use shared useTimeStore from main app (timeScaleMode, setTimeScaleMode)
+- Use useAdaptiveStore warpFactor
+- This syncs with main app — toggle in timeline-test affects global state
 
-## Existing Assets
+</decisions>
 
-- `useAdaptiveStore` - provides `warpFactor`, `densityMap`, `mapDomain`
-- `useTimeStore` - provides `timeScaleMode`, `setTimeScaleMode`
-- `DualTimeline` - main timeline component (needs modification)
-- `DensityHeatStrip` - density visualization (could inform warping)
-- `TimelinePanel` - has adaptive toggle logic (reference)
+<specifics>
+## Specific Ideas
 
-## Files Likely to Modify
+- "I want users to SEE how time is being mapped, not just in the 3D cube but on the timeline axis itself"
+- Toggle should feel like the existing mode toggles (snap, creation mode)
+- Warp factor slider: same range as main app (0-2)
+- Badge styling: match amber theme used for "active" states in toolbar
 
-1. `src/app/timeline-test/page.tsx` - Add controls
-2. `src/components/timeline/DualTimeline.tsx` - Add adaptive scaling
-3. `src/store/useTimeStore.ts` - Ensure timeScaleMode available (may already be)
-4. `src/components/timeline/TimelineAxis.tsx` (if exists) - Axis rendering
+</specifics>
 
-## Open Questions
+<deferred>
+## Deferred Ideas
 
-1. Should timeline-test share time store with main app or have isolated state?
-2. Should warping use the same density data as the 3D cube?
-3. How to handle zoom/brush interactions in adaptive mode?
+None — discussion stayed within phase scope
 
-## Success Criteria
+</deferred>
 
-- [ ] Toggle switches timeline between uniform and adaptive display
-- [ ] Adaptive mode shows density-based time expansion/compression
-- [ ] Warp factor slider controls warping intensity
-- [ ] Visual indicator shows current mode
-- [ ] All existing slice functionality works in both modes
+---
+
+*Phase: 30-timeline-adaptive-time-scaling*
+*Context gathered: 2026-02-20*
