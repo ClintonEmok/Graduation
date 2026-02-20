@@ -136,9 +136,9 @@ Plans:
 - Enable A/B comparison between uniform and adaptive views
 
 Plans:
-- [ ] 30-01-PLAN.md — Add toggle and warp factor slider to SliceToolbar
-- [ ] 30-02-PLAN.md — Make DualTimeline respond to timeScaleMode with adaptive scaling
-- [ ] 30-03-PLAN.md — Polish: visual indicators, verify slice functionality in both modes
+- [x] 30-01-PLAN.md — Add toggle and warp factor slider to SliceToolbar
+- [x] 30-02-PLAN.md — Make DualTimeline respond to timeScaleMode with adaptive scaling
+- [x] 30-03-PLAN.md — Polish: visual indicators, verify slice functionality in both modes
 
 ### Phase 31: Multi-Slice Management
 
@@ -208,7 +208,7 @@ Plans:
 | 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
 | 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
-| 30 | v1.1 | 3/3 | 🚧 In Progress | - |
+| 30 | v1.1 | 3/3 | ✅ Complete | 2026-02-20 |
 | 31 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 32 | v1.1 | 0/TBD | 🚧 Planned | - |
 | 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
