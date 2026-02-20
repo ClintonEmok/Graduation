@@ -643,6 +643,7 @@ export const DualTimeline: React.FC = () => {
               <DensityHeatStrip
                 densityMap={densityMap}
                 width={overviewInnerWidth}
+                scale={overviewScale}
                 height={12}
                 isLoading={isComputing}
                 densityDomain={DENSITY_DOMAIN}
@@ -750,6 +751,7 @@ export const DualTimeline: React.FC = () => {
               <DensityHeatStrip
                 densityMap={detailDensityMap}
                 width={detailInnerWidth}
+                scale={detailScale}
                 height={10}
                 isLoading={isComputing}
                 densityDomain={DENSITY_DOMAIN}
