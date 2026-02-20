@@ -163,7 +163,7 @@ Plans:
 
 **Goal:** Enable naming, coloring, and annotating slices.
 **Depends on:** Phase 31
-**Plans:** TBD
+**Plans:** 3 plans (32-01, 32-02, 32-03)
 
 **Requirements:** META-01 through META-05, INTEG-01 through INTEG-04
 
@@ -173,6 +173,11 @@ Plans:
 - Notes/annotation field
 - Hover tooltips
 - Session persistence
+
+Plans:
+- [ ] 32-01-PLAN.md — Data model extension (add color and notes fields to TimeSlice)
+- [ ] 32-02-PLAN.md — Color palette UI (color selector + rendering)
+- [ ] 32-03-PLAN.md — Notes/annotation UI (tooltip + inline expand)
 
 ---
 
@@ -215,7 +220,7 @@ Plans:
 | 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
 | 30 | v1.1 | 3/3 | ✅ Complete | 2026-02-20 |
 | 31 | v1.1 | 0/3 | 🚧 Planned | - |
-| 32 | v1.1 | 0/TBD | 🚧 Planned | - |
+| 32 | v1.1 | 0/3 | 🚧 Planned | - |
 | 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
 | 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
 
