@@ -11,37 +11,49 @@ interface SliceSelectionStore {
   isSelected: (id: string) => boolean;
 }
 
-const toSelection = (ids: Iterable<string>) => new Set(ids);
+const setFromIds = (ids: string[]): Set<string> => new Set(ids);
 
-export const useSliceSelectionStore = create<SliceSelectionStore>()((set, get) => ({
-  selectedIds: new Set(),
+export const useSliceSelectionStore = create<SliceSelectionStore>((set, get) => ({
+  selectedIds: new Set<string>(),
   selectedCount: 0,
-  selectSlice: (id) => {
-    const selectedIds = toSelection([id]);
-    set({ selectedIds, selectedCount: selectedIds.size });
-  },
-  deselectSlice: (id) => {
-    const selectedIds = toSelection(get().selectedIds);
-    selectedIds.delete(id);
-    set({ selectedIds, selectedCount: selectedIds.size });
-  },
-  toggleSlice: (id) => {
-    const selectedIds = toSelection(get().selectedIds);
-    if (selectedIds.has(id)) {
-      selectedIds.delete(id);
-    } else {
-      selectedIds.add(id);
-    }
-    set({ selectedIds, selectedCount: selectedIds.size });
-  },
-  clearSelection: () => {
-    set({ selectedIds: new Set(), selectedCount: 0 });
-  },
+  selectSlice: (id) =>
+    set({
+      selectedIds: new Set([id]),
+      selectedCount: 1,
+    }),
+  deselectSlice: (id) =>
+    set((state) => {
+      const next = new Set(state.selectedIds);
+      next.delete(id);
+      return {
+        selectedIds: next,
+        selectedCount: next.size,
+      };
+    }),
+  toggleSlice: (id) =>
+    set((state) => {
+      const next = new Set(state.selectedIds);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return {
+        selectedIds: next,
+        selectedCount: next.size,
+      };
+    }),
+  clearSelection: () =>
+    set({
+      selectedIds: new Set<string>(),
+      selectedCount: 0,
+    }),
   selectAll: (ids) => {
-    const selectedIds = toSelection(ids);
-    set({ selectedIds, selectedCount: selectedIds.size });
+    const selected = setFromIds(ids);
+    set({
+      selectedIds: selected,
+      selectedCount: selected.size,
+    });
   },
-  isSelected: (id) => {
-    return get().selectedIds.has(id);
-  },
+  isSelected: (id) => get().selectedIds.has(id),
 }));

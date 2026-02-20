@@ -1,6 +1,6 @@
 "use client";
 
-import { Magnet, Scissors, Trash2 } from 'lucide-react';
+import { Magnet, Merge, Scissors, Trash2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
@@ -36,7 +36,11 @@ export function SliceToolbar() {
   const setAdjustmentSnap = useSliceAdjustmentStore((state) => state.setSnap);
   const slices = useSliceStore((state) => state.slices);
   const clearSlices = useSliceStore((state) => state.clearSlices);
+  const removeSlice = useSliceStore((state) => state.removeSlice);
+  const mergeSlices = useSliceStore((state) => state.mergeSlices);
+  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
   const selectedCount = useSliceSelectionStore((state) => state.selectedCount);
+  const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
@@ -232,9 +236,40 @@ export function SliceToolbar() {
           {selectedCount > 0 ? (
             <span className="text-xs text-blue-300">{selectedCount} selected</span>
           ) : null}
+          {selectedCount >= 1 ? (
+            <button
+              type="button"
+              onClick={() => {
+                selectedIds.forEach((id) => removeSlice(id));
+                clearSelection();
+              }}
+              className="inline-flex items-center gap-1 rounded-md border border-red-500/50 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-200 transition-all hover:border-red-400/70 hover:bg-red-500/20"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete Selected ({selectedCount})</span>
+            </button>
+          ) : null}
+          {selectedCount >= 2 ? (
+            <button
+              type="button"
+              onClick={() => {
+                const mergedId = mergeSlices(Array.from(selectedIds));
+                if (mergedId) {
+                  clearSelection();
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-md border border-blue-500/50 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-200 transition-all hover:border-blue-400/70 hover:bg-blue-500/20"
+            >
+              <Merge className="h-3.5 w-3.5" />
+              <span>Merge Selected</span>
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={clearSlices}
+            onClick={() => {
+              clearSlices();
+              clearSelection();
+            }}
             className="inline-flex items-center gap-1 rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition-all hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-200"
             title="Clear all slices"
           >
