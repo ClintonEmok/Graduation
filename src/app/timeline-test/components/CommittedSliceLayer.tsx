@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, type MouseEvent } from 'react';
 import type { ScaleTime } from 'd3-scale';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
+import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
 
 interface CommittedSliceLayerProps {
   scale: ScaleTime<number, number>;
@@ -14,6 +15,7 @@ interface SliceGeometry {
   left: number;
   width: number;
   isActive: boolean;
+  isSelected: boolean;
   isBurst: boolean;
   isPoint: boolean;
   isRange: boolean;
@@ -24,8 +26,13 @@ const clampNormalized = (value: number) => Math.max(0, Math.min(100, value));
 export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSliceLayerProps) {
   const slices = useSliceStore((state) => state.slices);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const draggingSliceId = useSliceAdjustmentStore((state) => state.draggingSliceId);
   const setHover = useSliceAdjustmentStore((state) => state.setHover);
+  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
+  const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
+  const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
+  const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
   const isAdjustmentDragActive = draggingSliceId !== null;
 
   const geometries = useMemo<SliceGeometry[]>(() => {
@@ -67,6 +74,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
             left,
             width,
             isActive: activeSliceId === slice.id,
+            isSelected: selectedIds.has(slice.id),
             isBurst: !!slice.isBurst,
             isPoint: false,
             isRange: true,
@@ -85,35 +93,67 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
           left: clampRange(x - width / 2),
           width,
           isActive: activeSliceId === slice.id,
+          isSelected: selectedIds.has(slice.id),
           isBurst: !!slice.isBurst,
           isPoint: true,
           isRange: false,
         };
       })
       .filter((geometry): geometry is SliceGeometry => geometry !== null);
-  }, [activeSliceId, domainSec, scale, slices]);
+  }, [activeSliceId, domainSec, scale, selectedIds, slices]);
 
-  const orderedGeometries = useMemo(
-    () => [...geometries].sort((a, b) => Number(a.isActive) - Number(b.isActive)),
-    [geometries]
-  );
+  const orderedGeometries = useMemo(() => {
+    const stackWeight = (geometry: SliceGeometry) => {
+      let weight = 0;
+      if (geometry.isSelected) {
+        weight += 1;
+      }
+      if (geometry.isActive) {
+        weight += 2;
+      }
+      return weight;
+    };
+
+    return [...geometries].sort((a, b) => stackWeight(a) - stackWeight(b));
+  }, [geometries]);
+
+  const handleBackgroundClick = () => {
+    clearSelection();
+    setActiveSlice(null);
+  };
+
+  const handleSliceClick = (event: MouseEvent<HTMLDivElement>, sliceId: string) => {
+    event.stopPropagation();
+
+    if (event.ctrlKey || event.metaKey) {
+      const wasSelected = selectedIds.has(sliceId);
+      toggleSlice(sliceId);
+      setActiveSlice(wasSelected && activeSliceId === sliceId ? null : sliceId);
+      return;
+    }
+
+    selectSlice(sliceId);
+    setActiveSlice(sliceId);
+  };
 
   if (orderedGeometries.length === 0) {
     return null;
   }
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10">
+    <div className="pointer-events-auto absolute inset-0 z-10" onClick={handleBackgroundClick}>
       {orderedGeometries.map((geometry) => (
         <div
           key={geometry.id}
-          className={`absolute top-0 rounded-sm border transition-[background-color,border-color,box-shadow,opacity] ${
-            geometry.isRange ? 'pointer-events-auto' : 'pointer-events-none'
-          } ${
+          className={`absolute top-0 cursor-pointer rounded-sm border transition-[background-color,border-color,box-shadow,opacity] ${
             geometry.isActive && geometry.isBurst
               ? 'border-orange-300 bg-orange-400/60 shadow-[0_0_0_2px_rgba(251,146,60,0.55)]'
               : geometry.isActive
                 ? 'border-amber-200 bg-amber-300/60 shadow-[0_0_0_2px_rgba(251,191,36,0.55)]'
+                : geometry.isSelected && geometry.isBurst
+                  ? 'border-blue-300/80 bg-blue-500/40 shadow-[0_0_0_2px_rgba(96,165,250,0.4)]'
+                  : geometry.isSelected
+                    ? 'border-blue-300/80 bg-blue-500/35 shadow-[0_0_0_2px_rgba(96,165,250,0.35)]'
                 : geometry.isBurst
                   ? 'border-orange-400/60 bg-orange-500/30'
                   : geometry.isPoint
@@ -124,7 +164,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
             left: geometry.left,
             width: geometry.width,
             height,
-            zIndex: geometry.isActive ? 2 : 1,
+            zIndex: geometry.isActive ? 3 : geometry.isSelected ? 2 : 1,
             opacity:
               isAdjustmentDragActive && draggingSliceId !== geometry.id
                 ? geometry.isPoint
@@ -146,6 +186,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
                 }
               : undefined
           }
+          onClick={(event) => handleSliceClick(event, geometry.id)}
           aria-hidden={geometry.isPoint}
           role={geometry.isRange ? 'presentation' : undefined}
           data-slice-id={geometry.id}
