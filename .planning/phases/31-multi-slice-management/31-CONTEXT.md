@@ -6,12 +6,20 @@
 <domain>
 ## Phase Boundary
 
-Support multiple simultaneous timeline slices with management tools: overlap visualization, merge capability, selection mechanism, and bulk delete. This is the multi-slice management phase within v1.1 Manual Timeslicing—visualization of density regions (Phase 26), slice creation (Phase 27), boundary adjustment (Phase 28), and burst-as-slice (Phase 29) are complete. Phase 32 covers slice metadata (name, color, notes).
+Support multiple simultaneous timeline slices with management tools: overlap visualization, merge capability, selection mechanism, and bulk delete. **Also includes gap closure from Phase 30:** make density heat strip adaptive-aware so density visualization aligns with warped timeline axis.
+
+This is the multi-slice management phase within v1.1 Manual Timeslicing—visualization of density regions (Phase 26), slice creation (Phase 27), boundary adjustment (Phase 28), burst-as-slice (Phase 29), and adaptive time scaling (Phase 30) are complete. Phase 32 covers slice metadata (name, color, notes).
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
+
+### Phase 30 Gap Closure: Adaptive Density Heat Strip
+- DensityHeatStrip must use the same adaptive scale as the timeline axis
+- When timeScaleMode is 'adaptive', density visualization stretches/compresses to match warped timeline
+- Ensures density regions visually align with the adaptive time axis
+- Implementation: Use the same adaptive-wrapped scale passed to DualTimeline
 
 ### Overlap Visualization
 - Semi-transparent stacking with z-order by creation time
