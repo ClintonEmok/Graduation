@@ -5,6 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
+import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
 
@@ -35,6 +36,7 @@ export function SliceToolbar() {
   const setAdjustmentSnap = useSliceAdjustmentStore((state) => state.setSnap);
   const slices = useSliceStore((state) => state.slices);
   const clearSlices = useSliceStore((state) => state.clearSlices);
+  const selectedCount = useSliceSelectionStore((state) => state.selectedCount);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
@@ -227,6 +229,9 @@ export function SliceToolbar() {
           <span className="text-xs text-slate-300">
             {slices.length} slice{slices.length === 1 ? '' : 's'}
           </span>
+          {selectedCount > 0 ? (
+            <span className="text-xs text-blue-300">{selectedCount} selected</span>
+          ) : null}
           <button
             type="button"
             onClick={clearSlices}
