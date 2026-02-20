@@ -3,18 +3,18 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 30 in progress
-**Status:** Phase 30 started (30-01 complete)
-**Next:** Plan 30-02 timeline warp application
+**Status:** Phase 30 in progress (30-01 and 30-02 complete)
+**Next:** Plan 30-03 adaptive boundary behavior
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 30 of 41 (Multi-Slice Management)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-20 - Completed 30-01-PLAN.md
+Last activity: 2026-02-20 - Completed 30-02-PLAN.md
 
-Progress: overall ████████████████████ 100% (102/102 plans) | v1.1 █████░ 83% phases
+Progress: overall ███████████████████░ 96% (103/107 plans) | v1.1 █████░ 83% phases
 
 ```
 v1.0 Complete:
@@ -129,6 +129,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added global `timeScaleMode` (`linear`/`adaptive`) controls to timeline-test `SliceToolbar`, intentionally persisting to `useTimeStore` for parity with production timeline behavior.
 - Added timeline-test warp factor control bound to `useAdaptiveStore` with a phase-specific 0-2 range and 0.1 increments.
 - Kept warp slider visible but disabled in linear mode to preserve control discoverability while preventing out-of-mode edits.
+- Applied adaptive render-time scale warping in `DualTimeline` using `timeScaleMode`, `warpFactor`, and `warpMap` so adaptive mode visibly changes axis spacing.
+- Added binary-search inverse mapping for warped scales so scrubbing and click selection still resolve accurate timestamps in adaptive mode.
+- Kept brush/zoom synchronization on linear interaction scales to preserve stable d3 behavior while adaptive warping drives visual spacing.
 
 ## Blockers/Concerns
 
@@ -136,8 +139,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-20 15:36 UTC
-Stopped at: Completed 30-01-PLAN.md
+Last session: 2026-02-20 15:38 UTC
+Stopped at: Completed 30-02-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -172,7 +175,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Execute 30-02 timeline warp application.
+- Execute 30-03 adaptive boundary behavior.
 
 ---
-*Last updated: 2026-02-20 - completed 30-01 time scale controls in SliceToolbar*
+*Last updated: 2026-02-20 - completed 30-02 adaptive axis warping in DualTimeline*
