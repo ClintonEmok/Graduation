@@ -1,23 +1,29 @@
 ---
 phase: 29-remake-burstlist-as-first-class-slices
-verified: 2026-02-19T15:58:07Z
-status: passed
-score: 16/16 must-haves verified
+verified: 2026-02-19T22:23:06Z
+status: human_needed
+score: 23/25 must-haves verified
 re_verification:
-  previous_status: gaps_found
-  previous_score: 15/16
-  gaps_closed:
-    - "Burst-derived slices are fully editable (boundaries, rename, lock/visibility)"
+  previous_status: passed
+  previous_score: 16/16
+  gaps_closed: []
   gaps_remaining: []
   regressions: []
+human_verification:
+  - test: "Timeline zoom/pan still works after burst-layer reorder"
+    expected: "Drag on non-burst timeline area still zooms/brushes; wheel/gesture pan behavior remains functional"
+    why_human: "Requires live pointer interaction and runtime behavior validation"
+  - test: "Other timeline interactions unaffected by burst-click fix"
+    expected: "Slice scrubbing, point selection, slice boundary handles, and burst click all work in one session without interaction conflicts"
+    why_human: "Cross-interaction UX conflicts cannot be fully proven by static code inspection"
 ---
 
 # Phase 29: Remake burstlist as first-class slices Verification Report
 
 **Phase Goal:** Transform burst windows into first-class timeline slices with full UX parity.
-**Verified:** 2026-02-19T15:58:07Z
-**Status:** passed
-**Re-verification:** Yes - after gap closure
+**Verified:** 2026-02-19T22:23:06Z
+**Status:** human_needed
+**Re-verification:** Yes - scope expanded to include all Phase 29 plans (`29-01` through gap-closure `29-06`)
 
 ## Goal Achievement
 
@@ -25,73 +31,94 @@ re_verification:
 
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | Burst-derived slices have `isBurst` flag in `TimeSlice` type | ✓ VERIFIED | `src/store/useSliceStore.ts:11` defines `isBurst?: boolean` |
-| 2 | Range matching with tolerance prevents duplicate burst slices | ✓ VERIFIED | `src/store/useSliceStore.ts:101` resolves tolerance with `calculateRangeTolerance(..., 0.005)` |
-| 3 | Burst slice creation reuses existing matching burst slices | ✓ VERIFIED | `src/store/useSliceStore.ts:118` reuses `findMatchingSlice(..., { burstOnly: true })` result |
-| 4 | Slice store exports range matching utility | ✓ VERIFIED | `src/store/useSliceStore.ts:22` exports `findMatchingSlice` in store interface |
-| 5 | Burst-derived slices display "Burst" chip in slice list | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:184` to `src/app/timeline-test/components/SliceList.tsx:187` renders chip text |
-| 6 | Burst slices look like manual slices with subtle burst indicator | ✓ VERIFIED | Shared card layout in `src/app/timeline-test/components/SliceList.tsx:132`; burst-specific tokenized chip style in `src/app/timeline-test/components/SliceToolbar.tsx:18` |
-| 7 | Slice list sorts by timeline start time | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:49` to `src/app/timeline-test/components/SliceList.tsx:64` sorts by start with tie-breakers |
-| 8 | Burst chip styling is subtle (small, muted color) | ✓ VERIFIED | `src/app/timeline-test/components/SliceToolbar.tsx:19` uses compact `text-[10px]` and muted slate palette |
-| 9 | Clicking burst list item creates or selects corresponding slice | ✓ VERIFIED | `src/components/viz/BurstList.tsx:97` calls `addBurstSlice` and `src/components/viz/BurstList.tsx:102` activates |
-| 10 | Clicking burst overlay on timeline creates or selects slice | ✓ VERIFIED | `src/components/timeline/DualTimeline.tsx:400` calls `addBurstSlice` |
-| 11 | Burst click focuses timeline to slice range | ✓ VERIFIED | `src/components/viz/BurstList.tsx:105` and `src/components/timeline/DualTimeline.tsx:406` call `focusTimelineRange` |
-| 12 | Burst-slice mapping is bidirectional | ✓ VERIFIED | List linkage map uses `findMatchingSlice(..., { burstOnly: true })` in `src/components/viz/BurstList.tsx:77`; overlay highlight derives from active burst range in `src/components/timeline/DualTimeline.tsx:381` and `src/components/timeline/DualTimeline.tsx:681` |
-| 13 | Burst-derived slices are fully editable (boundaries, rename, lock/visibility) | ✓ VERIFIED | Rename wiring in `src/app/timeline-test/components/SliceList.tsx:91` and `src/components/viz/SliceManagerUI.tsx:244`; boundary handle interaction in `src/app/timeline-test/components/SliceBoundaryHandlesLayer.tsx:118`; lock/visibility toggles in `src/components/viz/SliceManagerUI.tsx:311` and `src/components/viz/SliceManagerUI.tsx:320` |
-| 14 | Deleting burst slice works like manual slice | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:202` calls `removeSlice(slice.id)` for all slices |
-| 15 | Clicking burst after deletion recreates it as new slice | ✓ VERIFIED | Deletion removes from store (`src/store/useSliceStore.ts:147`), and subsequent burst click recreates via `addBurstSlice` when no burst-only match exists (`src/store/useSliceStore.ts:118` to `src/store/useSliceStore.ts:126`) |
-| 16 | Burst overlay highlight syncs with active slice state | ✓ VERIFIED | Active burst range derived from `activeSliceId` in `src/components/timeline/DualTimeline.tsx:381` and matched to window ranges at `src/components/timeline/DualTimeline.tsx:681` |
+| 1 | Burst-derived slices have `isBurst` flag in `TimeSlice` type | ✓ VERIFIED | `src/store/useSliceStore.ts:11` |
+| 2 | Range matching with tolerance prevents duplicate burst slices | ✓ VERIFIED | `src/store/useSliceStore.ts:101` |
+| 3 | Burst slice creation reuses existing matching slices | ✓ VERIFIED | `src/store/useSliceStore.ts:118` |
+| 4 | Slice store exports range matching utility for consumers | ✓ VERIFIED | `src/store/useSliceStore.ts:22` |
+| 5 | Burst-derived slices display a `Burst` chip in slice list | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:184` |
+| 6 | Burst slices use manual-slice card UI with subtle burst indicator | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:132`, `src/app/timeline-test/components/SliceToolbar.tsx:19` |
+| 7 | Slice list is sorted by timeline start time | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:49` |
+| 8 | Burst chip styling is small/muted | ✓ VERIFIED | `src/app/timeline-test/components/SliceToolbar.tsx:19` |
+| 9 | Clicking a burst list item creates/selects corresponding slice | ✓ VERIFIED | `src/components/viz/BurstList.tsx:97` |
+| 10 | Clicking timeline burst overlay creates/selects slice | ✓ VERIFIED | `src/components/timeline/DualTimeline.tsx:400` |
+| 11 | Burst click focuses timeline to slice range | ✓ VERIFIED | `src/components/viz/BurstList.tsx:105`, `src/components/timeline/DualTimeline.tsx:406` |
+| 12 | Burst-slice mapping is bidirectional | ✓ VERIFIED | `src/components/viz/BurstList.tsx:77`, `src/components/timeline/DualTimeline.tsx:381` |
+| 13 | Burst-derived slices are fully editable (boundary/rename/lock/visibility) | ✓ VERIFIED | `src/app/timeline-test/components/SliceBoundaryHandlesLayer.tsx:118`, `src/app/timeline-test/components/SliceList.tsx:91`, `src/components/viz/SliceManagerUI.tsx:320` |
+| 14 | Deleting burst slice works like manual slice | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:202`, `src/store/useSliceStore.ts:145` |
+| 15 | Clicking burst after deletion recreates a new slice | ✓ VERIFIED | `src/store/useSliceStore.ts:118`, `src/store/useSliceStore.ts:147` |
+| 16 | Burst overlay highlight syncs with active slice | ✓ VERIFIED | `src/components/timeline/DualTimeline.tsx:381`, `src/components/timeline/DualTimeline.tsx:712` |
+| 17 | User can rename any slice in timeline-test `SliceList` via inline edit | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:145` |
+| 18 | User can rename any slice in `SliceManagerUI` via inline input | ✓ VERIFIED | `src/components/viz/SliceManagerUI.tsx:239` |
+| 19 | Renamed slices persist and show updated name across UIs | ✓ VERIFIED | shared store update path at `src/store/useSliceStore.ts:150`, read in `src/app/timeline-test/components/SliceList.tsx:25` and `src/components/viz/SliceManagerUI.tsx:31` |
+| 20 | Renamed burst slices hide chip when name no longer starts with `Burst` | ✓ VERIFIED | `src/app/timeline-test/components/SliceList.tsx:111` |
+| 21 | Rename interaction follows accessibility patterns | ✓ VERIFIED | keyboard/focus handling in `src/app/timeline-test/components/SliceList.tsx:153` and `src/app/timeline-test/components/SliceList.tsx:164` |
+| 22 | Burst window rects receive pointer events and are click-targets | ✓ VERIFIED | `src/components/timeline/DualTimeline.tsx:723`, `src/components/timeline/DualTimeline.tsx:724` |
+| 23 | Timeline burst click uses matching range to create slice | ✓ VERIFIED | `src/components/timeline/DualTimeline.tsx:400` |
+| 24 | Zoom/pan overlay still functions after render-order change | ? UNCERTAIN | Overlay handlers exist (`src/components/timeline/DualTimeline.tsx:702`), but runtime pointer behavior needs manual validation |
+| 25 | Other timeline interactions continue to work together | ? UNCERTAIN | Structural wiring present, but multi-interaction conflict testing requires live UX validation |
 
-**Score:** 16/16 truths verified
+**Score:** 23/25 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 | --- | --- | --- | --- |
-| `src/store/useSliceStore.ts` | Burst metadata + matching + add/reuse APIs | ✓ VERIFIED | Exists (179 lines), substantive, wired into UI via store selectors; includes `addBurstSlice`, `findMatchingSlice`, `updateSlice` |
-| `src/lib/slice-utils.ts` | Range tolerance/matching + focus utility | ✓ VERIFIED | Exists (84 lines), substantive exports (`rangesMatch`, `calculateRangeTolerance`, `focusTimelineRange`) |
-| `src/store/useSliceStore.test.ts` | Burst matching/lifecycle coverage | ✓ VERIFIED | Exists (110 lines), includes burst creation/reuse/manual-match and sorting coverage |
-| `src/app/timeline-test/components/SliceList.tsx` | Unified list with burst indicator + rename/delete | ✓ VERIFIED | Exists (219 lines), renders burst chip, inline rename input, update wiring, and delete action |
-| `src/components/viz/SliceManagerUI.tsx` | Edit controls for name/boundary/lock/visibility | ✓ VERIFIED | Exists (350 lines), slice name input updates store, plus lock/visibility toggles and time/range edits |
-| `src/app/timeline-test/components/SliceToolbar.tsx` | Burst chip style tokens | ✓ VERIFIED | Exists (177 lines), exports shared chip class constants used by `SliceList` |
-| `src/components/viz/BurstList.tsx` | Burst list create/select/focus wiring | ✓ VERIFIED | Exists (162 lines), uses `addBurstSlice`, `findMatchingSlice`, active mapping, and focus helper |
-| `src/components/timeline/DualTimeline.tsx` | Overlay burst-to-slice wiring + highlight sync | ✓ VERIFIED | Exists (762 lines), burst overlay click creates/selects and active highlight follows slice state |
-| `src/app/timeline-test/components/CommittedSliceLayer.tsx` | Unified timeline slice rendering | ✓ VERIFIED | Exists (160 lines), renders visible slices from one source with burst/manual metadata |
-| `src/app/timeline-test/components/SliceBoundaryHandlesLayer.tsx` | Range boundary adjustment handles | ✓ VERIFIED | Exists (164 lines), active/hover/drag handle wiring with pointer handlers for visible unlocked ranges |
+| `src/store/useSliceStore.ts` | Burst metadata + add/reuse matching + rename persistence | ✓ VERIFIED | 179 lines; substantive and wired to all UI paths |
+| `src/lib/slice-utils.ts` | Tolerance helpers + shared timeline focus helper | ✓ VERIFIED | 84 lines; exports `rangesMatch`, `calculateRangeTolerance`, `focusTimelineRange` |
+| `src/store/useSliceStore.test.ts` | Burst creation/reuse/sorting test coverage | ✓ VERIFIED | 110 lines with burst-specific assertions |
+| `src/app/timeline-test/components/SliceList.tsx` | Unified list + burst chip + inline rename/delete | ✓ VERIFIED | 219 lines; active state, rename keyboard handling, chip logic |
+| `src/app/timeline-test/components/SliceToolbar.tsx` | Shared subtle burst chip style tokens | ✓ VERIFIED | 177 lines; exported burst chip classes |
+| `src/components/viz/BurstList.tsx` | Burst list click -> create/select/focus wiring | ✓ VERIFIED | 162 lines; `addBurstSlice`, `findMatchingSlice`, `focusTimelineRange` usage |
+| `src/components/timeline/DualTimeline.tsx` | Overlay click wiring + burst highlight + render order fix | ✓ VERIFIED | 764 lines; zoom rect then burst rect order with click handler |
+| `src/app/timeline-test/components/CommittedSliceLayer.tsx` | Unified committed slice rendering (manual + burst) | ✓ VERIFIED | 160 lines; no burst exclusion guards |
+| `src/app/timeline-test/components/SliceBoundaryHandlesLayer.tsx` | Boundary handles for visible unlocked range slices | ✓ VERIFIED | 164 lines; no burst-specific blocking |
+| `src/components/viz/SliceManagerUI.tsx` | Rename + lock/visibility + range controls in manager UI | ✓ VERIFIED | 350 lines; name input wired to `updateSlice` |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 | --- | --- | --- | --- | --- |
-| `useSliceStore.addBurstSlice` | `findMatchingSlice` | tolerance-based burst-only reuse | ✓ WIRED | `src/store/useSliceStore.ts:118` checks for existing burst slice before create |
-| `BurstList.handleSelectWindow` | `useSliceStore.addBurstSlice` | burst list click -> create/select | ✓ WIRED | `src/components/viz/BurstList.tsx:96` to `src/components/viz/BurstList.tsx:103` |
-| `DualTimeline.handleBurstClick` | `useSliceStore.addBurstSlice` | burst overlay click -> create/select | ✓ WIRED | `src/components/timeline/DualTimeline.tsx:394` to `src/components/timeline/DualTimeline.tsx:405` |
-| `BurstList` and `DualTimeline` | timeline range focus | shared `focusTimelineRange` helper | ✓ WIRED | `src/components/viz/BurstList.tsx:105` and `src/components/timeline/DualTimeline.tsx:406` |
-| `SliceList` rename affordance | `useSliceStore.updateSlice` | inline edit save/blur/enter | ✓ WIRED | `src/app/timeline-test/components/SliceList.tsx:145` to `src/app/timeline-test/components/SliceList.tsx:157`, update at `src/app/timeline-test/components/SliceList.tsx:91` |
-| `SliceManagerUI` rename input | `useSliceStore.updateSlice` | on-change store update | ✓ WIRED | `src/components/viz/SliceManagerUI.tsx:242` to `src/components/viz/SliceManagerUI.tsx:245` |
-| `CommittedSliceLayer` | `useSliceStore.slices` | unified visible-slice map | ✓ WIRED | `src/app/timeline-test/components/CommittedSliceLayer.tsx:45` to `src/app/timeline-test/components/CommittedSliceLayer.tsx:47` |
+| `useSliceStore.addBurstSlice` | `findMatchingSlice` | burst-only range reuse | ✓ WIRED | `src/store/useSliceStore.ts:118` |
+| `BurstList.handleSelectWindow` | `useSliceStore.addBurstSlice` | burst list click -> create/select | ✓ WIRED | `src/components/viz/BurstList.tsx:97` |
+| `DualTimeline.handleBurstClick` | `useSliceStore.addBurstSlice` | burst overlay click -> create/select | ✓ WIRED | `src/components/timeline/DualTimeline.tsx:400` |
+| `BurstList` + `DualTimeline` | timeline focus behavior | shared `focusTimelineRange` helper | ✓ WIRED | `src/components/viz/BurstList.tsx:105`, `src/components/timeline/DualTimeline.tsx:406` |
+| `SliceList` inline rename | `useSliceStore.updateSlice` | blur/Enter save path | ✓ WIRED | `src/app/timeline-test/components/SliceList.tsx:91` |
+| `SliceManagerUI` name input | `useSliceStore.updateSlice` | onChange rename path | ✓ WIRED | `src/components/viz/SliceManagerUI.tsx:244` |
+| `CommittedSliceLayer` | `useSliceStore.slices` | unified rendering source | ✓ WIRED | `src/app/timeline-test/components/CommittedSliceLayer.tsx:25` |
+| burst SVG rect elements | `handleBurstClick` | `onClick` binding on burst rects | ✓ WIRED | `src/components/timeline/DualTimeline.tsx:724` |
+| SVG document order | pointer-event capture | zoom rect rendered before burst rects | ✓ WIRED | `src/components/timeline/DualTimeline.tsx:695`, `src/components/timeline/DualTimeline.tsx:707` |
 
 ### Requirements Coverage
 
 | Requirement | Status | Blocking Issue |
 | --- | --- | --- |
-| Phase 29-specific mapping in `.planning/REQUIREMENTS.md` | ? NEEDS HUMAN | `.planning/REQUIREMENTS.md` is milestone-oriented and does not map items to Phase 29 directly; verification performed against roadmap goal + must-haves |
+| Phase 29 mapping in `.planning/REQUIREMENTS.md` | ? NEEDS HUMAN | Requirements file is not phase-mapped for this phase; verification was performed against plan `must_haves` + roadmap goal |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | --- | --- | --- | --- | --- |
-| _None detected in targeted phase files_ | - | TODO/FIXME/placeholder/console-only stubs | - | Pattern scan found no blocker stubs in phase-modified sources |
+| _None blocking in phase-29 source artifacts_ | - | No TODO/FIXME/placeholder/not-implemented stubs in targeted files | - | `return null` occurrences are conditional render guards, not stub implementations |
 
 ### Human Verification Required
 
-No additional human-only blockers identified for structural goal verification.
+### 1. Zoom and Pan Behavior After Burst Layer Reorder
+
+**Test:** On timeline view, drag/zoom on background areas near and around burst windows; use wheel/gesture pan if supported.
+**Expected:** Zoom/brush and pan behavior remains responsive and unchanged while burst windows stay clickable.
+**Why human:** Pointer arbitration between overlapping SVG targets is runtime/interaction-dependent.
+
+### 2. Cross-Interaction Regression Sweep
+
+**Test:** In one session, perform burst click create/select, manual slice creation, boundary drag, scrub/select point, rename, lock/unlock, and delete/recreate.
+**Expected:** No interaction steals, no stuck selection state, and no broken handle behavior.
+**Why human:** Multi-step UX interaction conflicts cannot be proven by static analysis alone.
 
 ### Gaps Summary
 
-Previous rename gap is closed. Burst windows now behave as first-class slices with parity across list + timeline overlay flows: create/reuse, selection, focus, boundary adjustment, rename, lock/visibility, delete/recreate, and active highlight synchronization are implemented and wired.
+No structural code gaps found for Phase 29 must-haves (including `29-06`). Remaining verification is runtime UX validation only.
 
 ---
 
-_Verified: 2026-02-19T15:58:07Z_
+_Verified: 2026-02-19T22:23:06Z_
 _Verifier: Claude (gsd-verifier)_
