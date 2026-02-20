@@ -3,18 +3,18 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 31 in progress
-**Status:** Phase 31 in progress (31-01 complete)
-**Next:** Continue Phase 31 with 31-02
+**Status:** Phase 31 in progress (31-01 and 31-02 complete)
+**Next:** Continue Phase 31 with 31-03
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 31 of 41 (Multi-Slice Management)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-20 - Completed 31-01-PLAN.md
+Last activity: 2026-02-20 - Completed 31-02-PLAN.md
 
-Progress: overall ███████████████████░ 98% (105/107 plans) | v1.1 █████░ 71% phases (5/7)
+Progress: overall ████████████████████ 99% (106/107 plans) | v1.1 █████░ 71% phases (5/7)
 
 ```
 v1.0 Complete:
@@ -139,6 +139,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 **Phase 31 Decision Log (Execution):**
 - Added optional injected `scale` support to `DensityHeatStrip` so density rendering can follow the same warped coordinate system as timeline axes.
 - Wired `DualTimeline` overview and detail heat strips to use adaptive-aware scales (`overviewScale`, `detailScale`) for consistent tick alignment.
+- Added dedicated `useSliceSelectionStore` with Set-backed `selectedIds` and derived `selectedCount` for transient multi-select state.
+- Implemented overlay click UX for multi-select: click selects one, Ctrl/Cmd click toggles, and empty-area click clears selection.
+- Added blue selected-state styling and toolbar `selectedCount` indicator while keeping amber active-slice emphasis.
 
 ## Blockers/Concerns
 
@@ -146,8 +149,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-20 16:08 UTC
-Stopped at: Completed 31-01-PLAN.md
+Last session: 2026-02-20 16:07 UTC
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -182,7 +185,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Continue with 31-02 multi-slice management execution.
+- Continue with 31-03 multi-slice management execution.
 
 ---
-*Last updated: 2026-02-20 - completed 31-01 adaptive density strip alignment*
+*Last updated: 2026-02-20 - completed 31-02 multi-select foundation*
