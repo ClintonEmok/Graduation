@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, Pencil, Sparkles, X } from 'lucide-react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
@@ -35,6 +35,22 @@ const toTimestampLabel = (timeValue: number, domain: [number, number]): string =
   return timestamp.toLocaleString();
 };
 
+const SLICE_COLORS = [
+  { name: 'amber', class: 'bg-amber-400', label: 'Amber' },
+  { name: 'blue', class: 'bg-blue-400', label: 'Blue' },
+  { name: 'green', class: 'bg-green-400', label: 'Green' },
+  { name: 'red', class: 'bg-red-400', label: 'Red' },
+  { name: 'purple', class: 'bg-purple-400', label: 'Purple' },
+  { name: 'cyan', class: 'bg-cyan-400', label: 'Cyan' },
+  { name: 'pink', class: 'bg-pink-400', label: 'Pink' },
+  { name: 'gray', class: 'bg-slate-400', label: 'Gray' },
+] as const;
+
+type SliceColorName = (typeof SLICE_COLORS)[number]['name'];
+
+const getSliceColorOption = (color?: string) =>
+  SLICE_COLORS.find((option) => option.name === color);
+
 export function SliceList() {
   const slices = useSliceStore((state) => state.slices);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
@@ -48,6 +64,26 @@ export function SliceList() {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const [editingSliceId, setEditingSliceId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [colorPickerSliceId, setColorPickerSliceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (colorPickerSliceId === null) {
+      return;
+    }
+
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-color-picker-root="true"]')) {
+        return;
+      }
+      setColorPickerSliceId(null);
+    };
+
+    window.addEventListener('pointerdown', handleDocumentPointerDown);
+    return () => {
+      window.removeEventListener('pointerdown', handleDocumentPointerDown);
+    };
+  }, [colorPickerSliceId]);
 
   const handleActivate = (
     sliceId: string,
@@ -153,6 +189,8 @@ export function SliceList() {
             ? `${toTimestampLabel(slice.range[0], mapDomain)} -> ${toTimestampLabel(slice.range[1], mapDomain)}`
             : toTimestampLabel(slice.time, mapDomain);
           const interactionLabel = `${a11yLabel}. ${rangeLabel}. ${isSelected ? 'Selected.' : 'Not selected.'}`;
+          const selectedColor = getSliceColorOption(slice.color);
+          const isColorPickerOpen = colorPickerSliceId === slice.id;
 
           return (
             <li key={slice.id}>
@@ -219,6 +257,59 @@ export function SliceList() {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
+                      <div className="relative" data-color-picker-root="true">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setColorPickerSliceId((currentId) => (currentId === slice.id ? null : slice.id));
+                          }}
+                          className={`rounded p-1 transition hover:bg-amber-500/10 hover:text-amber-200 ${
+                            isSelected ? 'text-blue-200/80' : 'text-slate-400'
+                          }`}
+                          aria-label={`Set color for ${displayName}`}
+                          aria-expanded={isColorPickerOpen}
+                        >
+                          <span
+                            className={`block h-3.5 w-3.5 rounded-full border ${
+                              selectedColor
+                                ? `${selectedColor.class} border-slate-100/70`
+                                : 'border-slate-500 bg-transparent'
+                            }`}
+                          />
+                        </button>
+                        {isColorPickerOpen ? (
+                          <div
+                            className="absolute left-0 top-6 z-20 w-40 rounded-md border border-slate-700 bg-slate-900/95 p-2 shadow-lg"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {SLICE_COLORS.map((option) => (
+                                <button
+                                  key={option.name}
+                                  type="button"
+                                  className={`group flex h-7 w-7 items-center justify-center rounded border transition ${
+                                    slice.color === option.name
+                                      ? 'border-slate-100/80 bg-slate-800'
+                                      : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/60'
+                                  }`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    updateSlice(slice.id, { color: option.name as SliceColorName });
+                                    setColorPickerSliceId(null);
+                                  }}
+                                  aria-label={`Set ${displayName} color to ${option.label}`}
+                                  title={option.label}
+                                >
+                                  <span
+                                    className={`h-4 w-4 rounded-full border border-slate-100/70 ${option.class}`}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                       {showsBurstChip ? (
                         <span className={BURST_CHIP_CLASSNAME}>
                           <Sparkles className={BURST_CHIP_ICON_CLASSNAME} />
