@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Pencil, Sparkles, X } from 'lucide-react';
+import { Check, MessageSquare, Pencil, Sparkles, X } from 'lucide-react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
 import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
@@ -48,6 +48,8 @@ const SLICE_COLORS = [
 
 type SliceColorName = (typeof SLICE_COLORS)[number]['name'];
 
+const NOTES_PREVIEW_LIMIT = 30;
+
 const getSliceColorOption = (color?: string) =>
   SLICE_COLORS.find((option) => option.name === color);
 
@@ -64,6 +66,8 @@ export function SliceList() {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const [editingSliceId, setEditingSliceId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingNotesSliceId, setEditingNotesSliceId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState('');
   const [colorPickerSliceId, setColorPickerSliceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -164,6 +168,21 @@ export function SliceList() {
     cancelEditing();
   };
 
+  const startNotesEditing = (slice: TimeSlice) => {
+    setEditingNotesSliceId(slice.id);
+    setEditingNotes(slice.notes ?? '');
+  };
+
+  const cancelNotesEditing = () => {
+    setEditingNotesSliceId(null);
+    setEditingNotes('');
+  };
+
+  const saveNotesEditing = (slice: TimeSlice) => {
+    updateSlice(slice.id, { notes: editingNotes.trim() || undefined });
+    cancelNotesEditing();
+  };
+
   if (slices.length === 0) {
     return (
       <p className="rounded-md border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
@@ -182,6 +201,12 @@ export function SliceList() {
         {sortedSlices.map((slice) => {
           const isSelected = selectedIds.has(slice.id);
           const isEditing = editingSliceId === slice.id;
+          const isEditingNotes = editingNotesSliceId === slice.id;
+          const trimmedNotes = slice.notes?.trim() ?? '';
+          const hasNotes = trimmedNotes.length > 0;
+          const notesPreview = hasNotes
+            ? `${trimmedNotes.slice(0, NOTES_PREVIEW_LIMIT)}${trimmedNotes.length > NOTES_PREVIEW_LIMIT ? '...' : ''}`
+            : 'Add notes';
           const displayName = getSliceDisplayName(slice);
           const showsBurstChip = !!slice.isBurst && displayName.startsWith('Burst');
           const a11yLabel = showsBurstChip ? `${displayName} (burst-derived slice)` : `${displayName} (manual slice)`;
@@ -323,6 +348,51 @@ export function SliceList() {
                       </span>
                     ) : null}
                   </span>
+                  {isEditingNotes ? (
+                    <textarea
+                      autoFocus
+                      value={editingNotes}
+                      onChange={(event) => setEditingNotes(event.target.value)}
+                      onClick={(event) => event.stopPropagation()}
+                      onBlur={() => saveNotesEditing(slice)}
+                      onKeyDown={(event) => {
+                        event.stopPropagation();
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          saveNotesEditing(slice);
+                        }
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          cancelNotesEditing();
+                        }
+                      }}
+                      aria-label={`Edit notes for ${displayName}`}
+                      className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200 outline-none ring-offset-2 ring-offset-slate-950 focus-visible:ring-2 focus-visible:ring-amber-300/70"
+                      rows={2}
+                    />
+                  ) : (
+                    <span className="mt-1 flex min-w-0 items-start gap-1.5 text-[10px] text-slate-400">
+                      <span
+                        title={hasNotes ? trimmedNotes : undefined}
+                        className="block max-w-[170px] truncate leading-relaxed"
+                      >
+                        {notesPreview}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startNotesEditing(slice);
+                        }}
+                        className={`rounded p-0.5 transition hover:bg-slate-700/70 hover:text-slate-200 ${
+                          isSelected ? 'text-blue-200/80' : 'text-slate-500'
+                        }`}
+                        aria-label={hasNotes ? `Edit notes for ${displayName}` : `Add notes for ${displayName}`}
+                      >
+                        <MessageSquare className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
                   <span className={`block ${isSelected ? 'text-blue-100/90' : 'text-slate-300'}`}>{rangeLabel}</span>
                 </span>
                 <button
