@@ -2,19 +2,19 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 31 complete
-**Status:** Phase 31 complete (31-01 through 31-03 shipped)
-**Next:** Start Phase 32 slice metadata UI
+**Current Phase:** v1.1 Manual Timeslicing - Phase 32 in progress
+**Status:** Phase 32 in progress (32-01 shipped)
+**Next:** Continue Phase 32 slice metadata UI (32-02)
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
-Phase: 31 of 41 (Multi-Slice Management)
-Plan: 3 of 3 in current phase
-Status: ✅ **Phase complete**
-Last activity: 2026-02-20 - Completed 31-03-PLAN.md
+Phase: 32 of 41 (Slice Metadata & UI)
+Plan: 1 of 3 in current phase
+Status: 🚧 **In progress**
+Last activity: 2026-02-21 - Completed 32-01-PLAN.md
 
-Progress: overall ████████████████████ 100% (107/107 plans) | v1.1 ██████░ 86% phases (6/7)
+Progress: overall ███████████████████░ 96% (108/113 plans) | v1.1 ██████░ 86% phases (6/7)
 
 ```
 v1.0 Complete:
@@ -27,7 +27,7 @@ v1.1 Planned:
 [x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
 [x] Phase 31: Multi-Slice Management (3/3 plans complete)
-[ ] Phase 32: Slice Metadata & UI
+[~] Phase 32: Slice Metadata & UI (1/3 plans complete)
 
 v1.2 Planned:
 [ ] Phase 33-36: Semi-Automated Timeslicing
@@ -40,14 +40,14 @@ v1.3 Planned:
 | Metric | v1.0 | v1.1 Target |
 |--------|------|-------------|
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
-| Phase Completion | 25/25 | 5/7 |
+| Phase Completion | 25/25 | 6/7 |
 | Milestone Status | ✅ Shipped | 🚧 Execution In Progress |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Transitioning from completed Phase 31 bulk operations into Phase 32 slice metadata workflows
+**Current focus:** Executing Phase 32 slice metadata workflows for color and notes support
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -146,14 +146,19 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added toolbar bulk actions `Delete Selected (N)` and `Merge Selected`, both gated by explicit selection count.
 - Standardized bulk-operation cleanup to clear transient selection state after merge/delete and clear-all actions.
 
+**Phase 32 Decision Log (Execution):**
+- Extended `TimeSlice` with optional `color` and `notes` metadata fields for slice annotation and coloring.
+- Kept metadata fields optional and persist-compatible to avoid migrations for existing `slice-store-v1` records.
+- Confirmed TypeScript/Next compilation remains healthy after schema extension.
+
 ## Blockers/Concerns
 
 **None currently**
 
 ## Session Continuity
 
-Last session: 2026-02-20 16:11 UTC
-Stopped at: Completed 31-03-PLAN.md
+Last session: 2026-02-21 15:02 UTC
+Stopped at: Completed 32-01-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -188,7 +193,7 @@ Resume file: None
 - DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
 
 **Next focus:**
-- Start 32-01 slice metadata and UI execution.
+- Execute 32-02 slice metadata and UI plan.
 
 ---
-*Last updated: 2026-02-20 - completed 31-03 bulk merge/delete operations*
+*Last updated: 2026-02-21 - completed 32-01 slice metadata model update*
