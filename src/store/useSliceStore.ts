@@ -9,6 +9,8 @@ import { epochSecondsToNormalized, toEpochSeconds } from '../lib/time-domain';
 export interface TimeSlice {
   id: string;
   name?: string;
+  color?: string;
+  notes?: string;
   type: 'point' | 'range';
   time: number; // Normalized time 0-100 (for point)
   range?: [number, number]; // Normalized start/end (for range)
@@ -31,7 +33,10 @@ interface SliceStore {
   ) => TimeSlice | undefined;
   removeSlice: (id: string) => void;
   mergeSlices: (ids: string[]) => string | null;
-  updateSlice: (id: string, updates: Partial<TimeSlice>) => void;
+  updateSlice: (
+    id: string,
+    updates: Partial<TimeSlice> & { color?: string; notes?: string }
+  ) => void;
   toggleLock: (id: string) => void;
   toggleVisibility: (id: string) => void;
   clearSlices: () => void;
