@@ -19,9 +19,25 @@ interface SliceGeometry {
   isBurst: boolean;
   isPoint: boolean;
   isRange: boolean;
+  color: string | undefined;
 }
 
 const clampNormalized = (value: number) => Math.max(0, Math.min(100, value));
+
+const getColorClasses = (color?: string): { bg: string; border: string } => {
+  const colors: Record<string, { bg: string; border: string }> = {
+    amber: { bg: 'bg-amber-400/50', border: 'border-amber-300' },
+    blue: { bg: 'bg-blue-400/50', border: 'border-blue-300' },
+    green: { bg: 'bg-green-400/50', border: 'border-green-300' },
+    red: { bg: 'bg-red-400/50', border: 'border-red-300' },
+    purple: { bg: 'bg-purple-400/50', border: 'border-purple-300' },
+    cyan: { bg: 'bg-cyan-400/50', border: 'border-cyan-300' },
+    pink: { bg: 'bg-pink-400/50', border: 'border-pink-300' },
+    gray: { bg: 'bg-slate-400/50', border: 'border-slate-300' },
+  };
+
+  return colors[color || ''] || { bg: '', border: '' };
+};
 
 export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSliceLayerProps) {
   const slices = useSliceStore((state) => state.slices);
@@ -78,6 +94,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
             isBurst: !!slice.isBurst,
             isPoint: false,
             isRange: true,
+            color: slice.color,
           };
         }
 
@@ -97,6 +114,7 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
           isBurst: !!slice.isBurst,
           isPoint: true,
           isRange: false,
+          color: slice.color,
         };
       })
       .filter((geometry): geometry is SliceGeometry => geometry !== null);
@@ -142,10 +160,14 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-10" onClick={handleBackgroundClick}>
-      {orderedGeometries.map((geometry) => (
-        <div
+      {orderedGeometries.map((geometry) => {
+        const colorClasses = getColorClasses(geometry.color);
+        const hasCustomColor = colorClasses.bg.length > 0;
+
+        return (
+          <div
           key={geometry.id}
-          className={`absolute top-0 cursor-pointer rounded-sm border transition-[background-color,border-color,box-shadow,opacity] ${
+          className={`absolute top-0 cursor-pointer rounded-sm border transition-[background-color,border-color,box-shadow,opacity] ${colorClasses.border} ${colorClasses.bg} ${
             geometry.isActive && geometry.isBurst
               ? 'border-orange-300 bg-orange-400/60 shadow-[0_0_0_2px_rgba(251,146,60,0.55)]'
               : geometry.isActive
@@ -154,11 +176,17 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
                   ? 'border-blue-300/80 bg-blue-500/40 shadow-[0_0_0_2px_rgba(96,165,250,0.4)]'
                   : geometry.isSelected
                     ? 'border-blue-300/80 bg-blue-500/35 shadow-[0_0_0_2px_rgba(96,165,250,0.35)]'
-                : geometry.isBurst
-                  ? 'border-orange-400/60 bg-orange-500/30'
-                  : geometry.isPoint
-                    ? 'border-cyan-200/70 bg-cyan-300/50'
-                    : 'border-cyan-300/45 bg-cyan-400/20'
+                    : geometry.isBurst
+                      ? hasCustomColor
+                        ? ''
+                        : 'border-orange-400/60 bg-orange-500/30'
+                      : geometry.isPoint
+                        ? hasCustomColor
+                          ? ''
+                          : 'border-cyan-200/70 bg-cyan-300/50'
+                        : hasCustomColor
+                          ? ''
+                          : 'border-cyan-300/45 bg-cyan-400/20'
           }`}
           style={{
             left: geometry.left,
@@ -198,7 +226,8 @@ export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSlice
           data-adjustment-active={draggingSliceId === geometry.id ? 'true' : 'false'}
           data-handle-hover-target={geometry.isRange ? 'true' : 'false'}
         />
-      ))}
+        );
+      })}
     </div>
   );
 }
