@@ -3,18 +3,18 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** v1.1 Manual Timeslicing - Phase 32 in progress
-**Status:** Phase 32 in progress (32-01 shipped)
+**Status:** Phase 32 in progress (32-01 and 32-03 shipped)
 **Next:** Continue Phase 32 slice metadata UI (32-02)
 
 ## Current Position
 Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 32 of 41 (Slice Metadata & UI)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: 🚧 **In progress**
-Last activity: 2026-02-21 - Completed 32-01-PLAN.md
+Last activity: 2026-02-21 - Completed 32-03-PLAN.md
 
-Progress: overall ███████████████████░ 96% (108/113 plans) | v1.1 ██████░ 86% phases (6/7)
+Progress: overall ███████████████████░ 96% (109/113 plans) | v1.1 ██████░ 86% phases (6/7)
 
 ```
 v1.0 Complete:
@@ -27,7 +27,7 @@ v1.1 Planned:
 [x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
 [x] Phase 31: Multi-Slice Management (3/3 plans complete)
-[~] Phase 32: Slice Metadata & UI (1/3 plans complete)
+[~] Phase 32: Slice Metadata & UI (2/3 plans complete)
 
 v1.2 Planned:
 [ ] Phase 33-36: Semi-Automated Timeslicing
@@ -150,6 +150,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Extended `TimeSlice` with optional `color` and `notes` metadata fields for slice annotation and coloring.
 - Kept metadata fields optional and persist-compatible to avoid migrations for existing `slice-store-v1` records.
 - Confirmed TypeScript/Next compilation remains healthy after schema extension.
+- Added notes preview rendering in `SliceList` with 30-character truncation and hover tooltip for full text.
+- Added inline notes editing in `SliceList` via textarea expansion with Enter-save, Shift+Enter newline, blur-save, and Escape-cancel behavior.
+- Kept notes persistence flow through `updateSlice(..., { notes })`, preserving empty-as-undefined optional metadata semantics.
 
 ## Blockers/Concerns
 
@@ -157,8 +160,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-21 15:02 UTC
-Stopped at: Completed 32-01-PLAN.md
+Last session: 2026-02-21 15:45 UTC
+Stopped at: Completed 32-03-PLAN.md
 Resume file: None
 
 ## Accumulated Context
@@ -196,4 +199,4 @@ Resume file: None
 - Execute 32-02 slice metadata and UI plan.
 
 ---
-*Last updated: 2026-02-21 - completed 32-01 slice metadata model update*
+*Last updated: 2026-02-21 - completed 32-03 slice notes UI update*
