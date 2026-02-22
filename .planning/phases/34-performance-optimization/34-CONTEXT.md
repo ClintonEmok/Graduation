@@ -25,7 +25,17 @@ Optimize data loading and rendering for 8.4M record dataset. Target: initial loa
   - Add buffer zones (load data before/after visible range for smooth scrolling)
   - Pre-compute aggregations at query time (bins, density) so frontend just renders
 
-### Rendering Approach
+### Density Calculation
+- **Two levels of density** (resampling approach):
+  1. **Global density** — pre-computed from full 8.4M dataset
+     - Computed server-side (DuckDB) on load/filter change
+     - Used for timeslicing (always accurate regardless of viewport)
+     - Small payload: just bucket counts
+  2. **Viewport density** — computed from loaded viewport points
+     - Used for local detail when zoomed in
+     - Recalculates as user pans/zooms within loaded data
+- Timeslicing always uses global density (full dataset)
+- Visualization uses whichever density is appropriate for zoom level
 - **Level-of-detail (LOD) based on zoom level**
   - Zoomed out: Show density heat map only (already implemented from Phase 26)
   - Medium zoom: Show sampled points (e.g., every 100th point)
