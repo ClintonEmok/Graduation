@@ -8,9 +8,9 @@
 
 ## Current Position
 Phase: **33 of 41** (Data Integration)
-Plan: **1 of 3** in current phase
+Plan: **2 of 3** in current phase
 Status: **In progress**
-Last activity: 2026-02-22 - Completed 33-01-PLAN.md
+Last activity: 2026-02-22 - Completed 33-02-PLAN.md
 
 Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 █░░░░░░░░░░░ 10% phases (1/4)
 
@@ -28,7 +28,7 @@ v1.1 Complete:
 [x] Phase 32: Slice Metadata & UI (3/3 plans complete)
 
 v1.2 In Progress:
-[x] Phase 33: Data Integration (1/3 plans complete)
+[x] Phase 33: Data Integration (2/3 plans complete)
 
 v1.2 Planned:
 [ ] Phase 34-36: Semi-Automated Timeslicing
@@ -163,6 +163,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Fixed BigInt serialization by converting all numeric values to Number
 - Stream endpoint now serves ~8.3M rows with date filtering and coordinate computation
 - Meta endpoint returns real date range: 2001-2026 (978307200 to 1767571200), 8.3M count, 33 crime types
+- Added mock fallback to stream route with generateMockData() and X-Data-Warning header
+- Added mock fallback to meta route with MOCK_METADATA and isMock flag
+- Updated duckdb-aggregator.ts to query CSV instead of parquet with proper date parsing
 
 ## Blockers/Concerns
 
@@ -170,8 +173,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 01:58 UTC
-Stopped at: Completed 33-01-PLAN.md
+Last session: 2026-02-22 02:05 UTC
+Stopped at: Completed 33-02-PLAN.md
 Resume file: None
 
 ## Accumulated Context
