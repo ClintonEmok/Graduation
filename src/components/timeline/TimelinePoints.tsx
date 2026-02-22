@@ -49,8 +49,8 @@ export function TimelinePoints() {
   // Ref for direct Three.js access if needed
   const pointsRef = useRef<THREE.Points>(null)
   
-  // Handle loading state
-  if (isLoading && !data) {
+  // Handle loading state (show nothing while loading initial data)
+  if (isLoading) {
     return null // Or render a loading indicator
   }
   

@@ -2,39 +2,31 @@
  * Viewport-based crime data fetching hook.
  * Fetches data only for visible time range + buffer to optimize loading.
  * 
- * Key features:
- * - Buffers viewport range to prevent frequent refetches during scroll
- * - Uses viewport state from store (not props) for reactive updates
- * - Keeps old data while fetching new (placeholderData) to prevent flash
- * - Returns loading/fetching states for UI feedback
+ * This is a thin wrapper around useCrimeData that:
+ * - Gets viewport bounds from the viewport store
+ * - Passes them to useCrimeData
+ * - Returns CrimeRecord[] format
+ * 
+ * @deprecated Use useCrimeData directly for new code.
+ * This hook is kept for backward compatibility with existing consumers.
  */
-import { useQuery } from '@tanstack/react-query'
-import { addDays } from 'date-fns'
 import { useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore'
+import { useCrimeData } from './useCrimeData'
+import { CrimeRecord } from '@/types/crime'
 
-interface CrimeRecord {
-  timestamp: number // epoch seconds
-  type: string
-  lat: number
-  lon: number
-  x: number
-  z: number
-  iucr: string
-  district: string
-  year: number
-}
-
-interface UseViewportCrimeDataOptions {
+export interface UseViewportCrimeDataOptions {
   /** Number of days to buffer around viewport (default: 30) */
   bufferDays?: number
   /** Optional crime types filter */
   crimeTypes?: string[]
   /** Optional districts filter */
   districts?: string[]
+  /** Optional limit on number of records (default: 50000) */
+  limit?: number
 }
 
-interface UseViewportCrimeDataResult {
-  data: CrimeRecord[] | undefined
+export interface UseViewportCrimeDataResult {
+  data: CrimeRecord[]
   isLoading: boolean
   isFetching: boolean
   error: Error | null
@@ -46,121 +38,44 @@ interface UseViewportCrimeDataResult {
 }
 
 /**
- * Fetch crime data for a date range.
- * Currently returns mock data structure - will connect to /api/crimes/range in later plan.
- */
-async function fetchCrimesInRange(
-  startEpoch: number,
-  endEpoch: number,
-  crimeTypes?: string[],
-  districts?: string[]
-): Promise<CrimeRecord[]> {
-  // TODO: Connect to /api/crimes/range endpoint in plan 34-03
-  // For now, return mock data structure to allow hook to compile
-  // and be ready for API integration
-  
-  try {
-    const params = new URLSearchParams({
-      startEpoch: startEpoch.toString(),
-      endEpoch: endEpoch.toString(),
-    })
-    
-    if (crimeTypes?.length) {
-      params.append('crimeTypes', crimeTypes.join(','))
-    }
-    if (districts?.length) {
-      params.append('districts', districts.join(','))
-    }
-    
-    const response = await fetch(`/api/crimes/range?${params.toString()}`)
-    
-    if (!response.ok) {
-      // If API doesn't exist yet (404), return empty array
-      if (response.status === 404) {
-        return []
-      }
-      throw new Error(`HTTP error: ${response.status}`)
-    }
-    
-    return response.json()
-  } catch (error) {
-    // API doesn't exist - return empty for now
-    console.warn('Crime API not available, returning empty data')
-    return []
-  }
-}
-
-/**
  * Hook to fetch crime data based on current viewport.
  * Re-fetches automatically when viewport changes.
  * 
- * @param bufferDays - Days to buffer around viewport (default: 30)
- * @param crimeTypes - Optional crime types filter
- * @param districts - Optional districts filter
+ * @param options - Configuration options
+ * @param options.bufferDays - Days to buffer around viewport (default: 30)
+ * @param options.crimeTypes - Optional crime types filter
+ * @param options.districts - Optional districts filter
+ * @param options.limit - Optional max records (default: 50000)
  */
 export function useViewportCrimeData(
   options: UseViewportCrimeDataOptions = {}
 ): UseViewportCrimeDataResult {
-  const { bufferDays = 30, crimeTypes, districts } = options
+  const { 
+    bufferDays = 30, 
+    crimeTypes, 
+    districts,
+    limit = 50000 
+  } = options
   
-  // Subscribe to viewport bounds using individual selectors to avoid new object on each render
+  // Subscribe to viewport bounds using individual selectors
   const startDate = useViewportStart()
   const endDate = useViewportEnd()
   
-  console.log('[useViewportCrimeData] startDate:', startDate, 'endDate:', endDate)
-  
-  // Convert epoch seconds to Date objects for buffer calculation
-  const start = new Date(startDate * 1000)
-  const end = new Date(endDate * 1000)
-  
-  // Calculate buffered range
-  const bufferedStart = addDays(start, -bufferDays)
-  const bufferedEnd = addDays(end, bufferDays)
-  
-  // Convert back to epoch seconds for API
-  const bufferedStartEpoch = Math.floor(bufferedStart.getTime() / 1000)
-  const bufferedEndEpoch = Math.floor(bufferedEnd.getTime() / 1000)
-  
-  const queryKey = [
-    'crimes', 
-    'viewport', 
-    bufferedStartEpoch, 
-    bufferedEndEpoch,
+  // Use the unified useCrimeData hook with viewport bounds
+  const result = useCrimeData({
+    startEpoch: startDate,
+    endEpoch: endDate,
     crimeTypes,
-    districts
-  ];
-  
-  console.log('[useViewportCrimeData] queryKey:', queryKey);
-  
-  const query = useQuery({
-    queryKey,
-    queryFn: () => fetchCrimesInRange(
-      bufferedStartEpoch,
-      bufferedEndEpoch,
-      crimeTypes,
-      districts
-    )    .then((data: CrimeRecord[]) => {
-      console.log('[useViewportCrimeData] fetch returned:', data?.length, 'records');
-      return data;
-    }),
-    // Keep old data while fetching new to prevent UI flash
-    placeholderData: (previousData) => previousData,
-    // Don't refetch on window focus - viewport changes should trigger refetch
-    refetchOnWindowFocus: false,
-    // Stale time matches QueryProvider default (5 min)
-    staleTime: 5 * 60 * 1000,
+    districts,
+    bufferDays,
+    limit,
   })
   
-  console.log('[useViewportCrimeData] query.data:', query.data, 'query.isLoading:', query.isLoading);
-  
   return {
-    data: query.data as CrimeRecord[] | undefined,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    error: query.error as Error | null,
-    bufferedRange: {
-      start: bufferedStartEpoch,
-      end: bufferedEndEpoch,
-    },
+    data: result.data,
+    isLoading: result.isLoading,
+    isFetching: result.isFetching,
+    error: result.error,
+    bufferedRange: result.bufferedRange,
   }
 }
