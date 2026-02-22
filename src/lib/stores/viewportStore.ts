@@ -33,9 +33,10 @@ export interface ViewportState {
   setFilters: (filters: Partial<CrimeFilters>) => void
 }
 
-// Default state: cover 2005-2026 date range in epoch seconds
-const DEFAULT_START_DATE = 1104537600 // 2005-01-01T00:00:00Z
-const DEFAULT_END_DATE = 1767225600   // 2026-01-01T00:00:00Z
+// Default state: start with first year (2001) for better initial load performance
+// Full date range is 2001-2026
+const DEFAULT_START_DATE = 978307200  // 2001-01-01T00:00:00Z
+const DEFAULT_END_DATE = 1011878400   // 2002-01-01T00:00:00Z (one year later)
 
 export const useViewportStore = create<ViewportState>((set) => ({
   startDate: DEFAULT_START_DATE,
@@ -63,16 +64,6 @@ export const useViewportStore = create<ViewportState>((set) => ({
 
 // Fine-grained selectors - each returns primitives or specific shapes
 // These selectors ensure components only re-render when their specific data changes
-
-/**
- * Returns viewport bounds as an object.
- * Component re-renders only when startDate OR endDate changes.
- */
-export const useViewportBounds = () => 
-  useViewportStore((state) => ({
-    startDate: state.startDate,
-    endDate: state.endDate,
-  }))
 
 /**
  * Returns zoom level only.

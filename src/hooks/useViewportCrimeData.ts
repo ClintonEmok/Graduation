@@ -10,7 +10,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { addDays } from 'date-fns'
-import { useViewportBounds } from '@/lib/stores/viewportStore'
+import { useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore'
 
 interface CrimeRecord {
   id: string
@@ -101,8 +101,9 @@ export function useViewportCrimeData(
 ): UseViewportCrimeDataResult {
   const { bufferDays = 30, crimeTypes, districts } = options
   
-  // Subscribe to viewport bounds - re-renders only when bounds change
-  const { startDate, endDate } = useViewportBounds()
+  // Subscribe to viewport bounds using individual selectors to avoid new object on each render
+  const startDate = useViewportStart()
+  const endDate = useViewportEnd()
   
   // Convert epoch seconds to Date objects for buffer calculation
   const start = new Date(startDate * 1000)
