@@ -58,27 +58,42 @@ export const ensureSortedCrimesTable = async (): Promise<string> => {
   const dataPath = getDataPath();
 
   return new Promise((resolve, reject) => {
-    // Use CREATE TABLE IF NOT EXISTS for idempotent table creation
-    // This is the standard SQL approach and works reliably in DuckDB
-    console.log('Ensuring crimes_sorted table exists (zone map optimized)...');
-    
-    const createQuery = `
-      CREATE TABLE IF NOT EXISTS crimes_sorted AS 
-      SELECT * FROM read_csv_auto('${dataPath}')
-      WHERE "Date" IS NOT NULL
-      ORDER BY "Date"
-    `;
-
-    database.run(createQuery, (err: Error | null) => {
+    // First check if table already exists
+    database.all("SELECT name FROM sqlite_master WHERE type='table' AND name='crimes_sorted'", (err: Error | null, rows: unknown[]) => {
       if (err) {
-        console.error('Error creating crimes_sorted table:', err);
-        // Fall back to original table on error
-        resolve('crimes');
+        console.error('Error checking for crimes_sorted table:', err);
+        reject(err);
         return;
       }
+      
+      const tables = rows as { name: string }[];
+      if (tables.length > 0) {
+        // Table exists, use it
+        console.log('crimes_sorted table already exists');
+        resolve('crimes_sorted');
+        return;
+      }
+      
+      // Table doesn't exist, create it
+      console.log('Creating crimes_sorted table (zone map optimized)...');
+      
+      const createQuery = `
+        CREATE TABLE crimes_sorted AS 
+        SELECT * FROM read_csv_auto('${dataPath}')
+        WHERE "Date" IS NOT NULL
+        ORDER BY "Date"
+      `;
 
-      console.log('crimes_sorted table ready with zone map optimization');
-      resolve('crimes_sorted');
+      database.run(createQuery, (runErr: Error | null) => {
+        if (runErr) {
+          console.error('Error creating crimes_sorted table:', runErr);
+          reject(runErr);
+          return;
+        }
+
+        console.log('crimes_sorted table ready with zone map optimization');
+        resolve('crimes_sorted');
+      });
     });
   });
 };
