@@ -98,10 +98,8 @@ export const queryCrimesInRange = async (
       EXTRACT(YEAR FROM "Date") as year
     FROM ${tableName}
     ${whereClause}
-    LIMIT $${params.length + 1}
+    LIMIT ${limit}
   `;
-  
-  params.push(limit);
 
   return new Promise((resolve, reject) => {
     db.all(query, params, (err: Error | null, rows: unknown[]) => {
