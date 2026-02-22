@@ -19,6 +19,8 @@ import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
+import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -53,6 +55,14 @@ export const DualTimeline: React.FC = () => {
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
+
+  // Get viewport-based crime data
+  const { data: viewportCrimes, isLoading: isViewportLoading } = useViewportCrimeData({
+    bufferDays: 30,
+  });
+
+  // Sync viewport store with filter store when range changes
+  const setViewport = useViewportStore((state) => state.setViewport);
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const overviewSvgRef = useRef<SVGSVGElement | null>(null);
@@ -111,7 +121,22 @@ export const DualTimeline: React.FC = () => {
   }, [timestampSeconds, domainStart, domainEnd]);
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
+  
+  // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
+    // If we have viewport crime data, use it directly
+    if (viewportCrimes && viewportCrimes.length > 0) {
+      const [start, end] = detailRangeSec;
+      const points = viewportCrimes
+        .map(crime => crime.date)
+        .filter((date) => date >= start && date <= end);
+      const maxPoints = 4000;
+      if (points.length <= maxPoints) return points;
+      const step = Math.ceil(points.length / maxPoints);
+      return points.filter((_, index) => index % step === 0);
+    }
+    
+    // Fallback to computed timestampSeconds
     if (!timestampSeconds.length) return [];
     const [start, end] = detailRangeSec;
     const points = timestampSeconds.filter((value) => value >= start && value <= end);
@@ -119,7 +144,7 @@ export const DualTimeline: React.FC = () => {
     if (points.length <= maxPoints) return points;
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0);
-  }, [timestampSeconds, detailRangeSec]);
+  }, [viewportCrimes, timestampSeconds, detailRangeSec]);
 
   const detailDensityMap = useMemo(() => {
     if (!densityMap || densityMap.length === 0) return densityMap;
@@ -311,13 +336,16 @@ export const DualTimeline: React.FC = () => {
       setTimeRange([safeStart, safeEnd]);
       setRange(nextRange);
       setBrushRange(nextRange);
+      
+      // Sync viewport store for viewport-based data loading
+      setViewport(safeStart, safeEnd);
 
       const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
       if (clampedTime !== currentTime) {
         setTime(clampedTime);
       }
     },
-    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange]
+    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange, setViewport]
   );
 
   useEffect(() => {
