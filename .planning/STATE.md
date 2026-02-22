@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **34 of 42** (Performance Optimization)
-Plan: **3 of 5** in current phase
+Plan: **4 of 5** in current phase
 Status: **In progress**
-Last activity: 2026-02-22 - Completed 34-03-PLAN.md (Viewport API endpoint)
+Last activity: 2026-02-22 - Completed 34-04-PLAN.md (THREE.Points rendering with LOD)
 
-Progress: overall ████████████████░░░ 83% (118/113 plans) | v1.2 ███░░░░░░░░░░░ 20% phases (2/7)
+Progress: overall ████████████████░░░ 83% (119/143 plans) | v1.2 ████░░░░░░░░░░ 20% phases (4/7)
 
 ```
 v1.0 Complete:
@@ -29,7 +29,7 @@ v1.1 Complete:
 [x] Phase 33: Data Integration (5/5 plans complete)
 
 v1.2 In Progress:
-[ ] Phase 34: Performance Optimization (3/5 plans complete)
+[ ] Phase 34: Performance Optimization (4/5 plans complete)
 
 v1.2 Planned:
 [ ] Phase 35-37: Semi-Automated Timeslicing
@@ -187,6 +187,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Created /api/crimes/range endpoint accepting viewport bounds (startEpoch, endEpoch)
 - Implemented buffer zone logic (default 30 days before/after visible range)
 - Returns JSON with metadata (viewport, buffer, count, limit)
+- Added useCrimePointCloud hook with LOD sampling (zoom < 0.3 = 1%, < 0.7 = 10%, >= 0.7 = 100%)
+- Created TimelinePoints component using THREE.Points with BufferGeometry
+- Crime type colors from PALETTE.categoryColors with fallback to 'OTHER'
+- Uses ~12 bytes/point vs 200+ for InstancedMesh (10x memory efficiency)
 
 ## Blockers/Concerns
 
@@ -198,9 +202,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 12:18 UTC
-Stopped at: Completed 34-03-PLAN.md (Viewport API endpoint)
-Next: 34-04-PLAN.md (THREE.Points rendering with LOD)
+Last session: 2026-02-22 12:23 UTC
+Stopped at: Completed 34-04-PLAN.md (THREE.Points rendering with LOD)
+Next: 34-05-PLAN.md (Integration & performance verification)
 
 ## Accumulated Context
 
