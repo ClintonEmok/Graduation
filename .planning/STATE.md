@@ -2,32 +2,32 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - Phase 32 in progress
-**Status:** Phase 32 in progress (32-02 shipped)
-**Next:** Continue Phase 32 slice metadata UI (32-03)
+**Current Phase:** v1.1 Manual Timeslicing - COMPLETE
+**Status:** v1.1 Milestone shipped (Phases 26-32 complete)
+**Next:** v1.2 Semi-Automated Timeslicing
 
 ## Current Position
-Milestone: **v1.1 Manual Timeslicing** (IN PROGRESS)
+Milestone: **v1.1 Manual Timeslicing** (SHIPPED 2026-02-21)
 Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
 Phase: 32 of 41 (Slice Metadata & UI)
-Plan: 2 of 3 in current phase
-Status: 🚧 **In progress**
-Last activity: 2026-02-21 - Completed 32-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: ✅ **Phase complete / Milestone shipped**
+Last activity: 2026-02-21 - Completed 32-03-PLAN.md
 
-Progress: overall ███████████████████░ 96% (109/113 plans) | v1.1 ██████░ 86% phases (6/7)
+Progress: overall ████████████████████ 100% (113/113 plans) | v1.1 ███████ 100% phases (7/7)
 
 ```
 v1.0 Complete:
 [x] Phase 1-25: All thesis prototype phases
 
-v1.1 Planned:
+v1.1 Complete:
 [x] Phase 26: Timeline Density Visualization (5/5 plans complete)
 [x] Phase 27: Manual Slice Creation (6/6 plans complete)
 [x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
 [x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
 [x] Phase 31: Multi-Slice Management (3/3 plans complete)
-[~] Phase 32: Slice Metadata & UI (2/3 plans complete)
+[x] Phase 32: Slice Metadata & UI (3/3 plans complete)
 
 v1.2 Planned:
 [ ] Phase 33-36: Semi-Automated Timeslicing
@@ -37,17 +37,17 @@ v1.3 Planned:
 ```
 
 ## Performance Metrics
-| Metric | v1.0 | v1.1 Target |
-|--------|------|-------------|
+| Metric | v1.0 | v1.1 |
+|--------|------|------|
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
-| Phase Completion | 25/25 | 6/7 |
-| Milestone Status | ✅ Shipped | 🚧 Execution In Progress |
+| Phase Completion | 25/25 | 7/7 |
+| Milestone Status | ✅ Shipped | ✅ Shipped |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Executing Phase 32 slice metadata workflows for color and notes support
+**Current focus:** v1.1 Manual Timeslicing milestone complete; ready for v1.2 Semi-Automated Timeslicing
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions

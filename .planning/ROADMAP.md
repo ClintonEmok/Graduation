@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
-- 🚧 **v1.1 Manual Timeslicing** — Timeline-based manual region selection (in progress)
+- ✅ **v1.1 Manual Timeslicing** — Phases 26-32 (shipped 2026-02-21)
 - 📋 **v1.2 Semi-Automated Timeslicing** — AI-assisted suggestions (planned)
 - 📋 **v1.3 Fully Automated Timeslicing** — Optimal automatic generation (planned)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
@@ -175,9 +175,22 @@ Plans:
 - Session persistence
 
 Plans:
-- [ ] 32-01-PLAN.md — Data model extension (add color and notes fields to TimeSlice)
-- [ ] 32-02-PLAN.md — Color palette UI (color selector + rendering)
-- [ ] 32-03-PLAN.md — Notes/annotation UI (tooltip + inline expand)
+- [x] 32-01-PLAN.md — Data model extension (add color and notes fields to TimeSlice)
+- [x] 32-02-PLAN.md — Color palette UI (color selector + rendering)
+- [x] 32-03-PLAN.md — Notes/annotation UI (tooltip + inline expand)
+
+### Phase 33: Data Integration
+
+**Goal:** Ingest CSV files into SQLite database and wire API + timeline to real data.
+**Depends on:** Phase 32
+**Plans:** TBD
+
+**Details:**
+- Load 3 CSV files (including 2.4GB file) into SQLite database
+- Create joins to combine data properly
+- Refactor existing API to serve from unified database
+- Wire timeline components to use real data instead of mocks
+- Update density computation to work with real data
 
 ---
 
@@ -219,8 +232,8 @@ Plans:
 | 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
 | 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
 | 30 | v1.1 | 3/3 | ✅ Complete | 2026-02-20 |
-| 31 | v1.1 | 0/3 | 🚧 Planned | - |
-| 32 | v1.1 | 0/3 | 🚧 Planned | - |
+| 31 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
+| 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
 | 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
 
