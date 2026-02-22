@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **33 of 41** (Data Integration)
-Plan: **2 of 3** in current phase
-Status: **In progress**
-Last activity: 2026-02-22 - Completed 33-02-PLAN.md
+Plan: **3 of 3** in current phase
+Status: **Phase complete**
+Last activity: 2026-02-22 - Completed 33-03-PLAN.md
 
-Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 █████░░░░░░░░ 20% phases (2/4)
+Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 ███████░░░░░░ 30% phases (3/4)
 
 ```
 v1.0 Complete:
@@ -167,6 +167,11 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added mock fallback to meta route with MOCK_METADATA and isMock flag
 - Updated duckdb-aggregator.ts to query CSV instead of parquet with proper date parsing
 - Fixed bins aggregator coordinate bounds bug: normalized to correct Chicago bounds (lon -87.9 to -87.5, lat 41.6 to 42.1)
+- Wired data store to load real metadata from API (minTime, maxTime, count)
+- Added isMock and dataCount tracking to data store
+- Fixed field mapping: minLon/maxLon for x bounds, minLat/maxLat for z bounds
+- Added demo data warning banner in TopBar when isMock is true
+- Timeline automatically uses real epoch seconds for scale domain (2001-2026)
 
 ## Blockers/Concerns
 
@@ -174,8 +179,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 02:08 UTC
-Stopped at: Completed 33-02-PLAN.md
+Last session: 2026-02-22 02:15 UTC
+Stopped at: Completed 33-03-PLAN.md
 Resume file: None
 
 ## Accumulated Context
