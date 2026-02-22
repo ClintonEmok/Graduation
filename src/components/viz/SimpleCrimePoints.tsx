@@ -119,6 +119,8 @@ export function SimpleCrimePoints() {
     const yRange = maxYData - minYData || 1;
     const zRange = maxZData - minZData || 1;
 
+    console.log('[SimpleCrimePoints] data range: minXData:', minXData, 'maxXData:', maxXData, 'xRange:', xRange, 'data.length:', data.length);
+
     // Normalize time to 0-100
     const normalizeTime = (timestamp: number) => {
       return ((timestamp - minYData) / yRange) * 100 - 50;
