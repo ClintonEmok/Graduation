@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **34 of 42** (Performance Optimization)
-Plan: **1 of 5** in current phase
+Plan: **2 of 5** in current phase
 Status: **In progress**
-Last activity: 2026-02-22 - Completed 34-01-PLAN.md (viewport store & query foundation)
+Last activity: 2026-02-22 - Completed 34-02-PLAN.md (DuckDB query optimization)
 
-Progress: overall ████████████████░░░ 83% (117/113 plans) | v1.2 ██░░░░░░░░░░░░░ 10% phases (1/7)
+Progress: overall ████████████████░░░ 83% (118/113 plans) | v1.2 ███░░░░░░░░░░░ 20% phases (2/7)
 
 ```
 v1.0 Complete:
@@ -182,6 +182,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Integrated QueryProvider into root layout for app-wide caching
 - Created useViewportCrimeData hook with 30-day buffer logic
 - Hook subscribes to viewport state from store (reactive), builds queryKey with buffered range
+- Added ensureSortedCrimesTable() function for zone map optimization
+- Created queryCrimesInRange(), queryCrimeCount(), queryDensityBins() with parameterized queries
 
 ## Blockers/Concerns
 
@@ -193,9 +195,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 12:09 UTC
-Stopped at: Completed 34-01-PLAN.md (viewport store & query foundation)
-Next: 34-02-PLAN.md (DuckDB query optimization)
+Last session: 2026-02-22 12:15 UTC
+Stopped at: Completed 34-02-PLAN.md (DuckDB query optimization)
+Next: 34-03-PLAN.md (Viewport API endpoint)
 
 ## Accumulated Context
 
@@ -223,7 +225,7 @@ Next: 34-02-PLAN.md (DuckDB query optimization)
 - QueryProvider integrated in root layout
 
 **Next focus:**
-- Execute 34-02-PLAN.md (DuckDB query optimization)
+- Execute 34-03-PLAN.md (Viewport API endpoint)
 
 ---
-*Last updated: 2026-02-22 - completed 34-01 viewport store & query foundation*
+*Last updated: 2026-02-22 - completed 34-02 DuckDB query optimization*

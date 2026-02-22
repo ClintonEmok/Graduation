@@ -225,9 +225,9 @@ Plans:
 **Plans:**
 - [x] 34-01-PLAN.md — Zustand viewport store + TanStack Query setup
 - [x] 34-02-PLAN.md — DuckDB query optimization (sorted tables)
-- [x] 34-03-PLAN.md — Viewport API endpoint (/api/crimes/range)
-- [x] 34-04-PLAN.md — THREE.Points rendering with LOD
-- [x] 34-05-PLAN.md — Integration & performance verification
+- [ ] 34-03-PLAN.md — Viewport API endpoint (/api/crimes/range)
+- [ ] 34-04-PLAN.md — THREE.Points rendering with LOD
+- [ ] 34-05-PLAN.md — Integration & performance verification
 
 ---
 
@@ -270,7 +270,7 @@ Plans:
 | 31 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
-| 34 | v1.2 Perf | 5/5 | 📋 Planned | - |
+| 34 | v1.2 Perf | 2/5 | 📋 In progress | 2026-02-22 |
 | 35-37 | v1.2 | 0/TBD | 📋 Planned | - |
 | 38-42 | v1.3 | 0/TBD | 📋 Planned | - |
 
