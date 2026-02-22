@@ -1,9 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAggregatedBins } from '@/lib/duckdb-aggregator';
+import { Bin } from '@/types';
 
 // Force Node.js runtime for DuckDB compatibility
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Generate mock bins data for fallback
+function generateMockBins(resX: number, resY: number, resZ: number): Bin[] {
+  const bins: Bin[] = [];
+  const binCount = Math.min(resX * resY * resZ, 100); // Limit to 100 bins for mock
+  
+  for (let i = 0; i < binCount; i++) {
+    const ix = Math.floor(Math.random() * resX);
+    const iy = Math.floor(Math.random() * resY);
+    const iz = Math.floor(Math.random() * resZ);
+    
+    bins.push({
+      x: ((ix + 0.5) / resX * 100.0) - 50.0,
+      y: ((iy + 0.5) / resY * 100.0),
+      z: ((iz + 0.5) / resZ * 100.0) - 50.0,
+      count: Math.floor(Math.random() * 1000) + 100,
+      dominantType: ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT'][Math.floor(Math.random() * 4)]
+    });
+  }
+  
+  return bins;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,9 +60,24 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Bins API Error:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    
+    // Return mock bins data with warning
+    const { searchParams } = new URL(request.url);
+    const resX = parseInt(searchParams.get('resX') || '32', 10);
+    const resY = parseInt(searchParams.get('resY') || '16', 10);
+    const resZ = parseInt(searchParams.get('resZ') || '32', 10);
+    
+    const mockBins = generateMockBins(resX, resY, resZ);
+    
+    return NextResponse.json({
+      bins: mockBins,
+      isMock: true,
+    }, {
+      status: 200,
+      headers: {
+        'X-Data-Warning': 'Using demo data - database unavailable',
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+      }
+    });
   }
 }
