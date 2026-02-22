@@ -107,6 +107,8 @@ export function useViewportCrimeData(
   const startDate = useViewportStart()
   const endDate = useViewportEnd()
   
+  console.log('[useViewportCrimeData] startDate:', startDate, 'endDate:', endDate)
+  
   // Convert epoch seconds to Date objects for buffer calculation
   const start = new Date(startDate * 1000)
   const end = new Date(endDate * 1000)
