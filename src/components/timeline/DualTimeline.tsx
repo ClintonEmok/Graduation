@@ -81,22 +81,19 @@ export const DualTimeline: React.FC = () => {
   const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
   const detailInnerWidth = Math.max(0, width - DETAIL_MARGIN.left - DETAIL_MARGIN.right);
 
-  // Use viewport bounds for timeline scale (enables fast initial load with subset of data)
-  const viewportStart = useViewportStore((state) => state.startDate);
-  const viewportEnd = useViewportStore((state) => state.endDate);
-
+  // Full data range for timeline scale
   const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
-    // Use viewport bounds instead of full data range for timeline scale
-    if (viewportStart !== null && viewportEnd !== null) {
-      return [viewportStart, viewportEnd];
-    }
-    // Fallback to full data range if viewport not set yet
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       return [minTimestampSec, maxTimestampSec];
     }
     return [0, 100];
-  }, [viewportStart, viewportEnd, minTimestampSec, maxTimestampSec]);
+  }, [minTimestampSec, maxTimestampSec]);
 
+  // Viewport bounds for initial selection (first year)
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+
+  // Detail range: use selectedTimeRange if set, otherwise use viewport bounds (first year)
   const detailRangeSec = useMemo<[number, number]>(() => {
     if (selectedTimeRange) {
       const [rawStart, rawEnd] = selectedTimeRange;
@@ -107,8 +104,9 @@ export const DualTimeline: React.FC = () => {
         return [start, end];
       }
     }
-    return [domainStart, domainEnd];
-  }, [selectedTimeRange, domainStart, domainEnd]);
+    // Default to viewport bounds (first year) instead of full domain
+    return [viewportStart, viewportEnd];
+  }, [selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
 
   const timestampSeconds = useMemo<number[]>(() => {
     if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
