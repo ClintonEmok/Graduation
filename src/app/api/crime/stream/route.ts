@@ -68,6 +68,7 @@ export async function GET(request: Request) {
     // Query the CSV file directly with date parsing and coordinate filtering
     // Using read_csv_auto for automatic type inference
     // Date column is already parsed as TIMESTAMP, extract epoch directly
+    // LIMIT 50000 added for visualization performance - prevents timeout with 8.3M records
     const query = `
       SELECT 
         EXTRACT(EPOCH FROM "Date") as timestamp,
@@ -85,6 +86,7 @@ export async function GET(request: Request) {
         AND "Longitude" IS NOT NULL
         ${dateFilter}
         ${typeFilter}
+      LIMIT 50000
     `;
 
     // Manually fetch data and serialize to Arrow
