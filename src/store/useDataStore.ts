@@ -4,6 +4,16 @@ import { toEpochSeconds } from '@/lib/time-domain';
 import { RecordBatchReader, Table } from 'apache-arrow';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 
+/**
+ * @deprecated Use useCrimeData hook from @/hooks/useCrimeData for crime data fetching.
+ * 
+ * This store is kept for:
+ * - Metadata (minTimestampSec, maxTimestampSec, spatial bounds, dataCount, isMock)
+ * - Legacy components that haven't been migrated to useCrimeData yet
+ * 
+ * New components should use useCrimeData which fetches data via /api/crimes/range endpoint.
+ */
+
 export interface DataPoint {
   id: string;
   timestamp: number;
