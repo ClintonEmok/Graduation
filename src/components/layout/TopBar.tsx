@@ -40,6 +40,11 @@ export function TopBar() {
           <span>⚠️ Using demo data</span>
           <span className="mx-2">|</span>
           <span>Real dataset unavailable</span>
+          {dataCount !== undefined && (
+            <span className="ml-2 text-amber-100">
+              ({formatCount(dataCount)} records)
+            </span>
+          )}
         </div>
       )}
       <div className="flex h-14 w-full items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur">
@@ -54,6 +59,11 @@ export function TopBar() {
           >
             Dock toolbar
           </button>
+        )}
+        {dataCount !== undefined && (
+          <span className="text-xs text-gray-500">
+            {formatCount(dataCount)} records
+          </span>
         )}
       </div>
 
