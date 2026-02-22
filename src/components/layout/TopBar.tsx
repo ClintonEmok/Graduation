@@ -15,9 +15,17 @@ export function TopBar() {
   const [toolbarDocked, setToolbarDocked] = useState(true);
   const [adaptiveOpen, setAdaptiveOpen] = useState(false);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
-  const { columns, data, generateMockData } = useDataStore();
+  const { columns, data, generateMockData, isMock, dataCount } = useDataStore();
   const activeFilterCount = useFilterStore((state) => state.getActiveFilterCount());
   const resetFilters = useFilterStore((state) => state.resetFilters);
+
+  // Format count for display
+  const formatCount = (count: number | null) => {
+    if (count === null) return '...';
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
+    return count.toString();
+  };
 
   const { position, dragRef, handleMouseDown, isDragging } = useDraggable({
     storageKey: 'adaptive-controls-floating',
@@ -25,7 +33,16 @@ export function TopBar() {
   });
 
   return (
-    <div className="flex h-14 w-full items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur">
+    <div className="flex w-full flex-col">
+      {/* Demo data warning banner */}
+      {isMock && (
+        <div className="flex w-full items-center justify-center bg-amber-500/20 px-4 py-1 text-xs text-amber-200">
+          <span>⚠️ Using demo data</span>
+          <span className="mx-2">|</span>
+          <span>Real dataset unavailable</span>
+        </div>
+      )}
+      <div className="flex h-14 w-full items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur">
       <div className="flex items-center gap-3">
         {toolbarDocked ? (
           <FloatingToolbar variant="docked" onDetach={() => setToolbarDocked(false)} />
@@ -130,6 +147,7 @@ export function TopBar() {
       {!toolbarDocked && (
         <FloatingToolbar variant="floating" onDock={() => setToolbarDocked(true)} />
       )}
+      </div>
     </div>
   );
 }
