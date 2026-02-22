@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.2 Semi-Automated Timeslicing
-**Status:** Phase 33 in progress (Data Integration)
-**Next:** v1.2 Semi-Automated Timeslicing
+**Current Phase:** Phase 34: Performance Optimization
+**Status:** Phase 33 complete (Data Integration); Phase 34 next
+**Next:** Phase 34: Performance Optimization
 
 ## Current Position
-Phase: **33 of 41** (Data Integration)
-Plan: **5 of 5** in current phase
-Status: **Phase complete**
-Last activity: 2026-02-22 - Completed 33-04, 33-05 gap closure plans (data count + stream LIMIT)
+Phase: **34 of 42** (Performance Optimization)
+Plan: **1 of 5** in current phase
+Status: **In progress**
+Last activity: 2026-02-22 - Completed 34-01-PLAN.md (viewport store & query foundation)
 
-Progress: overall ████████████████░░░ 85% (117/113 plans) | v1.2 ████████░░░░░ 40% phases (4/4)
+Progress: overall ████████████████░░░ 83% (117/113 plans) | v1.2 ██░░░░░░░░░░░░░ 10% phases (1/7)
 
 ```
 v1.0 Complete:
@@ -26,15 +26,16 @@ v1.1 Complete:
 [x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
 [x] Phase 31: Multi-Slice Management (3/3 plans complete)
 [x] Phase 32: Slice Metadata & UI (3/3 plans complete)
-
-v1.2 In Progress:
 [x] Phase 33: Data Integration (5/5 plans complete)
 
+v1.2 In Progress:
+[ ] Phase 34: Performance Optimization (1/5 plans complete)
+
 v1.2 Planned:
-[ ] Phase 34-36: Semi-Automated Timeslicing
+[ ] Phase 35-37: Semi-Automated Timeslicing
 
 v1.3 Planned:
-[ ] Phase 37-41: Fully Automated Timeslicing
+[ ] Phase 38-42: Fully Automated Timeslicing
 ```
 
 ## Performance Metrics
@@ -48,7 +49,7 @@ v1.3 Planned:
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** v1.1 Manual Timeslicing milestone complete; ready for v1.2 Semi-Automated Timeslicing
+**Current focus:** Phase 33 complete; Phase 34 Performance Optimization ready to plan
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -174,49 +175,55 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Timeline automatically uses real epoch seconds for scale domain (2001-2026)
 - Added dataCount display in TopBar: in demo warning banner when isMock is true, and in toolbar area when dataCount is defined
 
+**Phase 34 Decision Log (Execution):**
+- Added Zustand viewport store with fine-grained selectors (useViewportBounds, useViewportZoom, useCrimeFilters, etc.)
+- Installed @tanstack/react-query@^5 for server state caching
+- Created QueryProvider wrapper with 5-min staleTime, 10-min gcTime
+- Integrated QueryProvider into root layout for app-wide caching
+- Created useViewportCrimeData hook with 30-day buffer logic
+- Hook subscribes to viewport state from store (reactive), builds queryKey with buffered range
+
 ## Blockers/Concerns
+
+**Performance (Phase 34 to address):**
+- Loading 8.4 million crime records makes the application slow
+- Need to optimize: data streaming, point rendering, query performance, caching
 
 **None currently**
 
 ## Session Continuity
 
-Last session: 2026-02-22 09:52 UTC
-Stopped at: Completed 33-04-PLAN.md (gap closure - data count display in TopBar)
-Resume file: None
+Last session: 2026-02-22 12:09 UTC
+Stopped at: Completed 34-01-PLAN.md (viewport store & query foundation)
+Next: 34-02-PLAN.md (DuckDB query optimization)
 
 ## Accumulated Context
 
 ### Milestone Evolution
 - v1.0: Complete thesis prototype shipped
 - v1.1: Manual timeslicing complete (shipped 2026-02-21)
-- v1.2: Semi-automated timeslicing in progress (Phase 33)
-- v1.3: Fully automated (future)
+- v1.2: Performance Optimization (Phase 34) - optimizing for 8.4M records
+- v1.2: Semi-automated timeslicing (Phases 35-37)
+- v1.3: Fully automated (Phases 38-42, future)
 
 ### Roadmap Evolution
 - Phase 29 inserted: remake burstlist as first-class slices (downstream phases shifted)
+- Phase 34 inserted: Performance Optimization for 8.4M record dataset
 
-### Phase 26 Completion
-**Prerequisites from v1.0:**
-- ✅ Visx/D3 timeline component
-- ✅ KDE density data in adaptive store
-- ✅ Filter store for data updates
-- ✅ TypeScript codebase established
+### Phase 34 Completion
+**Prerequisites from Phase 33:**
+- ✅ Real crime data loaded from DuckDB (8.3M records)
+- ✅ Date range: 2001-2026
+- ✅ TanStack Query installed
 
-**Delivered in 26-01/26-02:**
-- Timeline density area chart component (`DensityAreaChart`)
-- Canvas density heat strip component (`DensityHeatStrip`)
-- Integrated dual timeline density track (above overview/detail)
-- Expanded isolated test route (`/timeline-test`) with standalone and integrated checks
-- Gradient visualization dependency (`@visx/gradient`)
-
-**Delivered in 26-03:**
-- Debounced density recomputation hook (`useDebouncedDensity`) with 400ms delay and cleanup cancellation
-- Loading-aware `DensityAreaChart`/`DensityHeatStrip` props with visual continuity during recompute
-- `/timeline-test` controls for filter simulation and live compute status visibility
-- DualTimeline loading-state pass-through (`isComputing` -> `isLoading`)
+**Delivered in 34-01:**
+- Zustand viewport store with fine-grained selectors
+- TanStack Query provider wrapping app
+- useViewportCrimeData hook with 30-day buffer
+- QueryProvider integrated in root layout
 
 **Next focus:**
-- Execute 32-03 slice metadata and UI plan.
+- Execute 34-02-PLAN.md (DuckDB query optimization)
 
 ---
-*Last updated: 2026-02-21 - completed 32-02 slice color UI update*
+*Last updated: 2026-02-22 - completed 34-01 viewport store & query foundation*
