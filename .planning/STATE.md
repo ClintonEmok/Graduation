@@ -12,7 +12,7 @@ Plan: **2 of 3** in current phase
 Status: **In progress**
 Last activity: 2026-02-22 - Completed 33-02-PLAN.md
 
-Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 █░░░░░░░░░░░ 10% phases (1/4)
+Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 █████░░░░░░░░ 20% phases (2/4)
 
 ```
 v1.0 Complete:
@@ -166,6 +166,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added mock fallback to stream route with generateMockData() and X-Data-Warning header
 - Added mock fallback to meta route with MOCK_METADATA and isMock flag
 - Updated duckdb-aggregator.ts to query CSV instead of parquet with proper date parsing
+- Fixed bins aggregator coordinate bounds bug: normalized to correct Chicago bounds (lon -87.9 to -87.5, lat 41.6 to 42.1)
 
 ## Blockers/Concerns
 
@@ -173,7 +174,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 02:05 UTC
+Last session: 2026-02-22 02:08 UTC
 Stopped at: Completed 33-02-PLAN.md
 Resume file: None
 
