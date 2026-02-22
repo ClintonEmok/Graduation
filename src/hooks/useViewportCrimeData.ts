@@ -135,7 +135,10 @@ export function useViewportCrimeData(
       bufferedEndEpoch,
       crimeTypes,
       districts
-    ),
+    ).then(data => {
+      console.log('[useViewportCrimeData] fetch returned:', data?.length, 'records');
+      return data;
+    }),
     // Keep old data while fetching new to prevent UI flash
     placeholderData: (previousData) => previousData,
     // Don't refetch on window focus - viewport changes should trigger refetch
@@ -143,6 +146,8 @@ export function useViewportCrimeData(
     // Stale time matches QueryProvider default (5 min)
     staleTime: 5 * 60 * 1000,
   })
+  
+  console.log('[useViewportCrimeData] query.data:', query.data, 'query.isLoading:', query.isLoading);
   
   return {
     data: query.data,

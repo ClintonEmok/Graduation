@@ -24,7 +24,7 @@ export function TopBar() {
   const { data: viewportData } = useViewportCrimeData({ bufferDays: 30 });
   const viewportLoadedCount = viewportData?.length ?? null;
   
-  console.log('[TopBar] viewportData:', viewportData?.length, 'viewportLoadedCount:', viewportLoadedCount);
+  console.log('[TopBar] viewportData:', viewportData, 'viewportLoadedCount:', viewportLoadedCount);
 
   // Format count for display
   const formatCount = (count: number | null) => {
