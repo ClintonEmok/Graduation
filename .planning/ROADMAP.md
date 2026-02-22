@@ -229,6 +229,12 @@ Plans:
 - [x] 34-04-PLAN.md — THREE.Points rendering with LOD
 - [ ] 34-05-PLAN.md — Integration & performance verification
 
+**Gap Closure Plans:**
+- [x] 34-06-PLAN.md — Canonical CrimeRecord type and unified useCrimeData hook
+- [ ] 34-07-PLAN.md — Gap closure: Update visualizations to use useCrimeData
+- [ ] 34-08-PLAN.md — Gap closure: Update data store to use unified hook
+- [ ] 34-09-PLAN.md — Gap closure: Remove legacy DataStore usage
+
 ---
 
 ### v1.2 Semi-Automated Timeslicing
@@ -270,7 +276,7 @@ Plans:
 | 31 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
-| 34 | v1.2 Perf | 4/5 | 📋 In progress | 2026-02-22 |
+| 34 | v1.2 Perf | 5/9 | 📋 In progress | 2026-02-22 |
 | 35-37 | v1.2 | 0/TBD | 📋 Planned | - |
 | 38-42 | v1.3 | 0/TBD | 📋 Planned | - |
 
