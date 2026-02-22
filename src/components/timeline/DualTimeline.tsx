@@ -81,12 +81,21 @@ export const DualTimeline: React.FC = () => {
   const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
   const detailInnerWidth = Math.max(0, width - DETAIL_MARGIN.left - DETAIL_MARGIN.right);
 
+  // Use viewport bounds for timeline scale (enables fast initial load with subset of data)
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+
   const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
+    // Use viewport bounds instead of full data range for timeline scale
+    if (viewportStart !== null && viewportEnd !== null) {
+      return [viewportStart, viewportEnd];
+    }
+    // Fallback to full data range if viewport not set yet
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       return [minTimestampSec, maxTimestampSec];
     }
     return [0, 100];
-  }, [minTimestampSec, maxTimestampSec]);
+  }, [viewportStart, viewportEnd, minTimestampSec, maxTimestampSec]);
 
   const detailRangeSec = useMemo<[number, number]>(() => {
     if (selectedTimeRange) {
