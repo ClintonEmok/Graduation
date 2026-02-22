@@ -19,9 +19,7 @@ export const getAggregatedBins = async (params: AggregationParams): Promise<Bin[
 
   // Query from CSV file with proper date parsing
   // Using 0..1 normalization for x, z based on Chicago coordinate bounds
-  // x: -87.9 to -87.5 -> 0 to 1
-  // z: 41.6 to 42.1 -> 0 to 1  
-  // y (time): normalized to 0-100 range
+  // Chicago bounds: lon -87.9 to -87.5, lat 41.6 to 42.1
   
   let whereClause = 'WHERE "Date" IS NOT NULL AND "Latitude" IS NOT NULL AND "Longitude" IS NOT NULL';
   
@@ -35,16 +33,20 @@ export const getAggregatedBins = async (params: AggregationParams): Promise<Bin[
   }
   
   // Time filter using epoch seconds from Date column
-  if (startTime !== undefined && endTime !== undefined) {
-    whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= ${startTime} AND EXTRACT(EPOCH FROM "Date") <= ${endTime}`;
-  }
+  // Default to full range if not specified
+  const minEpoch = 978307200;   // 2001-01-01
+  const maxEpoch = 1767225600;  // 2026-01-01
+  const startTs = startTime ?? minEpoch;
+  const endTs = endTime ?? maxEpoch;
+  
+  whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= ${startTs} AND EXTRACT(EPOCH FROM "Date") <= ${endTs}`;
 
   const query = `
     WITH binned AS (
       SELECT
-        floor(((("Longitude" + 87.5) / (87.7 - 87.5))) * ${resX}) as ix,
-        floor(((EXTRACT(EPOCH FROM "Date") - 978307200) / (1767225600 - 978307200)) * ${resY}) as iy,
-        floor(((("Latitude" - 37) / (42 - 37))) * ${resZ}) as iz,
+        floor(((("Longitude" - (-87.9)) / (-87.5 - (-87.9)))) * ${resX}) as ix,
+        floor(((EXTRACT(EPOCH FROM "Date") - ${minEpoch}) / (${maxEpoch} - ${minEpoch})) * ${resY}) as iy,
+        floor(((("Latitude" - 41.6) / (42.1 - 41.6))) * ${resZ}) as iz,
         "Primary Type" as type
       FROM read_csv_auto('${dataPath}')
       ${whereClause}
