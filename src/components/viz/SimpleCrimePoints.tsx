@@ -44,6 +44,8 @@ export function SimpleCrimePoints() {
     limit: 50000,
   });
 
+  console.log('[SimpleCrimePoints] viewportStart:', viewportStart, 'viewportEnd:', viewportEnd, 'crimeRecords:', crimeRecords?.length, 'isLoading:', isLoading);
+
   // Convert CrimeRecord[] to format needed for rendering
   const data = crimeRecords || [];
 

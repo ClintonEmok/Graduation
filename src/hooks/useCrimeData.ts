@@ -100,14 +100,15 @@ export function useCrimeData(
   const bufferedEndEpoch = Math.floor(bufferedEnd.getTime() / 1000)
   
   const queryKey = [
-    'crimes',
-    'range',
-    bufferedStartEpoch,
+    'crimes', 
+    'viewport', 
+    bufferedStartEpoch, 
     bufferedEndEpoch,
     crimeTypes,
-    districts,
-    limit
-  ]
+    districts
+  ];
+  
+  console.log('[useCrimeData] queryKey:', queryKey);
   
   const query = useQuery({
     queryKey,
