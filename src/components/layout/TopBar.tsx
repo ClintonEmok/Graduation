@@ -9,6 +9,7 @@ import { useDraggable } from '@/hooks/useDraggable';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 
 export function TopBar() {
   const [adaptiveDocked, setAdaptiveDocked] = useState(true);
@@ -18,6 +19,10 @@ export function TopBar() {
   const { columns, data, generateMockData, isMock, dataCount } = useDataStore();
   const activeFilterCount = useFilterStore((state) => state.getActiveFilterCount());
   const resetFilters = useFilterStore((state) => state.resetFilters);
+  
+  // Get currently loaded viewport data count
+  const { data: viewportData } = useViewportCrimeData({ bufferDays: 30 });
+  const viewportLoadedCount = viewportData?.length ?? null;
 
   // Format count for display
   const formatCount = (count: number | null) => {
@@ -62,7 +67,12 @@ export function TopBar() {
         )}
         {dataCount !== undefined && (
           <span className="text-xs text-gray-500">
-            {formatCount(dataCount)} records
+            {formatCount(dataCount)} total
+            {viewportLoadedCount !== null && (
+              <span className="ml-1 text-green-400">
+                ({formatCount(viewportLoadedCount)} loaded)
+              </span>
+            )}
           </span>
         )}
       </div>
