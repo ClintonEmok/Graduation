@@ -61,8 +61,23 @@ export const DualTimeline: React.FC = () => {
     bufferDays: 30,
   });
 
-  // Sync viewport store with filter store when range changes
+  // Sync viewport store with data range when data loads
   const setViewport = useViewportStore((state) => state.setViewport);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  
+  useEffect(() => {
+    // When data loads (minTimestampSec becomes non-null), sync viewport to data range
+    if (minTimestampSec !== null && maxTimestampSec !== null) {
+      // Only sync if viewport is still at initial default (2001-2002)
+      // This ensures we load data for the correct range
+      const INITIAL_START = 978307200;  // 2001-01-01
+      const INITIAL_END = 1011878400;   // 2002-01-01
+      if (viewportStart === INITIAL_START && viewportEnd === INITIAL_END) {
+        setViewport(minTimestampSec, maxTimestampSec);
+      }
+    }
+  }, [minTimestampSec, maxTimestampSec, viewportStart, viewportEnd, setViewport]);
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const overviewSvgRef = useRef<SVGSVGElement | null>(null);
