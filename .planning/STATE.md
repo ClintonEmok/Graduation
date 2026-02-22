@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **33 of 41** (Data Integration)
-Plan: **Gap closure (33-05)** complete
+Plan: **4 of 4** in current phase
 Status: **Phase complete**
-Last activity: 2026-02-22 - Completed 33-05-PLAN.md (stream API timeout fix)
+Last activity: 2026-02-22 - Completed 33-04-PLAN.md (gap closure - data count display)
 
-Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 ███████░░░░░░ 30% phases (3/4)
+Progress: overall ████████████████░░░ 85% (115/113 plans) | v1.2 ████████░░░░░ 40% phases (4/4)
 
 ```
 v1.0 Complete:
@@ -28,7 +28,7 @@ v1.1 Complete:
 [x] Phase 32: Slice Metadata & UI (3/3 plans complete)
 
 v1.2 In Progress:
-[x] Phase 33: Data Integration (gap closure 33-05 complete)
+[x] Phase 33: Data Integration (4/4 plans complete)
 
 v1.2 Planned:
 [ ] Phase 34-36: Semi-Automated Timeslicing
@@ -172,6 +172,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Fixed field mapping: minLon/maxLon for x bounds, minLat/maxLat for z bounds
 - Added demo data warning banner in TopBar when isMock is true
 - Timeline automatically uses real epoch seconds for scale domain (2001-2026)
+- Added dataCount display in TopBar: in demo warning banner when isMock is true, and in toolbar area when dataCount is defined
 
 ## Blockers/Concerns
 
@@ -179,8 +180,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 09:48 UTC
-Stopped at: Completed 33-05-PLAN.md (gap closure - stream API LIMIT fix)
+Last session: 2026-02-22 09:52 UTC
+Stopped at: Completed 33-04-PLAN.md (gap closure - data count display in TopBar)
 Resume file: None
 
 ## Accumulated Context
