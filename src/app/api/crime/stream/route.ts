@@ -1,24 +1,61 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, getDataPath } from '@/lib/db';
 import { tableFromJSON, tableToIPC } from 'apache-arrow';
-import { join } from 'path';
 
 // Force Node.js runtime for DuckDB compatibility
 export const runtime = 'nodejs';
 // Prevent static optimization as we stream data
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const crimeTypes = searchParams.get('crimeTypes');
+
     const db = await getDb();
-    const dataPath = join(process.cwd(), 'data', 'crime.parquet');
+    const dataPath = getDataPath();
 
-    // Query the Parquet file directly
-    const query = `SELECT * FROM '${dataPath}'`;
+    // Build query filters
+    let dateFilter = '';
+    if (startDate && endDate) {
+      // Parse as epoch seconds and convert to date range
+      const startTs = parseInt(startDate, 10);
+      const endTs = parseInt(endDate, 10);
+      const startDt = new Date(startTs * 1000).toISOString().split('T')[0];
+      const endDt = new Date(endTs * 1000).toISOString().split('T')[0];
+      dateFilter = `AND epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p')) >= ${startTs} AND epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p')) <= ${endTs}`;
+    }
 
-    // Fallback: Manually fetch data and serialize to Arrow
-    // This is necessary because duckdb-node v1.4.4 on some platforms 
-    // has issues with the 'arrow' extension and to_arrow_ipc function.
+    let typeFilter = '';
+    if (crimeTypes) {
+      const types = crimeTypes.split(',').map(t => `"${t}"`).join(', ');
+      typeFilter = `AND "Primary Type" IN (${types})`;
+    }
+
+    // Query the CSV file directly with date parsing and coordinate filtering
+    // Using read_csv_auto for automatic type inference
+    const query = `
+      SELECT 
+        epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p')) as timestamp,
+        "Primary Type" as type,
+        "Latitude" as lat,
+        "Longitude" as lon,
+        ((lon + 87.5) / (87.7 - 87.5)) as x,
+        ((lat - 37) / (42 - 37)) as z,
+        "IUCR" as iucr,
+        "District" as district,
+        "Year" as year
+      FROM read_csv_auto('${dataPath}')
+      WHERE "Date" IS NOT NULL 
+        AND "Latitude" IS NOT NULL 
+        AND "Longitude" IS NOT NULL
+        ${dateFilter}
+        ${typeFilter}
+    `;
+
+    // Manually fetch data and serialize to Arrow
     const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
       db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
         if (err) reject(err);
