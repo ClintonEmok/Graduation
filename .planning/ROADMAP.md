@@ -4,8 +4,9 @@
 
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
 - 🚧 **v1.1 Manual Timeslicing** — Phases 26-33 (in progress)
-- 📋 **v1.2 Semi-Automated Timeslicing** — AI-assisted suggestions (planned)
-- 📋 **v1.3 Fully Automated Timeslicing** — Optimal automatic generation (planned)
+- 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
+- 📋 **v1.2 Semi-Automated Timeslicing** — Phase 35-37 (AI-assisted suggestions)
+- 📋 **v1.3 Fully Automated Timeslicing** — Phase 38-42 (optimal automatic generation)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
@@ -201,6 +202,35 @@ Plans:
 
 ## Planned Milestones
 
+### Phase 34: Performance Optimization
+
+**Goal:** Optimize data loading and rendering for 8.4M record dataset.
+**Depends on:** Phase 33 (Data Integration)
+**Plans:** 5 plans (34-01 through 34-05)
+
+**Details:**
+- **The Issue:** Loading 8.4 million crime records makes the application slow
+- **Areas to Optimize:**
+  - Data streaming and pagination
+  - Point rendering performance (THREE.Points, level-of-detail)
+  - Query performance (DuckDB zone maps, sorted tables)
+  - Caching strategies (TanStack Query with select)
+
+**Success Criteria:**
+1. Initial load time < 3 seconds for 8.4M records
+2. Maintain 30+ fps during timeline interactions with full dataset
+3. Filter changes respond within 500ms
+4. Memory usage stays under 2GB during normal operation
+
+**Plans:**
+- [x] 34-01-PLAN.md — Zustand viewport store + TanStack Query setup
+- [x] 34-02-PLAN.md — DuckDB query optimization (sorted tables)
+- [x] 34-03-PLAN.md — Viewport API endpoint (/api/crimes/range)
+- [x] 34-04-PLAN.md — THREE.Points rendering with LOD
+- [x] 34-05-PLAN.md — Integration & performance verification
+
+---
+
 ### v1.2 Semi-Automated Timeslicing
 
 **Goal:** AI-assisted region detection with user confirmation.
@@ -211,7 +241,7 @@ Plans:
 - "Accept/Modify/Reject" workflow
 - Confidence scores for suggestions
 
-**Phases:** 32-36 (planned)
+**Phases:** 35-37 (planned)
 
 ### v1.3 Fully Automated Timeslicing
 
@@ -223,7 +253,7 @@ Plans:
 - User reviews and fine-tunes
 - Multiple algorithm options (density-based, event-based, etc.)
 
-**Phases:** 37-41 (planned)
+**Phases:** 38-42 (planned)
 
 ---
 
@@ -240,8 +270,9 @@ Plans:
 | 31 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
-| 34-36 | v1.2 | 0/TBD | 📋 Planned | - |
-| 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
+| 34 | v1.2 Perf | 5/5 | 📋 Planned | - |
+| 35-37 | v1.2 | 0/TBD | 📋 Planned | - |
+| 38-42 | v1.3 | 0/TBD | 📋 Planned | - |
 
 ---
 
