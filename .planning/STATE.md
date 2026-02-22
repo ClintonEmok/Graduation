@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **34 of 42** (Performance Optimization)
-Plan: **6 of 5** in current phase
+Plan: **9 of 9** in current phase
 Status: **Complete**
-Last activity: 2026-02-22 - Completed 34-06-PLAN.md (Canonical CrimeRecord type and unified hook)
+Last activity: 2026-02-22 - Completed 34-09-PLAN.md (Gap closure - DataStore cleanup)
 
-Progress: overall ████████████████░░░ 83% (120/143 plans) | v1.2 ████░░░░░░░░░░ 20% phases (4/7)
+Progress: overall ████████████████░░░ 83% (123/143 plans) | v1.2 ██████░░░░░░░░░ 71% phases (5/7)
 
 ```
 v1.0 Complete:
@@ -29,7 +29,7 @@ v1.1 Complete:
 [x] Phase 33: Data Integration (5/5 plans complete)
 
 v1.2 In Progress:
-[ ] Phase 34: Performance Optimization (5/9 plans complete)
+[ ] Phase 34: Performance Optimization (9/9 plans complete)
 
 v1.2 Planned:
 [ ] Phase 35-37: Semi-Automated Timeslicing
@@ -194,6 +194,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Created canonical CrimeRecord type in src/types/crime.ts as single source of truth
 - Created unified useCrimeData hook accepting explicit parameters (not from store)
 - Refactored useViewportCrimeData to wrap useCrimeData with backward compatibility
+- Updated SimpleCrimePoints (3D cube) to use useCrimeData instead of DataStore
+- Updated MapVisualization (2D map) to use useCrimeData with viewport bounds
+- Marked useDataStore as deprecated for data fetching (use useCrimeData instead)
+- API endpoint /api/crimes/range confirmed to have no mock fallback (returns 500 on error)
 
 ## Blockers/Concerns
 
@@ -205,9 +209,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 17:33 UTC
-Stopped at: Completed 34-06-PLAN.md (Canonical CrimeRecord type and unified hook)
-Next: 34-07-PLAN.md (Gap closure - update visualizations to use useCrimeData)
+Last session: 2026-02-22 18:00 UTC
+Stopped at: Completed 34-09-PLAN.md (Gap closure - DataStore cleanup)
+Next: Phase 35-37: Semi-Automated Timeslicing
 
 ## Accumulated Context
 
