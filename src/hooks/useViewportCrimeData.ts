@@ -121,21 +121,25 @@ export function useViewportCrimeData(
   const bufferedStartEpoch = Math.floor(bufferedStart.getTime() / 1000)
   const bufferedEndEpoch = Math.floor(bufferedEnd.getTime() / 1000)
   
+  const queryKey = [
+    'crimes', 
+    'viewport', 
+    bufferedStartEpoch, 
+    bufferedEndEpoch,
+    crimeTypes,
+    districts
+  ];
+  
+  console.log('[useViewportCrimeData] queryKey:', queryKey);
+  
   const query = useQuery({
-    queryKey: [
-      'crimes', 
-      'viewport', 
-      bufferedStartEpoch, 
-      bufferedEndEpoch,
-      crimeTypes,
-      districts
-    ],
+    queryKey,
     queryFn: () => fetchCrimesInRange(
       bufferedStartEpoch,
       bufferedEndEpoch,
       crimeTypes,
       districts
-    ).then(data => {
+    )    .then((data: CrimeRecord[]) => {
       console.log('[useViewportCrimeData] fetch returned:', data?.length, 'records');
       return data;
     }),
@@ -150,7 +154,7 @@ export function useViewportCrimeData(
   console.log('[useViewportCrimeData] query.data:', query.data, 'query.isLoading:', query.isLoading);
   
   return {
-    data: query.data,
+    data: query.data as CrimeRecord[] | undefined,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error as Error | null,
