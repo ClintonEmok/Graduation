@@ -2,19 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** v1.1 Manual Timeslicing - COMPLETE
-**Status:** v1.1 Milestone shipped (Phases 26-32 complete)
+**Current Phase:** v1.2 Semi-Automated Timeslicing
+**Status:** Phase 33 in progress (Data Integration)
 **Next:** v1.2 Semi-Automated Timeslicing
 
 ## Current Position
-Milestone: **v1.1 Manual Timeslicing** (SHIPPED 2026-02-21)
-Previous: **v1.0 Thesis Prototype** (SHIPPED 2026-02-07)
-Phase: 32 of 41 (Slice Metadata & UI)
-Plan: 3 of 3 in current phase
-Status: ✅ **Phase complete / Milestone shipped**
-Last activity: 2026-02-21 - Completed 32-03-PLAN.md
+Phase: **33 of 41** (Data Integration)
+Plan: **1 of 3** in current phase
+Status: **In progress**
+Last activity: 2026-02-22 - Completed 33-01-PLAN.md
 
-Progress: overall ████████████████████ 100% (113/113 plans) | v1.1 ███████ 100% phases (7/7)
+Progress: overall ████████████████░░░ 85% (114/113 plans) | v1.2 █░░░░░░░░░░░ 10% phases (1/4)
 
 ```
 v1.0 Complete:
@@ -29,8 +27,11 @@ v1.1 Complete:
 [x] Phase 31: Multi-Slice Management (3/3 plans complete)
 [x] Phase 32: Slice Metadata & UI (3/3 plans complete)
 
+v1.2 In Progress:
+[x] Phase 33: Data Integration (1/3 plans complete)
+
 v1.2 Planned:
-[ ] Phase 33-36: Semi-Automated Timeslicing
+[ ] Phase 34-36: Semi-Automated Timeslicing
 
 v1.3 Planned:
 [ ] Phase 37-41: Fully Automated Timeslicing
@@ -153,22 +154,32 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added 8-color preset selector UI in `SliceList` and wired per-slice updates through `updateSlice(..., { color })`.
 - Added color-aware rendering in `CommittedSliceLayer` so `slice.color` controls timeline overlay fill and border classes.
 
+**Phase 33 Decision Log (Execution):**
+- Added `getDataPath()` helper in db.ts pointing to CSV file at data/sources/Crimes_-_2001_to_Present_20260114.csv
+- Added `parseDate()` and `epochSeconds()` helpers for date parsing
+- Updated stream route to use read_csv_auto for automatic CSV type inference
+- Date column auto-parsed by read_csv_auto - used EXTRACT(EPOCH FROM "Date") for epoch conversion
+- Fixed DuckDB function issues: epoch_seconds doesn't exist, used EXTRACT(EPOCH FROM Date) instead
+- Fixed BigInt serialization by converting all numeric values to Number
+- Stream endpoint now serves ~8.3M rows with date filtering and coordinate computation
+- Meta endpoint returns real date range: 2001-2026 (978307200 to 1767571200), 8.3M count, 33 crime types
+
 ## Blockers/Concerns
 
 **None currently**
 
 ## Session Continuity
 
-Last session: 2026-02-21 15:45 UTC
-Stopped at: Completed 32-02-PLAN.md
+Last session: 2026-02-22 01:58 UTC
+Stopped at: Completed 33-01-PLAN.md
 Resume file: None
 
 ## Accumulated Context
 
 ### Milestone Evolution
 - v1.0: Complete thesis prototype shipped
-- v1.1: Manual timeslicing (current focus)
-- v1.2: Semi-automated (future)
+- v1.1: Manual timeslicing complete (shipped 2026-02-21)
+- v1.2: Semi-automated timeslicing in progress (Phase 33)
 - v1.3: Fully automated (future)
 
 ### Roadmap Evolution
