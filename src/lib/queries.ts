@@ -58,25 +58,20 @@ export const queryCrimesInRange = async (
   const crimeTypes = options?.crimeTypes;
   const districts = options?.districts;
 
-  // Build parameterized query
+  // Build query with direct values (DuckDB prepared statements have issues with dynamic params)
   let whereClause = `WHERE "Date" IS NOT NULL AND "Latitude" IS NOT NULL AND "Longitude" IS NOT NULL`;
   
-  // Use parameterized queries to prevent SQL injection
-  const params: (number | string)[] = [startEpoch, endEpoch];
-  
-  whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= $1 AND EXTRACT(EPOCH FROM "Date") <= $2`;
+  whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= ${startEpoch} AND EXTRACT(EPOCH FROM "Date") <= ${endEpoch}`;
 
   if (crimeTypes && crimeTypes.length > 0) {
-    // Add placeholders for each crime type
-    const placeholders = crimeTypes.map((_, i) => `$${params.length + i + 1}`).join(', ');
-    whereClause += ` AND "Primary Type" IN (${placeholders})`;
-    params.push(...crimeTypes);
+    // Escape single quotes in crime types
+    const escaped = crimeTypes.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
+    whereClause += ` AND "Primary Type" IN (${escaped})`;
   }
 
   if (districts && districts.length > 0) {
-    const placeholders = districts.map((_, i) => `$${params.length + i + 1}`).join(', ');
-    whereClause += ` AND "District" IN (${placeholders})`;
-    params.push(...districts);
+    const escaped = districts.map(d => `'${d.replace(/'/g, "''")}'`).join(', ');
+    whereClause += ` AND "District" IN (${escaped})`;
   }
 
   // Chicago coordinate bounds for normalization
@@ -102,7 +97,7 @@ export const queryCrimesInRange = async (
   `;
 
   return new Promise((resolve, reject) => {
-    db.all(query, params, (err: Error | null, rows: unknown[]) => {
+    db.all(query, (err: Error | null, rows: unknown[]) => {
       if (err) {
         console.error('Error querying crimes in range:', err);
         reject(err);
