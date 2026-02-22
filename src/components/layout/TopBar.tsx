@@ -68,11 +68,11 @@ export function TopBar() {
         {dataCount !== undefined && (
           <span className="text-xs text-gray-500">
             {formatCount(dataCount)} total
-            {viewportLoadedCount !== null && (
-              <span className="ml-1 text-green-400">
-                ({formatCount(viewportLoadedCount)} loaded)
-              </span>
-            )}
+          </span>
+        )}
+        {viewportLoadedCount !== null && (
+          <span className="text-xs text-green-400">
+            {formatCount(viewportLoadedCount)} loaded
           </span>
         )}
       </div>
