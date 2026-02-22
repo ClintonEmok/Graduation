@@ -45,3 +45,40 @@ export const getDb = async (): Promise<duckdb.Database> => {
   }
   return db;
 };
+
+/**
+ * Ensure the sorted crimes table exists for zone map optimization.
+ * Creates a sorted copy of the crimes data ordered by Date column,
+ * which enables DuckDB to skip irrelevant row groups when querying date ranges.
+ * 
+ * @returns The table name to use for queries ('crimes_sorted')
+ */
+export const ensureSortedCrimesTable = async (): Promise<string> => {
+  const database = await getDb();
+  const dataPath = getDataPath();
+
+  return new Promise((resolve, reject) => {
+    // Use CREATE TABLE IF NOT EXISTS for idempotent table creation
+    // This is the standard SQL approach and works reliably in DuckDB
+    console.log('Ensuring crimes_sorted table exists (zone map optimized)...');
+    
+    const createQuery = `
+      CREATE TABLE IF NOT EXISTS crimes_sorted AS 
+      SELECT * FROM read_csv_auto('${dataPath}')
+      WHERE "Date" IS NOT NULL
+      ORDER BY "Date"
+    `;
+
+    database.run(createQuery, (err: Error | null) => {
+      if (err) {
+        console.error('Error creating crimes_sorted table:', err);
+        // Fall back to original table on error
+        resolve('crimes');
+        return;
+      }
+
+      console.log('crimes_sorted table ready with zone map optimization');
+      resolve('crimes_sorted');
+    });
+  });
+};
