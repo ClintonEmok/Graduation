@@ -4,18 +4,33 @@ import { existsSync } from 'fs';
 
 export const dynamic = 'force-dynamic';
 
+// Mock metadata for fallback
+const MOCK_METADATA = {
+  minTime: 1704067200,    // 2024-01-01
+  maxTime: 1735689600,    // 2025-01-01
+  minLat: 41.6,
+  maxLat: 42.1,
+  minLon: -87.9,
+  maxLon: -87.5,
+  count: 100000,
+  crimeTypes: ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'],
+  yearRange: { min: 2024, max: 2024 }
+};
+
 export async function GET() {
   try {
     const dataPath = getDataPath();
     if (!existsSync(dataPath)) {
-      return NextResponse.json(
-        {
-          error: 'Dataset not found',
-          path: dataPath,
-          hint: 'Place crime CSV under data/sources/ or use mock-data flows.'
-        },
-        { status: 404 }
-      );
+      // Return mock data with warning instead of error
+      return NextResponse.json({
+        ...MOCK_METADATA,
+        isMock: true,
+      }, {
+        status: 200,
+        headers: {
+          'X-Data-Warning': 'Using demo data - dataset file not found'
+        }
+      });
     }
 
     const db = await getDb();
@@ -108,6 +123,16 @@ export async function GET() {
     
   } catch (error) {
     console.error('Error fetching metadata:', error);
-    return NextResponse.json({ error: 'Failed to fetch metadata', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    
+    // Return mock metadata with warning
+    return NextResponse.json({
+      ...MOCK_METADATA,
+      isMock: true,
+    }, {
+      status: 200,
+      headers: {
+        'X-Data-Warning': 'Using demo data - database unavailable'
+      }
+    });
   }
 }
