@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
-- ✅ **v1.1 Manual Timeslicing** — Phases 26-32 (shipped 2026-02-21)
+- 🚧 **v1.1 Manual Timeslicing** — Phases 26-33 (in progress)
 - 📋 **v1.2 Semi-Automated Timeslicing** — AI-assisted suggestions (planned)
 - 📋 **v1.3 Fully Automated Timeslicing** — Optimal automatic generation (planned)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
@@ -181,16 +181,21 @@ Plans:
 
 ### Phase 33: Data Integration
 
-**Goal:** Ingest CSV files into SQLite database and wire API + timeline to real data.
+**Goal:** Combine CSV data sources into DuckDB and wire timeline to real data.
 **Depends on:** Phase 32
-**Plans:** TBD
+**Plans:** 3 plans (33-01, 33-02, 33-03)
 
 **Details:**
-- Load 3 CSV files (including 2.4GB file) into SQLite database
-- Create joins to combine data properly
-- Refactor existing API to serve from unified database
-- Wire timeline components to use real data instead of mocks
-- Update density computation to work with real data
+- Query full 8.5M row CSV directly with DuckDB (no preprocessing)
+- Handle date parsing for "MM/DD/YYYY HH:MM:SS A" format
+- Filter null coordinates at query level (~1.1%)
+- Add error handling with mock fallback
+- Wire timeline to real 2001-2026 date range
+
+Plans:
+- [ ] 33-01-PLAN.md — DuckDB setup and CSV querying
+- [ ] 33-02-PLAN.md — API refactor with error handling
+- [ ] 33-03-PLAN.md — Timeline integration with real dates
 
 ---
 
@@ -234,7 +239,8 @@ Plans:
 | 30 | v1.1 | 3/3 | ✅ Complete | 2026-02-20 |
 | 31 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
-| 33-36 | v1.2 | 0/TBD | 📋 Planned | - |
+| 33 | v1.1 | 3/3 | 🚧 In Progress | - |
+| 34-36 | v1.2 | 0/TBD | 📋 Planned | - |
 | 37-41 | v1.3 | 0/TBD | 📋 Planned | - |
 
 ---
