@@ -45,9 +45,9 @@ export interface CrimePointCloudResult {
  * @returns CrimePoint with x,z coordinates
  */
 function recordToCrimePoint(record: {
-  date: number
-  latitude: number
-  longitude: number
+  timestamp: number
+  lat: number
+  lon: number
   type: string
 }): CrimePoint {
   // Convert lat/lon to x,z coordinates for Three.js
@@ -59,13 +59,13 @@ function recordToCrimePoint(record: {
   const MAX_LAT = 42.1
   const RANGE = 1000 // -500 to 500
 
-  const x = ((record.longitude - MIN_LON) / (MAX_LON - MIN_LON)) * RANGE - RANGE / 2
-  const z = ((record.latitude - MIN_LAT) / (MAX_LAT - MIN_LAT)) * RANGE - RANGE / 2
+  const x = ((record.lon - MIN_LON) / (MAX_LON - MIN_LON)) * RANGE - RANGE / 2
+  const z = ((record.lat - MIN_LAT) / (MAX_LAT - MIN_LAT)) * RANGE - RANGE / 2
 
   return {
-    timestamp: record.date,
-    lat: record.latitude,
-    lon: record.longitude,
+    timestamp: record.timestamp,
+    lat: record.lat,
+    lon: record.lon,
     x,
     z,
     type: record.type,
@@ -127,7 +127,7 @@ function getSampleRate(zoom: number): number {
  * @returns Geometry and material for THREE.Points
  */
 export function useCrimePointCloud(
-  data: Array<{ id: string; date: number; type: string; latitude: number; longitude: number }> | undefined,
+  data: Array<{ timestamp: number; lat: number; lon: number; type: string }> | undefined,
   zoom: number
 ): CrimePointCloudResult {
   return useMemo(() => {

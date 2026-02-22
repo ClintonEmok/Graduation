@@ -13,13 +13,15 @@ import { addDays } from 'date-fns'
 import { useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore'
 
 interface CrimeRecord {
-  id: string
-  date: number // epoch seconds
+  timestamp: number // epoch seconds
   type: string
-  description: string
-  latitude: number
-  longitude: number
+  lat: number
+  lon: number
+  x: number
+  z: number
+  iucr: string
   district: string
+  year: number
 }
 
 interface UseViewportCrimeDataOptions {

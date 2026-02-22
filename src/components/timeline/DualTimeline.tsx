@@ -139,7 +139,7 @@ export const DualTimeline: React.FC = () => {
     if (viewportCrimes && viewportCrimes.length > 0) {
       const [start, end] = detailRangeSec;
       const points = viewportCrimes
-        .map(crime => crime.date)
+        .map(crime => crime.timestamp)  // Use 'timestamp' not 'date'
         .filter((date) => date >= start && date <= end);
       const maxPoints = 4000;
       if (points.length <= maxPoints) return points;
