@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       const endTs = parseInt(endDate, 10);
       const startDt = new Date(startTs * 1000).toISOString().split('T')[0];
       const endDt = new Date(endTs * 1000).toISOString().split('T')[0];
-      dateFilter = `AND epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p')) >= ${startTs} AND epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p')) <= ${endTs}`;
+      dateFilter = `AND EXTRACT(EPOCH FROM "Date") >= ${startTs} AND EXTRACT(EPOCH FROM "Date") <= ${endTs}`;
     }
 
     let typeFilter = '';
@@ -36,9 +36,10 @@ export async function GET(request: Request) {
 
     // Query the CSV file directly with date parsing and coordinate filtering
     // Using read_csv_auto for automatic type inference
+    // Date column is already parsed as TIMESTAMP, extract epoch directly
     const query = `
       SELECT 
-        epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p')) as timestamp,
+        EXTRACT(EPOCH FROM "Date") as timestamp,
         "Primary Type" as type,
         "Latitude" as lat,
         "Longitude" as lon,

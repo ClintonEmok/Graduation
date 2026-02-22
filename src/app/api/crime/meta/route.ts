@@ -21,6 +21,7 @@ export async function GET() {
     const db = await getDb();
     
     // DuckDB query to get metadata from CSV with date parsing
+    // Date column is already TIMESTAMP from read_csv_auto, extract epoch directly
     const result: {
       min_time: string;
       max_time: string;
@@ -32,8 +33,8 @@ export async function GET() {
     }[] = await new Promise((resolve, reject) => {
         db.all(`
             SELECT 
-                MIN(epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p'))) as min_time,
-                MAX(epoch_seconds(parse_datetime("Date", '%m/%d/%Y %I:%M:%S %p'))) as max_time,
+                MIN(EXTRACT(EPOCH FROM "Date")) as min_time,
+                MAX(EXTRACT(EPOCH FROM "Date")) as max_time,
                 MIN("Latitude") as min_lat,
                 MAX("Latitude") as max_lat,
                 MIN("Longitude") as min_lon,
@@ -53,7 +54,7 @@ export async function GET() {
 
     const row = result[0];
     
-    // Already epoch seconds from query
+    // Convert BigInt values to regular numbers for JSON serialization
     const minTime = Number(row.min_time);
     const maxTime = Number(row.max_time);
 
@@ -83,7 +84,12 @@ export async function GET() {
       });
     });
 
-    const { min_lat, max_lat, min_lon, max_lon } = row;
+    // Convert BigInt values to regular numbers
+    const min_lat = Number(row.min_lat);
+    const max_lat = Number(row.max_lat);
+    const min_lon = Number(row.min_lon);
+    const max_lon = Number(row.max_lon);
+    const count = Number(row.count);
 
     return NextResponse.json({
       minTime,
@@ -92,11 +98,11 @@ export async function GET() {
       maxLat: max_lat,
       minLon: min_lon,
       maxLon: max_lon,
-      count: Number(row.count),
+      count,
       crimeTypes,
       yearRange: {
-        min: yearResult[0]?.min_year,
-        max: yearResult[0]?.max_year
+        min: Number(yearResult[0]?.min_year),
+        max: Number(yearResult[0]?.max_year)
       }
     });
     
