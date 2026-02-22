@@ -14,10 +14,11 @@ import { MapTypeLegend } from './MapTypeLegend';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useLogger } from '@/hooks/useLogger';
+import { useCrimeData } from '@/hooks/useCrimeData';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 
 type DragPoint = {
   x: number;
@@ -29,6 +30,25 @@ type DragPoint = {
 export default function MapVisualization() {
   const mapRef = useRef<MapRef>(null);
   const { log } = useLogger();
+  
+  // Get viewport bounds for crime data query
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  const viewportFilters = useViewportStore((state) => state.filters);
+  
+  // Get crime data using unified hook
+  const { data: crimeRecords, isLoading } = useCrimeData({
+    startEpoch: viewportStart,
+    endEpoch: viewportEnd,
+    crimeTypes: viewportFilters.crimeTypes.length > 0 ? viewportFilters.crimeTypes : undefined,
+    districts: viewportFilters.districts.length > 0 ? viewportFilters.districts : undefined,
+    bufferDays: 30,
+    limit: 50000,
+  });
+  
+  const data = crimeRecords || [];
+  const dataCount = data.length;
+  
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
   const clearSpatialBounds = useFilterStore((state) => state.clearSpatialBounds);
@@ -39,10 +59,6 @@ export default function MapVisualization() {
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
-  const loadRealData = useDataStore((state) => state.loadRealData);
-  const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
   const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
 
   const [isSelecting, setIsSelecting] = useState(false);
@@ -52,11 +68,6 @@ export default function MapVisualization() {
   const [dragStart, setDragStart] = useState<DragPoint | null>(null);
   const [dragCurrent, setDragCurrent] = useState<DragPoint | null>(null);
   const [lastClick, setLastClick] = useState<{lat: number, lon: number} | null>(null);
-
-  useEffect(() => {
-    if (columns || data.length > 0) return;
-    loadRealData();
-  }, [columns, data.length, loadRealData]);
 
   const getDragPoint = (event: MapLayerMouseEvent) => {
     const map = mapRef.current;
