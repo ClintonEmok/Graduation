@@ -8,7 +8,7 @@ let db: duckdb.Database | null = null;
  * The CSV contains ~8.5M rows from 2001-2026.
  */
 export const getDataPath = (): string => {
-  return join(process.cwd(), 'data', 'sources', 'Crimes_-_2001_to_Present_20260114.csv');
+  return join(process.cwd(), 'data', 'source.csv');
 };
 
 /**
