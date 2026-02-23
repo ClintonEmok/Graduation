@@ -5,8 +5,8 @@
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
 - ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
 - 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
-- 📋 **v1.2 Semi-Automated Slice Workflows** — Phase 35-37 (AI-assisted interval suggestions + review)
-- 📋 **v1.3 Fully Automated Slice Workflows** — Phase 38-42 (automatic interval generation + review)
+- 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-37 (suggested warp profiles + suggested intervals + review)
+- 📋 **v1.3 Fully Automated Timeslicing Workflows** — Phase 38-42 (automatic warp + interval generation + review)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
@@ -238,31 +238,45 @@ Plans:
 
 ---
 
-### v1.2 Semi-Automated Slice Workflows
+### v1.2 Semi-Automated Timeslicing Workflows
 
-**Goal:** AI-assisted interval detection with user confirmation.
+**Goal:** AI-assisted timeslicing where the system proposes warp profiles and interval candidates for user confirmation.
 
-**Terminology note:** In this project, timeslicing refers to the adaptive time warping layer (already supports density-driven and user-authored warp sources). v1.2 focuses on interval suggestion workflows built on top of that timeslicing foundation.
+**Terminology note:** In this project, timeslicing refers to adaptive time warping (already supports density-driven and user-authored warp sources). Slice workflows are built on top of timeslicing and manage interval suggestions/review.
 
 **Key Features:**
-- System suggests slice boundaries based on density peaks
-- User reviews and adjusts suggestions
+- System suggests warp profiles (candidate non-uniform warp slices/weights)
+- System suggests interval boundaries based on density peaks/events under the current warp
+- Context-aware suggestions scoped by active data context (e.g., crime type/category, filters, selected cohorts)
+- User reviews and adjusts both warp proposals and interval proposals
 - "Accept/Modify/Reject" workflow
-- Confidence scores for suggestions
+- Confidence scores for suggestions and profile quality
 
 **Phases:** 35-37 (planned)
 
-### v1.3 Fully Automated Slice Workflows
+### v1.3 Fully Automated Timeslicing Workflows
 
-**Goal:** Optimal automatic interval generation with user review.
+**Goal:** Optimal automatic timeslicing with full warp + interval generation and user review.
 
 **Key Features:**
-- System creates complete slice set automatically
-- Optimization for coverage, relevance, minimal overlap
-- User reviews and fine-tunes
+- System creates complete warp profile and interval set automatically
+- Optimization for coverage, relevance, minimal overlap, and temporal continuity
+- Context-aware optimization per active investigation context (e.g., burglary-only, violent-crime-only, mixed comparisons)
+- User reviews and fine-tunes generated outputs
 - Multiple algorithm options (density-based, event-based, etc.)
 
 **Phases:** 38-42 (planned)
+
+### v2.0 Spatially-Constrained 3D Timeslicing (future)
+
+**Goal:** Extend timeslicing to account for spatial constraints in the 3D space-time cube.
+
+**Key Features:**
+- Warp proposals constrained by spatial regions and movement patterns
+- Cross-view validation between timeline, 2D map, and 3D cube
+- Spatially-aware interval generation (not timeline-only)
+- Context-aware spatial constraints (crime-type-conditioned hot zones, patrol regions, neighborhood boundaries)
+- User review with spatial diagnostics (coverage by area/cluster)
 
 ---
 
@@ -280,8 +294,8 @@ Plans:
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
-| 35-37 | v1.2 Slice Workflows | 0/TBD | 📋 Planned | - |
-| 38-42 | v1.3 Slice Workflows | 0/TBD | 📋 Planned | - |
+| 35-37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 
 ---
 

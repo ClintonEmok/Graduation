@@ -62,6 +62,11 @@
 
 ## Out of Scope (v1.1)
 
+**Terminology note:**
+- Timeslicing = adaptive time warping
+- Slice workflows = interval suggestion/acceptance/rejection layered on timeslicing
+- v1.1 already includes automated (density-driven) and manual (user-authored) timeslicing modes
+
 | Feature | Reason |
 |---------|--------|
 | 2D/3D slice visualization | Timeline-only focus for v1.1 |
@@ -77,6 +82,9 @@
 | Requirement | v1.1 | v1.2 | v1.3 |
 |-------------|------|------|------|
 | Manual creation | ✅ | ✅ | ✅ |
+| Automated timeslicing (density-driven warp) | ✅ | ✅ | ✅ |
+| Manual timeslicing (user-authored warp) | ✅ | ✅ | ✅ |
+| Context-aware timeslicing (by data facets, e.g. crime type) | ❌ | ✅ | ✅ |
 | Visual density | ✅ | ✅ | ✅ |
 | Boundary adjust | ✅ | ✅ | ✅ |
 | Semi-automated | ❌ | ✅ | ✅ |

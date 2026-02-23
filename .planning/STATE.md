@@ -32,10 +32,10 @@ v1.2 In Progress:
 [ ] Phase 34: Performance Optimization (9/9 plans complete)
 
 v1.2 Planned:
-[ ] Phase 35-37: Semi-Automated Slice Workflows
+[ ] Phase 35-37: Semi-Automated Timeslicing Workflows
 
 v1.3 Planned:
-[ ] Phase 38-42: Fully Automated Slice Workflows
+[ ] Phase 38-42: Fully Automated Timeslicing Workflows
 ```
 
 ## Performance Metrics
@@ -49,7 +49,7 @@ v1.3 Planned:
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Phase 34 complete; preparing Phase 35-37 semi-automated slice workflows
+**Current focus:** Phase 34 complete; preparing Phase 35-37 semi-automated timeslicing workflows
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -70,12 +70,23 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Three-Milestone Roadmap:**
 1. v1.1: Manual (user creates/adjusts everything)
-2. v1.2: Semi-automated slice workflows (AI suggests intervals, user confirms)
-3. v1.3: Fully automated slice workflows (system proposes interval sets, user reviews)
+2. v1.2: Semi-automated timeslicing workflows (system suggests warp profiles + intervals, user confirms)
+3. v1.3: Fully automated timeslicing workflows (system proposes warp + interval sets, user reviews)
 
 **Terminology clarification:**
 - Timeslicing = adaptive time warping (density-driven or user-authored warp source)
 - Slice workflows = interval suggestion/acceptance/rejection built on top of timeslicing
+
+**Current status clarification:**
+- Implemented now: automated timeslicing (density-driven warp) + manual timeslicing (user-authored warp slices)
+- Not yet implemented: semi-automated proposal workflow (suggest/review loop), full auto orchestration
+- Planned future breakthrough: 3D spatially-constrained timeslicing (warp and interval quality informed by spatial context)
+- Requested next capability: context-aware timeslicing by data facets (e.g., focus on a specific crime type)
+
+**Context-aware timeslicing direction (requested):**
+- v1.2: suggestions respect active data context/filters and generate context-specific warp + interval proposals
+- v1.3: full-auto generation supports context profiles (single crime type, grouped categories, comparison mode)
+- v2.0: add spatial constraints in 3D so context-aware timeslicing incorporates where events occur, not just when
 
 **Phase 26 Decision Log (Execution):**
 - Added `@visx/gradient` and standardized area chart rendering on Visx primitives.
@@ -219,7 +230,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 Last session: 2026-02-22 18:00 UTC
 Stopped at: Completed 34-09-PLAN.md (Gap closure - DataStore cleanup)
-Next: Phase 35-37: Semi-Automated Slice Workflows
+Next: Phase 35-37: Semi-Automated Timeslicing Workflows
 
 ## Accumulated Context
 
@@ -227,8 +238,8 @@ Next: Phase 35-37: Semi-Automated Slice Workflows
 - v1.0: Complete thesis prototype shipped
 - v1.1: Manual timeslicing complete (shipped 2026-02-21)
 - v1.2: Performance Optimization (Phase 34) - optimizing for 8.4M records
-- v1.2: Semi-automated slice workflows (Phases 35-37)
-- v1.3: Fully automated slice workflows (Phases 38-42, future)
+- v1.2: Semi-automated timeslicing workflows (Phases 35-37)
+- v1.3: Fully automated timeslicing workflows (Phases 38-42, future)
 
 ### Roadmap Evolution
 - Phase 29 inserted: remake burstlist as first-class slices (downstream phases shifted)
