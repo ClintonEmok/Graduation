@@ -55,10 +55,33 @@ export interface UseCrimeDataOptions {
 }
 
 /**
+ * Metadata returned with crime range responses.
+ */
+export interface CrimeDataMeta {
+  viewport?: {
+    start: number
+    end: number
+  }
+  buffer?: {
+    days: number
+    applied: {
+      start: number
+      end: number
+    }
+  }
+  returned: number
+  limit: number
+  totalMatches?: number
+  sampled?: boolean
+  sampleStride?: number
+}
+
+/**
  * Result from useCrimeData hook
  */
 export interface UseCrimeDataResult {
   data: CrimeRecord[]
+  meta: CrimeDataMeta | null
   isLoading: boolean
   isFetching: boolean
   error: Error | null

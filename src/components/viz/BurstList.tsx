@@ -93,6 +93,7 @@ export function BurstList() {
   // Check if mapDomain is normalized (0-100) or actual epoch timestamps
   // Epoch timestamps are large numbers (billions for seconds, trillions for ms)
   const isNormalizedDomain = mapDomain[1] < 1000;
+  const isEpochMilliseconds = mapDomain[1] > 1e11;
 
   const formatWindow = (start: number, end: number) => {
     let startEpoch: number;
@@ -107,9 +108,9 @@ export function BurstList() {
         return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
       }
     } else {
-      // Domain is already epoch timestamps (milliseconds)
-      startEpoch = start / 1000; // Convert ms to seconds
-      endEpoch = end / 1000;
+      // Domain is already epoch timestamps (seconds or milliseconds)
+      startEpoch = isEpochMilliseconds ? start / 1000 : start;
+      endEpoch = isEpochMilliseconds ? end / 1000 : end;
     }
 
     const startLabel = new Date(startEpoch * 1000).toLocaleString();

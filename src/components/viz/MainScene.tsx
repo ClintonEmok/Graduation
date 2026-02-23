@@ -8,6 +8,7 @@ import MapBase from '../map/MapBase';
 import { useDataStore } from '@/store/useDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
+import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
@@ -15,30 +16,58 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   useSelectionSync();
 
   const mode = useUIStore((state) => state.mode);
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
+  const densityScope = useAdaptiveStore((state) => state.densityScope);
+  const { data: viewportCrimes } = useViewportCrimeData({ bufferDays: 30 });
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
 
-  // Trigger adaptive map computation when data loads
+  // Viewport mode: compute adaptive maps from current viewport records.
   useEffect(() => {
-    // 1. Handle Columnar Data (Real Data)
-    if (columns && columns.timestamp) {
-      // timestamps are normalized 0-100 in the store for columnar data
-      useAdaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
-    } 
-    // 2. Handle Mock Data (Object Array)
-    else if (data.length > 0) {
+    if (densityScope !== 'viewport' || !viewportCrimes || viewportCrimes.length === 0) return;
+
+    const timestamps = new Float32Array(viewportCrimes.length);
+    let minT = Infinity;
+    let maxT = -Infinity;
+
+    for (let i = 0; i < viewportCrimes.length; i += 1) {
+      const t = viewportCrimes[i].timestamp;
+      timestamps[i] = t;
+      if (Number.isFinite(t)) {
+        if (t < minT) minT = t;
+        if (t > maxT) maxT = t;
+      }
+    }
+
+    if (minT !== Infinity && maxT > minT) {
+      useAdaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
+    }
+  }, [densityScope, viewportCrimes]);
+
+  // Global mode: hydrate adaptive maps from DB precompute, fallback to local compute if request fails.
+  useEffect(() => {
+    if (densityScope !== 'global') return;
+
+    let cancelled = false;
+
+    const fallbackToLocalCompute = () => {
+      const { columns, data } = useDataStore.getState();
+
+      if (columns && columns.timestamp) {
+        useAdaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
+        return;
+      }
+
+      if (data.length === 0) return;
+
       const count = data.length;
       const timestamps = new Float32Array(count);
+      const yValues = new Float32Array(count);
       let minT = Infinity;
       let maxT = -Infinity;
-
-      const yValues = new Float32Array(count);
       let minY = Infinity;
       let maxY = -Infinity;
-      
-      for(let i=0; i<count; i++) {
+
+      for (let i = 0; i < count; i += 1) {
         const point = data[i];
         const y = typeof point.y === 'number' ? point.y : NaN;
         yValues[i] = y;
@@ -47,14 +76,8 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
           if (y > maxY) maxY = y;
         }
 
-        let t = point.timestamp as number | Date;
-        let tValue: number;
-        if (t instanceof Date) {
-          tValue = t.getTime();
-        } else {
-          tValue = typeof t === 'number' ? t : NaN;
-        }
-
+        const rawTimestamp = point.timestamp as number | Date;
+        const tValue = rawTimestamp instanceof Date ? rawTimestamp.getTime() : typeof rawTimestamp === 'number' ? rawTimestamp : NaN;
         timestamps[i] = tValue;
         if (Number.isFinite(tValue)) {
           if (tValue < minT) minT = tValue;
@@ -62,8 +85,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         }
       }
 
-      const hasValidY = minY !== Infinity && maxY > minY;
-      if (hasValidY) {
+      if (minY !== Infinity && maxY > minY) {
         useAdaptiveStore.getState().computeMaps(yValues, [minY, maxY]);
         return;
       }
@@ -71,8 +93,42 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
       if (minT !== Infinity && maxT > minT) {
         useAdaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
       }
-    }
-  }, [columns, data]);
+    };
+
+    const loadGlobalMaps = async () => {
+      try {
+        const response = await fetch('/api/adaptive/global');
+        if (!response.ok) {
+          throw new Error(`Global adaptive fetch failed: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as {
+          domain: [number, number];
+          densityMap: number[];
+          burstinessMap: number[];
+          warpMap: number[];
+        };
+
+        if (cancelled) return;
+
+        useAdaptiveStore.getState().setPrecomputedMaps(
+          Float32Array.from(payload.densityMap || []),
+          Float32Array.from(payload.burstinessMap || []),
+          Float32Array.from(payload.warpMap || []),
+          payload.domain
+        );
+      } catch (error) {
+        console.warn('Falling back to local global adaptive compute:', error);
+        if (!cancelled) fallbackToLocalCompute();
+      }
+    };
+
+    loadGlobalMaps();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [densityScope]);
 
   useEffect(() => {
     if (controlsRef.current) {

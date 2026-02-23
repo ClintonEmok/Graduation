@@ -12,7 +12,7 @@
  */
 import { useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore'
 import { useCrimeData } from './useCrimeData'
-import { CrimeRecord } from '@/types/crime'
+import { CrimeDataMeta, CrimeRecord } from '@/types/crime'
 
 export interface UseViewportCrimeDataOptions {
   /** Number of days to buffer around viewport (default: 30) */
@@ -27,6 +27,7 @@ export interface UseViewportCrimeDataOptions {
 
 export interface UseViewportCrimeDataResult {
   data: CrimeRecord[]
+  meta: CrimeDataMeta | null
   isLoading: boolean
   isFetching: boolean
   error: Error | null
@@ -73,6 +74,7 @@ export function useViewportCrimeData(
   
   return {
     data: result.data,
+    meta: result.meta,
     isLoading: result.isLoading,
     isFetching: result.isFetching,
     error: result.error,

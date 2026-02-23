@@ -21,8 +21,10 @@ export function TopBar() {
   const resetFilters = useFilterStore((state) => state.resetFilters);
   
   // Get currently loaded viewport data count
-  const { data: viewportData } = useViewportCrimeData({ bufferDays: 30 });
+  const { data: viewportData, meta: viewportMeta } = useViewportCrimeData({ bufferDays: 30 });
   const viewportLoadedCount = viewportData?.length ?? null;
+  const totalMatches = viewportMeta?.totalMatches ?? null;
+  const isSampled = Boolean(viewportMeta?.sampled);
   
   console.log('[TopBar] viewportData:', viewportData, 'viewportLoadedCount:', viewportLoadedCount);
 
@@ -73,8 +75,13 @@ export function TopBar() {
           </span>
         )}
         {viewportLoadedCount !== null && (
-          <span className="text-xs text-green-400">
+          <span className={`text-xs ${isSampled ? 'text-amber-400' : 'text-green-400'}`}>
             {formatCount(viewportLoadedCount)} loaded
+          </span>
+        )}
+        {isSampled && totalMatches !== null && totalMatches > (viewportLoadedCount ?? 0) && (
+          <span className="text-xs text-amber-300">
+            sampled from {formatCount(totalMatches)}
           </span>
         )}
       </div>

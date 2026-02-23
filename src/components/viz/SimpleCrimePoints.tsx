@@ -10,7 +10,7 @@ import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useFilterStore } from '@/store/useFilterStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
+import { normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 
 // Full date range constants from the dataset (2001-2026)
@@ -76,15 +76,8 @@ export function SimpleCrimePoints() {
     let timeMax = Infinity;
     if (selectedTimeRange) {
       const [rangeStart, rangeEnd] = selectedTimeRange;
-      if (minTimestampSec != null && maxTimestampSec != null) {
-        const normalizedStart = epochSecondsToNormalized(rangeStart, minTimestampSec, maxTimestampSec);
-        const normalizedEnd = epochSecondsToNormalized(rangeEnd, minTimestampSec, maxTimestampSec);
-        timeMin = Math.min(normalizedStart, normalizedEnd);
-        timeMax = Math.max(normalizedStart, normalizedEnd);
-      } else if (rangeStart >= 0 && rangeEnd <= 100) {
-        timeMin = Math.min(rangeStart, rangeEnd);
-        timeMax = Math.max(rangeStart, rangeEnd);
-      }
+      timeMin = Math.min(rangeStart, rangeEnd);
+      timeMax = Math.max(rangeStart, rangeEnd);
     }
 
     // Compute ranges from CrimeRecord data

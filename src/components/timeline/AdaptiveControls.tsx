@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 export function AdaptiveControls({ className }: { className?: string }) {
   const warpFactor = useAdaptiveStore((s) => s.warpFactor);
   const setWarpFactor = useAdaptiveStore((s) => s.setWarpFactor);
+  const densityScope = useAdaptiveStore((s) => s.densityScope);
+  const setDensityScope = useAdaptiveStore((s) => s.setDensityScope);
   const burstMetric = useAdaptiveStore((s) => s.burstMetric);
   const setBurstMetric = useAdaptiveStore((s) => s.setBurstMetric);
   const burstThreshold = useAdaptiveStore((s) => s.burstThreshold);
@@ -28,6 +30,23 @@ export function AdaptiveControls({ className }: { className?: string }) {
         />
         <p className="text-[10px] text-muted-foreground">
             Distort time to highlight dense clusters of events.
+        </p>
+
+        <div className="flex justify-between items-center pt-2">
+            <Label className="text-sm font-medium">Density Scope</Label>
+        </div>
+        <select
+          value={densityScope}
+          onChange={(event) => setDensityScope(event.target.value as typeof densityScope)}
+          onMouseDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="w-full rounded-md border bg-background px-2 py-1 text-xs"
+        >
+          <option value="viewport">Viewport (live brush range)</option>
+          <option value="global">Global (full dataset baseline)</option>
+        </select>
+        <p className="text-[10px] text-muted-foreground">
+            Choose whether adaptive density uses current viewport or all loaded data.
         </p>
 
         <div className="flex justify-between items-center pt-2">

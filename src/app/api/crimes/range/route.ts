@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { queryCrimesInRange } from '@/lib/queries';
+import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
 
 /**
  * Viewport-based crime data API endpoint.
@@ -74,12 +74,20 @@ export async function GET(request: Request) {
       ? districtsParam.split(',').map(d => d.trim()).filter(Boolean)
       : undefined;
     
+    const totalMatches = await queryCrimeCount(bufferedStart, bufferedEnd, {
+      crimeTypes,
+      districts,
+    });
+    const sampleStride = totalMatches > limit ? Math.ceil(totalMatches / limit) : 1;
+    const sampled = sampleStride > 1;
+
     // Query the database with buffered range
     const crimes = await queryCrimesInRange(
       bufferedStart,
       bufferedEnd,
       {
         limit,
+        sampleStride,
         crimeTypes,
         districts
       }
@@ -94,7 +102,10 @@ export async function GET(request: Request) {
           viewport: { start, end },
           buffer: { days: bufferDays, applied: { start: bufferedStart, end: bufferedEnd } },
           returned: crimes.length,
-          limit
+          limit,
+          totalMatches,
+          sampled,
+          sampleStride,
         }
       },
       {

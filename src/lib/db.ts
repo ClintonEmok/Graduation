@@ -1,7 +1,10 @@
 import duckdb from 'duckdb';
-import { join } from 'path';
+import { mkdirSync } from 'fs';
+import { dirname, isAbsolute, join, resolve } from 'path';
 
 let db: duckdb.Database | null = null;
+
+const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'cache', 'crime.duckdb');
 
 /**
  * Get the path to the crime data CSV file.
@@ -9,6 +12,12 @@ let db: duckdb.Database | null = null;
  */
 export const getDataPath = (): string => {
   return join(process.cwd(), 'data', 'sources', 'Crimes_-_2001_to_Present_20260114.csv');
+};
+
+export const getDbPath = (): string => {
+  const configuredPath = process.env.DUCKDB_PATH?.trim();
+  if (!configuredPath) return DEFAULT_DB_PATH;
+  return isAbsolute(configuredPath) ? configuredPath : resolve(process.cwd(), configuredPath);
 };
 
 /**
@@ -41,7 +50,10 @@ export const epochSeconds = (dateStr: string): number => {
 
 export const getDb = async (): Promise<duckdb.Database> => {
   if (!db) {
-    db = new duckdb.Database(':memory:');
+    const dbPath = getDbPath();
+    mkdirSync(dirname(dbPath), { recursive: true });
+    db = new duckdb.Database(dbPath);
+    console.log(`DuckDB initialized at ${dbPath}`);
   }
   return db;
 };

@@ -1,24 +1,24 @@
-/* eslint-disable no-restricted-globals */
-
 export interface WorkerConfig {
   binCount: number;
   kernelWidth?: number;
 }
 
 export interface WorkerInput {
+  requestId: number;
   timestamps: Float32Array;
   domain: [number, number];
   config: WorkerConfig;
 }
 
 export interface WorkerOutput {
+  requestId: number;
   densityMap: Float32Array;
   burstinessMap: Float32Array;
   warpMap: Float32Array;
 }
 
 self.onmessage = (e: MessageEvent<WorkerInput>) => {
-  const { timestamps, domain, config } = e.data;
+  const { requestId, timestamps, domain, config } = e.data;
   const { binCount, kernelWidth = 1 } = config;
 
   const tStart = domain[0];
@@ -35,8 +35,7 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
       emptyWarp[i] = tStart + (i / denom) * tSpan;
     }
     self.postMessage(
-      { densityMap: emptyDensity, burstinessMap: emptyBurstiness, warpMap: emptyWarp },
-      [emptyDensity.buffer, emptyBurstiness.buffer, emptyWarp.buffer] as any
+      { requestId, densityMap: emptyDensity, burstinessMap: emptyBurstiness, warpMap: emptyWarp }
     );
     return;
   }
@@ -142,7 +141,6 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
   }
 
   self.postMessage(
-    { densityMap: normalizedDensity, burstinessMap, warpMap }, 
-    [normalizedDensity.buffer, burstinessMap.buffer, warpMap.buffer] as any
+    { requestId, densityMap: normalizedDensity, burstinessMap, warpMap }
   );
 };
