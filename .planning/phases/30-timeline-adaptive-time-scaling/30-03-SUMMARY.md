@@ -2,7 +2,7 @@
 phase: 30-timeline-adaptive-time-scaling
 plan: 03
 subsystem: ui
-tags: [timeline, adaptive-scaling, slices, d3-scale, zustand]
+tags: [timeline, adaptive-scaling, slices, d3-scale, zustand, user-authored-warp]
 
 # Dependency graph
 requires:
@@ -12,6 +12,7 @@ provides:
   - Subtle adaptive-mode axis tint in overview/detail axis bands
   - Timeline-test slice overlay scale parity with adaptive timeline mapping
   - Verified compile/build health after adaptive slice polish changes
+  - Optional user-authored adaptive warp source with separate slice model and date-based editor inputs
 affects: [31-multi-slice-management, timeline-slice-ux]
 
 # Tech tracking
@@ -27,13 +28,20 @@ key-files:
   modified:
     - src/components/timeline/DualTimeline.tsx
     - src/app/timeline-test/page.tsx
+    - src/app/timeline-test/components/SliceToolbar.tsx
+    - src/store/useAdaptiveStore.ts
+    - src/store/useWarpSliceStore.ts
+    - src/app/timeline-test/components/WarpSliceEditor.tsx
 
 key-decisions:
   - "Used low-opacity amber gradient only on axis bands in adaptive mode"
   - "Applied adaptive warp wrapper to timeline-test overlay scale instead of rewriting slice layers"
+  - "Kept user-authored warp slices separate from annotation slices to avoid overloading slice semantics"
+  - "Used datetime-local inputs for authored warp intervals and mapped to internal percent domain"
 
 patterns-established:
   - "Keep slice overlay geometry logic unchanged by supplying a scale with adaptive forward/inverse behavior"
+  - "Model adaptive warp source as a mode within adaptive scaling (density vs slice-authored) instead of expanding global time-scale modes"
 
 # Metrics
 duration: 4 min
@@ -96,6 +104,14 @@ None - no external service configuration required.
 
 - Phase 30 objectives are now fully delivered across plans 30-01 to 30-03.
 - Ready to transition to Phase 31 multi-slice management work.
+
+## Post-Ship Addendum (2026-02-23)
+
+- Extended adaptive scaling with a user-authored warp source toggle in timeline-test (`density` vs `slice-authored`).
+- Added a dedicated warp-slice store (`useWarpSliceStore`) that is independent from timeline annotation slices.
+- Added `WarpSliceEditor` for manual warp definition and switched interval inputs to date-time fields.
+- Updated adaptive warp-map selection in timeline-test page logic to use authored slices when selected.
+- Verified with ESLint on all modified timeline-test warp files.
 
 ---
 *Phase: 30-timeline-adaptive-time-scaling*

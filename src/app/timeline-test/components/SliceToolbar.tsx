@@ -45,6 +45,8 @@ export function SliceToolbar() {
   const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
+  const warpSource = useAdaptiveStore((state) => state.warpSource);
+  const setWarpSource = useAdaptiveStore((state) => state.setWarpSource);
 
   const handleToggle = () => {
     if (isCreating) {
@@ -210,6 +212,29 @@ export function SliceToolbar() {
         </span>
 
         <div className="inline-flex items-center gap-2 pl-1">
+          {timeScaleMode === 'adaptive' ? (
+            <div className="inline-flex rounded-md border border-slate-700/80 bg-slate-900/70 p-0.5">
+              {([
+                { key: 'density', label: 'Density' },
+                { key: 'slice-authored', label: 'User Slices' },
+              ] as const).map((source) => (
+                <button
+                  key={source.key}
+                  type="button"
+                  onClick={() => setWarpSource(source.key)}
+                  aria-pressed={warpSource === source.key}
+                  className={`rounded px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide transition ${
+                    warpSource === source.key
+                      ? 'bg-cyan-500/20 text-cyan-100'
+                      : 'text-slate-300 hover:bg-slate-700/80'
+                  }`}
+                >
+                  {source.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <span className="text-[11px] text-slate-400">Warp</span>
           <div className="w-28">
             <Slider
@@ -225,6 +250,11 @@ export function SliceToolbar() {
           <span className="w-12 text-right font-mono text-[11px] text-slate-300">
             {Math.round(warpFactor * 100)}%
           </span>
+          {timeScaleMode === 'adaptive' ? (
+            <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-200">
+              {warpSource === 'slice-authored' ? 'User-authored' : 'Density-driven'}
+            </span>
+          ) : null}
         </div>
       </div>
 

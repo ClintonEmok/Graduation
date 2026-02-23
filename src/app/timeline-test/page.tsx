@@ -12,12 +12,14 @@ import { SliceBoundaryHandlesLayer } from '@/app/timeline-test/components/SliceB
 import { SliceCreationLayer } from '@/app/timeline-test/components/SliceCreationLayer';
 import { SliceToolbar } from '@/app/timeline-test/components/SliceToolbar';
 import { SliceList } from '@/app/timeline-test/components/SliceList';
+import { WarpSliceEditor } from '@/app/timeline-test/components/WarpSliceEditor';
 import { SNAP_INTERVALS } from '@/app/timeline-test/lib/slice-utils';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 
@@ -29,6 +31,57 @@ const FALLBACK_CHART_START_MS = MOCK_START_MS;
 const FALLBACK_CHART_END_MS = MOCK_END_MS;
 type StrictTimelineScale = ScaleTime<number, number>;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const buildSliceAuthoredWarpMap = (
+  slices: Array<{ enabled: boolean; range: [number, number]; weight: number }>,
+  domain: [number, number],
+  sampleCount: number
+): Float32Array | null => {
+  const enabledSlices = slices.filter((slice) => slice.enabled);
+  if (enabledSlices.length === 0 || sampleCount < 2) return null;
+
+  const [domainStart, domainEnd] = domain;
+  const domainSpan = Math.max(1e-9, domainEnd - domainStart);
+  const density = new Float32Array(sampleCount);
+
+  for (let i = 0; i < sampleCount; i += 1) {
+    const ratio = sampleCount === 1 ? 0 : i / (sampleCount - 1);
+    const percent = ratio * 100;
+    let boost = 0;
+
+    for (const slice of enabledSlices) {
+      const start = Math.min(slice.range[0], slice.range[1]);
+      const end = Math.max(slice.range[0], slice.range[1]);
+      if (percent < start || percent > end) continue;
+
+      const center = (start + end) / 2;
+      const halfWidth = Math.max(0.5, (end - start) / 2);
+      const normalizedDistance = Math.abs((percent - center) / halfWidth);
+      const falloff = Math.max(0, 1 - normalizedDistance);
+      boost += Math.max(0, slice.weight) * (0.35 + 0.65 * falloff);
+    }
+
+    density[i] = 1 + boost;
+  }
+
+  const cumulative = new Float32Array(sampleCount);
+  cumulative[0] = 0;
+  for (let i = 1; i < sampleCount; i += 1) {
+    const prev = density[i - 1] ?? 1;
+    const curr = density[i] ?? 1;
+    cumulative[i] = cumulative[i - 1] + (prev + curr) * 0.5;
+  }
+
+  const total = cumulative[sampleCount - 1] ?? 0;
+  if (!Number.isFinite(total) || total <= 0) return null;
+
+  const warpMap = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i += 1) {
+    const progress = (cumulative[i] ?? 0) / total;
+    warpMap[i] = domainStart + progress * domainSpan;
+  }
+  return warpMap;
+};
 
 const buildMockDensity = (pointCount: number, variant: number): Float32Array => {
   const values = new Float32Array(pointCount);
@@ -130,7 +183,9 @@ export default function TimelineTestPage() {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const warpSource = useAdaptiveStore((state) => state.warpSource);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+  const warpSlices = useWarpSliceStore((state) => state.slices);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
@@ -152,6 +207,11 @@ export default function TimelineTestPage() {
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
   const sourceDensity = densityMap && densityMap.length > 0 ? densityMap : mockDensity;
+  const authoredWarpMap = useMemo(
+    () => buildSliceAuthoredWarpMap(warpSlices, mapDomain, Math.max(96, sourceDensity.length || 0)),
+    [mapDomain, sourceDensity.length, warpSlices]
+  );
+  const effectiveWarpMap = warpSource === 'slice-authored' ? authoredWarpMap : warpMap;
 
   const [domainStartSec, domainEndSec] = mapDomain;
   const useRealDomain = densityMap && densityMap.length > 0;
@@ -283,8 +343,8 @@ export default function TimelineTestPage() {
     if (
       timeScaleMode !== 'adaptive' ||
       warpFactor <= 0 ||
-      !warpMap ||
-      warpMap.length < 2 ||
+      !effectiveWarpMap ||
+      effectiveWarpMap.length < 2 ||
       detailInnerWidth <= 0
     ) {
       return linearScale;
@@ -298,26 +358,28 @@ export default function TimelineTestPage() {
         ? [linearStartSec, linearEndSec]
         : [linearEndSec, linearStartSec];
 
-    const displayStartSec = toDisplaySeconds(safeDomain[0], warpFactor, warpMap, mapDomain);
-    const displayEndSec = toDisplaySeconds(safeDomain[1], warpFactor, warpMap, mapDomain);
+    const displayStartSec = toDisplaySeconds(safeDomain[0], warpFactor, effectiveWarpMap, mapDomain);
+    const displayEndSec = toDisplaySeconds(safeDomain[1], warpFactor, effectiveWarpMap, mapDomain);
     const displaySpan = Math.max(1e-9, displayEndSec - displayStartSec);
 
-    const adaptiveScale = ((value: Date | number) => {
-      const date = value instanceof Date ? value : new Date(value);
-      const linearSec = date.getTime() / 1000;
-      const displaySec = toDisplaySeconds(linearSec, warpFactor, warpMap, mapDomain);
-      const t = clamp((displaySec - displayStartSec) / displaySpan, 0, 1);
-      return t * detailInnerWidth;
-    }) as StrictTimelineScale;
-
-    Object.assign(adaptiveScale, linearScale);
-
-    adaptiveScale.invert = (x: number) => {
-      const t = clamp(detailInnerWidth <= 0 ? 0 : x / detailInnerWidth, 0, 1);
-      const displaySec = displayStartSec + t * displaySpan;
-      const linearSec = toLinearSeconds(displaySec, safeDomain, warpFactor, warpMap, mapDomain);
-      return new Date(linearSec * 1000);
-    };
+    const adaptiveScale = Object.assign(
+      ((value: Date | number) => {
+        const date = value instanceof Date ? value : new Date(value);
+        const linearSec = date.getTime() / 1000;
+        const displaySec = toDisplaySeconds(linearSec, warpFactor, effectiveWarpMap, mapDomain);
+        const t = clamp((displaySec - displayStartSec) / displaySpan, 0, 1);
+        return t * detailInnerWidth;
+      }) as StrictTimelineScale,
+      linearScale,
+      {
+        invert: (x: number) => {
+          const t = clamp(detailInnerWidth <= 0 ? 0 : x / detailInnerWidth, 0, 1);
+          const displaySec = displayStartSec + t * displaySpan;
+          const linearSec = toLinearSeconds(displaySec, safeDomain, warpFactor, effectiveWarpMap, mapDomain);
+          return new Date(linearSec * 1000);
+        },
+      }
+    );
 
     return adaptiveScale;
   }, [
@@ -328,7 +390,7 @@ export default function TimelineTestPage() {
     toDisplaySeconds,
     toLinearSeconds,
     warpFactor,
-    warpMap,
+    effectiveWarpMap,
   ]);
 
   const simulateFilterChange = useCallback(() => {
@@ -534,8 +596,13 @@ export default function TimelineTestPage() {
             </p>
           </div>
 
+          <WarpSliceEditor />
+
           <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
-            <DualTimeline />
+            <DualTimeline
+              adaptiveWarpMapOverride={effectiveWarpMap}
+              adaptiveWarpDomainOverride={mapDomain}
+            />
             {detailInnerWidth > 0 && (
               <>
                 <div

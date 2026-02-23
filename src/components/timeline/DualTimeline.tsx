@@ -36,7 +36,15 @@ const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 type StrictTimelineScale = ScaleTime<number, number>;
 
-export const DualTimeline: React.FC = () => {
+interface DualTimelineProps {
+  adaptiveWarpMapOverride?: Float32Array | null;
+  adaptiveWarpDomainOverride?: [number, number];
+}
+
+export const DualTimeline: React.FC<DualTimelineProps> = ({
+  adaptiveWarpMapOverride,
+  adaptiveWarpDomainOverride,
+}) => {
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
@@ -55,6 +63,8 @@ export const DualTimeline: React.FC = () => {
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
+  const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
+  const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
 
   // Get viewport-based crime data
   const { data: viewportCrimes, isLoading: isViewportLoading } = useViewportCrimeData({
@@ -306,11 +316,18 @@ export const DualTimeline: React.FC = () => {
       applyAdaptiveWarping(
         overviewInteractionScale.copy(),
         warpFactor,
-        warpMap,
+        effectiveWarpMap,
         overviewInnerWidth,
-        mapDomain
+        effectiveWarpDomain
       ),
-    [applyAdaptiveWarping, mapDomain, overviewInnerWidth, overviewInteractionScale, warpFactor, warpMap]
+    [
+      applyAdaptiveWarping,
+      effectiveWarpDomain,
+      effectiveWarpMap,
+      overviewInnerWidth,
+      overviewInteractionScale,
+      warpFactor,
+    ]
   );
 
   const detailScale = useMemo(
@@ -318,11 +335,18 @@ export const DualTimeline: React.FC = () => {
       applyAdaptiveWarping(
         detailInteractionScale.copy(),
         warpFactor,
-        warpMap,
+        effectiveWarpMap,
         detailInnerWidth,
-        mapDomain
+        effectiveWarpDomain
       ),
-    [applyAdaptiveWarping, detailInnerWidth, detailInteractionScale, mapDomain, warpFactor, warpMap]
+    [
+      applyAdaptiveWarping,
+      detailInnerWidth,
+      detailInteractionScale,
+      effectiveWarpDomain,
+      effectiveWarpMap,
+      warpFactor,
+    ]
   );
 
   const applyRangeToStores = useCallback(

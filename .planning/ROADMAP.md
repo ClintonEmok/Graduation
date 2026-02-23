@@ -3,10 +3,10 @@
 ## Milestones
 
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
-- 🚧 **v1.1 Manual Timeslicing** — Phases 26-33 (in progress)
+- ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
 - 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
-- 📋 **v1.2 Semi-Automated Timeslicing** — Phase 35-37 (AI-assisted suggestions)
-- 📋 **v1.3 Fully Automated Timeslicing** — Phase 38-42 (optimal automatic generation)
+- 📋 **v1.2 Semi-Automated Slice Workflows** — Phase 35-37 (AI-assisted interval suggestions + review)
+- 📋 **v1.3 Fully Automated Slice Workflows** — Phase 38-42 (automatic interval generation + review)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
@@ -134,6 +134,7 @@ Plans:
 - Make DualTimeline respond to timeScaleMode from time store
 - Integrate warp factor control
 - Show density-based time warping on timeline axis
+- Add user-authored warp slices (date-based intervals) as a separate adaptive warp source
 - Enable A/B comparison between uniform and adaptive views
 
 Plans:
@@ -237,9 +238,11 @@ Plans:
 
 ---
 
-### v1.2 Semi-Automated Timeslicing
+### v1.2 Semi-Automated Slice Workflows
 
-**Goal:** AI-assisted region detection with user confirmation.
+**Goal:** AI-assisted interval detection with user confirmation.
+
+**Terminology note:** In this project, timeslicing refers to the adaptive time warping layer (already supports density-driven and user-authored warp sources). v1.2 focuses on interval suggestion workflows built on top of that timeslicing foundation.
 
 **Key Features:**
 - System suggests slice boundaries based on density peaks
@@ -249,9 +252,9 @@ Plans:
 
 **Phases:** 35-37 (planned)
 
-### v1.3 Fully Automated Timeslicing
+### v1.3 Fully Automated Slice Workflows
 
-**Goal:** Optimal automatic generation with user review.
+**Goal:** Optimal automatic interval generation with user review.
 
 **Key Features:**
 - System creates complete slice set automatically
@@ -277,8 +280,8 @@ Plans:
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
-| 35-37 | v1.2 | 0/TBD | 📋 Planned | - |
-| 38-42 | v1.3 | 0/TBD | 📋 Planned | - |
+| 35-37 | v1.2 Slice Workflows | 0/TBD | 📋 Planned | - |
+| 38-42 | v1.3 Slice Workflows | 0/TBD | 📋 Planned | - |
 
 ---
 

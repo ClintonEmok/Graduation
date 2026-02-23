@@ -10,7 +10,7 @@
 Phase: **34 of 42** (Performance Optimization)
 Plan: **9 of 9** in current phase
 Status: **Complete**
-Last activity: 2026-02-22 - Completed 34-09-PLAN.md (Gap closure - DataStore cleanup)
+Last activity: 2026-02-23 - Added user-authored adaptive warp slices (date-based) in /timeline-test
 
 Progress: overall ████████████████░░░ 83% (123/143 plans) | v1.2 ██████░░░░░░░░░ 71% phases (5/7)
 
@@ -32,10 +32,10 @@ v1.2 In Progress:
 [ ] Phase 34: Performance Optimization (9/9 plans complete)
 
 v1.2 Planned:
-[ ] Phase 35-37: Semi-Automated Timeslicing
+[ ] Phase 35-37: Semi-Automated Slice Workflows
 
 v1.3 Planned:
-[ ] Phase 38-42: Fully Automated Timeslicing
+[ ] Phase 38-42: Fully Automated Slice Workflows
 ```
 
 ## Performance Metrics
@@ -49,7 +49,7 @@ v1.3 Planned:
 See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Core value:** Timeline as active analysis engine
-**Current focus:** Phase 33 complete; Phase 34 Performance Optimization ready to plan
+**Current focus:** Phase 34 complete; preparing Phase 35-37 semi-automated slice workflows
 **Guiding principle:** "Timeline is the engine" - timeline-only for v1.1
 
 ## Context & Decisions
@@ -70,8 +70,12 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 **Three-Milestone Roadmap:**
 1. v1.1: Manual (user creates/adjusts everything)
-2. v1.2: Semi-automated (AI suggests, user confirms)
-3. v1.3: Fully automated (system creates, user reviews)
+2. v1.2: Semi-automated slice workflows (AI suggests intervals, user confirms)
+3. v1.3: Fully automated slice workflows (system proposes interval sets, user reviews)
+
+**Terminology clarification:**
+- Timeslicing = adaptive time warping (density-driven or user-authored warp source)
+- Slice workflows = interval suggestion/acceptance/rejection built on top of timeslicing
 
 **Phase 26 Decision Log (Execution):**
 - Added `@visx/gradient` and standardized area chart rendering on Visx primitives.
@@ -137,6 +141,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Kept brush/zoom synchronization on linear interaction scales to preserve stable d3 behavior while adaptive warping drives visual spacing.
 - Added adaptive-only axis tint gradient to overview/detail axis bands as a subtle visual mode cue.
 - Mirrored adaptive scale wrapping in timeline-test overlay scale so slice creation/display/boundary drag remain aligned in both modes.
+- Added adaptive warp source toggle (`density` vs `slice-authored`) while keeping existing `timeScaleMode` unchanged.
+- Added separate `useWarpSliceStore` for user-authored warp slices (independent from timeline annotation slices).
+- Added `WarpSliceEditor` to timeline-test so users can define warp intervals and strengths manually.
+- Updated warp editor inputs to use date-time fields (mapped to domain percent internally) so user-authored non-uniform slices are timestamp-driven.
 
 **Phase 31 Decision Log (Execution):**
 - Added optional injected `scale` support to `DensityHeatStrip` so density rendering can follow the same warped coordinate system as timeline axes.
@@ -211,7 +219,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 Last session: 2026-02-22 18:00 UTC
 Stopped at: Completed 34-09-PLAN.md (Gap closure - DataStore cleanup)
-Next: Phase 35-37: Semi-Automated Timeslicing
+Next: Phase 35-37: Semi-Automated Slice Workflows
 
 ## Accumulated Context
 
@@ -219,8 +227,8 @@ Next: Phase 35-37: Semi-Automated Timeslicing
 - v1.0: Complete thesis prototype shipped
 - v1.1: Manual timeslicing complete (shipped 2026-02-21)
 - v1.2: Performance Optimization (Phase 34) - optimizing for 8.4M records
-- v1.2: Semi-automated timeslicing (Phases 35-37)
-- v1.3: Fully automated (Phases 38-42, future)
+- v1.2: Semi-automated slice workflows (Phases 35-37)
+- v1.3: Fully automated slice workflows (Phases 38-42, future)
 
 ### Roadmap Evolution
 - Phase 29 inserted: remake burstlist as first-class slices (downstream phases shifted)
