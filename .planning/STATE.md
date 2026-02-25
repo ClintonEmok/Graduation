@@ -3,8 +3,8 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** Phase 35: Semi-Automated Timeslicing Workflows
-**Status:** Phase 35 in progress
-**Next:** Phase 35-02 complete; Phase 35-03 next
+**Status:** Phase 35 complete
+**Next:** Phase 36-37: Semi-Automated Timeslicing Workflows (suggestion generation)
 
 ## Current Position
 Phase: **35 of 42** (Semi-Automated Timeslicing Workflows)
@@ -30,10 +30,10 @@ v1.1 Complete:
 [x] Phase 34: Performance Optimization (9/9 plans complete)
 
 v1.2 In Progress:
-[x] Phase 35: Semi-Automated Timeslicing Workflows (4/5 plans complete)
+[x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 
 v1.2 Planned:
-[ ] Phase 36-37: Semi-Automated Timeslicing Workflows
+[ ] Phase 36-37: Semi-Automated Timeslicing Workflows (suggestion generation)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -305,8 +305,19 @@ Next: Phase 35-03: Auto-generation triggers
 - useSuggestionStore with Zustand
 - SuggestionPanel, SuggestionCard, ConfidenceBadge UI
 
+### Phase 35 Completion (2026-02-25)
+- /timeslicing route (dedicated route per CONTEXT.md)
+- useSuggestionStore with Suggestion type and CRUD actions
+- SuggestionPanel (fixed right-side, scrollable, empty state)
+- ConfidenceBadge ("X% confidence" numerical display per CONTEXT.md)
+- SuggestionCard with Accept/Modify/Reject button hierarchy
+- SuggestionToolbar with Generate/Clear/Toggle controls
+- useSuggestionTrigger hook with mock suggestion generator
+- Core workflow: generate, accept, reject, modify all functional
+- 3/3 plans complete, verification passed
+
 **Next focus:**
-- Execute 35-02-PLAN.md (Suggestion generation implementation)
+- Phase 36-37: Suggestion generation algorithms (warp profiles + interval boundaries)
 
 ---
-*Last updated: 2026-02-25 - completed 35-01 semi-automated timeslicing foundation*
+*Last updated: 2026-02-25 - Phase 35 complete*
