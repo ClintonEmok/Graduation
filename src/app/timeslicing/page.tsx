@@ -7,6 +7,7 @@ import { useCrimeData } from '@/hooks/useCrimeData';
 import { useDataStore } from '@/store/useDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
+import { SuggestionToolbar } from './components/SuggestionToolbar';
 
 // Default to full date range if no real data loaded yet
 const DEFAULT_START_EPOCH = 978307200; // 2001-01-01
@@ -86,12 +87,8 @@ export default function TimeslicingPage() {
               )}
             </div>
             
-            {/* Suggestion Panel Toggle - placeholder for future */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-400">
-                Suggestions: <strong className="text-slate-100">0</strong>
-              </span>
-            </div>
+            {/* Suggestion Toolbar */}
+            <SuggestionToolbar />
           </div>
         </section>
 
