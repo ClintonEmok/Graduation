@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, getDataPath } from '@/lib/db';
+import { getDb, getDataPath, isMockDataEnabled } from '@/lib/db';
 import { existsSync } from 'fs';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +19,18 @@ const MOCK_METADATA = {
 
 export async function GET() {
   try {
+    if (isMockDataEnabled()) {
+      return NextResponse.json({
+        ...MOCK_METADATA,
+        isMock: true,
+      }, {
+        status: 200,
+        headers: {
+          'X-Data-Warning': 'Using demo data - database disabled'
+        }
+      });
+    }
+
     const dataPath = getDataPath();
     if (!existsSync(dataPath)) {
       // Return mock data with warning instead of error

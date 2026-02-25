@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
+import type { CrimeRecord } from '@/lib/queries';
+import { isMockDataEnabled } from '@/lib/db';
 
 /**
  * Viewport-based crime data API endpoint.
@@ -20,6 +22,50 @@ import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
 export const runtime = 'nodejs';
 // Prevent static optimization as we serve dynamic viewport data
 export const dynamic = 'force-dynamic';
+
+const MOCK_CRIME_TYPES = ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'];
+const MOCK_DISTRICTS = Array.from({ length: 25 }, (_, idx) => String(idx + 1));
+const MIN_LON = -87.9;
+const MAX_LON = -87.5;
+const MIN_LAT = 41.6;
+const MAX_LAT = 42.1;
+
+const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
+
+const generateMockCrimes = (
+  count: number,
+  startEpoch: number,
+  endEpoch: number,
+  crimeTypes?: string[],
+  districts?: string[]
+): CrimeRecord[] => {
+  const typePool = crimeTypes?.length ? crimeTypes : MOCK_CRIME_TYPES;
+  const districtPool = districts?.length ? districts : MOCK_DISTRICTS;
+  const start = Math.min(startEpoch, endEpoch);
+  const end = Math.max(startEpoch, endEpoch);
+  const results: CrimeRecord[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const lon = randomBetween(MIN_LON, MAX_LON);
+    const lat = randomBetween(MIN_LAT, MAX_LAT);
+    const timestamp = Math.floor(randomBetween(start, end));
+    const year = new Date(timestamp * 1000).getUTCFullYear();
+
+    results.push({
+      timestamp,
+      type: typePool[Math.floor(Math.random() * typePool.length)],
+      lat,
+      lon,
+      x: ((lon - MIN_LON) / (MAX_LON - MIN_LON) * 100.0) - 50.0,
+      z: ((lat - MIN_LAT) / (MAX_LAT - MIN_LAT) * 100.0) - 50.0,
+      iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
+      district: districtPool[Math.floor(Math.random() * districtPool.length)],
+      year,
+    });
+  }
+
+  return results;
+};
 
 export async function GET(request: Request) {
   try {
@@ -73,7 +119,36 @@ export async function GET(request: Request) {
     const districts = districtsParam
       ? districtsParam.split(',').map(d => d.trim()).filter(Boolean)
       : undefined;
-    
+
+    if (isMockDataEnabled()) {
+      const mockCount = Math.min(limit, 2000);
+      const crimes = generateMockCrimes(mockCount, bufferedStart, bufferedEnd, crimeTypes, districts);
+
+      return NextResponse.json(
+        {
+          data: crimes,
+          meta: {
+            viewport: { start, end },
+            buffer: { days: bufferDays, applied: { start: bufferedStart, end: bufferedEnd } },
+            returned: crimes.length,
+            limit,
+            totalMatches: Math.max(crimes.length, 1000),
+            sampled: false,
+            sampleStride: 1,
+            isMock: true,
+          }
+        },
+        {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'X-Content-Type-Options': 'nosniff',
+            'X-Data-Warning': 'Using demo data - database disabled'
+          }
+        }
+      );
+    }
+
     const totalMatches = await queryCrimeCount(bufferedStart, bufferedEnd, {
       crimeTypes,
       districts,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, isMockDataEnabled } from '@/lib/db';
 
 // Force Node.js runtime for DuckDB compatibility
 export const runtime = 'nodejs';
@@ -24,6 +24,25 @@ interface ColumnInfo {
 
 const DATA_PATH = 'data/crime.parquet';
 let columnInfo: ColumnInfo | null = null;
+
+const MOCK_FACETS: FacetsResponse = {
+  types: [
+    { name: 'THEFT', count: 2200 },
+    { name: 'BATTERY', count: 1800 },
+    { name: 'CRIMINAL DAMAGE', count: 1400 },
+    { name: 'ASSAULT', count: 900 },
+    { name: 'BURGLARY', count: 700 },
+    { name: 'ROBBERY', count: 500 },
+  ],
+  districts: [
+    { name: '1', count: 900 },
+    { name: '2', count: 850 },
+    { name: '3', count: 820 },
+    { name: '4', count: 780 },
+    { name: '5', count: 720 },
+    { name: '6', count: 650 },
+  ]
+};
 
 const quoteIdentifier = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
@@ -82,6 +101,18 @@ export async function GET(request: Request) {
         { error: 'Invalid parameters: start and end must be valid numbers' },
         { status: 400 }
       );
+    }
+
+    if (isMockDataEnabled()) {
+      return NextResponse.json(MOCK_FACETS, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=5, stale-while-revalidate=10',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Data-Warning': 'Using demo data - database disabled',
+        },
+      });
     }
 
     const db = await getDb();

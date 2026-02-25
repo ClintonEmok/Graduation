@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAggregatedBins } from '@/lib/duckdb-aggregator';
+import { isMockDataEnabled } from '@/lib/db';
 import { Bin } from '@/types';
 
 // Force Node.js runtime for DuckDB compatibility
@@ -40,6 +41,20 @@ export async function GET(request: NextRequest) {
     const districts = searchParams.get('districts')?.split(',').filter(Boolean);
     const startTime = searchParams.get('startTime') ? parseFloat(searchParams.get('startTime')!) : undefined;
     const endTime = searchParams.get('endTime') ? parseFloat(searchParams.get('endTime')!) : undefined;
+
+    if (isMockDataEnabled()) {
+      const mockBins = generateMockBins(resX, resY, resZ);
+      return NextResponse.json({
+        bins: mockBins,
+        isMock: true,
+      }, {
+        status: 200,
+        headers: {
+          'X-Data-Warning': 'Using demo data - database disabled',
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+        }
+      });
+    }
 
     const bins = await getAggregatedBins({
       resX,

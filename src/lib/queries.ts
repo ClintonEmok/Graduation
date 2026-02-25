@@ -1,4 +1,4 @@
-import { getDb, ensureSortedCrimesTable } from './db';
+import { getDb, ensureSortedCrimesTable, isMockDataEnabled } from './db';
 
 /**
  * Crime record type returned by queries
@@ -39,6 +39,61 @@ export interface QueryFilters {
   districts?: string[];
 }
 
+const MOCK_CRIME_TYPES = ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'];
+const MOCK_DISTRICTS = Array.from({ length: 25 }, (_, idx) => String(idx + 1));
+const MIN_LON = -87.9;
+const MAX_LON = -87.5;
+const MIN_LAT = 41.6;
+const MAX_LAT = 42.1;
+
+const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
+
+const normalizeRange = (start: number, end: number) => {
+  if (start <= end) return { start, end };
+  return { start: end, end: start };
+};
+
+const generateMockCrimeRecords = (
+  startEpoch: number,
+  endEpoch: number,
+  options?: QueryCrimesOptions
+): CrimeRecord[] => {
+  const limit = options?.limit ?? 50000;
+  const recordCount = Math.min(limit, 2000);
+  const crimeTypes = options?.crimeTypes?.length ? options.crimeTypes : MOCK_CRIME_TYPES;
+  const districts = options?.districts?.length ? options.districts : MOCK_DISTRICTS;
+  const { start, end } = normalizeRange(startEpoch, endEpoch);
+
+  const records: CrimeRecord[] = [];
+  for (let i = 0; i < recordCount; i++) {
+    const lon = randomBetween(MIN_LON, MAX_LON);
+    const lat = randomBetween(MIN_LAT, MAX_LAT);
+    const timestamp = Math.floor(randomBetween(start, end));
+    const year = new Date(timestamp * 1000).getUTCFullYear();
+
+    records.push({
+      timestamp,
+      type: crimeTypes[Math.floor(Math.random() * crimeTypes.length)],
+      lat,
+      lon,
+      x: ((lon - MIN_LON) / (MAX_LON - MIN_LON) * 100.0) - 50.0,
+      z: ((lat - MIN_LAT) / (MAX_LAT - MIN_LAT) * 100.0) - 50.0,
+      iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
+      district: districts[Math.floor(Math.random() * districts.length)],
+      year,
+    });
+  }
+
+  return records;
+};
+
+const mockCrimeCount = (filters?: QueryFilters): number => {
+  const typeFactor = filters?.crimeTypes?.length ? filters.crimeTypes.length / MOCK_CRIME_TYPES.length : 1;
+  const districtFactor = filters?.districts?.length ? filters.districts.length / MOCK_DISTRICTS.length : 1;
+  const base = 80000;
+  return Math.max(1000, Math.floor(base * typeFactor * districtFactor));
+};
+
 /**
  * Query crimes within a time range using the zone-map-optimized sorted table.
  * 
@@ -52,6 +107,9 @@ export const queryCrimesInRange = async (
   endEpoch: number,
   options?: QueryCrimesOptions
 ): Promise<CrimeRecord[]> => {
+  if (isMockDataEnabled()) {
+    return generateMockCrimeRecords(startEpoch, endEpoch, options);
+  }
   const db = await getDb();
   const tableName = await ensureSortedCrimesTable();
   
@@ -156,6 +214,9 @@ export const queryCrimeCount = async (
   endEpoch: number,
   filters?: QueryFilters
 ): Promise<number> => {
+  if (isMockDataEnabled()) {
+    return mockCrimeCount(filters);
+  }
   const db = await getDb();
   const tableName = await ensureSortedCrimesTable();
   
