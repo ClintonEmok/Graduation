@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
 export function OnboardingTour() {
+  const pathname = usePathname();
   const driverRef = useRef<ReturnType<typeof driver> | null>(null);
 
+  const isDashboard = pathname.startsWith('/dashboard');
+
   useEffect(() => {
-    // Check if user has already seen the tour
+    // Only show on dashboard pages
+    if (!isDashboard) return;
     const hasSeenTour = localStorage.getItem("hasSeenTour");
     if (hasSeenTour) return;
 
@@ -71,7 +76,7 @@ export function OnboardingTour() {
     });
     
     driverRef.current.drive();
-  }, []);
+  }, [isDashboard]);
 
   return null;
 }
