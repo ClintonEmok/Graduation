@@ -71,6 +71,9 @@ importers:
       '@visx/brush':
         specifier: ^3.12.0
         version: 3.12.0(react@19.2.3)
+      '@visx/curve':
+        specifier: ^3.12.0
+        version: 3.12.0
       '@visx/event':
         specifier: ^3.12.0
         version: 3.12.0
