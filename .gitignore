@@ -41,6 +41,10 @@ next-env.d.ts
 /data/**/*.parquet
 /data/*.db
 /data/**/*.db
+/data/*.duckdb
+/data/**/*.duckdb
+/data/*.wal
+/data/**/*.wal
 !/data/.gitkeep
 /datapreprocessing/data/
 
