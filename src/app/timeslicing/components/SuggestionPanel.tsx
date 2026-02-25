@@ -1,14 +1,34 @@
 "use client";
 
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
+import { useCrimeFilters, useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore';
 import { SuggestionCard } from './SuggestionCard';
 
+/**
+ * Format date for display
+ */
+function formatDate(epochSeconds: number): string {
+  return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 export function SuggestionPanel() {
-  const { suggestions, isPanelOpen, setPanelOpen, clearSuggestions } = useSuggestionStore();
+  const { suggestions, isPanelOpen, setPanelOpen, clearSuggestions, isEmptyState } = useSuggestionStore();
+  
+  // Get viewport context for display
+  const crimeFilters = useCrimeFilters();
+  const startDate = useViewportStart();
+  const endDate = useViewportEnd();
+  
+  // Context display toggle
+  const [showContext, setShowContext] = useState(false);
   
   if (!isPanelOpen) {
     return null;
@@ -30,6 +50,16 @@ export function SuggestionPanel() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Context toggle button */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setShowContext(!showContext)}
+            className={`h-7 w-7 ${showContext ? 'text-amber-400' : 'text-slate-400'}`}
+            title="Show context"
+          >
+            <Info className="size-4" />
+          </Button>
           {suggestions.length > 0 && (
             <Button
               variant="ghost"
@@ -51,10 +81,46 @@ export function SuggestionPanel() {
         </div>
       </div>
       
+      {/* Context display */}
+      {showContext && (
+        <div className="border-b border-slate-700 bg-slate-800/50 p-3">
+          <div className="text-xs font-medium text-slate-300 mb-2">Based on:</div>
+          <div className="text-xs text-slate-400 space-y-1">
+            <div>
+              {crimeFilters.crimeTypes.length > 0 ? (
+                <span>Crime types: {crimeFilters.crimeTypes.join(', ')}</span>
+              ) : (
+                <span>All crime types</span>
+              )}
+            </div>
+            <div>
+              {crimeFilters.districts.length > 0 ? (
+                <span>Districts: {crimeFilters.districts.join(', ')}</span>
+              ) : (
+                <span>All districts</span>
+              )}
+            </div>
+            <div className="text-slate-500">
+              {formatDate(startDate)} - {formatDate(endDate)}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Body */}
       <ScrollArea className="flex-1">
         <div className="p-3">
-          {suggestions.length === 0 ? (
+          {/* Empty state message */}
+          {isEmptyState ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-sm text-slate-400">
+                No crimes found in current view.
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Try expanding your filters or time range.
+              </p>
+            </div>
+          ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-sm text-slate-400">
                 No suggestions yet.
