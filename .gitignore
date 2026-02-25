@@ -36,7 +36,11 @@ next-env.d.ts
 
 # data - don't commit large datasets
 /data/*.csv
+/data/**/*.csv
 /data/*.parquet
+/data/**/*.parquet
+/data/*.db
+/data/**/*.db
 !/data/.gitkeep
 /datapreprocessing/data/
 
