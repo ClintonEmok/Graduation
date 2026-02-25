@@ -252,7 +252,16 @@ Plans:
 - "Accept/Modify/Reject" workflow
 - Confidence scores for suggestions and profile quality
 
-**Phases:** 35-37 (planned)
+**Phases:** 35-37
+
+**Phase 36: Suggestion Generation Algorithms**
+Plans:
+- [ ] 36-01-PLAN.md — Confidence scoring module
+- [ ] 36-02-PLAN.md — Warp profile generation algorithms
+- [ ] 36-03-PLAN.md — Interval boundary detection algorithms
+- [ ] 36-04-PLAN.md — Integration with useSuggestionGenerator
+
+**Phase 37: Review/Approval Workflows** (planned)
 
 ### v1.3 Fully Automated Timeslicing Workflows
 
@@ -295,7 +304,8 @@ Plans:
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
-| 36-37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 36 | v1.2 Timeslicing Workflows | 0/4 | 📋 Planned | - |
+| 37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 | 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 
 ---
