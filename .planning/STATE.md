@@ -7,12 +7,12 @@
 **Next:** Phase 36-37: Semi-Automated Timeslicing Workflows (suggestion generation)
 
 ## Current Position
-Phase: **35 of 42** (Semi-Automated Timeslicing Workflows)
-Plan: **4 of 5** in current phase
+Phase: **36 of 42** (Suggestion Generation Algorithms)
+Plan: **3 of 4** in current phase
 Status: **In progress**
-Last activity: 2026-02-25 - Completed suggestion panel UI components with Accept/Modify/Reject
+Last activity: 2026-02-25 - Completed confidence scoring, warp generation, interval detection modules
 
-Progress: overall ████████████████░░░ 84% (124/143 plans) | v1.2 ███████░░░░░░░ 86% phases (6/7)
+Progress: overall ████████████████░░░ 84% (127/143 plans) | v1.2 ███████░░░░░░░ 86% phases (6/7)
 
 ```
 v1.0 Complete:
@@ -31,9 +31,11 @@ v1.1 Complete:
 
 v1.2 In Progress:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
+[ ] Phase 36: Suggestion Generation Algorithms (3/4 plans complete)
+[ ] Phase 36-04: UI Integration (pending)
 
 v1.2 Planned:
-[ ] Phase 36-37: Semi-Automated Timeslicing Workflows (suggestion generation)
+[ ] Phase 37: Algorithm Integration (pending)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -253,6 +255,23 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Added SuggestionToolbar with Generate, Clear All, and Toggle Panel buttons
 - Mock generates 3 warp profiles (61-87% confidence) + 3 interval boundaries
 
+**Phase 36 Decision Log (Execution):**
+- Created confidence-scoring.ts with four exported functions
+- calculateDataClarity: measures variance in crime density over time
+- calculateCoverage: measures temporal distribution and uniformity
+- calculateStatisticalConfidence: measures signal-to-noise ratio, peak prominence, entropy
+- calculateConfidence: composite scoring with default weights (clarity 0.4, coverage 0.3, statistical 0.3)
+- Created warp-generation.ts with hybrid density-weighting + event detection
+- analyzeDensity: bins crimes, calculates normalized density, identifies peaks/lows
+- detectEvents: finds significant density transitions (>1.5 std dev)
+- generateWarpProfiles: creates 2-3 profiles with different emphasis (aggressive/balanced/conservative)
+- Created interval-detection.ts with three detection methods
+- detectPeaks: finds local maxima in density distribution
+- detectChangePoints: finds significant density transitions using sliding window
+- applyRuleBased: equal-time interval division
+- snapToBoundary: snaps epochs to hour/day boundaries
+- detectBoundaries: main function combining all methods with sensitivity and snapping options
+
 ## Blockers/Concerns
 
 **Performance (Phase 34 to address):**
@@ -263,9 +282,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-25 10:36 UTC
-Stopped at: Completed 35-02-PLAN.md (Suggestion panel UI components)
-Next: Phase 35-03: Auto-generation triggers
+Last session: 2026-02-25 10:51 UTC
+Stopped at: Completed 36-01, 36-02, 36-03 (algorithm foundation)
+Next: Phase 36-04: UI Integration
 
 ## Accumulated Context
 
@@ -319,5 +338,28 @@ Next: Phase 35-03: Auto-generation triggers
 **Next focus:**
 - Phase 36-37: Suggestion generation algorithms (warp profiles + interval boundaries)
 
+### Phase 36 Wave 1 Completion (2026-02-25)
+**Prerequisites from Phase 35:**
+- ✅ useSuggestionStore with Suggestion types
+- ✅ CrimeRecord type available
+
+**Delivered in 36-01:**
+- Confidence scoring module (src/lib/confidence-scoring.ts)
+- Composite scoring: clarity 0.4, coverage 0.3, statistical 0.3
+- Returns 0-100 scores matching ConfidenceBadge format
+
+**Delivered in 36-02:**
+- Warp profile generation (src/lib/warp-generation.ts)
+- Hybrid density-weighting + event detection algorithm
+- 2-3 profiles with different emphasis (aggressive/balanced/conservative)
+
+**Delivered in 36-03:**
+- Interval boundary detection (src/lib/interval-detection.ts)
+- Three methods: peak detection, change-point, rule-based
+- Sensitivity levels and boundary snapping support
+
+**Next focus:**
+- Phase 36-04: UI Integration (connect algorithms to useSuggestionTrigger)
+
 ---
-*Last updated: 2026-02-25 - Phase 35 complete*
+*Last updated: 2026-02-25 - Phase 36 Wave 1 complete*
