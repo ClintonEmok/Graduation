@@ -1,8 +1,7 @@
-import duckdb from 'duckdb';
 import { mkdirSync } from 'fs';
 import { dirname, isAbsolute, join, resolve } from 'path';
 
-let db: duckdb.Database | null = null;
+let db: any = null;
 
 const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'cache', 'crime.duckdb');
 
@@ -56,14 +55,15 @@ export const epochSeconds = (dateStr: string): number => {
   return Math.floor(parseDate(dateStr).getTime() / 1000);
 };
 
-export const getDb = async (): Promise<duckdb.Database> => {
+export const getDb = async (): Promise<any> => {
   if (isMockDataEnabled()) {
     throw new Error('DuckDB disabled via USE_MOCK_DATA/DISABLE_DUCKDB');
   }
   if (!db) {
     const dbPath = getDbPath();
     mkdirSync(dirname(dbPath), { recursive: true });
-    db = new duckdb.Database(dbPath);
+    const duckdb = await import('duckdb');
+    db = new duckdb.default.Database(dbPath);
     console.log(`DuckDB initialized at ${dbPath}`);
   }
   return db;
