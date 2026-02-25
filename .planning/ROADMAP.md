@@ -256,10 +256,10 @@ Plans:
 
 **Phase 36: Suggestion Generation Algorithms**
 Plans:
-- [ ] 36-01-PLAN.md — Confidence scoring module
-- [ ] 36-02-PLAN.md — Warp profile generation algorithms
-- [ ] 36-03-PLAN.md — Interval boundary detection algorithms
-- [ ] 36-04-PLAN.md — Integration with useSuggestionGenerator
+- [x] 36-01-PLAN.md — Confidence scoring module
+- [x] 36-02-PLAN.md — Warp profile generation algorithms
+- [x] 36-03-PLAN.md — Interval boundary detection algorithms
+- [x] 36-04-PLAN.md — Integration with useSuggestionGenerator
 
 **Phase 37: Review/Approval Workflows** (planned)
 
@@ -304,7 +304,7 @@ Plans:
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
-| 36 | v1.2 Timeslicing Workflows | 0/4 | 📋 Planned | - |
+| 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
 | 37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 | 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 
