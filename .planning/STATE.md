@@ -2,18 +2,41 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** Phase 34: Performance Optimization
-**Status:** Phase 33 complete (Data Integration); Phase 34 next
-**Next:** Phase 34: Performance Optimization
+**Current Phase:** Phase 35: Semi-Automated Timeslicing Workflows
+**Status:** Phase 35 in progress
+**Next:** Phase 35-01 complete; Phase 35-02 next
 
 ## Current Position
-Phase: **34 of 42** (Performance Optimization)
-Plan: **9 of 9** in current phase
-Status: **Complete**
-Last activity: 2026-02-23 - Added user-authored adaptive warp slices (date-based) in /timeline-test
+Phase: **35 of 42** (Semi-Automated Timeslicing Workflows)
+Plan: **1 of 5** in current phase
+Status: **In progress**
+Last activity: 2026-02-25 - Created /timeslicing route with useSuggestionStore foundation
 
-Progress: overall ████████████████░░░ 83% (123/143 plans) | v1.2 ██████░░░░░░░░░ 71% phases (5/7)
+Progress: overall ████████████████░░░ 84% (124/143 plans) | v1.2 ███████░░░░░░░ 86% phases (6/7)
 
+```
+v1.0 Complete:
+[x] Phase 1-25: All thesis prototype phases
+
+v1.1 Complete:
+[x] Phase 26: Timeline Density Visualization (5/5 plans complete)
+[x] Phase 27: Manual Slice Creation (6/6 plans complete)
+[x] Phase 28: Slice Boundary Adjustment (4/4 plans complete)
+[x] Phase 29: Remake burstlist as first-class slices (7/7 plans complete)
+[x] Phase 30: Timeline Adaptive Time Scaling (3/3 plans complete)
+[x] Phase 31: Multi-Slice Management (3/3 plans complete)
+[x] Phase 32: Slice Metadata & UI (3/3 plans complete)
+[x] Phase 33: Data Integration (5/5 plans complete)
+[x] Phase 34: Performance Optimization (9/9 plans complete)
+
+v1.2 In Progress:
+[x] Phase 35: Semi-Automated Timeslicing Workflows (1/5 plans complete)
+
+v1.2 Planned:
+[ ] Phase 36-37: Semi-Automated Timeslicing Workflows
+
+v1.3 Planned:
+[ ] Phase 38-42: Fully Automated Timeslicing Workflows
 ```
 v1.0 Complete:
 [x] Phase 1-25: All thesis prototype phases
@@ -218,6 +241,15 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 - Marked useDataStore as deprecated for data fetching (use useCrimeData instead)
 - API endpoint /api/crimes/range confirmed to have no mock fallback (returns 500 on error)
 
+**Phase 35 Decision Log (Execution):**
+- Created /timeslicing route with DualTimeline and useCrimeData integration
+- Added useSuggestionStore with Zustand for suggestion state management
+- Store supports warp-profile and interval-boundary suggestion types
+- Accept/Modify/Reject actions wired to store
+- Added SuggestionPanel, SuggestionCard, ConfidenceBadge UI components
+- Side panel pattern per context decision (not inline or modal)
+- Numerical confidence percentage per context decision
+
 ## Blockers/Concerns
 
 **Performance (Phase 34 to address):**
@@ -228,9 +260,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-22 18:00 UTC
-Stopped at: Completed 34-09-PLAN.md (Gap closure - DataStore cleanup)
-Next: Phase 35-37: Semi-Automated Timeslicing Workflows
+Last session: 2026-02-25 10:30 UTC
+Stopped at: Completed 35-01-PLAN.md (Semi-automated timeslicing foundation)
+Next: Phase 35-02: Suggestion generation implementation
 
 ## Accumulated Context
 
@@ -258,7 +290,20 @@ Next: Phase 35-37: Semi-Automated Timeslicing Workflows
 - QueryProvider integrated in root layout
 
 **Next focus:**
-- Execute 34-03-PLAN.md (Viewport API endpoint)
+- Execute 35-02-PLAN.md (Suggestion generation)
+
+### Phase 35-01 Completion
+**Prerequisites from Phase 34:**
+- ✅ useCrimeData hook available
+- ✅ DualTimeline component available
+
+**Delivered in 35-01:**
+- /timeslicing route with DualTimeline and crime data
+- useSuggestionStore with Zustand
+- SuggestionPanel, SuggestionCard, ConfidenceBadge UI
+
+**Next focus:**
+- Execute 35-02-PLAN.md (Suggestion generation implementation)
 
 ---
-*Last updated: 2026-02-22 - completed 34-02 DuckDB query optimization*
+*Last updated: 2026-02-25 - completed 35-01 semi-automated timeslicing foundation*
