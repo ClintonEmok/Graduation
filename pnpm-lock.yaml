@@ -186,6 +186,9 @@ importers:
       '@types/d3-scale':
         specifier: ^4.0.9
         version: 4.0.9
+      '@types/d3-time':
+        specifier: ^3.0.4
+        version: 3.0.4
       '@types/density-clustering':
         specifier: ^1.3.3
         version: 1.3.3
