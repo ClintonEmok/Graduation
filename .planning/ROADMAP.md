@@ -294,7 +294,8 @@ Plans:
 | 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
 | 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
-| 35-37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 35 | v1.2 Timeslicing Workflows | 3/3 | 📋 In Progress | - |
+| 36-37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 | 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 
 ---
