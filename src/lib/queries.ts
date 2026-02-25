@@ -1,0 +1,545 @@
+import { getDb, ensureSortedCrimesTable } from './db';
+
+/**
+ * Crime record type returned by queries
+ */
+export interface CrimeRecord {
+  timestamp: number;
+  type: string;
+  lat: number;
+  lon: number;
+  x: number;
+  z: number;
+  iucr: string;
+  district: string;
+  year: number;
+}
+
+/**
+ * Query options for crimes in range
+ */
+export interface QueryCrimesOptions {
+  /** Maximum number of records to return (default: 50000) */
+  limit?: number;
+  /** Sample every Nth row after filtering (1 = no sampling) */
+  sampleStride?: number;
+  /** Filter by crime types */
+  crimeTypes?: string[];
+  /** Filter by districts */
+  districts?: string[];
+}
+
+/**
+ * Filter options for count queries
+ */
+export interface QueryFilters {
+  /** Filter by crime types */
+  crimeTypes?: string[];
+  /** Filter by districts */
+  districts?: string[];
+}
+
+/**
+ * Query crimes within a time range using the zone-map-optimized sorted table.
+ * 
+ * @param startEpoch - Start time as Unix epoch seconds
+ * @param endEpoch - End time as Unix epoch seconds
+ * @param options - Query options (limit, crimeTypes, districts)
+ * @returns Array of crime records within the specified range
+ */
+export const queryCrimesInRange = async (
+  startEpoch: number,
+  endEpoch: number,
+  options?: QueryCrimesOptions
+): Promise<CrimeRecord[]> => {
+  const db = await getDb();
+  const tableName = await ensureSortedCrimesTable();
+  
+  const limit = options?.limit ?? 50000;
+  const sampleStride = Math.max(1, Math.floor(options?.sampleStride ?? 1));
+  const crimeTypes = options?.crimeTypes;
+  const districts = options?.districts;
+
+  // Build query with direct values (DuckDB prepared statements have issues with dynamic params)
+  let whereClause = `WHERE "Date" IS NOT NULL AND "Latitude" IS NOT NULL AND "Longitude" IS NOT NULL`;
+  
+  whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= ${startEpoch} AND EXTRACT(EPOCH FROM "Date") <= ${endEpoch}`;
+
+  if (crimeTypes && crimeTypes.length > 0) {
+    // Escape single quotes in crime types
+    const escaped = crimeTypes.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
+    whereClause += ` AND "Primary Type" IN (${escaped})`;
+  }
+
+  if (districts && districts.length > 0) {
+    const escaped = districts.map(d => `'${d.replace(/'/g, "''")}'`).join(', ');
+    whereClause += ` AND "District" IN (${escaped})`;
+  }
+
+  // Chicago coordinate bounds for normalization
+  const minLon = -87.9;
+  const maxLon = -87.5;
+  const minLat = 41.6;
+  const maxLat = 42.1;
+
+  const selectColumns = `
+    EXTRACT(EPOCH FROM "Date") as timestamp,
+    "Primary Type" as type,
+    "Latitude" as lat,
+    "Longitude" as lon,
+    (("Longitude" - ${minLon}) / (${maxLon} - ${minLon}) * 100.0) - 50.0 as x,
+    (("Latitude" - ${minLat}) / (${maxLat} - ${minLat}) * 100.0) - 50.0 as z,
+    "IUCR" as iucr,
+    "District" as district,
+    EXTRACT(YEAR FROM "Date") as year
+  `;
+
+  const query = sampleStride > 1
+    ? `
+      WITH filtered AS (
+        SELECT ${selectColumns}
+        FROM ${tableName}
+        ${whereClause}
+      ), numbered AS (
+        SELECT *, row_number() OVER () as rn
+        FROM filtered
+      )
+      SELECT timestamp, type, lat, lon, x, z, iucr, district, year
+      FROM numbered
+      WHERE ((rn - 1) % ${sampleStride}) = 0
+      LIMIT ${limit}
+    `
+    : `
+      SELECT ${selectColumns}
+      FROM ${tableName}
+      ${whereClause}
+      LIMIT ${limit}
+    `;
+
+  return new Promise((resolve, reject) => {
+    db.all(query, (err: Error | null, rows: unknown[]) => {
+      if (err) {
+        console.error('Error querying crimes in range:', err);
+        reject(err);
+        return;
+      }
+
+      // Convert BigInt values to Number for JSON serialization
+      const records = (rows as Record<string, unknown>[]).map((row) => ({
+        timestamp: typeof row.timestamp === 'bigint' ? Number(row.timestamp) : row.timestamp,
+        type: row.type as string,
+        lat: typeof row.lat === 'bigint' ? Number(row.lat) : row.lat,
+        lon: typeof row.lon === 'bigint' ? Number(row.lon) : row.lon,
+        x: typeof row.x === 'bigint' ? Number(row.x) : row.x,
+        z: typeof row.z === 'bigint' ? Number(row.z) : row.z,
+        iucr: row.iucr as string,
+        district: row.district as string,
+        year: typeof row.year === 'bigint' ? Number(row.year) : row.year,
+      }));
+
+      resolve(records as CrimeRecord[]);
+    });
+  });
+};
+
+/**
+ * Query the count of crimes within a time range.
+ * Much faster than fetching all records - used for density calculations.
+ * 
+ * @param startEpoch - Start time as Unix epoch seconds
+ * @param endEpoch - End time as Unix epoch seconds
+ * @param filters - Optional filters (crimeTypes, districts)
+ * @returns Count of crimes in the specified range
+ */
+export const queryCrimeCount = async (
+  startEpoch: number,
+  endEpoch: number,
+  filters?: QueryFilters
+): Promise<number> => {
+  const db = await getDb();
+  const tableName = await ensureSortedCrimesTable();
+  
+  const crimeTypes = filters?.crimeTypes;
+  const districts = filters?.districts;
+
+  let whereClause = `WHERE "Date" IS NOT NULL`;
+  whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= ${startEpoch} AND EXTRACT(EPOCH FROM "Date") <= ${endEpoch}`;
+
+  if (crimeTypes && crimeTypes.length > 0) {
+    const escaped = crimeTypes.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
+    whereClause += ` AND "Primary Type" IN (${escaped})`;
+  }
+
+  if (districts && districts.length > 0) {
+    const escaped = districts.map(d => `'${d.replace(/'/g, "''")}'`).join(', ');
+    whereClause += ` AND "District" IN (${escaped})`;
+  }
+
+  const query = `
+    SELECT COUNT(*) as count
+    FROM ${tableName}
+    ${whereClause}
+  `;
+
+  return new Promise((resolve, reject) => {
+    db.all(query, (err: Error | null, rows: unknown[]) => {
+      if (err) {
+        console.error('Error querying crime count:', err);
+        reject(err);
+        return;
+      }
+
+      const row = rows[0] as { count: number | string | bigint };
+      const count = typeof row.count === 'bigint' ? Number(row.count) : 
+                    typeof row.count === 'string' ? parseInt(row.count, 10) : 
+                    row.count;
+      
+      resolve(count);
+    });
+  });
+};
+
+export interface GlobalAdaptiveMaps {
+  binCount: number;
+  kernelWidth: number;
+  domain: [number, number];
+  rowCount: number;
+  densityMap: Float32Array;
+  burstinessMap: Float32Array;
+  warpMap: Float32Array;
+  generatedAt: string;
+}
+
+interface AdaptiveCacheRow {
+  domain_start: number | bigint;
+  domain_end: number | bigint;
+  row_count: number | bigint;
+  density_json: string;
+  burstiness_json: string;
+  warp_json: string;
+  generated_at: string;
+}
+
+const toNumber = (value: number | string | bigint | null | undefined): number => {
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'string') return Number(value);
+  return typeof value === 'number' ? value : 0;
+};
+
+const smoothSeries = (values: Float32Array, kernelWidth: number): Float32Array => {
+  if (kernelWidth <= 0) return values;
+  const smoothed = new Float32Array(values.length);
+  for (let i = 0; i < values.length; i += 1) {
+    let sum = 0;
+    let count = 0;
+    for (let k = -kernelWidth; k <= kernelWidth; k += 1) {
+      const idx = i + k;
+      if (idx >= 0 && idx < values.length) {
+        sum += values[idx];
+        count += 1;
+      }
+    }
+    smoothed[i] = count > 0 ? sum / count : 0;
+  }
+  return smoothed;
+};
+
+const computeWarpMap = (normalizedDensity: Float32Array, domain: [number, number]): Float32Array => {
+  const [start, end] = domain;
+  const span = Math.max(1, end - start);
+  const weights = new Float32Array(normalizedDensity.length);
+  let totalWeight = 0;
+
+  for (let i = 0; i < normalizedDensity.length; i += 1) {
+    const w = 1 + normalizedDensity[i] * 5;
+    weights[i] = w;
+    totalWeight += w;
+  }
+
+  const warpMap = new Float32Array(normalizedDensity.length);
+  let accumulated = 0;
+  const denom = totalWeight > 0 ? totalWeight : 1;
+  for (let i = 0; i < normalizedDensity.length; i += 1) {
+    warpMap[i] = start + (accumulated / denom) * span;
+    accumulated += weights[i];
+  }
+
+  return warpMap;
+};
+
+export const getOrCreateGlobalAdaptiveMaps = async (
+  binCount: number,
+  kernelWidth: number
+): Promise<GlobalAdaptiveMaps> => {
+  const db = await getDb();
+  const tableName = await ensureSortedCrimesTable();
+  const cacheKey = `global:${binCount}:${kernelWidth}`;
+
+  const allAsync = <T>(query: string): Promise<T[]> =>
+    new Promise((resolve, reject) => {
+      db.all(query, (err: Error | null, rows: unknown[]) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows as T[]);
+      });
+    });
+
+  const runAsync = (query: string): Promise<void> =>
+    new Promise((resolve, reject) => {
+      db.run(query, (err: Error | null) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  await runAsync(`
+    CREATE TABLE IF NOT EXISTS adaptive_global_cache (
+      cache_key VARCHAR PRIMARY KEY,
+      bin_count INTEGER,
+      kernel_width INTEGER,
+      domain_start DOUBLE,
+      domain_end DOUBLE,
+      row_count BIGINT,
+      density_json VARCHAR,
+      burstiness_json VARCHAR,
+      warp_json VARCHAR,
+      generated_at TIMESTAMP DEFAULT now()
+    )
+  `);
+
+  const cached = await allAsync<AdaptiveCacheRow>(`
+    SELECT domain_start, domain_end, row_count, density_json, burstiness_json, warp_json, CAST(generated_at AS VARCHAR) as generated_at
+    FROM adaptive_global_cache
+    WHERE cache_key = '${cacheKey}'
+    LIMIT 1
+  `);
+
+  if (cached.length > 0) {
+    const row = cached[0];
+    return {
+      binCount,
+      kernelWidth,
+      domain: [toNumber(row.domain_start), toNumber(row.domain_end)],
+      rowCount: toNumber(row.row_count),
+      densityMap: Float32Array.from(JSON.parse(row.density_json) as number[]),
+      burstinessMap: Float32Array.from(JSON.parse(row.burstiness_json) as number[]),
+      warpMap: Float32Array.from(JSON.parse(row.warp_json) as number[]),
+      generatedAt: row.generated_at,
+    };
+  }
+
+  const domainRows = await allAsync<{ min_ts: number | bigint; max_ts: number | bigint; row_count: number | bigint }>(`
+    SELECT
+      MIN(EXTRACT(EPOCH FROM "Date")) as min_ts,
+      MAX(EXTRACT(EPOCH FROM "Date")) as max_ts,
+      COUNT(*) as row_count
+    FROM ${tableName}
+    WHERE "Date" IS NOT NULL
+  `);
+
+  const minTs = toNumber(domainRows[0]?.min_ts);
+  const maxTs = toNumber(domainRows[0]?.max_ts);
+  const rowCount = toNumber(domainRows[0]?.row_count);
+  const domain: [number, number] = [minTs, maxTs > minTs ? maxTs : minTs + 1];
+  const span = Math.max(1, domain[1] - domain[0]);
+
+  const densityRows = await allAsync<{ idx: number | bigint; count: number | bigint }>(`
+    SELECT idx, COUNT(*) as count
+    FROM (
+      SELECT LEAST(CAST(FLOOR(((EXTRACT(EPOCH FROM "Date") - ${domain[0]}) / ${span}) * ${binCount}) AS INTEGER), ${binCount - 1}) AS idx
+      FROM ${tableName}
+      WHERE "Date" IS NOT NULL
+    ) binned
+    WHERE idx >= 0 AND idx < ${binCount}
+    GROUP BY idx
+  `);
+
+  const rawDensity = new Float32Array(binCount);
+  for (const row of densityRows) {
+    const idx = toNumber(row.idx);
+    if (idx >= 0 && idx < binCount) rawDensity[idx] = toNumber(row.count);
+  }
+
+  const smoothedDensity = smoothSeries(rawDensity, Math.max(0, Math.floor(kernelWidth)));
+  let maxDensity = 0;
+  for (let i = 0; i < smoothedDensity.length; i += 1) {
+    if (smoothedDensity[i] > maxDensity) maxDensity = smoothedDensity[i];
+  }
+  if (maxDensity <= 0) maxDensity = 1;
+
+  const normalizedDensity = new Float32Array(binCount);
+  for (let i = 0; i < smoothedDensity.length; i += 1) {
+    normalizedDensity[i] = smoothedDensity[i] / maxDensity;
+  }
+
+  const burstRows = await allAsync<{ idx: number | bigint; c: number | bigint; s: number | bigint; ss: number | bigint }>(`
+    WITH ordered AS (
+      SELECT
+        EXTRACT(EPOCH FROM "Date") as ts,
+        EXTRACT(EPOCH FROM "Date") - LAG(EXTRACT(EPOCH FROM "Date")) OVER (ORDER BY "Date") as delta
+      FROM ${tableName}
+      WHERE "Date" IS NOT NULL
+    ), binned AS (
+      SELECT
+        LEAST(CAST(FLOOR(((ts - ${domain[0]}) / ${span}) * ${binCount}) AS INTEGER), ${binCount - 1}) AS idx,
+        delta
+      FROM ordered
+      WHERE ts >= ${domain[0]} AND ts <= ${domain[1]} AND delta IS NOT NULL AND delta >= 0
+    )
+    SELECT idx, COUNT(*) as c, SUM(delta) as s, SUM(delta * delta) as ss
+    FROM binned
+    WHERE idx >= 0 AND idx < ${binCount}
+    GROUP BY idx
+  `);
+
+  const burstinessMap = new Float32Array(binCount);
+  for (const row of burstRows) {
+    const idx = toNumber(row.idx);
+    if (idx < 0 || idx >= binCount) continue;
+    const count = toNumber(row.c);
+    if (count <= 1) {
+      burstinessMap[idx] = 0;
+      continue;
+    }
+    const sum = toNumber(row.s);
+    const sumSq = toNumber(row.ss);
+    const mean = sum / count;
+    const variance = Math.max(0, sumSq / count - mean * mean);
+    const sigma = Math.sqrt(variance);
+    const denom = sigma + mean;
+    const burstiness = denom > 0 ? (sigma - mean) / denom : 0;
+    burstinessMap[idx] = Math.max(0, Math.min(1, (burstiness + 1) / 2));
+  }
+
+  const warpMap = computeWarpMap(normalizedDensity, domain);
+
+  const densityJson = JSON.stringify(Array.from(normalizedDensity));
+  const burstJson = JSON.stringify(Array.from(burstinessMap));
+  const warpJson = JSON.stringify(Array.from(warpMap));
+
+  await runAsync(`DELETE FROM adaptive_global_cache WHERE cache_key = '${cacheKey}'`);
+  await runAsync(`
+    INSERT INTO adaptive_global_cache (
+      cache_key,
+      bin_count,
+      kernel_width,
+      domain_start,
+      domain_end,
+      row_count,
+      density_json,
+      burstiness_json,
+      warp_json
+    ) VALUES (
+      '${cacheKey}',
+      ${binCount},
+      ${kernelWidth},
+      ${domain[0]},
+      ${domain[1]},
+      ${rowCount},
+      '${densityJson}',
+      '${burstJson}',
+      '${warpJson}'
+    )
+  `);
+
+  return {
+    binCount,
+    kernelWidth,
+    domain,
+    rowCount,
+    densityMap: normalizedDensity,
+    burstinessMap,
+    warpMap,
+    generatedAt: new Date().toISOString(),
+  };
+};
+
+/**
+ * Query density bins pre-computed at query time.
+ * Returns binned counts for visualization.
+ * 
+ * @param startEpoch - Start time as Unix epoch seconds
+ * @param endEpoch - End time as Unix epoch seconds
+ * @param resX - Resolution in X dimension (longitude)
+ * @param resY - Resolution in Y dimension (time)
+ * @param resZ - Resolution in Z dimension (latitude)
+ * @returns Array of binned data with counts
+ */
+export interface DensityBin {
+  x: number;
+  y: number;
+  z: number;
+  count: number;
+  dominantType: string;
+}
+
+export const queryDensityBins = async (
+  startEpoch: number,
+  endEpoch: number,
+  resX: number,
+  resY: number,
+  resZ: number
+): Promise<DensityBin[]> => {
+  const db = await getDb();
+  const tableName = await ensureSortedCrimesTable();
+  
+  // Chicago coordinate bounds
+  const minLon = -87.9;
+  const maxLon = -87.5;
+  const minLat = 41.6;
+  const maxLat = 42.1;
+  const minEpoch = 978307200;   // 2001-01-01
+  const maxEpoch = 1767225600;  // 2026-01-01
+
+  const query = `
+    WITH binned AS (
+      SELECT
+        floor(((("Longitude" - ${minLon}) / (${maxLon} - ${minLon})) * ${resX})) as ix,
+        floor(((EXTRACT(EPOCH FROM "Date") - ${minEpoch}) / (${maxEpoch} - ${minEpoch}) * ${resY})) as iy,
+        floor(((("Latitude" - ${minLat}) / (${maxLat} - ${minLat})) * ${resZ})) as iz,
+        "Primary Type" as type
+      FROM ${tableName}
+      WHERE "Date" IS NOT NULL 
+        AND "Latitude" IS NOT NULL 
+        AND "Longitude" IS NOT NULL
+        AND EXTRACT(EPOCH FROM "Date") >= $1 
+        AND EXTRACT(EPOCH FROM "Date") <= $2
+    )
+    SELECT
+      ((ix + 0.5) / ${resX} * 100.0) - 50.0 as x,
+      ((iy + 0.5) / ${resY} * 100.0) as y,
+      ((iz + 0.5) / ${resZ} * 100.0) - 50.0 as z,
+      CAST(count(*) AS INTEGER) as count,
+      mode(type) as dominantType
+    FROM binned
+    WHERE ix >= 0 AND ix < ${resX}
+      AND iy >= 0 AND iy < ${resY}
+      AND iz >= 0 AND iz < ${resZ}
+    GROUP BY ix, iy, iz
+  `;
+
+  return new Promise((resolve, reject) => {
+    db.all(query, [startEpoch, endEpoch], (err: Error | null, rows: unknown[]) => {
+      if (err) {
+        console.error('Error querying density bins:', err);
+        reject(err);
+        return;
+      }
+
+      const bins = (rows as Record<string, unknown>[]).map((row) => ({
+        x: typeof row.x === 'bigint' ? Number(row.x) : row.x,
+        y: typeof row.y === 'bigint' ? Number(row.y) : row.y,
+        z: typeof row.z === 'bigint' ? Number(row.z) : row.z,
+        count: typeof row.count === 'bigint' ? Number(row.count) : row.count,
+        dominantType: row.dominantType as string,
+      }));
+
+      resolve(bins as DensityBin[]);
+    });
+  });
+};

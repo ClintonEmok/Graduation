@@ -9,15 +9,32 @@ import { useDraggable } from '@/hooks/useDraggable';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 
 export function TopBar() {
   const [adaptiveDocked, setAdaptiveDocked] = useState(true);
   const [toolbarDocked, setToolbarDocked] = useState(true);
   const [adaptiveOpen, setAdaptiveOpen] = useState(false);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
-  const { columns, data, generateMockData } = useDataStore();
+  const { columns, data, generateMockData, isMock, dataCount } = useDataStore();
   const activeFilterCount = useFilterStore((state) => state.getActiveFilterCount());
   const resetFilters = useFilterStore((state) => state.resetFilters);
+  
+  // Get currently loaded viewport data count
+  const { data: viewportData, meta: viewportMeta } = useViewportCrimeData({ bufferDays: 30 });
+  const viewportLoadedCount = viewportData?.length ?? null;
+  const totalMatches = viewportMeta?.totalMatches ?? null;
+  const isSampled = Boolean(viewportMeta?.sampled);
+  
+  console.log('[TopBar] viewportData:', viewportData, 'viewportLoadedCount:', viewportLoadedCount);
+
+  // Format count for display
+  const formatCount = (count: number | null) => {
+    if (count === null) return '...';
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
+    return count.toString();
+  };
 
   const { position, dragRef, handleMouseDown, isDragging } = useDraggable({
     storageKey: 'adaptive-controls-floating',
@@ -25,7 +42,21 @@ export function TopBar() {
   });
 
   return (
-    <div className="flex h-14 w-full items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur">
+    <div className="flex w-full flex-col">
+      {/* Demo data warning banner */}
+      {isMock && (
+        <div className="flex w-full items-center justify-center bg-amber-500/20 px-4 py-1 text-xs text-amber-200">
+          <span>⚠️ Using demo data</span>
+          <span className="mx-2">|</span>
+          <span>Real dataset unavailable</span>
+          {dataCount !== undefined && (
+            <span className="ml-2 text-amber-100">
+              ({formatCount(dataCount)} records)
+            </span>
+          )}
+        </div>
+      )}
+      <div className="flex h-14 w-full items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur">
       <div className="flex items-center gap-3">
         {toolbarDocked ? (
           <FloatingToolbar variant="docked" onDetach={() => setToolbarDocked(false)} />
@@ -37,6 +68,21 @@ export function TopBar() {
           >
             Dock toolbar
           </button>
+        )}
+        {dataCount !== undefined && (
+          <span className="text-xs text-gray-500">
+            {formatCount(dataCount)} total
+          </span>
+        )}
+        {viewportLoadedCount !== null && (
+          <span className={`text-xs ${isSampled ? 'text-amber-400' : 'text-green-400'}`}>
+            {formatCount(viewportLoadedCount)} loaded
+          </span>
+        )}
+        {isSampled && totalMatches !== null && totalMatches > (viewportLoadedCount ?? 0) && (
+          <span className="text-xs text-amber-300">
+            sampled from {formatCount(totalMatches)}
+          </span>
         )}
       </div>
 
@@ -130,6 +176,7 @@ export function TopBar() {
       {!toolbarDocked && (
         <FloatingToolbar variant="floating" onDock={() => setToolbarDocked(true)} />
       )}
+      </div>
     </div>
   );
 }

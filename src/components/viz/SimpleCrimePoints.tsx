@@ -1,28 +1,31 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import { useDataStore } from '@/store/useDataStore';
+import { useCrimeData } from '@/hooks/useCrimeData';
+import { CrimeRecord } from '@/types/crime';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useThemeStore } from '@/store/useThemeStore';
 import { PALETTES } from '@/lib/palettes';
 import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useFilterStore } from '@/store/useFilterStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
+import { normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 
-export function SimpleCrimePoints() {
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
-  const minX = useDataStore((state) => state.minX);
-  const maxX = useDataStore((state) => state.maxX);
-  const minZ = useDataStore((state) => state.minZ);
-  const maxZ = useDataStore((state) => state.maxZ);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+// Full date range constants from the dataset (2001-2026)
+const DATA_MIN_TIMESTAMP = 978307200;  // 2001-01-01
+const DATA_MAX_TIMESTAMP = 1767571200;   // 2026-01-01
 
-  const selectedTypes = useFilterStore((state) => state.selectedTypes);
-  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+export function SimpleCrimePoints() {
+  // Get viewport bounds from store
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  
+  // Get filters from viewport store
+  const viewportFilters = useViewportStore((state) => state.filters);
+  
+  // Also get legacy filters (selectedTimeRange, selectedSpatialBounds) from filter store
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
@@ -30,6 +33,29 @@ export function SimpleCrimePoints() {
 
   const theme = useThemeStore((state) => state.theme);
   const palette = PALETTES[theme];
+
+  // Use unified useCrimeData hook with viewport bounds
+  const { data: crimeRecords, isLoading } = useCrimeData({
+    startEpoch: viewportStart,
+    endEpoch: viewportEnd,
+    crimeTypes: viewportFilters.crimeTypes.length > 0 ? viewportFilters.crimeTypes : undefined,
+    districts: viewportFilters.districts.length > 0 ? viewportFilters.districts : undefined,
+    bufferDays: 30,
+    limit: 50000,
+  });
+
+  console.log('[SimpleCrimePoints] viewportStart:', viewportStart, 'viewportEnd:', viewportEnd, 'crimeRecords:', crimeRecords?.length, 'isLoading:', isLoading);
+
+  // Convert CrimeRecord[] to format needed for rendering
+  const data = crimeRecords || [];
+
+  // Get filter state
+  const selectedTypes = useFilterStore((state) => state.selectedTypes);
+  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+
+  // Derive min/max from the full dataset range (not just the current viewport)
+  const minTimestampSec = DATA_MIN_TIMESTAMP;
+  const maxTimestampSec = DATA_MAX_TIMESTAMP;
 
   const { positions, colors, indices, count } = useMemo(() => {
     const positionsList: number[] = [];
@@ -50,71 +76,11 @@ export function SimpleCrimePoints() {
     let timeMax = Infinity;
     if (selectedTimeRange) {
       const [rangeStart, rangeEnd] = selectedTimeRange;
-      if (minTimestampSec != null && maxTimestampSec != null) {
-        const normalizedStart = epochSecondsToNormalized(rangeStart, minTimestampSec, maxTimestampSec);
-        const normalizedEnd = epochSecondsToNormalized(rangeEnd, minTimestampSec, maxTimestampSec);
-        timeMin = Math.min(normalizedStart, normalizedEnd);
-        timeMax = Math.max(normalizedStart, normalizedEnd);
-      } else if (rangeStart >= 0 && rangeEnd <= 100) {
-        timeMin = Math.min(rangeStart, rangeEnd);
-        timeMax = Math.max(rangeStart, rangeEnd);
-      }
+      timeMin = Math.min(rangeStart, rangeEnd);
+      timeMax = Math.max(rangeStart, rangeEnd);
     }
 
-    if (columns) {
-      const xRange = (maxX ?? 50) - (minX ?? -50) || 1;
-      const zRange = (maxZ ?? 50) - (minZ ?? -50) || 1;
-
-      let minY = Infinity;
-      let maxY = -Infinity;
-      for (let i = 0; i < columns.length; i += 1) {
-        const y = columns.timestamp[i];
-        if (Number.isFinite(y)) {
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-      const yRange = maxY - minY || 1;
-
-      for (let i = 0; i < columns.length; i += 1) {
-        if (selectedTypes.length > 0 && !selectedTypes.includes(columns.type[i])) continue;
-        if (selectedDistricts.length > 0 && !selectedDistricts.includes(columns.district[i])) continue;
-        if (columns.timestamp[i] < timeMin || columns.timestamp[i] > timeMax) continue;
-
-        if (selectedSpatialBounds && columns.lat && columns.lon) {
-          const lat = columns.lat[i];
-          const lon = columns.lon[i];
-          if (
-            lat < selectedSpatialBounds.minLat ||
-            lat > selectedSpatialBounds.maxLat ||
-            lon < selectedSpatialBounds.minLon ||
-            lon > selectedSpatialBounds.maxLon
-          ) {
-            continue;
-          }
-        }
-
-        const x = ((columns.x[i] - (minX ?? -50)) / xRange) * 100 - 50;
-        const z = ((columns.z[i] - (minZ ?? -50)) / zRange) * 100 - 50;
-        const yRaw = columns.timestamp[i];
-        const y = ((yRaw - minY) / yRange) * 100 - 50;
-
-        const color = resolveColor(getCrimeTypeName(columns.type[i]));
-
-        positionsList.push(x, y, z);
-        colorsList.push(color.r, color.g, color.b);
-
-        indices.push(i);
-      }
-
-      return {
-        positions: new Float32Array(positionsList),
-        colors: new Float32Array(colorsList),
-        indices,
-        count: indices.length
-      };
-    }
-
+    // Compute ranges from CrimeRecord data
     let minXData = Infinity;
     let maxXData = -Infinity;
     let minYData = Infinity;
@@ -122,17 +88,11 @@ export function SimpleCrimePoints() {
     let minZData = Infinity;
     let maxZData = -Infinity;
 
-    for (const point of data) {
-      const x = point.x;
-      const timestampValue = point.timestamp as unknown;
-      const y = Number.isFinite(point.y)
-        ? point.y
-        : typeof point.timestamp === 'number'
-        ? point.timestamp
-        : timestampValue instanceof Date
-        ? timestampValue.getTime()
-        : 0;
-      const z = point.z;
+    for (const record of data) {
+      const x = record.x;
+      const timestampValue = record.timestamp;
+      const y = timestampValue; // Already in epoch seconds
+      const z = record.z;
 
       if (Number.isFinite(x)) {
         if (x < minXData) minXData = x;
@@ -152,32 +112,37 @@ export function SimpleCrimePoints() {
     const yRange = maxYData - minYData || 1;
     const zRange = maxZData - minZData || 1;
 
+    console.log('[SimpleCrimePoints] data range: minXData:', minXData, 'maxXData:', maxXData, 'xRange:', xRange, 'data.length:', data.length);
+
+    // Normalize time to 0-100
+    const normalizeTime = (timestamp: number) => {
+      return ((timestamp - minYData) / yRange) * 100 - 50;
+    };
+
     for (let i = 0; i < data.length; i += 1) {
-      const point = data[i];
-      const typeId = getCrimeTypeId(point.type);
+      const record = data[i];
+      const typeId = getCrimeTypeId(record.type);
+      
+      // Filter by crime type
       if (selectedTypes.length > 0 && !selectedTypes.includes(typeId)) continue;
 
-      const districtId = point.districtId;
-      if (selectedDistricts.length > 0 && typeof districtId === 'number' && !selectedDistricts.includes(districtId)) {
+      // Filter by district - convert district string to ID
+      const districtId = getCrimeTypeId(record.district); // Reuse type mapper for district
+      if (selectedDistricts.length > 0 && !selectedDistricts.includes(districtId)) {
         continue;
       }
 
-      const timestampValue = point.timestamp as unknown;
-      const rawTime = Number.isFinite(point.y)
-        ? point.y
-        : typeof point.timestamp === 'number'
-        ? point.timestamp
-        : timestampValue instanceof Date
-        ? timestampValue.getTime()
-        : 0;
+      // Filter by time range
+      const rawTime = record.timestamp;
       if (rawTime < timeMin || rawTime > timeMax) continue;
 
-      if (selectedSpatialBounds && typeof point.lat === 'number' && typeof point.lon === 'number') {
+      // Filter by spatial bounds
+      if (selectedSpatialBounds && typeof record.lat === 'number' && typeof record.lon === 'number') {
         if (
-          point.lat < selectedSpatialBounds.minLat ||
-          point.lat > selectedSpatialBounds.maxLat ||
-          point.lon < selectedSpatialBounds.minLon ||
-          point.lon > selectedSpatialBounds.maxLon
+          record.lat < selectedSpatialBounds.minLat ||
+          record.lat > selectedSpatialBounds.maxLat ||
+          record.lon < selectedSpatialBounds.minLon ||
+          record.lon > selectedSpatialBounds.maxLon
         ) {
           continue;
         }
@@ -185,11 +150,12 @@ export function SimpleCrimePoints() {
 
       const yRaw = rawTime;
 
-      const x = ((point.x - minXData) / xRange) * 100 - 50;
+      // Use normalized x, z from record directly
+      const x = ((record.x - minXData) / xRange) * 100 - 50;
       const y = ((yRaw - minYData) / yRange) * 100 - 50;
-      const z = ((point.z - minZData) / zRange) * 100 - 50;
+      const z = ((record.z - minZData) / zRange) * 100 - 50;
 
-      const color = resolveColor(point.type);
+      const color = resolveColor(record.type);
 
       positionsList.push(x, y, z);
       colorsList.push(color.r, color.g, color.b);
@@ -204,14 +170,9 @@ export function SimpleCrimePoints() {
       count: indices.length
     };
   }, [
-    columns,
     data,
     maxTimestampSec,
     minTimestampSec,
-    minX,
-    maxX,
-    minZ,
-    maxZ,
     palette,
     selectedDistricts,
     selectedSpatialBounds,
@@ -250,32 +211,17 @@ export function SimpleCrimePoints() {
       return epochSeconds > 1_000_000_000 ? epochSeconds : null;
     };
 
-    if (columns) {
-      const typeName = getCrimeTypeName(columns.type[sourceIndex]);
-      const timeValue = columns.timestamp[sourceIndex];
-      const epochSeconds = resolveEpochSeconds(timeValue);
-      const timeLabel = epochSeconds ? formatEpoch(epochSeconds) : `t: ${Math.round(timeValue)}`;
-      return { position, type: typeName, timeLabel };
-    }
-
-    const point = data[sourceIndex];
-    const timestampValue = point.timestamp as unknown;
-    const timeValue = Number.isFinite(point.y)
-      ? point.y
-      : typeof point.timestamp === 'number'
-      ? point.timestamp
-      : timestampValue instanceof Date
-      ? timestampValue.getTime()
-      : 0;
+    // Get the original CrimeRecord for this index
+    const record = data[sourceIndex];
+    const timeValue = record.timestamp;
     const epochSeconds = resolveEpochSeconds(timeValue);
     const timeLabel = epochSeconds ? formatEpoch(epochSeconds) : `t: ${Math.round(timeValue)}`;
-    return { position, type: point.type, timeLabel };
+    return { position, type: record.type, timeLabel };
   }, [
     hoveredIndex,
     count,
     indices,
     positions,
-    columns,
     data,
     maxTimestampSec,
     minTimestampSec

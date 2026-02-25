@@ -14,6 +14,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { DualTimeline } from './DualTimeline';
 import { useLogger } from '@/hooks/useLogger';
+import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore } from '@/store/useDataStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
@@ -38,6 +39,7 @@ export function TimelinePanel() {
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
+  const { isComputing } = useDebouncedDensity();
   
   const { log } = useLogger();
 
@@ -88,7 +90,10 @@ export function TimelinePanel() {
   };
 
   return (
-    <div className="w-full h-full bg-background border-t p-4 flex flex-col justify-center">
+    <div
+      className="w-full h-full bg-background border-t p-4 flex flex-col justify-center"
+      aria-busy={isComputing}
+    >
       <div className="w-full flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">

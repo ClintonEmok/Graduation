@@ -8,27 +8,27 @@
 
 ### Timeline Density Visualization
 
-- [ ] **DENS-01**: Timeline renders event density as clear visual regions (bars, gradient, or heat)
-- [ ] **DENS-02**: High-density areas are visually distinct from low-density areas
-- [ ] **DENS-03**: Density visualization updates when filters change
-- [ ] **DENS-04**: Density scale is consistent and readable
+- [x] **DENS-01**: Timeline renders event density as clear visual regions (bars, gradient, or heat)
+- [x] **DENS-02**: High-density areas are visually distinct from low-density areas
+- [x] **DENS-03**: Density visualization updates when filters change
+- [x] **DENS-04**: Density scale is consistent and readable
 
 ### Manual Slice Creation
 
-- [ ] **SLICE-01**: User can create a time slice by clicking on timeline
-- [ ] **SLICE-02**: User can create a time slice by dragging to define range
-- [ ] **SLICE-03**: New slices have default duration (e.g., 1 hour) or match drag extent
-- [ ] **SLICE-04**: Visual feedback during creation (preview region)
-- [ ] **SLICE-05**: Slice appears immediately upon creation
+- [x] **SLICE-01**: User can create a time slice by clicking on timeline
+- [x] **SLICE-02**: User can create a time slice by dragging to define range
+- [x] **SLICE-03**: New slices have default duration (e.g., 1 hour) or match drag extent
+- [x] **SLICE-04**: Visual feedback during creation (preview region)
+- [x] **SLICE-05**: Slice appears immediately upon creation
 
 ### Slice Boundary Adjustment
 
-- [ ] **ADJUST-01**: Each slice has draggable start handle
-- [ ] **ADJUST-02**: Each slice has draggable end handle
-- [ ] **ADJUST-03**: Handles are visually distinct and easy to target
-- [ ] **ADJUST-04**: Dragging updates slice boundary in real-time
-- [ ] **ADJUST-05**: Minimum slice duration enforced (e.g., 5 minutes)
-- [ ] **ADJUST-06**: Snap-to-neighboring-slice option
+- [x] **ADJUST-01**: Each slice has draggable start handle
+- [x] **ADJUST-02**: Each slice has draggable end handle
+- [x] **ADJUST-03**: Handles are visually distinct and easy to target
+- [x] **ADJUST-04**: Dragging updates slice boundary in real-time
+- [x] **ADJUST-05**: Minimum slice duration enforced (e.g., 5 minutes)
+- [x] **ADJUST-06**: Snap-to-neighboring-slice option
 
 ### Multi-Slice Management
 
@@ -62,6 +62,11 @@
 
 ## Out of Scope (v1.1)
 
+**Terminology note:**
+- Timeslicing = adaptive time warping
+- Slice workflows = interval suggestion/acceptance/rejection layered on timeslicing
+- v1.1 already includes automated (density-driven) and manual (user-authored) timeslicing modes
+
 | Feature | Reason |
 |---------|--------|
 | 2D/3D slice visualization | Timeline-only focus for v1.1 |
@@ -77,6 +82,9 @@
 | Requirement | v1.1 | v1.2 | v1.3 |
 |-------------|------|------|------|
 | Manual creation | ✅ | ✅ | ✅ |
+| Automated timeslicing (density-driven warp) | ✅ | ✅ | ✅ |
+| Manual timeslicing (user-authored warp) | ✅ | ✅ | ✅ |
+| Context-aware timeslicing (by data facets, e.g. crime type) | ❌ | ✅ | ✅ |
 | Visual density | ✅ | ✅ | ✅ |
 | Boundary adjust | ✅ | ✅ | ✅ |
 | Semi-automated | ❌ | ✅ | ✅ |

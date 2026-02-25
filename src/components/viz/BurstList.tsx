@@ -4,7 +4,11 @@ import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+import { useSliceStore } from '@/store/useSliceStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { focusTimelineRange } from '@/lib/slice-utils';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 
 export type BurstWindow = {
   id: string;
@@ -56,57 +60,84 @@ export const useBurstWindows = () => {
 };
 
 export function BurstList() {
-  const densityMap = useAdaptiveStore((state) => state.densityMap);
-  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
-  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
-  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const setRange = useTimeStore((state) => state.setRange);
   const setTime = useTimeStore((state) => state.setTime);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
-  const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
-  const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
+  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
+  const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const findMatchingSlice = useSliceStore((state) => state.findMatchingSlice);
+  
+  // Burst adjustment controls
+  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
+  const setBurstThreshold = useAdaptiveStore((state) => state.setBurstThreshold);
+  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
+  const setBurstMetric = useAdaptiveStore((state) => state.setBurstMetric);
 
   const burstWindows = useBurstWindows();
+  const burstMatches = useMemo(() => {
+    const lookup = new Map<string, string | null>();
+    for (const window of burstWindows) {
+      const match = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
+      lookup.set(window.id, match?.id ?? null);
+    }
+    return lookup;
+  }, [burstWindows, findMatchingSlice]);
 
   if (burstWindows.length === 0) return null;
 
+  // Check if mapDomain is normalized (0-100) or actual epoch timestamps
+  // Epoch timestamps are large numbers (billions for seconds, trillions for ms)
+  const isNormalizedDomain = mapDomain[1] < 1000;
+  const isEpochMilliseconds = mapDomain[1] > 1e11;
+
   const formatWindow = (start: number, end: number) => {
-    if (minTimestampSec !== null && maxTimestampSec !== null) {
-      const startEpoch = normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec);
-      const endEpoch = normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec);
-      const startLabel = new Date(startEpoch * 1000).toLocaleString();
-      const endLabel = new Date(endEpoch * 1000).toLocaleString();
-      return `${startLabel} → ${endLabel}`;
+    let startEpoch: number;
+    let endEpoch: number;
+
+    if (isNormalizedDomain) {
+      // Domain is normalized 0-100, need to convert using data store timestamps
+      if (minTimestampSec !== null && maxTimestampSec !== null) {
+        startEpoch = normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec);
+        endEpoch = normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec);
+      } else {
+        return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+      }
+    } else {
+      // Domain is already epoch timestamps (seconds or milliseconds)
+      startEpoch = isEpochMilliseconds ? start / 1000 : start;
+      endEpoch = isEpochMilliseconds ? end / 1000 : end;
     }
-    return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+
+    const startLabel = new Date(startEpoch * 1000).toLocaleString();
+    const endLabel = new Date(endEpoch * 1000).toLocaleString();
+    return `${startLabel} → ${endLabel}`;
   };
 
   const handleSelectWindow = (window: BurstWindow) => {
-    toggleBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
-    setDetailsOpen(true);
-    if (minTimestampSec !== null && maxTimestampSec !== null) {
-      const startEpoch = normalizedToEpochSeconds(window.start, minTimestampSec, maxTimestampSec);
-      const endEpoch = normalizedToEpochSeconds(window.end, minTimestampSec, maxTimestampSec);
-      setTimeRange([startEpoch, endEpoch]);
-      const startNorm = epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec);
-      const endNorm = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
-      const range: [number, number] = startNorm <= endNorm ? [startNorm, endNorm] : [endNorm, startNorm];
-      setRange(range);
-      setBrushRange(range);
-      setTime((range[0] + range[1]) / 2);
-      return;
+    // Find matching existing burst slice (auto-created by useAutoBurstSlices effect)
+    const matchingSlice = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
+
+    if (matchingSlice) {
+      setActiveSlice(matchingSlice.id);
+      setDetailsOpen(true);
     }
 
-    const range: [number, number] = window.start <= window.end ? [window.start, window.end] : [window.end, window.start];
-    setTimeRange(range);
-    setRange(range);
-    setBrushRange(range);
-    setTime((range[0] + range[1]) / 2);
+    // Always focus timeline to the burst range
+    focusTimelineRange({
+      start: window.start,
+      end: window.end,
+      minTimestampSec,
+      maxTimestampSec,
+      setTimeRange,
+      setRange,
+      setBrushRange,
+      setTime,
+    });
   };
 
   return (
@@ -115,23 +146,68 @@ export function BurstList() {
         <h3 className="text-sm font-semibold">Burst Windows</h3>
         <span className="text-[10px] text-muted-foreground">Top {burstWindows.length}</span>
       </div>
+      
+      {/* Burst Adjustment Controls */}
+      <div className="mt-3 space-y-3 pb-3 border-b">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Threshold</Label>
+            <span className="text-[10px] font-mono text-muted-foreground">{Math.round(burstThreshold * 100)}%</span>
+          </div>
+          <Slider
+            min={0}
+            max={1}
+            step={0.01}
+            value={[burstThreshold]}
+            onValueChange={(vals) => setBurstThreshold(vals[0])}
+            className="w-full"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Adjust to show more or fewer bursts
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <Label className="text-xs">Metric</Label>
+          <select
+            value={burstMetric}
+            onChange={(e) => setBurstMetric(e.target.value as 'density' | 'burstiness')}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          >
+            <option value="density">Density (event count)</option>
+            <option value="burstiness">Burstiness (clustering)</option>
+          </select>
+        </div>
+      </div>
+      
       <div className="mt-3 space-y-2">
         {burstWindows.map((window, index) => {
-          const isSelected = selectedBurstWindows.some(
-            (item) => item.start === window.start && item.end === window.end && item.metric === burstMetric
-          );
+          const matchingSliceId = burstMatches.get(window.id) ?? null;
+          const isSelected = matchingSliceId === activeSliceId;
+          const isLinked = matchingSliceId !== null;
           return (
           <button
             key={window.id}
             type="button"
             onClick={() => handleSelectWindow(window)}
+            aria-pressed={isSelected}
+            aria-label={`Burst ${index + 1}. Peak ${Math.round(window.peak * 100)}%. Selects existing burst slice. ${isSelected ? 'Selected.' : 'Not selected.'}`}
             className={`w-full text-left rounded-md border px-3 py-2 text-xs transition-colors ${
-              isSelected ? 'border-primary/60 bg-primary/10' : 'hover:bg-muted/40'
+              isSelected
+                ? 'border-primary/60 bg-primary/10'
+                : 'border-border/70 hover:border-primary/40 hover:bg-muted/40'
             }`}
           >
             <div className="flex items-center justify-between text-muted-foreground">
               <span>Burst {index + 1}</span>
-              <span>Peak {Math.round(window.peak * 100)}%</span>
+              <span className="inline-flex items-center gap-2">
+                <span>Peak {Math.round(window.peak * 100)}%</span>
+                {isLinked ? (
+                  <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                    Linked
+                  </span>
+                ) : null}
+              </span>
             </div>
             <div className="mt-1 text-foreground">
               {formatWindow(window.start, window.end)}

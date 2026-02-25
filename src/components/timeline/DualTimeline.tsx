@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { bin, max } from 'd3-array';
 import { brushX } from 'd3-brush';
 import { select } from 'd3-selection';
-import { scaleUtc } from 'd3-scale';
+import { scaleUtc, type ScaleTime } from 'd3-scale';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { useMeasure } from '@/hooks/useMeasure';
@@ -13,20 +13,38 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useSliceStore } from '@/store/useSliceStore';
 import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useAutoBurstSlices } from '@/store/useSliceStore';
+import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
+import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
 const AXIS_HEIGHT = 28;
 
+const DENSITY_DOMAIN: [number, number] = [0, 1];
+const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
+const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
+
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+type StrictTimelineScale = ScaleTime<number, number>;
 
-export const DualTimeline: React.FC = () => {
+interface DualTimelineProps {
+  adaptiveWarpMapOverride?: Float32Array | null;
+  adaptiveWarpDomainOverride?: [number, number];
+}
+
+export const DualTimeline: React.FC<DualTimelineProps> = ({
+  adaptiveWarpMapOverride,
+  adaptiveWarpDomainOverride,
+}) => {
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
@@ -34,14 +52,31 @@ export const DualTimeline: React.FC = () => {
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const { currentTime, setTime, setRange, timeResolution } = useTimeStore();
+  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
-  const toggleBurstWindow = useCoordinationStore((state) => state.toggleBurstWindow);
-  const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
-  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const warpMap = useAdaptiveStore((state) => state.warpMap);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const isComputing = useAdaptiveStore((state) => state.isComputing);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
+  const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
+  const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
+
+  // Get viewport-based crime data
+  const { data: viewportCrimes, isLoading: isViewportLoading } = useViewportCrimeData({
+    bufferDays: 30,
+  });
+
+  // Get viewport store for brush/zoom sync
+  const setViewport = useViewportStore((state) => state.setViewport);
+  
+  // NOTE: Viewport stays at initial default (2001-2002) until user zooms/brushes
+  // This enables fast initial load - only fetching first year of data
+  // The useViewportCrimeData hook fetches data for the current viewport range
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const overviewSvgRef = useRef<SVGSVGElement | null>(null);
@@ -56,6 +91,7 @@ export const DualTimeline: React.FC = () => {
   const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
   const detailInnerWidth = Math.max(0, width - DETAIL_MARGIN.left - DETAIL_MARGIN.right);
 
+  // Full data range for timeline scale
   const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       return [minTimestampSec, maxTimestampSec];
@@ -63,6 +99,11 @@ export const DualTimeline: React.FC = () => {
     return [0, 100];
   }, [minTimestampSec, maxTimestampSec]);
 
+  // Viewport bounds for initial selection (first year)
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+
+  // Detail range: use selectedTimeRange if set, otherwise use viewport bounds (first year)
   const detailRangeSec = useMemo<[number, number]>(() => {
     if (selectedTimeRange) {
       const [rawStart, rawEnd] = selectedTimeRange;
@@ -73,8 +114,9 @@ export const DualTimeline: React.FC = () => {
         return [start, end];
       }
     }
-    return [domainStart, domainEnd];
-  }, [selectedTimeRange, domainStart, domainEnd]);
+    // Default to viewport bounds (first year) instead of full domain
+    return [viewportStart, viewportEnd];
+  }, [selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
 
   const timestampSeconds = useMemo<number[]>(() => {
     if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
@@ -100,7 +142,22 @@ export const DualTimeline: React.FC = () => {
   }, [timestampSeconds, domainStart, domainEnd]);
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
+  
+  // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
+    // If we have viewport crime data, use it directly
+    if (viewportCrimes && viewportCrimes.length > 0) {
+      const [start, end] = detailRangeSec;
+      const points = viewportCrimes
+        .map(crime => crime.timestamp)  // Use 'timestamp' not 'date'
+        .filter((date) => date >= start && date <= end);
+      const maxPoints = 4000;
+      if (points.length <= maxPoints) return points;
+      const step = Math.ceil(points.length / maxPoints);
+      return points.filter((_, index) => index % step === 0);
+    }
+    
+    // Fallback to computed timestampSeconds
     if (!timestampSeconds.length) return [];
     const [start, end] = detailRangeSec;
     const points = timestampSeconds.filter((value) => value >= start && value <= end);
@@ -108,9 +165,137 @@ export const DualTimeline: React.FC = () => {
     if (points.length <= maxPoints) return points;
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0);
-  }, [timestampSeconds, detailRangeSec]);
+  }, [viewportCrimes, timestampSeconds, detailRangeSec]);
 
-  const overviewScale = useMemo(
+  const detailDensityMap = useMemo(() => {
+    if (!densityMap || densityMap.length === 0) return densityMap;
+    const span = domainEnd - domainStart || 1;
+    const startRatio = clamp((detailRangeSec[0] - domainStart) / span, 0, 1);
+    const endRatio = clamp((detailRangeSec[1] - domainStart) / span, 0, 1);
+    const rangeStart = Math.min(startRatio, endRatio);
+    const rangeEnd = Math.max(startRatio, endRatio);
+    const lastIndex = Math.max(0, densityMap.length - 1);
+    const startIndex = clamp(Math.floor(rangeStart * lastIndex), 0, lastIndex);
+    const endIndex = clamp(Math.ceil(rangeEnd * lastIndex), startIndex, lastIndex);
+    return densityMap.subarray(startIndex, Math.min(densityMap.length, endIndex + 1));
+  }, [densityMap, detailRangeSec, domainEnd, domainStart]);
+
+  const sampleWarpSeconds = useCallback(
+    (linearSec: number, warpMapVal: Float32Array, warpDomain: [number, number]) => {
+      if (warpMapVal.length === 0) return linearSec;
+      const [warpStartSec, warpEndSec] = warpDomain;
+      const warpSpan = Math.max(1e-9, warpEndSec - warpStartSec);
+      const normalized = clamp((linearSec - warpStartSec) / warpSpan, 0, 1);
+      const rawIndex = normalized * (warpMapVal.length - 1);
+      const low = Math.floor(rawIndex);
+      const high = Math.min(low + 1, warpMapVal.length - 1);
+      const frac = rawIndex - low;
+      const lowVal = warpMapVal[Math.max(0, low)] ?? linearSec;
+      const highVal = warpMapVal[Math.max(0, high)] ?? lowVal;
+      return lowVal * (1 - frac) + highVal * frac;
+    },
+    []
+  );
+
+  const toDisplaySeconds = useCallback(
+    (
+      linearSec: number,
+      warpFactorVal: number,
+      warpMapVal: Float32Array,
+      warpDomain: [number, number]
+    ) => {
+      const warpedSec = sampleWarpSeconds(linearSec, warpMapVal, warpDomain);
+      return linearSec * (1 - warpFactorVal) + warpedSec * warpFactorVal;
+    },
+    [sampleWarpSeconds]
+  );
+
+  const toLinearSeconds = useCallback(
+    (
+      displaySec: number,
+      linearDomain: [number, number],
+      warpFactorVal: number,
+      warpMapVal: Float32Array,
+      warpDomain: [number, number]
+    ) => {
+      const [domainMin, domainMax] = linearDomain;
+      let low = domainMin;
+      let high = domainMax;
+
+      for (let i = 0; i < 24; i += 1) {
+        const mid = (low + high) / 2;
+        const mapped = toDisplaySeconds(mid, warpFactorVal, warpMapVal, warpDomain);
+        if (mapped < displaySec) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+
+      return (low + high) / 2;
+    },
+    [toDisplaySeconds]
+  );
+
+  const applyAdaptiveWarping = useCallback(
+    (
+      linearScale: StrictTimelineScale,
+      warpFactorVal: number,
+      warpMapVal: Float32Array | null,
+      innerWidth: number,
+      warpDomain: [number, number]
+    ): StrictTimelineScale => {
+      if (
+        timeScaleMode !== 'adaptive' ||
+        warpFactorVal <= 0 ||
+        !warpMapVal ||
+        warpMapVal.length < 2 ||
+        innerWidth <= 0
+      ) {
+        return linearScale;
+      }
+
+      const [domainStartDate, domainEndDate] = linearScale.domain();
+      const linearStartSec = domainStartDate.getTime() / 1000;
+      const linearEndSec = domainEndDate.getTime() / 1000;
+      const safeDomain: [number, number] =
+        linearStartSec <= linearEndSec
+          ? [linearStartSec, linearEndSec]
+          : [linearEndSec, linearStartSec];
+
+      const displayStartSec = toDisplaySeconds(safeDomain[0], warpFactorVal, warpMapVal, warpDomain);
+      const displayEndSec = toDisplaySeconds(safeDomain[1], warpFactorVal, warpMapVal, warpDomain);
+      const displaySpan = Math.max(1e-9, displayEndSec - displayStartSec);
+
+      const adaptiveScale = ((value: Date | number) => {
+        const date = value instanceof Date ? value : new Date(value);
+        const linearSec = date.getTime() / 1000;
+        const displaySec = toDisplaySeconds(linearSec, warpFactorVal, warpMapVal, warpDomain);
+        const t = clamp((displaySec - displayStartSec) / displaySpan, 0, 1);
+        return t * innerWidth;
+      }) as StrictTimelineScale;
+
+      Object.assign(adaptiveScale, linearScale);
+
+      adaptiveScale.invert = (x: number) => {
+        const t = clamp(innerWidth <= 0 ? 0 : x / innerWidth, 0, 1);
+        const displaySec = displayStartSec + t * displaySpan;
+        const linearSec = toLinearSeconds(
+          displaySec,
+          safeDomain,
+          warpFactorVal,
+          warpMapVal,
+          warpDomain
+        );
+        return new Date(linearSec * 1000);
+      };
+
+      return adaptiveScale;
+    },
+    [timeScaleMode, toDisplaySeconds, toLinearSeconds]
+  );
+
+  const overviewInteractionScale = useMemo(
     () =>
       scaleUtc()
         .domain([new Date(domainStart * 1000), new Date(domainEnd * 1000)])
@@ -118,12 +303,50 @@ export const DualTimeline: React.FC = () => {
     [domainStart, domainEnd, overviewInnerWidth]
   );
 
-  const detailScale = useMemo(
+  const detailInteractionScale = useMemo(
     () =>
       scaleUtc()
         .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
         .range([0, detailInnerWidth]),
     [detailRangeSec, detailInnerWidth]
+  );
+
+  const overviewScale = useMemo(
+    () =>
+      applyAdaptiveWarping(
+        overviewInteractionScale.copy(),
+        warpFactor,
+        effectiveWarpMap,
+        overviewInnerWidth,
+        effectiveWarpDomain
+      ),
+    [
+      applyAdaptiveWarping,
+      effectiveWarpDomain,
+      effectiveWarpMap,
+      overviewInnerWidth,
+      overviewInteractionScale,
+      warpFactor,
+    ]
+  );
+
+  const detailScale = useMemo(
+    () =>
+      applyAdaptiveWarping(
+        detailInteractionScale.copy(),
+        warpFactor,
+        effectiveWarpMap,
+        detailInnerWidth,
+        effectiveWarpDomain
+      ),
+    [
+      applyAdaptiveWarping,
+      detailInnerWidth,
+      detailInteractionScale,
+      effectiveWarpDomain,
+      effectiveWarpMap,
+      warpFactor,
+    ]
   );
 
   const applyRangeToStores = useCallback(
@@ -148,13 +371,16 @@ export const DualTimeline: React.FC = () => {
       setTimeRange([safeStart, safeEnd]);
       setRange(nextRange);
       setBrushRange(nextRange);
+      
+      // Sync viewport store for viewport-based data loading
+      setViewport(safeStart, safeEnd);
 
       const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
       if (clampedTime !== currentTime) {
         setTime(clampedTime);
       }
     },
-    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange]
+    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange, setViewport]
   );
 
   useEffect(() => {
@@ -206,8 +432,8 @@ export const DualTimeline: React.FC = () => {
     const zoomNode = zoomRef.current;
 
     const brushSelection: [number, number] = [
-      overviewScale(new Date(detailRangeSec[0] * 1000)),
-      overviewScale(new Date(detailRangeSec[1] * 1000))
+      overviewInteractionScale(new Date(detailRangeSec[0] * 1000)),
+      overviewInteractionScale(new Date(detailRangeSec[1] * 1000))
     ];
 
     const brushBehavior = brushX()
@@ -216,8 +442,8 @@ export const DualTimeline: React.FC = () => {
         if (isSyncingRef.current) return;
         if (!event.selection) return;
         const [x0, x1] = event.selection as [number, number];
-        const startSec = overviewScale.invert(x0).getTime() / 1000;
-        const endSec = overviewScale.invert(x1).getTime() / 1000;
+        const startSec = overviewInteractionScale.invert(x0).getTime() / 1000;
+        const endSec = overviewInteractionScale.invert(x1).getTime() / 1000;
         applyRangeToStores(startSec, endSec);
 
         const scale = overviewInnerWidth / Math.max(1, x1 - x0);
@@ -236,7 +462,7 @@ export const DualTimeline: React.FC = () => {
       .extent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
       .on('zoom', (event) => {
         if (isSyncingRef.current) return;
-        const rescaled = event.transform.rescaleX(overviewScale);
+        const rescaled = event.transform.rescaleX(overviewInteractionScale);
         const newDomain = rescaled.domain();
         const startSec = newDomain[0].getTime() / 1000;
         const endSec = newDomain[1].getTime() / 1000;
@@ -245,7 +471,7 @@ export const DualTimeline: React.FC = () => {
         isSyncingRef.current = true;
         select(brushNode as SVGGElement).call(
           brushBehavior.move,
-          [overviewScale(newDomain[0]), overviewScale(newDomain[1])]
+          [overviewInteractionScale(newDomain[0]), overviewInteractionScale(newDomain[1])]
         );
         isSyncingRef.current = false;
       });
@@ -264,7 +490,7 @@ export const DualTimeline: React.FC = () => {
     detailInnerWidth,
     detailRangeSec,
     overviewInnerWidth,
-    overviewScale
+    overviewInteractionScale
   ]);
 
   const scrubFromEvent = useCallback(
@@ -346,26 +572,10 @@ export const DualTimeline: React.FC = () => {
   }, [detailScale, selectionPoint]);
 
   const burstWindows = useBurstWindows();
-  const burstRects = useMemo(() => {
-    if (burstWindows.length === 0) return [] as { start: number; end: number; key: string }[];
-    return burstWindows.map((window) => {
-      const x0 = detailScale(new Date(window.start * 1000));
-      const x1 = detailScale(new Date(window.end * 1000));
-      return { start: Math.min(x0, x1), end: Math.max(x0, x1), key: window.id };
-    });
-  }, [burstWindows, detailScale]);
-
-  const handleBurstClick = useCallback(
-    (event: React.MouseEvent<SVGRectElement>, index: number) => {
-      event.stopPropagation();
-      const window = burstWindows[index];
-      if (!window) return;
-      toggleBurstWindow({ start: window.start, end: window.end, metric: burstMetric });
-      applyRangeToStores(window.start, window.end);
-      setTime((window.start + window.end) / 2);
-    },
-    [applyRangeToStores, burstWindows, toggleBurstWindow, setTime, burstMetric]
-  );
+  
+  // Auto-create burst slices when burst data becomes available
+  useAutoBurstSlices(burstWindows);
+  
 
   const handleSelectFromEvent = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
@@ -463,10 +673,86 @@ export const DualTimeline: React.FC = () => {
     }
   }, [timeResolution]);
 
+  const stripSelection = useMemo(() => {
+    if (!overviewInnerWidth) return null;
+    const x0 = overviewScale(new Date(detailRangeSec[0] * 1000));
+    const x1 = overviewScale(new Date(detailRangeSec[1] * 1000));
+    const left = Math.min(x0, x1);
+    const widthSpan = Math.max(2, Math.abs(x1 - x0));
+    return { left, width: widthSpan };
+  }, [detailRangeSec, overviewInnerWidth, overviewScale]);
+
+  const densityLegend = useMemo(
+    () => ({
+      low: `Low (${DENSITY_DOMAIN[0].toFixed(2)})`,
+      high: `High (${DENSITY_DOMAIN[1].toFixed(2)})`
+    }),
+    []
+  );
+
+
   return (
     <div ref={containerRef} className="w-full">
       <div className="flex flex-col gap-6">
+        <div
+          className="flex flex-wrap items-center justify-between gap-3"
+          style={{
+            paddingLeft: OVERVIEW_MARGIN.left,
+            paddingRight: OVERVIEW_MARGIN.right
+          }}
+        >
+          <div className="relative">
+            {width > 0 ? (
+              <DensityHeatStrip
+                densityMap={densityMap}
+                width={overviewInnerWidth}
+                scale={overviewScale}
+                height={12}
+                isLoading={isComputing}
+                densityDomain={DENSITY_DOMAIN}
+                colorLow={DENSITY_COLOR_LOW}
+                colorHigh={DENSITY_COLOR_HIGH}
+              />
+            ) : (
+              <div className="h-3" />
+            )}
+            {stripSelection && (
+              <div className="pointer-events-none absolute inset-0">
+                <div
+                  className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
+                  style={{ left: stripSelection.left, width: stripSelection.width }}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-sm"
+                style={{ backgroundColor: `rgb(${DENSITY_COLOR_LOW.join(',')})` }}
+                aria-hidden="true"
+              />
+              <span>{densityLegend.low}</span>
+            </div>
+            <span aria-hidden="true">→</span>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-sm"
+                style={{ backgroundColor: `rgb(${DENSITY_COLOR_HIGH.join(',')})` }}
+                aria-hidden="true"
+              />
+              <span>{densityLegend.high}</span>
+            </div>
+          </div>
+        </div>
+
         <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
+          <defs>
+            <linearGradient id="adaptiveAxisGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.03" />
+              <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.09" />
+            </linearGradient>
+          </defs>
           <g transform={`translate(${OVERVIEW_MARGIN.left},${OVERVIEW_MARGIN.top})`}>
             {overviewBins.map((bucket, index) => {
               if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
@@ -487,6 +773,15 @@ export const DualTimeline: React.FC = () => {
             })}
             <g ref={brushRef} className="text-primary/60" />
             <g transform={`translate(0, ${OVERVIEW_HEIGHT})`} className="text-muted-foreground">
+              {timeScaleMode === 'adaptive' ? (
+                <rect
+                  x={0}
+                  y={0}
+                  width={overviewInnerWidth}
+                  height={AXIS_HEIGHT}
+                  fill="url(#adaptiveAxisGradient)"
+                />
+              ) : null}
               {overviewTicks.map((tick, index) => {
                 const x = overviewScale(tick);
                 return (
@@ -508,6 +803,28 @@ export const DualTimeline: React.FC = () => {
         </svg>
 
         <div className="relative">
+          <div
+            className="mb-2"
+            style={{
+              paddingLeft: DETAIL_MARGIN.left,
+              paddingRight: DETAIL_MARGIN.right
+            }}
+          >
+            {width > 0 ? (
+              <DensityHeatStrip
+                densityMap={detailDensityMap}
+                width={detailInnerWidth}
+                scale={detailScale}
+                height={10}
+                isLoading={isComputing}
+                densityDomain={DENSITY_DOMAIN}
+                colorLow={DENSITY_COLOR_LOW}
+                colorHigh={DENSITY_COLOR_HIGH}
+              />
+            ) : (
+              <div className="h-2" />
+            )}
+          </div>
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
             {detailPoints.map((timestamp, index) => {
@@ -523,30 +840,6 @@ export const DualTimeline: React.FC = () => {
               );
             })}
 
-            {burstRects.map((rect, index) => {
-              const window = burstWindows[index];
-              const isSelected = window
-                ? selectedBurstWindows.some(
-                    (item) =>
-                      item.start === window.start &&
-                      item.end === window.end &&
-                      item.metric === burstMetric
-                  )
-                : false;
-              return (
-                <rect
-                  key={`burst-${rect.key}`}
-                  x={rect.start}
-                  y={0}
-                  width={Math.max(0, rect.end - rect.start)}
-                  height={DETAIL_HEIGHT}
-                  fill={isSelected ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.08)'}
-                  stroke={isSelected ? 'rgba(249, 115, 22, 0.9)' : 'rgba(249, 115, 22, 0.5)'}
-                  strokeWidth={1}
-                  onClick={(event) => handleBurstClick(event, index)}
-                />
-              );
-            })}
             <line
               x1={cursorX}
               x2={cursorX}
@@ -571,6 +864,7 @@ export const DualTimeline: React.FC = () => {
               width={detailInnerWidth}
               height={DETAIL_HEIGHT}
               fill="transparent"
+              pointerEvents="auto"
               className="cursor-crosshair"
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
@@ -578,6 +872,15 @@ export const DualTimeline: React.FC = () => {
               onPointerLeave={handlePointerCancel}
             />
             <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
+              {timeScaleMode === 'adaptive' ? (
+                <rect
+                  x={0}
+                  y={0}
+                  width={detailInnerWidth}
+                  height={AXIS_HEIGHT}
+                  fill="url(#adaptiveAxisGradient)"
+                />
+              ) : null}
               {detailTicks.map((tick, index) => {
                 const x = detailScale(tick);
                 return (

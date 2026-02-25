@@ -1,5 +1,4 @@
-import { getDb } from './db';
-import { join } from 'path';
+import { getDb, getDataPath } from './db';
 import { Bin } from '@/types';
 
 export interface AggregationParams {
@@ -16,36 +15,40 @@ export interface AggregationParams {
 export const getAggregatedBins = async (params: AggregationParams): Promise<Bin[]> => {
   const { resX, resY, resZ, types, districts, startTime, endTime } = params;
   const db = await getDb();
-  const dataPath = join(process.cwd(), 'data', 'crime.parquet');
+  const dataPath = getDataPath();
 
-  // 1. Get metadata for bounds (if we want to be dynamic)
-  // For now, we know the normalization logic from setup-data.js:
-  // x: 0..1, z: 0..1, y: 0..100
-  // And the 3D scene uses:
-  // x: -50..50, z: -50..50, y: 0..100
+  // Query from CSV file with proper date parsing
+  // Using 0..1 normalization for x, z based on Chicago coordinate bounds
+  // Chicago bounds: lon -87.9 to -87.5, lat 41.6 to 42.1
   
-  // We'll use the 0..1 normalization from the parquet file directly.
+  let whereClause = 'WHERE "Date" IS NOT NULL AND "Latitude" IS NOT NULL AND "Longitude" IS NOT NULL';
   
-  let whereClause = 'WHERE 1=1';
   if (types && types.length > 0) {
-    whereClause += ` AND type IN (${types.map(t => `'${t}'`).join(',')})`;
+    const typeList = types.map(t => `'${t}'`).join(',');
+    whereClause += ` AND "Primary Type" IN (${typeList})`;
   }
   if (districts && districts.length > 0) {
-    whereClause += ` AND district IN (${districts.map(d => `'${d}'`).join(',')})`;
+    const districtList = districts.map(d => `'${d}'`).join(',');
+    whereClause += ` AND "District" IN (${districtList})`;
   }
-  // y is 0-100 in our parquet file
-  if (startTime !== undefined && endTime !== undefined) {
-    whereClause += ` AND y >= ${startTime} AND y <= ${endTime}`;
-  }
+  
+  // Time filter using epoch seconds from Date column
+  // Default to full range if not specified
+  const minEpoch = 978307200;   // 2001-01-01
+  const maxEpoch = 1767225600;  // 2026-01-01
+  const startTs = startTime ?? minEpoch;
+  const endTs = endTime ?? maxEpoch;
+  
+  whereClause += ` AND EXTRACT(EPOCH FROM "Date") >= ${startTs} AND EXTRACT(EPOCH FROM "Date") <= ${endTs}`;
 
   const query = `
     WITH binned AS (
       SELECT
-        floor(x * ${resX}) as ix,
-        floor((y / 100.0) * ${resY}) as iy,
-        floor(z * ${resZ}) as iz,
-        type
-      FROM '${dataPath}'
+        floor(((("Longitude" - (-87.9)) / (-87.5 - (-87.9)))) * ${resX}) as ix,
+        floor(((EXTRACT(EPOCH FROM "Date") - ${minEpoch}) / (${maxEpoch} - ${minEpoch})) * ${resY}) as iy,
+        floor(((("Latitude" - 41.6) / (42.1 - 41.6))) * ${resZ}) as iz,
+        "Primary Type" as type
+      FROM read_csv_auto('${dataPath}')
       ${whereClause}
     )
     SELECT

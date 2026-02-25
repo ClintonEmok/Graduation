@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import QueryProvider from "@/providers/QueryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,9 +32,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          {children}
-          <Toaster />
-          <OnboardingTour />
+          <QueryProvider>
+            {children}
+            <Toaster />
+            <OnboardingTour />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

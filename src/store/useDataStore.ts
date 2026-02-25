@@ -1,8 +1,18 @@
 import { create } from 'zustand';
-import { TIME_MIN, TIME_MAX } from '@/lib/constants';
+import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 import { toEpochSeconds } from '@/lib/time-domain';
 import { RecordBatchReader, Table } from 'apache-arrow';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
+
+/**
+ * @deprecated Use useCrimeData hook from @/hooks/useCrimeData for crime data fetching.
+ * 
+ * This store is kept for:
+ * - Metadata (minTimestampSec, maxTimestampSec, spatial bounds, dataCount, isMock)
+ * - Legacy components that haven't been migrated to useCrimeData yet
+ * 
+ * New components should use useCrimeData which fetches data via /api/crimes/range endpoint.
+ */
 
 export interface DataPoint {
   id: string;
@@ -37,6 +47,8 @@ interface DataState {
   minTimestampSec: number | null;
   maxTimestampSec: number | null;
   isLoading: boolean;
+  isMock: boolean;
+  dataCount: number | null;
   
   setData: (data: DataPoint[]) => void;
   generateMockData: (count: number) => void;
@@ -65,6 +77,8 @@ export const useDataStore = create<DataState>((set, get) => ({
   minTimestampSec: null,
   maxTimestampSec: null,
   isLoading: false,
+  isMock: false,
+  dataCount: null,
 
   setData: (data) => set({ data }),
   
@@ -77,7 +91,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       }
       return {
       id: String(i),
-      timestamp: TIME_MIN + Math.random() * (TIME_MAX - TIME_MIN),
+      timestamp: MOCK_START_MS + Math.random() * (MOCK_END_MS - MOCK_START_MS),
       x: (Math.random() - 0.5) * 100,
       y: 0, // Will be computed
       z: (Math.random() - 0.5) * 100,
@@ -87,7 +101,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
     // Sort by timestamp
     data.sort((a, b) => a.timestamp - b.timestamp);
-    set({ data, columns: null, minTimestampSec: null, maxTimestampSec: null, minX: -50, maxX: 50, minZ: -50, maxZ: 50 }); 
+    set({ data, columns: null, minTimestampSec: MOCK_START_SEC, maxTimestampSec: MOCK_END_SEC, minX: -50, maxX: 50, minZ: -50, maxZ: 50 }); 
   },
 
   loadRealData: async () => {
@@ -104,7 +118,13 @@ export const useDataStore = create<DataState>((set, get) => ({
       const maxTimeSec = meta.maxTime;
       const timeSpanSec = maxTimeSec - minTimeSec || 1;
 
-      console.log(`Metadata: ${new Date(minTimeSec*1000).toISOString()} to ${new Date(maxTimeSec*1000).toISOString()}, Count: ${meta.count}`);
+      // Track if we're using mock/demo data
+      const isUsingMock = meta.isMock === true;
+      if (isUsingMock) {
+        console.warn('Using demo data - dataset file not found or unavailable');
+      }
+
+      console.log(`Metadata: ${new Date(minTimeSec*1000).toISOString()} to ${new Date(maxTimeSec*1000).toISOString()}, Count: ${meta.count}, isMock: ${isUsingMock}`);
 
       // 2. Fetch Data Stream
       const response = await fetch('/api/crime/stream');
@@ -221,16 +241,20 @@ export const useDataStore = create<DataState>((set, get) => ({
         columns,
         minTimestampSec: minTimeSec,
         maxTimestampSec: maxTimeSec,
-        minX: meta.minX,
-        maxX: meta.maxX,
-        minZ: meta.minZ,
-        maxZ: meta.maxZ,
-        isLoading: false
+        // API returns minLon/maxLon for x, minLat/maxLat for z
+        minX: meta.minLon,
+        maxX: meta.maxLon,
+        minZ: meta.minLat,
+        maxZ: meta.maxLat,
+        isLoading: false,
+        isMock: meta.isMock || false,
+        dataCount: meta.count || count
       });
 
     } catch (err) {
       console.error('Error loading real data:', err);
-      set({ isLoading: false });
+      console.warn('Using demo data - database unavailable');
+      set({ isLoading: false, isMock: true });
     }
   }
 }));

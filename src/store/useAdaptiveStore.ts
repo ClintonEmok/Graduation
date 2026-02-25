@@ -3,6 +3,8 @@ import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils'
 
 interface AdaptiveState {
   warpFactor: number; // 0 = Linear, 1 = Fully Adaptive
+  warpSource: 'density' | 'slice-authored';
+  densityScope: 'viewport' | 'global';
   densityMap: Float32Array | null;
   burstinessMap: Float32Array | null;
   warpMap: Float32Array | null;
@@ -13,8 +15,16 @@ interface AdaptiveState {
   mapDomain: [number, number];
   
   setWarpFactor: (v: number) => void;
+  setWarpSource: (source: AdaptiveState['warpSource']) => void;
+  setDensityScope: (scope: AdaptiveState['densityScope']) => void;
   setBurstMetric: (metric: AdaptiveState['burstMetric']) => void;
   setBurstThreshold: (v: number) => void;
+  setPrecomputedMaps: (
+    densityMap: Float32Array,
+    burstinessMap: Float32Array,
+    warpMap: Float32Array,
+    domain: [number, number]
+  ) => void;
   computeMaps: (timestamps: Float32Array, domain: [number, number]) => void;
 }
 
@@ -32,6 +42,7 @@ const resolveBurstMap = (state: AdaptiveState) => {
 
 // Module-level worker instance
 let worker: Worker | null = null;
+let activeRequestId = 0;
 
 if (typeof window !== 'undefined') {
   // Use new URL(...) pattern for Vite/Webpack worker compatibility
@@ -42,7 +53,15 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
     // Setup listener
     if (worker) {
         worker.onmessage = (e) => {
-            const { densityMap, burstinessMap, warpMap } = e.data;
+            const { requestId, densityMap, burstinessMap, warpMap } = e.data as {
+              requestId: number;
+              densityMap: Float32Array;
+              burstinessMap: Float32Array;
+              warpMap: Float32Array;
+            };
+            if (requestId !== activeRequestId) {
+              return;
+            }
             set((state) => ({
               densityMap,
               burstinessMap,
@@ -58,6 +77,8 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
 
     return {
       warpFactor: 0,
+      warpSource: 'density',
+      densityScope: 'viewport',
       densityMap: null,
       burstinessMap: null,
       warpMap: null,
@@ -68,6 +89,11 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
       mapDomain: [0, 100],
       
       setWarpFactor: (v) => set({ warpFactor: v }),
+      setWarpSource: (source) => set({ warpSource: source }),
+      setDensityScope: (scope) => {
+        activeRequestId += 1;
+        set({ densityScope: scope, isComputing: false });
+      },
       setBurstMetric: (metric) =>
         set((state) => {
           const nextState = { ...state, burstMetric: metric };
@@ -82,15 +108,34 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           burstThreshold: v,
           burstCutoff: resolveBurstMap(state) ? computePercentile(resolveBurstMap(state) as Float32Array, v) : state.burstCutoff
         })),
+
+      setPrecomputedMaps: (densityMap, burstinessMap, warpMap, domain) =>
+        {
+          activeRequestId += 1;
+          set((state) => ({
+            densityMap,
+            burstinessMap,
+            warpMap,
+            mapDomain: domain,
+            isComputing: false,
+            burstCutoff: computePercentile(
+              state.burstMetric === 'burstiness' ? burstinessMap : densityMap,
+              state.burstThreshold
+            )
+          }));
+        },
       
       computeMaps: (timestamps, domain) => {
         if (!worker) return;
+        activeRequestId += 1;
+        const requestId = activeRequestId;
         set({ isComputing: true, mapDomain: domain });
         
         // Copy data to avoid detaching the original buffer
         const timestampsCopy = timestamps.slice();
         
         worker.postMessage({
+          requestId,
           timestamps: timestampsCopy,
           domain,
           config: {
