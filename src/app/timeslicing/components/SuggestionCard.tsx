@@ -69,6 +69,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   
   const isActive = activeSuggestionId === suggestion.id;
   const isPending = suggestion.status === 'pending';
+  const isLowConfidence = suggestion.confidence < 50;
   
   const handleAccept = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -96,7 +97,9 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
         cursor-pointer rounded-lg border p-3 transition-all
         ${isActive 
           ? 'border-blue-500 bg-blue-500/10' 
-          : 'border-slate-700 bg-slate-900 hover:border-slate-600'
+          : isLowConfidence 
+            ? 'border-amber-500/50 bg-amber-500/5 hover:border-amber-400'
+            : 'border-slate-700 bg-slate-900 hover:border-slate-600'
         }
         ${suggestion.status === 'accepted' ? 'border-emerald-500/50 bg-emerald-500/5' : ''}
         ${suggestion.status === 'rejected' ? 'border-red-500/50 bg-red-500/5 opacity-60' : ''}
