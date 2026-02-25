@@ -1,4 +1,4 @@
-import { getDb, getDataPath } from './db';
+import { getDb, getDataPath, isMockDataEnabled } from './db';
 import { Bin } from '@/types';
 
 export interface AggregationParams {
@@ -12,8 +12,32 @@ export interface AggregationParams {
   endTime?: number;
 }
 
+const generateMockBins = (resX: number, resY: number, resZ: number): Bin[] => {
+  const bins: Bin[] = [];
+  const binCount = Math.min(resX * resY * resZ, 100);
+
+  for (let i = 0; i < binCount; i++) {
+    const ix = Math.floor(Math.random() * resX);
+    const iy = Math.floor(Math.random() * resY);
+    const iz = Math.floor(Math.random() * resZ);
+
+    bins.push({
+      x: ((ix + 0.5) / resX * 100.0) - 50.0,
+      y: ((iy + 0.5) / resY * 100.0),
+      z: ((iz + 0.5) / resZ * 100.0) - 50.0,
+      count: Math.floor(Math.random() * 1000) + 100,
+      dominantType: ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT'][Math.floor(Math.random() * 4)],
+    });
+  }
+
+  return bins;
+};
+
 export const getAggregatedBins = async (params: AggregationParams): Promise<Bin[]> => {
   const { resX, resY, resZ, types, districts, startTime, endTime } = params;
+  if (isMockDataEnabled()) {
+    return generateMockBins(resX, resY, resZ);
+  }
   const db = await getDb();
   const dataPath = getDataPath();
 

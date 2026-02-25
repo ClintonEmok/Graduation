@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, getDataPath } from '@/lib/db';
+import { getDb, getDataPath, isMockDataEnabled } from '@/lib/db';
 import { tableFromJSON, tableToIPC } from 'apache-arrow';
 
 // Force Node.js runtime for DuckDB compatibility
@@ -45,6 +45,22 @@ export async function GET(request: Request) {
   const crimeTypes = searchParams.get('crimeTypes');
 
   try {
+    if (isMockDataEnabled()) {
+      const mockData = generateMockData();
+      const table = tableFromJSON(mockData);
+      const ipcBuffer = tableToIPC(table, 'stream');
+
+      return new Response(ipcBuffer as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.apache.arrow.stream',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Data-Warning': 'Using demo data - database disabled',
+        },
+      });
+    }
+
     const db = await getDb();
     const dataPath = getDataPath();
 

@@ -6,6 +6,14 @@ let db: duckdb.Database | null = null;
 
 const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'cache', 'crime.duckdb');
 
+export const isMockDataEnabled = (): boolean => {
+  const raw = (process.env.USE_MOCK_DATA ?? process.env.DISABLE_DUCKDB ?? '').trim();
+  if (!raw) return true;
+  const normalized = raw.toLowerCase();
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return ['1', 'true', 'yes', 'on'].includes(normalized);
+};
+
 /**
  * Get the path to the crime data CSV file.
  * The CSV contains ~8.5M rows from 2001-2026.
@@ -49,6 +57,9 @@ export const epochSeconds = (dateStr: string): number => {
 };
 
 export const getDb = async (): Promise<duckdb.Database> => {
+  if (isMockDataEnabled()) {
+    throw new Error('DuckDB disabled via USE_MOCK_DATA/DISABLE_DUCKDB');
+  }
   if (!db) {
     const dbPath = getDbPath();
     mkdirSync(dirname(dbPath), { recursive: true });
