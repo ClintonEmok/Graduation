@@ -29,6 +29,7 @@ interface SuggestionStore {
   suggestions: Suggestion[];
   isPanelOpen: boolean;
   activeSuggestionId: string | null;
+  isEmptyState: boolean;
 
   // Actions
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'status'>) => void;
@@ -38,12 +39,14 @@ interface SuggestionStore {
   setPanelOpen: (open: boolean) => void;
   setActiveSuggestion: (id: string | null) => void;
   clearSuggestions: () => void;
+  setEmptyState: (empty: boolean) => void;
 }
 
 export const useSuggestionStore = create<SuggestionStore>((set) => ({
   suggestions: [],
   isPanelOpen: true,
   activeSuggestionId: null,
+  isEmptyState: false,
 
   addSuggestion: (suggestion) =>
     set((state) => ({
@@ -85,5 +88,7 @@ export const useSuggestionStore = create<SuggestionStore>((set) => ({
 
   setActiveSuggestion: (id) => set({ activeSuggestionId: id }),
 
-  clearSuggestions: () => set({ suggestions: [], activeSuggestionId: null }),
+  clearSuggestions: () => set({ suggestions: [], activeSuggestionId: null, isEmptyState: false }),
+
+  setEmptyState: (empty) => set({ isEmptyState: empty }),
 }));
