@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Info, Zap, Undo2, ChevronDown, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
@@ -98,6 +99,11 @@ export function SuggestionPanel() {
     }
   };
 
+  const handleUndo = () => {
+    undoSuggestion();
+    toast.success('Action undone');
+  };
+
   return (
     <div className="fixed right-0 top-0 z-50 flex h-full w-80 flex-col border-l border-slate-700 bg-slate-900 shadow-xl">
       <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
@@ -188,7 +194,7 @@ export function SuggestionPanel() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={undoSuggestion}
+            onClick={handleUndo}
             className="h-6 text-xs text-amber-300 hover:bg-amber-800/50 hover:text-amber-200"
           >
             <Undo2 className="mr-1 size-3" />
@@ -263,7 +269,7 @@ export function SuggestionPanel() {
               {pendingSuggestions.length > 0 && (
                 <>
                   <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 transition-all duration-200 ease-out">
                     {pendingSuggestions.map((suggestion) => (
                       <div key={suggestion.id} className="space-y-1">
                         <div className="flex justify-end">
@@ -309,13 +315,18 @@ export function SuggestionPanel() {
                       {processedSuggestions.length}
                     </span>
                   </button>
-                  {!processedCollapsed && (
-                    <div id="processed-suggestions" className="space-y-2">
-                      {processedSuggestions.map((suggestion) => (
-                        <SuggestionCard key={suggestion.id} suggestion={suggestion} />
-                      ))}
+                  <div
+                    className={`grid transition-all duration-200 ease-out ${
+                      processedCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
+                    }`}
+                  >
+                    <div id="processed-suggestions" className="space-y-2 overflow-hidden">
+                      {!processedCollapsed &&
+                        processedSuggestions.map((suggestion) => (
+                          <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+                        ))}
                     </div>
-                  )}
+                  </div>
                 </>
               )}
             </div>
