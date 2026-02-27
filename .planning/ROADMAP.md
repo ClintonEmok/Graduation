@@ -261,6 +261,21 @@ Plans:
 - [x] 36-03-PLAN.md — Interval boundary detection algorithms
 - [x] 36-04-PLAN.md — Integration with useSuggestionGenerator
 
+### Phase 37: Algorithm Integration
+
+**Goal:** Connect the suggestion algorithms (Phase 36) to the UI (Phase 35) for complete review/approval workflow.
+
+**Key Features:**
+- Generation triggers: Manual Generate button + auto-regeneration on filter changes (500ms debounce)
+- User-configurable suggestion counts (default: 3 warp profiles, 3 interval boundaries)
+- Accept workflow: Creates actual warp slices and time slices on timeline
+- Modify workflow: Inline editing for suggestion parameters
+- Visual distinction: Colors and badges for warp profiles vs interval boundaries
+
+**Plans:** 2 plans
+- [ ] 37-01-PLAN.md — Generation triggers & auto-regeneration
+- [ ] 37-02-PLAN.md — Accept/modify workflow integration
+
 **Phase 37: Review/Approval Workflows** (planned)
 
 ### v1.3 Fully Automated Timeslicing Workflows
