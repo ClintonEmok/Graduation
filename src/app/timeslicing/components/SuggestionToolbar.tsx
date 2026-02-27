@@ -20,6 +20,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     pendingCount,
     isGenerating,
     generationError,
+    lastSampleUpdateAt,
   } = useSuggestionGenerator();
   const {
     suggestions,
@@ -52,6 +53,23 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   const visibleCount = useMemo(() => {
     return suggestions.filter((suggestion) => suggestion.confidence >= minConfidence).length;
   }, [minConfidence, suggestions]);
+
+  const sampleUpdateLabel = useMemo(() => {
+    if (!lastSampleUpdateAt) {
+      return null;
+    }
+
+    const seconds = Math.max(0, Math.floor((Date.now() - lastSampleUpdateAt) / 1000));
+    if (seconds < 10) {
+      return 'Updated for new sample just now';
+    }
+    if (seconds < 60) {
+      return `Updated for new sample ${seconds}s ago`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    return `Updated for new sample ${minutes}m ago`;
+  }, [lastSampleUpdateAt]);
 
   const handleGenerate = () => {
     setGenerationError(null);
@@ -123,7 +141,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
         </Button>
 
         {suggestionCount > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-slate-300">{suggestionCount} total</span>
             {pendingCount > 0 && (
               <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-400">
@@ -133,6 +151,11 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             <span className="rounded-full bg-slate-700/80 px-2 py-0.5 text-xs font-medium text-slate-200">
               Showing {visibleCount} of {suggestionCount}
             </span>
+            {sampleUpdateLabel && (
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-200">
+                {sampleUpdateLabel}
+              </span>
+            )}
           </div>
         )}
 

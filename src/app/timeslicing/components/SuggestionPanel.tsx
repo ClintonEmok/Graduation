@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useCrimeFilters, useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore';
+import { useFilterStore } from '@/store/useFilterStore';
 import { SuggestionCard } from './SuggestionCard';
 import { ComparisonView } from './ComparisonView';
 
@@ -86,6 +87,7 @@ export function SuggestionPanel() {
   const crimeFilters = useCrimeFilters();
   const startDate = useViewportStart();
   const endDate = useViewportEnd();
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
 
   const [showContext, setShowContext] = useState(false);
   const [viewMode, setViewMode] = useState<'suggestions' | 'history'>('suggestions');
@@ -113,6 +115,9 @@ export function SuggestionPanel() {
     id ? suggestions.find((suggestion) => suggestion.id === id) ?? null : null
   );
   const canCompare = comparisonSuggestions[0] !== null && comparisonSuggestions[1] !== null;
+  const selectionRange = selectedTimeRange
+    ? [Math.min(selectedTimeRange[0], selectedTimeRange[1]), Math.max(selectedTimeRange[0], selectedTimeRange[1])]
+    : [startDate, endDate];
 
   const toggleComparison = (id: string) => {
     if (comparisonIds[0] === id) {
@@ -148,9 +153,14 @@ export function SuggestionPanel() {
         <div>
           <h2 className="font-semibold text-slate-200">Suggestions</h2>
           {suggestions.length > 0 && (
-            <p className="text-xs text-slate-400">
-              {pendingSuggestions.length} pending, {processedSuggestions.length} processed
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-400">
+                {pendingSuggestions.length} pending, {processedSuggestions.length} processed
+              </span>
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                Selection: {formatDate(selectionRange[0])} - {formatDate(selectionRange[1])}
+              </span>
+            </div>
           )}
           {suggestions.length > 0 && minConfidence > 0 && (
             <p className="text-xs text-violet-300">Showing {visibleSuggestions.length} of {suggestions.length} suggestions</p>

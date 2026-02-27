@@ -340,8 +340,8 @@ function generateIntervals(
     const strength = minStrength + (1 - avgDensity) * (maxStrength - minStrength);
     
     intervals.push({
-      startPercent: startIdx / n,
-      endPercent: Math.min(endIdx / n, 1),
+      startPercent: (startIdx / n) * 100,
+      endPercent: Math.min(endIdx / n, 1) * 100,
       strength: Math.round(strength * 100) / 100,
     });
   }

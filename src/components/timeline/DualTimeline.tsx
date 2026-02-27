@@ -39,11 +39,21 @@ type StrictTimelineScale = ScaleTime<number, number>;
 interface DualTimelineProps {
   adaptiveWarpMapOverride?: Float32Array | null;
   adaptiveWarpDomainOverride?: [number, number];
+  domainOverride?: [number, number];
+  detailRangeOverride?: [number, number];
+  interactive?: boolean;
+  timestampSecondsOverride?: number[];
+  detailPointsOverride?: number[];
 }
 
 export const DualTimeline: React.FC<DualTimelineProps> = ({
   adaptiveWarpMapOverride,
   adaptiveWarpDomainOverride,
+  domainOverride,
+  detailRangeOverride,
+  interactive = true,
+  timestampSecondsOverride,
+  detailPointsOverride,
 }) => {
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
@@ -93,18 +103,32 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   // Full data range for timeline scale
   const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
+    if (domainOverride && Number.isFinite(domainOverride[0]) && Number.isFinite(domainOverride[1])) {
+      const start = Math.min(domainOverride[0], domainOverride[1]);
+      const end = Math.max(domainOverride[0], domainOverride[1]);
+      if (end > start) {
+        return [start, end];
+      }
+    }
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       return [minTimestampSec, maxTimestampSec];
     }
     return [0, 100];
-  }, [minTimestampSec, maxTimestampSec]);
+  }, [domainOverride, minTimestampSec, maxTimestampSec]);
 
   // Viewport bounds for initial selection (first year)
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
 
-  // Detail range: use selectedTimeRange if set, otherwise use viewport bounds (first year)
+  // Detail range: override > selectedTimeRange > viewport bounds (first year)
   const detailRangeSec = useMemo<[number, number]>(() => {
+    if (detailRangeOverride && Number.isFinite(detailRangeOverride[0]) && Number.isFinite(detailRangeOverride[1])) {
+      const start = Math.min(detailRangeOverride[0], detailRangeOverride[1]);
+      const end = Math.max(detailRangeOverride[0], detailRangeOverride[1]);
+      if (end > start) {
+        return [start, end];
+      }
+    }
     if (selectedTimeRange) {
       const [rawStart, rawEnd] = selectedTimeRange;
       const start = Math.min(rawStart, rawEnd);
@@ -116,7 +140,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     }
     // Default to viewport bounds (first year) instead of full domain
     return [viewportStart, viewportEnd];
-  }, [selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
+  }, [detailRangeOverride, selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
 
   const timestampSeconds = useMemo<number[]>(() => {
     if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
@@ -133,18 +157,22 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [columns, data, minTimestampSec, maxTimestampSec]);
 
   const overviewBins = useMemo(() => {
-    if (!timestampSeconds.length) return [];
+    const values = timestampSecondsOverride ?? timestampSeconds;
+    if (!values.length) return [];
     const binner = bin<number, number>()
       .value((d) => d)
       .domain([domainStart, domainEnd])
       .thresholds(50);
-    return binner(timestampSeconds);
-  }, [timestampSeconds, domainStart, domainEnd]);
+    return binner(values);
+  }, [timestampSecondsOverride, timestampSeconds, domainStart, domainEnd]);
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
   
   // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
+    if (detailPointsOverride) {
+      return detailPointsOverride;
+    }
     // If we have viewport crime data, use it directly
     if (viewportCrimes && viewportCrimes.length > 0) {
       const [start, end] = detailRangeSec;
@@ -165,7 +193,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     if (points.length <= maxPoints) return points;
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0);
-  }, [viewportCrimes, timestampSeconds, detailRangeSec]);
+  }, [detailPointsOverride, viewportCrimes, timestampSeconds, detailRangeSec]);
 
   const detailDensityMap = useMemo(() => {
     if (!densityMap || densityMap.length === 0) return densityMap;
@@ -351,6 +379,9 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const applyRangeToStores = useCallback(
     (startSec: number, endSec: number) => {
+      if (!interactive) {
+        return;
+      }
       const safeStart = clamp(startSec, domainStart, domainEnd);
       const safeEnd = clamp(endSec, domainStart, domainEnd);
       const normalizedStart = clamp(
@@ -380,10 +411,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
         setTime(clampedTime);
       }
     },
-    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange, setViewport]
+    [currentTime, domainEnd, domainStart, interactive, setRange, setTime, setTimeRange, setBrushRange, setViewport]
   );
 
   useEffect(() => {
+    if (!interactive) return;
     if (!selectedTimeRange) return;
     const [rawStart, rawEnd] = selectedTimeRange;
     const start = Math.min(rawStart, rawEnd);
@@ -394,9 +426,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       applyRangeToStores(domainStart, domainEnd);
       isSyncingRef.current = false;
     }
-  }, [applyRangeToStores, domainEnd, domainStart, selectedTimeRange]);
+  }, [applyRangeToStores, domainEnd, domainStart, interactive, selectedTimeRange]);
 
   useEffect(() => {
+    if (!interactive) return;
     const resolutionSeconds: Record<typeof timeResolution, number> = {
       seconds: 1,
       minutes: 60,
@@ -422,9 +455,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     isSyncingRef.current = true;
     applyRangeToStores(centerSec - span / 2, centerSec + span / 2);
     isSyncingRef.current = false;
-  }, [applyRangeToStores, currentTime, domainEnd, domainStart, timeResolution]);
+  }, [applyRangeToStores, currentTime, domainEnd, domainStart, interactive, timeResolution]);
 
   useEffect(() => {
+    if (!interactive) return;
     if (!overviewInnerWidth || !detailInnerWidth) return;
     if (!brushRef.current || !overviewSvgRef.current || !detailSvgRef.current || !zoomRef.current) return;
 
@@ -489,12 +523,14 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     applyRangeToStores,
     detailInnerWidth,
     detailRangeSec,
+    interactive,
     overviewInnerWidth,
     overviewInteractionScale
   ]);
 
   const scrubFromEvent = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
+      if (!interactive) return;
       if (!detailInnerWidth) return;
       const rect = event.currentTarget.getBoundingClientRect();
       const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
@@ -506,20 +542,22 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       );
       setTime(normalized);
     },
-    [detailInnerWidth, detailScale, domainEnd, domainStart, setTime]
+    [detailInnerWidth, detailScale, domainEnd, domainStart, interactive, setTime]
   );
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
+      if (!interactive) return;
       isScrubbingRef.current = true;
       event.currentTarget.setPointerCapture(event.pointerId);
       scrubFromEvent(event);
     },
-    [scrubFromEvent]
+    [interactive, scrubFromEvent]
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
+      if (!interactive) return;
       if (!detailInnerWidth) return;
       const rect = event.currentTarget.getBoundingClientRect();
       const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
@@ -546,7 +584,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       if (!isScrubbingRef.current) return;
       scrubFromEvent(event);
     },
-    [detailInnerWidth, detailScale, detailRangeSec, minTimestampSec, maxTimestampSec, scrubFromEvent]
+    [detailInnerWidth, detailScale, detailRangeSec, interactive, minTimestampSec, maxTimestampSec, scrubFromEvent]
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<SVGRectElement>) => {

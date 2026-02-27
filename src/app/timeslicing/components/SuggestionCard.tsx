@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Check, Pencil, X, Save, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfidenceBadge } from './ConfidenceBadge';
-import { useDataStore } from '@/store/useDataStore';
+import { useViewportStore } from '@/lib/stores/viewportStore';
+import { useFilterStore } from '@/store/useFilterStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { 
   useSuggestionStore, 
@@ -169,12 +170,21 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     };
   }, []);
 
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
-  const hasValidDomain =
-    minTimestampSec !== null &&
-    maxTimestampSec !== null &&
-    maxTimestampSec > minTimestampSec;
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const [rangeStart, rangeEnd] = React.useMemo(() => {
+    if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
+      const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
+      const end = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
+      if (start !== end) {
+        return [start, end];
+      }
+    }
+
+    return [viewportStart, viewportEnd];
+  }, [selectedTimeRange, viewportEnd, viewportStart]);
+  const hasValidDomain = Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && rangeEnd > rangeStart;
   const isActive = activeSuggestionId === suggestion.id;
   const isSelected = selectedIds.has(suggestion.id);
   const isPending = suggestion.status === 'pending';
@@ -445,8 +455,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               <div className="mt-1 pl-10 text-[11px] text-violet-300">
                 {hasValidDomain ? (
                   <>
-                    {formatPercentAsDate(interval.startPercent, minTimestampSec!, maxTimestampSec!)} -{' '}
-                    {formatPercentAsDate(interval.endPercent, minTimestampSec!, maxTimestampSec!)}
+                    {formatPercentAsDate(interval.startPercent, rangeStart, rangeEnd)} -{' '}
+                    {formatPercentAsDate(interval.endPercent, rangeStart, rangeEnd)}
                   </>
                 ) : (
                   <>{interval.startPercent.toFixed(1)}% - {interval.endPercent.toFixed(1)}%</>
@@ -565,8 +575,13 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               </span>
             )}
           </div>
-          <div className="mt-1">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <ConfidenceBadge confidence={suggestion.confidence} />
+            {hasValidDomain && (
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">
+                Selection: {formatEpochDate(rangeStart)} - {formatEpochDate(rangeEnd)}
+              </span>
+            )}
           </div>
           {/* Collapsed: show count, Expanded: show full details */}
           {isCollapsed ? (
@@ -577,7 +592,12 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               }
             </div>
           ) : (
-            formatSuggestionData(suggestion.data, suggestion.type, minTimestampSec, maxTimestampSec)
+            formatSuggestionData(
+              suggestion.data,
+              suggestion.type,
+              hasValidDomain ? rangeStart : null,
+              hasValidDomain ? rangeEnd : null
+            )
           )}
         </div>
         

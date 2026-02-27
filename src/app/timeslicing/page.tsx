@@ -11,6 +11,8 @@ import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
 import { useSuggestionStore, type Suggestion, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { useFilterStore } from '@/store/useFilterStore';
+import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { Toaster } from 'sonner';
 
 // Default to full date range if no real data loaded yet
@@ -113,7 +115,50 @@ export default function TimeslicingPage() {
     useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec]);
   }, [crimes, domainEndSec, domainStartSec]);
 
-  // Get time domain for slice creation
+  // Get time domain for slice creation - prefer selection range, fallback to viewport
+  const viewportStart = useViewportStore((s) => s.startDate);
+  const viewportEnd = useViewportStore((s) => s.endDate);
+  const viewportFilters = useCrimeFilters();
+  const selectedTimeRange = useFilterStore((s) => s.selectedTimeRange);
+  
+  const [rangeStart, rangeEnd] = useMemo(() => {
+    if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
+      const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
+      const end = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
+      if (start !== end) {
+        return [start, end];
+      }
+    }
+    return [viewportStart, viewportEnd];
+  }, [selectedTimeRange, viewportStart, viewportEnd]);
+
+  const {
+    data: selectionCrimes,
+    isLoading: isSelectionLoading,
+  } = useCrimeData({
+    startEpoch: rangeStart,
+    endEpoch: rangeEnd,
+    crimeTypes: viewportFilters.crimeTypes.length > 0 ? viewportFilters.crimeTypes : undefined,
+    districts: viewportFilters.districts.length > 0 ? viewportFilters.districts : undefined,
+    bufferDays: 0,
+    limit: 50000,
+  });
+
+  const selectionTimestamps = useMemo(() => {
+    if (!selectionCrimes || selectionCrimes.length === 0) {
+      return [] as number[];
+    }
+    return selectionCrimes.map((crime) => crime.timestamp);
+  }, [selectionCrimes]);
+
+  const selectionDetailPoints = useMemo(() => {
+    if (!selectionTimestamps.length) return [] as number[];
+    const maxPoints = 4000;
+    if (selectionTimestamps.length <= maxPoints) return selectionTimestamps;
+    const step = Math.ceil(selectionTimestamps.length / maxPoints);
+    return selectionTimestamps.filter((_, index) => index % step === 0);
+  }, [selectionTimestamps]);
+
   const minTs = useDataStore((s) => s.minTimestampSec);
   const maxTs = useDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
@@ -128,8 +173,8 @@ export default function TimeslicingPage() {
     [hoveredSuggestionId, suggestions]
   );
 
-  const hoverPreview = useMemo(() => {
-    if (!hoveredSuggestion || !minTs || !maxTs || maxTs <= minTs) {
+  const hoverPreviewSelection = useMemo(() => {
+    if (!hoveredSuggestion || !rangeStart || !rangeEnd || rangeEnd <= rangeStart) {
       return { type: null as Suggestion['type'] | null, intervals: [] as Array<[number, number]>, boundaries: [] as number[] };
     }
 
@@ -143,16 +188,47 @@ export default function TimeslicingPage() {
     }
 
     if (hoveredSuggestion.type === 'interval-boundary' && 'boundaries' in hoveredSuggestion.data) {
-      const span = maxTs - minTs;
+      const span = rangeEnd - rangeStart;
       const boundaries = hoveredSuggestion.data.boundaries
-        .map((epoch) => ((epoch - minTs) / span) * 100)
+        .map((epoch) => ((epoch - rangeStart) / span) * 100)
         .map((percent) => Math.max(0, Math.min(100, percent)));
 
       return { type: hoveredSuggestion.type, intervals: [], boundaries };
     }
 
     return { type: null as Suggestion['type'] | null, intervals: [], boundaries: [] };
-  }, [hoveredSuggestion, minTs, maxTs]);
+  }, [hoveredSuggestion, rangeStart, rangeEnd]);
+
+  const hoverPreviewGlobal = useMemo(() => {
+    if (!hoveredSuggestion || !rangeStart || !rangeEnd || rangeEnd <= rangeStart) {
+      return { type: null as Suggestion['type'] | null, intervals: [] as Array<[number, number]>, boundaries: [] as number[] };
+    }
+    if (!domainStartSec || !domainEndSec || domainEndSec <= domainStartSec) {
+      return { type: null as Suggestion['type'] | null, intervals: [] as Array<[number, number]>, boundaries: [] as number[] };
+    }
+
+    const selectionSpan = rangeEnd - rangeStart;
+    const domainSpan = domainEndSec - domainStartSec;
+    const toDomainPercent = (epoch: number) =>
+      Math.max(0, Math.min(100, ((epoch - domainStartSec) / domainSpan) * 100));
+
+    if (hoveredSuggestion.type === 'warp-profile' && 'intervals' in hoveredSuggestion.data) {
+      const intervals = hoveredSuggestion.data.intervals.map((interval) => {
+        const startEpoch = rangeStart + (interval.startPercent / 100) * selectionSpan;
+        const endEpoch = rangeStart + (interval.endPercent / 100) * selectionSpan;
+        return [toDomainPercent(startEpoch), toDomainPercent(endEpoch)] as [number, number];
+      });
+
+      return { type: hoveredSuggestion.type, intervals, boundaries: [] };
+    }
+
+    if (hoveredSuggestion.type === 'interval-boundary' && 'boundaries' in hoveredSuggestion.data) {
+      const boundaries = hoveredSuggestion.data.boundaries.map((epoch) => toDomainPercent(epoch));
+      return { type: hoveredSuggestion.type, intervals: [], boundaries };
+    }
+
+    return { type: null as Suggestion['type'] | null, intervals: [], boundaries: [] };
+  }, [hoveredSuggestion, rangeStart, rangeEnd, domainStartSec, domainEndSec]);
 
   const acceptedSuggestionWarpIntervals = useMemo(
     () =>
@@ -164,7 +240,7 @@ export default function TimeslicingPage() {
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
   const handleAcceptWarpProfile = useCallback((suggestionId: string, data: WarpProfileData) => {
-    if (!minTs || !maxTs) return;
+    if (!rangeStart || !rangeEnd) return;
 
     // Replace any existing warp profile slices (single active warp constraint)
     clearWarpSlices();
@@ -182,11 +258,11 @@ export default function TimeslicingPage() {
         warpProfileId: suggestionId,
       });
     });
-  }, [addWarpSlice, clearWarpSlices, minTs, maxTs]);
+  }, [addWarpSlice, clearWarpSlices, rangeStart, rangeEnd]);
   
   // Handle interval boundary acceptance - create time slices
   const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData) => {
-    if (!minTs || !maxTs || data.boundaries.length < 2) return;
+    if (!rangeStart || !rangeEnd || data.boundaries.length < 2) return;
     
     // Sort boundaries
     const sorted = [...data.boundaries].sort((a, b) => a - b);
@@ -197,8 +273,8 @@ export default function TimeslicingPage() {
       const endEpoch = sorted[i + 1];
       
       // Convert to normalized (0-100)
-      const startPercent = ((startEpoch - minTs) / (maxTs - minTs)) * 100;
-      const endPercent = ((endEpoch - minTs) / (maxTs - minTs)) * 100;
+      const startPercent = ((startEpoch - rangeStart) / (rangeEnd - rangeStart)) * 100;
+      const endPercent = ((endEpoch - rangeStart) / (rangeEnd - rangeStart)) * 100;
       
       addSlice({
         name: `Interval ${i + 1}`,
@@ -208,7 +284,7 @@ export default function TimeslicingPage() {
         isVisible: true,
       });
     }
-  }, [addSlice, minTs, maxTs]);
+  }, [addSlice, rangeStart, rangeEnd]);
   
   // Listen for suggestion acceptance events
   useEffect(() => {
@@ -304,10 +380,10 @@ export default function TimeslicingPage() {
                     ))}
                   </div>
                 )}
-                {hoverPreview.type !== null && (
+                {hoverPreviewGlobal.type !== null && (
                   <div className="pointer-events-none absolute inset-3 z-20 overflow-hidden rounded-sm">
-                    {hoverPreview.type === 'warp-profile' &&
-                      hoverPreview.intervals.map((interval, index) => (
+                    {hoverPreviewGlobal.type === 'warp-profile' &&
+                      hoverPreviewGlobal.intervals.map((interval, index) => (
                         <div
                           key={`hover-warp-${index}`}
                           className="absolute top-0 h-full border border-violet-400/70 bg-violet-500/15"
@@ -318,8 +394,8 @@ export default function TimeslicingPage() {
                         />
                       ))}
 
-                    {hoverPreview.type === 'interval-boundary' &&
-                      hoverPreview.boundaries.map((boundary, index) => (
+                    {hoverPreviewGlobal.type === 'interval-boundary' &&
+                      hoverPreviewGlobal.boundaries.map((boundary, index) => (
                         <div
                           key={`hover-boundary-${index}`}
                           className="absolute top-0 h-full w-px bg-teal-300/85"
@@ -328,7 +404,7 @@ export default function TimeslicingPage() {
                       ))}
 
                     <div className="absolute left-2 top-2 rounded bg-slate-950/80 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
-                      Preview: {hoverPreview.type === 'warp-profile' ? 'Warp intervals' : 'Boundary markers'}
+                      Preview: {hoverPreviewGlobal.type === 'warp-profile' ? 'Warp intervals' : 'Boundary markers'}
                     </div>
                   </div>
                 )}
@@ -351,6 +427,69 @@ export default function TimeslicingPage() {
               Hover preview (boundary)
             </span>
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">
+                Selection Timeline
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Focused view of the active selection range.
+              </p>
+            </div>
+            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+              {new Date(rangeStart * 1000).toLocaleDateString()} - {new Date(rangeEnd * 1000).toLocaleDateString()}
+            </span>
+          </div>
+          {isSelectionLoading ? (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-700/60 bg-slate-900/40 text-xs text-slate-400">
+              Loading selection timeline...
+            </div>
+          ) : selectionTimestamps.length === 0 ? (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-700/60 bg-slate-900/40 text-xs text-slate-500">
+              No crimes in this selection range.
+            </div>
+          ) : (
+            <div className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
+              <DualTimeline
+                domainOverride={[rangeStart, rangeEnd]}
+                detailRangeOverride={[rangeStart, rangeEnd]}
+                interactive={false}
+                timestampSecondsOverride={selectionTimestamps}
+                detailPointsOverride={selectionDetailPoints}
+              />
+              {hoverPreviewSelection.type !== null && (
+                <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">
+                  {hoverPreviewSelection.type === 'warp-profile' &&
+                    hoverPreviewSelection.intervals.map((interval, index) => (
+                      <div
+                        key={`hover-selection-warp-${index}`}
+                        className="absolute top-0 h-full border border-violet-400/70 bg-violet-500/15"
+                        style={{
+                          left: `${interval[0]}%`,
+                          width: `${Math.max(0.5, interval[1] - interval[0])}%`,
+                        }}
+                      />
+                    ))}
+
+                  {hoverPreviewSelection.type === 'interval-boundary' &&
+                    hoverPreviewSelection.boundaries.map((boundary, index) => (
+                      <div
+                        key={`hover-selection-boundary-${index}`}
+                        className="absolute top-0 h-full w-px bg-teal-300/85"
+                        style={{ left: `${boundary}%` }}
+                      />
+                    ))}
+
+                  <div className="absolute left-2 top-2 rounded bg-slate-950/80 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
+                    Preview: {hoverPreviewSelection.type === 'warp-profile' ? 'Warp intervals' : 'Boundary markers'}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Suggestion Side Panel Placeholder - for future phases */}

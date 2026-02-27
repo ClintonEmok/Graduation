@@ -6,6 +6,7 @@ import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
+import { useFilterStore } from '@/store/useFilterStore';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
 
@@ -28,6 +29,7 @@ interface UseSuggestionGeneratorReturn {
   setMode: (mode: TriggerMode) => void;
   isGenerating: boolean;
   generationError: string | null;
+  lastSampleUpdateAt: number | null;
 }
 
 /**
@@ -68,11 +70,25 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   
   // Track generating state
   const [isGenerating, setIsGenerating] = useState(false);
+  const [lastSampleUpdateAt, setLastSampleUpdateAt] = useState<number | null>(null);
   
   // Get viewport state
   const viewportFilters = useCrimeFilters();
-  const startDate = useViewportStore((state) => state.startDate);
-  const endDate = useViewportStore((state) => state.endDate);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+
+  const [startDate, endDate] = useMemo(() => {
+    if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
+      const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
+      const end = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
+      if (start !== end) {
+        return [start, end];
+      }
+    }
+
+    return [viewportStart, viewportEnd];
+  }, [selectedTimeRange, viewportEnd, viewportStart]);
   
   // Debounce filter changes (500ms per CONTEXT)
   const debouncedFilters = useDebounce(
@@ -81,7 +97,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   );
   
   // Fetch crime data for analysis
-  const { data: crimes, isLoading } = useCrimeData({
+  const { data: crimes, isLoading, isFetching, meta, bufferedRange } = useCrimeData({
     startEpoch: startDate,
     endEpoch: endDate,
     crimeTypes: viewportFilters.crimeTypes.length > 0 ? viewportFilters.crimeTypes : undefined,
@@ -89,6 +105,20 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     bufferDays: 0,
     limit: 100000,
   });
+
+  const sampleSignature = useMemo(() => {
+    if (!meta) {
+      return null;
+    }
+
+    return [
+      bufferedRange.start,
+      bufferedRange.end,
+      meta.returned,
+      meta.sampleStride,
+      meta.totalMatches,
+    ].join(':');
+  }, [bufferedRange.end, bufferedRange.start, meta]);
   
   // Count pending suggestions
   const pendingCount = useMemo(() => {
@@ -116,7 +146,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
    */
   const generateSuggestions = useCallback(async (params: GenerationParams) => {
     if (isLoading) {
-      return;
+      return false;
     }
 
     setIsGenerating(true);
@@ -129,7 +159,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       if (!crimes || crimes.length === 0) {
         // Set store flag for empty state (not console.log)
         setEmptyState(true);
-        return;
+        return false;
       }
       
       // Clear empty state when we have data
@@ -173,10 +203,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           } as IntervalBoundaryData,
         });
       }
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setGenerationError(`Generation failed: ${message}`);
       console.error('Suggestion generation failed:', error);
+      return false;
     } finally {
       setIsGenerating(false);
     }
@@ -186,25 +218,40 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   const handleTrigger = useCallback((params: GenerationParams) => {
     setHasGeneratedOnce(true);
     setGenerationParams(params);
-    return generateSuggestions(params);
+    void generateSuggestions(params);
   }, [generateSuggestions]);
 
   // Auto-generate when filters change (after debounce)
   // Only if user has previously clicked Generate (to avoid auto-trigger on initial load)
   useEffect(() => {
-    if (hasGeneratedOnce && generationParams && isPanelOpen && !isLoading) {
-      generateSuggestions(generationParams);
+    if (!hasGeneratedOnce || !generationParams || !isPanelOpen) {
+      return;
     }
+
+    if (isLoading || isFetching) {
+      return;
+    }
+
+    const run = async () => {
+      const ok = await generateSuggestions(generationParams);
+      if (ok) {
+        setLastSampleUpdateAt(Date.now());
+      }
+    };
+
+    void run();
   }, [
     generateSuggestions,
     generationParams,
     hasGeneratedOnce,
     isPanelOpen,
     isLoading,
+    isFetching,
     debouncedFilters.crimeTypes,
     debouncedFilters.districts,
     debouncedFilters.startDate,
     debouncedFilters.endDate,
+    sampleSignature,
   ]);
 
   return {
@@ -216,5 +263,6 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     setMode,
     isGenerating,
     generationError,
+    lastSampleUpdateAt,
   };
 }
