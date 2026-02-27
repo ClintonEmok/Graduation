@@ -279,6 +279,8 @@ Plans:
 **Gap Closure Plans:**
 - [ ] 37-03-PLAN.md — UX quick fixes (dates, preview, animations)
 - [ ] 37-04-PLAN.md — Interaction improvements (undo, keyboard, collapse)
+- [ ] 37-05-PLAN.md — Bulk actions & presets
+- [ ] 37-06-PLAN.md — Comparison, tooltips & history
 
 **Phase 37: Review/Approval Workflows** (planned)
 
