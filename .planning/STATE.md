@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **37 of 42** (Algorithm Integration)
-Plan: **4 of 9** in current phase
+Plan: **5 of 9** in current phase
 Status: **In progress**
-Last activity: 2026-02-27 - Completed 37-03-PLAN.md
+Last activity: 2026-02-27 - Completed 37-06-PLAN.md
 
-Progress: overall ███████████████████░ 96% (135/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
+Progress: overall ███████████████████░ 97% (136/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
 ```
 v1.0 Complete:
@@ -32,7 +32,7 @@ v1.1 Complete:
 v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-[ ] Phase 37: Algorithm Integration (4/9 plans complete)
+[ ] Phase 37: Algorithm Integration (5/9 plans complete)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -257,9 +257,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-27 17:39 UTC
-Stopped at: Completed 37-03-PLAN.md
-Next: Execute 37-04-PLAN.md
+Last session: 2026-02-27 17:40 UTC
+Stopped at: Completed 37-06-PLAN.md
+Next: Execute remaining Phase 37 gap-closure plans (37-04/05/09)
 
 ## Accumulated Context
 
@@ -368,8 +368,13 @@ Next: Execute 37-04-PLAN.md
 - Added accepted suggestion-warp highlight overlay + legend to timeline view
 - Added smooth accept/reject card transitions and processed-list expand/collapse animation
 
+**Delivered in 37-06 (Gap closure - decision support UX):**
+- Added side-by-side comparison mode with two-slot selection and visual diff summaries
+- Added explanatory tooltips for suggestion generation controls (Generate, Warps, Intervals, Snapping, Method)
+- Added dedicated history mode with accepted metadata and one-click re-apply actions
+
 **Next focus:**
-- Continue Phase 37 gap closure (37-04 through 37-09)
+- Continue Phase 37 gap closure (remaining: 37-04, 37-05, 37-09)
 
 ---
-*Last updated: 2026-02-27 - Completed 37-03 gap-closure UX execution*
+*Last updated: 2026-02-27 - Completed 37-06 gap-closure decision-support execution*
