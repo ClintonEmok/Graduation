@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Sparkles, Trash2, PanelRightOpen, Info } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertCircle, Filter, PanelRightOpen, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSuggestionGenerator, type GenerationParams } from '@/hooks/useSuggestionGenerator';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
@@ -12,16 +12,30 @@ interface SuggestionToolbarProps {
 }
 
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
-  // Generation params state
-  const [warpCount, setWarpCount] = useState(3);  // default 3, range 0-6
-  const [intervalCount, setIntervalCount] = useState(3);  // default 3, range 0-6
+  const [warpCount, setWarpCount] = useState(3);
+  const [intervalCount, setIntervalCount] = useState(3);
   const [snapToUnit, setSnapToUnit] = useState<'hour' | 'day' | 'none'>('none');
   const [boundaryMethod, setBoundaryMethod] = useState<BoundaryMethod>('peak');
-  
+  const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
+
   const { trigger, suggestionCount, pendingCount, isGenerating } = useSuggestionGenerator();
-  const { clearSuggestions, setPanelOpen, isPanelOpen } = useSuggestionStore();
+  const {
+    suggestions,
+    clearSuggestions,
+    setPanelOpen,
+    isPanelOpen,
+    minConfidence,
+    setMinConfidence,
+    generationError,
+    setGenerationError,
+  } = useSuggestionStore();
+
+  const visibleCount = useMemo(() => {
+    return suggestions.filter((suggestion) => suggestion.confidence >= minConfidence).length;
+  }, [minConfidence, suggestions]);
 
   const handleGenerate = () => {
+    setGenerationError(null);
     const params: GenerationParams = {
       warpCount,
       intervalCount,
@@ -31,53 +45,57 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     trigger(params);
   };
 
-  const handleClearAll = () => {
-    clearSuggestions();
-  };
-
-  const handleTogglePanel = () => {
-    setPanelOpen(!isPanelOpen);
-  };
-
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      {/* Main controls row */}
+      {generationError && (
+        <div className="flex items-center justify-between rounded-md border border-red-700/60 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 text-red-300" />
+            <span>{generationError}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleGenerate} className="h-7 text-xs">
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
-        {/* Generate Button */}
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="gap-1.5"
-        >
+        <Button variant="default" size="sm" onClick={handleGenerate} disabled={isGenerating} className="gap-1.5">
           <Sparkles className="size-4" />
           {isGenerating ? 'Generating...' : 'Generate Suggestions'}
         </Button>
 
-        {/* Suggestion Count Badge */}
         {suggestionCount > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-300">
-              {suggestionCount} total
-            </span>
+            <span className="text-sm text-slate-300">{suggestionCount} total</span>
             {pendingCount > 0 && (
               <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-400">
                 {pendingCount} pending
               </span>
             )}
+            <span className="rounded-full bg-slate-700/80 px-2 py-0.5 text-xs font-medium text-slate-200">
+              Showing {visibleCount} of {suggestionCount}
+            </span>
           </div>
         )}
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Clear All Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowConfidenceFilter(!showConfidenceFilter)}
+          className={`gap-1.5 ${showConfidenceFilter ? 'text-violet-400' : 'text-slate-400'}`}
+        >
+          <Filter className="size-4" />
+          Filter
+        </Button>
+
         {suggestionCount > 0 && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleClearAll}
+            onClick={clearSuggestions}
             className="gap-1.5 text-slate-400 hover:text-slate-200"
           >
             <Trash2 className="size-4" />
@@ -85,21 +103,13 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
           </Button>
         )}
 
-        {/* Toggle Panel Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleTogglePanel}
-          className="gap-1.5"
-        >
+        <Button variant="outline" size="sm" onClick={() => setPanelOpen(!isPanelOpen)} className="gap-1.5">
           <PanelRightOpen className="size-4" />
           {isPanelOpen ? 'Hide Panel' : 'Show Panel'}
         </Button>
       </div>
-      
-      {/* Secondary options row */}
+
       <div className="flex items-center gap-4 text-xs">
-        {/* Warp profiles count slider */}
         <div className="flex items-center gap-2">
           <label className="text-slate-400">Warps:</label>
           <input
@@ -108,12 +118,11 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             max="6"
             value={warpCount}
             onChange={(e) => setWarpCount(parseInt(e.target.value, 10))}
-            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+            className="h-1 w-16 cursor-pointer appearance-none rounded-lg bg-slate-700"
           />
-          <span className="text-slate-300 w-4">{warpCount}</span>
+          <span className="w-4 text-slate-300">{warpCount}</span>
         </div>
 
-        {/* Interval count slider */}
         <div className="flex items-center gap-2">
           <label className="text-slate-400">Intervals:</label>
           <input
@@ -122,15 +131,14 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             max="6"
             value={intervalCount}
             onChange={(e) => setIntervalCount(parseInt(e.target.value, 10))}
-            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+            className="h-1 w-16 cursor-pointer appearance-none rounded-lg bg-slate-700"
           />
-          <span className="text-slate-300 w-4">{intervalCount}</span>
+          <span className="w-4 text-slate-300">{intervalCount}</span>
         </div>
 
-        {/* Snapping toggle */}
         <div className="flex items-center gap-2">
           <label className="text-slate-400">Snapping:</label>
-          <div className="flex rounded-md overflow-hidden border border-slate-700">
+          <div className="flex overflow-hidden rounded-md border border-slate-700">
             {(['none', 'hour', 'day'] as const).map((option) => (
               <button
                 key={option}
@@ -147,13 +155,12 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
           </div>
         </div>
 
-        {/* Method selector */}
         <div className="flex items-center gap-2">
           <label className="text-slate-400">Method:</label>
           <select
             value={boundaryMethod}
             onChange={(e) => setBoundaryMethod(e.target.value as BoundaryMethod)}
-            className="bg-slate-800 text-slate-300 border border-slate-700 rounded px-2 py-1 text-xs"
+            className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300"
           >
             <option value="peak">Peak</option>
             <option value="change-point">Change Point</option>
@@ -161,6 +168,47 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
           </select>
         </div>
       </div>
+
+      {showConfidenceFilter && (
+        <div className="flex items-center gap-4 border-t border-slate-700/50 pt-2 text-xs">
+          <div className="flex items-center gap-2">
+            <label className="text-slate-400">Min Confidence:</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={minConfidence}
+              onChange={(e) => setMinConfidence(parseInt(e.target.value, 10))}
+              className="h-1 w-24 cursor-pointer appearance-none rounded-lg bg-slate-700"
+            />
+            <span className="w-8 text-violet-400">{minConfidence}%</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500">Quick:</span>
+            <button
+              onClick={() => setMinConfidence(0)}
+              className={`rounded px-2 py-1 text-xs transition-colors ${
+                minConfidence === 0
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              Show all
+            </button>
+            <button
+              onClick={() => setMinConfidence(70)}
+              className={`rounded px-2 py-1 text-xs transition-colors ${
+                minConfidence === 70
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              High confidence (70+)
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
