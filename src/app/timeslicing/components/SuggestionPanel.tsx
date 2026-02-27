@@ -28,6 +28,8 @@ function formatHistoryDate(timestamp: number): string {
   });
 }
 
+const PROCESSED_COLLAPSE_SESSION_KEY = 'suggestions-processed-collapsed';
+
 function summarizeHistoryParameters(data: unknown): string {
   if (typeof data !== 'object' || data === null) {
     return 'Unknown parameters';
@@ -86,15 +88,16 @@ export function SuggestionPanel() {
   const endDate = useViewportEnd();
 
   const [showContext, setShowContext] = useState(false);
+  const [viewMode, setViewMode] = useState<'suggestions' | 'history'>('suggestions');
   const [processedCollapsed, setProcessedCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('suggestions-processed-collapsed') === 'true';
+      return sessionStorage.getItem(PROCESSED_COLLAPSE_SESSION_KEY) === 'true';
     }
     return false;
   });
 
   useEffect(() => {
-    sessionStorage.setItem('suggestions-processed-collapsed', String(processedCollapsed));
+    sessionStorage.setItem(PROCESSED_COLLAPSE_SESSION_KEY, String(processedCollapsed));
   }, [processedCollapsed]);
 
   if (!isPanelOpen) {
@@ -168,6 +171,30 @@ export function SuggestionPanel() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {acceptedHistory.length > 0 && (
+            <div className="flex overflow-hidden rounded-md border border-slate-700">
+              <button
+                onClick={() => setViewMode('suggestions')}
+                className={`px-2 py-1 text-xs ${
+                  viewMode === 'suggestions'
+                    ? 'bg-slate-600 text-slate-100'
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                Suggestions
+              </button>
+              <button
+                onClick={() => setViewMode('history')}
+                className={`px-2 py-1 text-xs ${
+                  viewMode === 'history'
+                    ? 'bg-slate-600 text-slate-100'
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                History
+              </button>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -268,7 +295,60 @@ export function SuggestionPanel() {
 
       <ScrollArea className="flex-1">
         <div className="p-3">
-          {isEmptyState ? (
+          {viewMode === 'history' ? (
+            acceptedHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <p className="text-sm text-slate-400">No accepted suggestions yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 rounded-lg border border-slate-700/80 bg-slate-800/30 p-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    History ({acceptedHistory.length})
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearHistory}
+                    className="h-6 px-2 text-xs text-slate-400 hover:text-slate-200"
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  {acceptedHistory.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded border border-slate-700 bg-slate-900/70 p-2 text-xs text-slate-300"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-slate-200">
+                          {entry.suggestion.type === 'warp-profile' ? 'Warp profile' : 'Interval boundaries'}
+                        </span>
+                        <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-200">
+                          {entry.suggestion.confidence}%
+                        </span>
+                      </div>
+                      <div className="mt-1 text-slate-400">{formatHistoryDate(entry.acceptedAt)}</div>
+                      <div className="mt-1 text-slate-500">
+                        {summarizeHistoryParameters(entry.suggestion.data)}
+                      </div>
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReapply(entry.id)}
+                          className="h-6 px-2 text-[11px]"
+                        >
+                          Re-apply
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          ) : isEmptyState ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-sm text-slate-400">No crimes found in current view.</p>
               <p className="mt-1 text-xs text-slate-500">Try expanding your filters or time range.</p>
@@ -357,6 +437,7 @@ export function SuggestionPanel() {
                     <span className="rounded-full border border-slate-600 px-1.5 py-0.5 text-[10px] leading-none text-slate-300">
                       {processedSuggestions.length}
                     </span>
+                    {processedCollapsed && <span className="sr-only">collapsed</span>}
                   </button>
                   <div
                     className={`grid transition-all duration-200 ease-out ${
@@ -373,55 +454,6 @@ export function SuggestionPanel() {
                 </>
               )}
 
-              {acceptedHistory.length > 0 && (
-                <div className="mt-4 space-y-2 rounded-lg border border-slate-700/80 bg-slate-800/30 p-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                      History ({acceptedHistory.length})
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearHistory}
-                      className="h-6 px-2 text-xs text-slate-400 hover:text-slate-200"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {acceptedHistory.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="rounded border border-slate-700 bg-slate-900/70 p-2 text-xs text-slate-300"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-slate-200">
-                            {entry.suggestion.type === 'warp-profile' ? 'Warp profile' : 'Interval boundaries'}
-                          </span>
-                          <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-200">
-                            {entry.suggestion.confidence}%
-                          </span>
-                        </div>
-                        <div className="mt-1 text-slate-400">{formatHistoryDate(entry.acceptedAt)}</div>
-                        <div className="mt-1 text-slate-500">
-                          {summarizeHistoryParameters(entry.suggestion.data)}
-                        </div>
-                        <div className="mt-2 flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReapply(entry.id)}
-                            className="h-6 px-2 text-[11px]"
-                          >
-                            Re-apply
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
