@@ -28,7 +28,6 @@ interface UseSuggestionGeneratorReturn {
   setMode: (mode: TriggerMode) => void;
   isGenerating: boolean;
   generationError: string | null;
-  clearGenerationError: () => void;
 }
 
 /**
@@ -56,6 +55,8 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     addSuggestion,
     clearPendingSuggestions,
     setEmptyState,
+    generationError,
+    setGenerationError,
     isPanelOpen,
   } = useSuggestionStore();
   
@@ -67,7 +68,6 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   
   // Track generating state
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
   
   // Get viewport state
   const viewportFilters = useCrimeFilters();
@@ -180,7 +180,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     } finally {
       setIsGenerating(false);
     }
-  }, [addSuggestion, clearPendingSuggestions, crimes, endDate, isLoading, setEmptyState, startDate]);
+  }, [addSuggestion, clearPendingSuggestions, crimes, endDate, isLoading, setEmptyState, setGenerationError, startDate]);
 
   // Trigger function - generates real suggestions based on algorithms
   const handleTrigger = useCallback((params: GenerationParams) => {
@@ -216,6 +216,5 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     setMode,
     isGenerating,
     generationError,
-    clearGenerationError: () => setGenerationError(null),
   };
 }

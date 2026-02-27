@@ -20,7 +20,6 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     pendingCount,
     isGenerating,
     generationError,
-    clearGenerationError,
   } = useSuggestionGenerator();
   const {
     suggestions,
@@ -29,6 +28,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     isPanelOpen,
     minConfidence,
     setMinConfidence,
+    setGenerationError,
     warpCount,
     intervalCount,
     setWarpCount,
@@ -54,7 +54,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   }, [minConfidence, suggestions]);
 
   const handleGenerate = () => {
-    clearGenerationError();
+    setGenerationError(null);
     const params: GenerationParams = {
       warpCount,
       intervalCount,
