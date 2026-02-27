@@ -4,13 +4,13 @@
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** Phase 37: Algorithm Integration
 **Status:** Phase 37 in progress
-**Next:** Phase 37 gap-closure plans (remaining: 37-04, 37-05)
+**Next:** Phase 37 gap-closure plans (remaining: 37-04)
 
 ## Current Position
 Phase: **37 of 42** (Algorithm Integration)
 Plan: **6 of 9** in current phase
 Status: **In progress**
-Last activity: 2026-02-27 - Completed 37-09-PLAN.md
+Last activity: 2026-02-27 - Completed 37-05-PLAN.md
 
 Progress: overall ███████████████████░ 98% (137/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
@@ -258,8 +258,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 ## Session Continuity
 
 Last session: 2026-02-27 17:41 UTC
-Stopped at: Completed 37-09-PLAN.md
-Next: Execute remaining Phase 37 gap-closure plans (37-04/05)
+Stopped at: Completed 37-05-PLAN.md
+Next: Execute remaining Phase 37 gap-closure plan (37-04)
 
 ## Accumulated Context
 
@@ -378,8 +378,13 @@ Next: Execute remaining Phase 37 gap-closure plans (37-04/05)
 - Added confidence threshold filtering with quick presets and visible/total suggestion counts
 - Added generation error handling with store-backed error state, logging, and retry affordance in toolbar
 
+**Delivered in 37-05 (Gap closure - bulk actions and presets):**
+- Added pending-suggestion multi-select with panel-level accept/reject batch actions
+- Added per-card selection controls and selected-count visibility in the panel header
+- Added preset persistence behavior for generation settings in suggestion store state
+
 **Next focus:**
-- Continue Phase 37 gap closure (remaining: 37-04, 37-05)
+- Continue Phase 37 gap closure (remaining: 37-04)
 
 ---
-*Last updated: 2026-02-27 - Completed 37-09 gap-closure feedback/filter/error execution*
+*Last updated: 2026-02-27 - Completed 37-05 gap-closure bulk actions and presets execution*
