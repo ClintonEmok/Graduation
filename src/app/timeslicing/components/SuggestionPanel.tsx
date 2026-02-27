@@ -19,6 +19,31 @@ function formatDate(epochSeconds: number): string {
   });
 }
 
+function formatHistoryDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function summarizeHistoryParameters(data: unknown): string {
+  if (typeof data !== 'object' || data === null) {
+    return 'Unknown parameters';
+  }
+
+  if ('intervals' in data && Array.isArray(data.intervals)) {
+    return `${data.intervals.length} warp interval${data.intervals.length === 1 ? '' : 's'}`;
+  }
+
+  if ('boundaries' in data && Array.isArray(data.boundaries)) {
+    return `${data.boundaries.length} boundary point${data.boundaries.length === 1 ? '' : 's'}`;
+  }
+
+  return 'Custom parameters';
+}
+
 export function SuggestionPanel() {
   const {
     suggestions,
@@ -37,6 +62,9 @@ export function SuggestionPanel() {
     comparisonIds,
     setComparisonId,
     clearComparison,
+    acceptedHistory,
+    clearHistory,
+    reapplyFromHistory,
   } = useSuggestionStore();
 
   const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
@@ -102,6 +130,11 @@ export function SuggestionPanel() {
   const handleUndo = () => {
     undoSuggestion();
     toast.success('Action undone');
+  };
+
+  const handleReapply = (historyId: string) => {
+    reapplyFromHistory(historyId);
+    toast.success('Suggestion reapplied from history');
   };
 
   return (
@@ -328,6 +361,56 @@ export function SuggestionPanel() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {acceptedHistory.length > 0 && (
+                <div className="mt-4 space-y-2 rounded-lg border border-slate-700/80 bg-slate-800/30 p-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      History ({acceptedHistory.length})
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearHistory}
+                      className="h-6 px-2 text-xs text-slate-400 hover:text-slate-200"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {acceptedHistory.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded border border-slate-700 bg-slate-900/70 p-2 text-xs text-slate-300"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-slate-200">
+                            {entry.suggestion.type === 'warp-profile' ? 'Warp profile' : 'Interval boundaries'}
+                          </span>
+                          <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-200">
+                            {entry.suggestion.confidence}%
+                          </span>
+                        </div>
+                        <div className="mt-1 text-slate-400">{formatHistoryDate(entry.acceptedAt)}</div>
+                        <div className="mt-1 text-slate-500">
+                          {summarizeHistoryParameters(entry.suggestion.data)}
+                        </div>
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReapply(entry.id)}
+                            className="h-6 px-2 text-[11px]"
+                          >
+                            Re-apply
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}

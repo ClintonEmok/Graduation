@@ -201,10 +201,30 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     // interval-boundary
     return isActive || isEditing ? 'border-teal-500 bg-teal-500/10' : isLowConfidence ? 'border-amber-500/50 bg-amber-500/5 hover:border-amber-400' : 'border-teal-700/50 bg-slate-900 hover:border-teal-600';
   };
+
+  const runWithExitAnimation = (callback: () => void) => {
+    if (!isPending) {
+      callback();
+      return;
+    }
+
+    setIsTransitioningOut(true);
+    if (transitionTimerRef.current !== null) {
+      clearTimeout(transitionTimerRef.current);
+    }
+
+    transitionTimerRef.current = setTimeout(() => {
+      callback();
+      setIsTransitioningOut(false);
+      transitionTimerRef.current = null;
+    }, 180);
+  };
   
   const handleAccept = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    acceptSuggestion(suggestion.id);
+    runWithExitAnimation(() => {
+      acceptSuggestion(suggestion.id);
+    });
     
     // Show toast notification
     if (suggestion.type === 'warp-profile') {
@@ -220,7 +240,9 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   
   const handleReject = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    rejectSuggestion(suggestion.id);
+    runWithExitAnimation(() => {
+      rejectSuggestion(suggestion.id);
+    });
     
     // Show toast notification
     toast.info('Suggestion rejected', {
@@ -488,8 +510,9 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
       role="button"
       aria-label={`${formatSuggestionType(suggestion.type)} suggestion card`}
       className={`
-        cursor-pointer rounded-lg border p-3 transition-all overflow-hidden
+        cursor-pointer rounded-lg border p-3 transition-all duration-200 ease-out overflow-hidden
         animate-in fade-in slide-in-from-top-2 duration-200
+        ${isTransitioningOut ? 'opacity-0 -translate-y-1 scale-[0.99]' : 'opacity-100 translate-y-0 scale-100'}
         ${getBorderColor()}
       `}
       onClick={handleClick}
@@ -584,6 +607,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               onClick={handleAccept}
               onMouseEnter={() => setIsAcceptHovered(true)}
               onMouseLeave={() => setIsAcceptHovered(false)}
+              disabled={isTransitioningOut}
               className={`h-7 text-xs ${willReplaceWarp ? 'bg-amber-600 hover:bg-amber-500' : ''}`}
               title={willReplaceWarp ? 'Accepting this warp will replace the current active warp' : 'Accept suggestion'}
             >
@@ -594,6 +618,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               size="sm"
               variant="secondary"
               onClick={handleModify}
+              disabled={isTransitioningOut}
               className="h-7 text-xs"
             >
               <Pencil className="size-3" />
@@ -603,6 +628,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               size="sm"
               variant="outline"
               onClick={handleReject}
+              disabled={isTransitioningOut}
               className="h-7 text-xs"
             >
               <X className="size-3" />
