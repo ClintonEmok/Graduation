@@ -143,12 +143,18 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editData, setEditData] = useState<WarpProfileData | IntervalBoundaryData | null>(null);
+  const [isAcceptHovered, setIsAcceptHovered] = useState(false);
   
   const isActive = activeSuggestionId === suggestion.id;
   const isPending = suggestion.status === 'pending';
-  const isLowConfidence = suggestion.confidence < 50;
+  const isLowConfidence = suggestion.status === 'pending' && suggestion.confidence < 50;
   const isModified = suggestion.status === 'modified';
   const typeStyles = getSuggestionTypeStyles(suggestion.type);
+  
+  // Check if this suggestion will replace the current warp
+  const willReplaceWarp = suggestion.status === 'pending' && 
+    suggestion.type === 'warp-profile' && 
+    activeWarpId !== null;
   
   // Check if this suggestion is the active warp
   const isActiveWarp = suggestion.status === 'accepted' && 
@@ -457,34 +463,48 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
       
       {/* Action buttons - hide when collapsed */}
       {isPending && !isEditing && !isCollapsed && (
-        <div className="mt-3 flex gap-2">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={handleAccept}
-            className="h-7 text-xs"
-          >
-            <Check className="size-3" />
-            Accept
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleModify}
-            className="h-7 text-xs"
-          >
-            <Pencil className="size-3" />
-            Modify
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleReject}
-            className="h-7 text-xs"
-          >
-            <X className="size-3" />
-            Reject
-          </Button>
+        <div className="mt-3 space-y-2">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleAccept}
+              onMouseEnter={() => setIsAcceptHovered(true)}
+              onMouseLeave={() => setIsAcceptHovered(false)}
+              className={`h-7 text-xs ${willReplaceWarp ? 'bg-amber-600 hover:bg-amber-500' : ''}`}
+            >
+              <Check className="size-3" />
+              Accept
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleModify}
+              className="h-7 text-xs"
+            >
+              <Pencil className="size-3" />
+              Modify
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleReject}
+              className="h-7 text-xs"
+            >
+              <X className="size-3" />
+              Reject
+            </Button>
+          </div>
+          {/* Warning about warp replacement */}
+          {willReplaceWarp && isAcceptHovered && (
+            <div className="text-xs text-amber-400 flex items-center gap-1">
+              <svg className="size-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span>This will replace your current warp</span>
+            </div>
+          )}
         </div>
       )}
       
