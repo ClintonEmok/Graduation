@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Filter, PanelRightOpen, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSuggestionGenerator, type GenerationParams } from '@/hooks/useSuggestionGenerator';
@@ -12,8 +12,6 @@ interface SuggestionToolbarProps {
 }
 
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
-  const [snapToUnit, setSnapToUnit] = useState<'hour' | 'day' | 'none'>('none');
-  const [boundaryMethod, setBoundaryMethod] = useState<BoundaryMethod>('peak');
   const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
 
   const {
@@ -35,7 +33,21 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     intervalCount,
     setWarpCount,
     setIntervalCount,
+    snapToUnit,
+    boundaryMethod,
+    setSnapToUnit,
+    setBoundaryMethod,
+    presets,
+    activePresetId,
+    savePreset,
+    loadPreset,
+    setActivePreset,
+    loadPresetsFromStorage,
   } = useSuggestionStore();
+
+  useEffect(() => {
+    loadPresetsFromStorage();
+  }, [loadPresetsFromStorage]);
 
   const visibleCount = useMemo(() => {
     return suggestions.filter((suggestion) => suggestion.confidence >= minConfidence).length;
@@ -51,6 +63,37 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     };
     trigger(params);
   };
+
+  const handleSavePreset = () => {
+    const name = window.prompt('Preset name', 'My preset');
+    if (!name) {
+      return;
+    }
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    savePreset(trimmed);
+  };
+
+  const handlePresetChange = (value: string) => {
+    if (value === 'custom') {
+      setActivePreset(null);
+      return;
+    }
+
+    const preset = presets.find((item) => item.id === value);
+    if (preset) {
+      loadPreset(preset);
+    }
+  };
+
+  const activePresetName =
+    activePresetId === null
+      ? 'Custom'
+      : presets.find((preset) => preset.id === activePresetId)?.name ?? 'Custom';
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
@@ -124,6 +167,37 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       </div>
 
       <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-2">
+          <label className="text-slate-400" title="Save and reuse generation settings">
+            Preset:
+          </label>
+          <select
+            value={activePresetId ?? 'custom'}
+            onChange={(e) => handlePresetChange(e.target.value)}
+            className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300"
+            title="Choose a saved generation preset"
+          >
+            <option value="custom">Custom</option>
+            {presets.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSavePreset}
+            className="h-7 px-2 text-xs text-slate-300"
+            title="Save current toolbar settings as a preset"
+          >
+            Save Preset
+          </Button>
+          <span className="rounded-full bg-slate-700/80 px-2 py-0.5 text-[11px] font-medium text-slate-200">
+            {activePresetName}
+          </span>
+        </div>
+
         <div className="flex items-center gap-2">
           <label
             className="text-slate-400"

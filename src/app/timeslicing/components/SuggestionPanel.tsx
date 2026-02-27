@@ -59,6 +59,7 @@ export function SuggestionPanel() {
     showUndoToast,
     undoSuggestion,
     lastAction,
+    minConfidence,
     comparisonIds,
     setComparisonId,
     clearComparison,
@@ -100,8 +101,9 @@ export function SuggestionPanel() {
     return null;
   }
 
-  const pendingSuggestions = suggestions.filter((suggestion) => suggestion.status === 'pending');
-  const processedSuggestions = suggestions.filter((suggestion) => suggestion.status !== 'pending');
+  const visibleSuggestions = suggestions.filter((suggestion) => suggestion.confidence >= minConfidence);
+  const pendingSuggestions = visibleSuggestions.filter((suggestion) => suggestion.status === 'pending');
+  const processedSuggestions = visibleSuggestions.filter((suggestion) => suggestion.status !== 'pending');
   const selectedCount = selectedIds.size;
   const hasPendingSelected = pendingSuggestions.some((suggestion) => selectedIds.has(suggestion.id));
   const comparisonSuggestions = comparisonIds.map((id) =>
@@ -146,6 +148,9 @@ export function SuggestionPanel() {
             <p className="text-xs text-slate-400">
               {pendingSuggestions.length} pending, {processedSuggestions.length} processed
             </p>
+          )}
+          {suggestions.length > 0 && minConfidence > 0 && (
+            <p className="text-xs text-violet-300">Showing {visibleSuggestions.length} of {suggestions.length} suggestions</p>
           )}
           {selectedCount > 0 && <p className="text-xs text-amber-400">{selectedCount} selected</p>}
           {activeWarp ? (
@@ -272,6 +277,11 @@ export function SuggestionPanel() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-sm text-slate-400">No suggestions yet.</p>
               <p className="mt-1 text-xs text-slate-500">Click &apos;Generate&apos; to create suggestions.</p>
+            </div>
+          ) : visibleSuggestions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-sm text-slate-400">No suggestions match this confidence filter.</p>
+              <p className="mt-1 text-xs text-slate-500">Lower the minimum confidence to see more results.</p>
             </div>
           ) : (
             <div className="space-y-3">
