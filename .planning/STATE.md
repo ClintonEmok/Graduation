@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **37 of 42** (Algorithm Integration)
-Plan: **2 of 2** in current phase
+Plan: **3 of 3** in current phase
 Status: **Phase complete**
-Last activity: 2026-02-27 - Completed 37-02 Accept/Modify workflow
+Last activity: 2026-02-27 - Completed 37-08 Single active warp gap closure
 
-Progress: overall ████████████████░░░ 86% (130/143 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
+Progress: overall ██████████████████░░ 92% (131/143 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
 ```
 v1.0 Complete:
@@ -32,7 +32,7 @@ v1.1 Complete:
 v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-[x] Phase 37: Algorithm Integration (2/2 plans complete)
+[x] Phase 37: Algorithm Integration (3/3 plans complete)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -257,8 +257,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-27 15:01 UTC
-Stopped at: Completed 37-02 (Accept/Modify workflow)
+Last session: 2026-02-27 17:34 UTC
+Stopped at: Completed 37-08 (Single active warp gap closure)
 Next: Phase 38: Fully Automated Timeslicing Workflows
 
 ## Accumulated Context
@@ -356,8 +356,14 @@ Next: Phase 38: Fully Automated Timeslicing Workflows
 - Added inline modify controls: sliders for interval start/end/strength, number inputs for boundaries
 - Parameterized addSlice in both useSliceStore and useWarpSliceStore
 
+**Delivered in 37-08 (Gap closure - single active warp):**
+- Enforced single active warp behavior: accepting a new warp clears previous warp slices
+- Added profile-scoped active warp tracking in useWarpSliceStore via warp profile IDs
+- Added active warp UI indicators: ACTIVE badge on the current card and panel header active warp label
+- Added replacement warning on warp accept hover: "This will replace your current warp"
+
 **Next focus:**
 - Phase 38: Fully Automated Timeslicing Workflows (v1.3)
 
 ---
-*Last updated: 2026-02-27 - Phase 37 complete (all 2 plans)*
+*Last updated: 2026-02-27 - Phase 37 complete (all 3 plans including gap closure)*
