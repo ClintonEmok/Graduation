@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** Phase 35: Semi-Automated Timeslicing Workflows
-**Status:** Phase 35 complete
-**Next:** Phase 36-37: Semi-Automated Timeslicing Workflows (suggestion generation)
+**Current Phase:** Phase 37: Algorithm Integration
+**Status:** Phase 37 complete
+**Next:** Phase 38-42: Fully Automated Timeslicing Workflows (v1.3)
 
 ## Current Position
-Phase: **36 of 42** (Suggestion Generation Algorithms)
-Plan: **4 of 4** in current phase
+Phase: **37 of 42** (Algorithm Integration)
+Plan: **2 of 2** in current phase
 Status: **Phase complete**
-Last activity: 2026-02-25 - Completed 36-04 UI Integration
+Last activity: 2026-02-27 - Completed 37-02 Accept/Modify workflow
 
-Progress: overall ████████████████░░░ 84% (128/143 plans) | v1.2 ████████░░░░░░ 86% phases (6/7)
+Progress: overall ████████████████░░░ 86% (130/143 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
 ```
 v1.0 Complete:
@@ -29,12 +29,10 @@ v1.1 Complete:
 [x] Phase 33: Data Integration (5/5 plans complete)
 [x] Phase 34: Performance Optimization (9/9 plans complete)
 
-v1.2 In Progress:
+v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-
-v1.2 Planned:
-[ ] Phase 37: Algorithm Integration (pending)
+[x] Phase 37: Algorithm Integration (2/2 plans complete)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -259,17 +257,16 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-25 22:09 UTC
-Stopped at: Completed 36-04 (UI Integration)
-Next: Phase 37: Algorithm Integration
+Last session: 2026-02-27 15:01 UTC
+Stopped at: Completed 37-02 (Accept/Modify workflow)
+Next: Phase 38: Fully Automated Timeslicing Workflows
 
 ## Accumulated Context
 
 ### Milestone Evolution
 - v1.0: Complete thesis prototype shipped
 - v1.1: Manual timeslicing complete (shipped 2026-02-21)
-- v1.2: Performance Optimization (Phase 34) - optimizing for 8.4M records
-- v1.2: Semi-automated timeslicing workflows (Phases 35-37)
+- v1.2: Semi-automated timeslicing workflows (Phases 35-37) - SHIPPED 2026-02-27
 - v1.3: Fully automated timeslicing workflows (Phases 38-42, future)
 
 ### Roadmap Evolution
@@ -343,8 +340,24 @@ Next: Phase 37: Algorithm Integration
 - Added low-confidence visual warnings (amber border, warning icon)
 - Added automatic re-analysis with 400ms debounce on filter changes
 
+**Phase 37 Completion (2026-02-27)**
+**Prerequisites from Phase 36:**
+- ✅ confidence-scoring.ts, warp-generation.ts, interval-detection.ts algorithms available
+- ✅ useSuggestionStore with Suggestion types and CRUD actions
+
+**Delivered in 37-01 (Generation triggers and controls):**
+- Added user-configurable warp count and interval count (0-6 range, default 3 each)
+- Implemented 500ms debounced auto-regeneration on filter changes
+- Added visual distinction: warp profiles (violet), intervals (teal) with type badges
+
+**Delivered in 37-02 (Accept/modify workflow):**
+- Accept workflow: warp profiles create WarpSlices, interval boundaries create TimeSlices
+- Used CustomEvent for decoupled event-driven slice creation
+- Added inline modify controls: sliders for interval start/end/strength, number inputs for boundaries
+- Parameterized addSlice in both useSliceStore and useWarpSliceStore
+
 **Next focus:**
-- Phase 37: Algorithm Integration
+- Phase 38: Fully Automated Timeslicing Workflows (v1.3)
 
 ---
-*Last updated: 2026-02-25 - Phase 36 complete (all 4 plans)*
+*Last updated: 2026-02-27 - Phase 37 complete (all 2 plans)*
