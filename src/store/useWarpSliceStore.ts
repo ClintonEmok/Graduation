@@ -10,10 +10,15 @@ export interface WarpSlice {
 
 interface WarpSliceState {
   slices: WarpSlice[];
+  activeWarpId: string | null;
   addSlice: (initial?: Partial<Omit<WarpSlice, 'id'>>) => string;
   updateSlice: (id: string, updates: Partial<Pick<WarpSlice, 'label' | 'range' | 'weight' | 'enabled'>>) => void;
   removeSlice: (id: string) => void;
   clearSlices: () => void;
+  setActiveWarp: (id: string | null) => void;
+  clearActiveWarp: () => void;
+  getActiveWarp: () => WarpSlice | undefined;
+  replaceActiveWarp: (sliceData: Partial<Omit<WarpSlice, 'id'>>) => string;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -33,6 +38,9 @@ const normalizeRange = (range: [number, number]): [number, number] => {
 
 export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
   slices: [],
+  activeWarpId: null,
+  
+  // Selectors
   addSlice: (initial) => {
     const index = get().slices.length;
     const nextSlice: WarpSlice = {
@@ -66,9 +74,43 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
     }));
   },
   removeSlice: (id) => {
-    set((state) => ({ slices: state.slices.filter((slice) => slice.id !== id) }));
+    set((state) => ({ 
+      slices: state.slices.filter((slice) => slice.id !== id),
+      activeWarpId: state.activeWarpId === id ? null : state.activeWarpId
+    }));
   },
   clearSlices: () => {
-    set({ slices: [] });
+    set({ slices: [], activeWarpId: null });
+  },
+  setActiveWarp: (id) => {
+    set({ activeWarpId: id });
+  },
+  clearActiveWarp: () => {
+    set({ activeWarpId: null });
+  },
+  getActiveWarp: () => {
+    const state = get();
+    return state.slices.find(slice => slice.id === state.activeWarpId);
+  },
+  replaceActiveWarp: (sliceData) => {
+    const state = get();
+    // Clear existing active warp
+    const newSlices = state.slices.filter(slice => slice.id !== state.activeWarpId);
+    // Create new warp slice
+    const index = newSlices.length;
+    const newSlice: WarpSlice = {
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `warp-slice-${Date.now()}-${index}`,
+      label: sliceData?.label ?? `Warp ${index + 1}`,
+      range: sliceData?.range ?? [clamp(12 + index * 10, 0, 94), clamp(20 + index * 10, 1, 100)],
+      weight: sliceData?.weight ?? 1,
+      enabled: sliceData?.enabled ?? true,
+    };
+    set({ 
+      slices: [...newSlices, newSlice],
+      activeWarpId: newSlice.id
+    });
+    return newSlice.id;
   },
 }));

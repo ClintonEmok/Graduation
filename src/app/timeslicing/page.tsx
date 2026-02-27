@@ -12,6 +12,7 @@ import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
 import { useSuggestionStore, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { Toaster } from 'sonner';
 
 // Default to full date range if no real data loaded yet
 const DEFAULT_START_EPOCH = 978307200; // 2001-01-01
@@ -118,25 +119,36 @@ export default function TimeslicingPage() {
   const maxTs = useDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
+  const replaceActiveWarp = useWarpSliceStore((s) => s.replaceActiveWarp);
+  const clearActiveWarp = useWarpSliceStore((s) => s.clearActiveWarp);
   
-  // Handle warp profile acceptance - create warp slices
+  // Handle warp profile acceptance - create warp slices (replaces active warp)
   const handleAcceptWarpProfile = useCallback((data: WarpProfileData) => {
     if (!minTs || !maxTs) return;
     
+    // Clear existing active warp first (single warp constraint)
+    clearActiveWarp();
+    
+    // Create new warp slices from intervals
     data.intervals.forEach((interval, index) => {
       const startNorm = interval.startPercent;
       const endNorm = interval.endPercent;
       const weight = interval.strength;
       
-      // Create warp slice
-      addWarpSlice({
+      // Create warp slice and set as active if first interval
+      const sliceId = addWarpSlice({
         label: `${data.name} ${index + 1}`,
         range: [startNorm, endNorm],
         weight,
         enabled: true,
       });
+      
+      // Set first slice as the active warp
+      if (index === 0) {
+        useWarpSliceStore.getState().setActiveWarp(sliceId);
+      }
     });
-  }, [addWarpSlice, minTs, maxTs]);
+  }, [addWarpSlice, clearActiveWarp, minTs, maxTs]);
   
   // Handle interval boundary acceptance - create time slices
   const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData) => {
