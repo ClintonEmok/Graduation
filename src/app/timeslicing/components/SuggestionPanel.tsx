@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Info } from 'lucide-react';
+import { X, Info, Zap, CheckSquare, Square, Check, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useCrimeFilters, useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore';
 import { SuggestionCard } from './SuggestionCard';
 
@@ -20,7 +21,23 @@ function formatDate(epochSeconds: number): string {
 }
 
 export function SuggestionPanel() {
-  const { suggestions, isPanelOpen, setPanelOpen, clearSuggestions, isEmptyState } = useSuggestionStore();
+  const { 
+    suggestions, 
+    isPanelOpen, 
+    setPanelOpen, 
+    clearSuggestions, 
+    isEmptyState,
+    selectedIds,
+    selectAll,
+    deselectAll,
+    acceptSelected,
+    rejectSelected,
+  } = useSuggestionStore();
+  
+  // Get active warp info
+  const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
+  const getActiveWarp = useWarpSliceStore((state) => state.getActiveWarp);
+  const activeWarp = getActiveWarp();
   
   // Get viewport context for display
   const crimeFilters = useCrimeFilters();
@@ -36,6 +53,8 @@ export function SuggestionPanel() {
   
   const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
   const processedSuggestions = suggestions.filter(s => s.status !== 'pending');
+  const selectedCount = selectedIds.size;
+  const hasPendingSelected = pendingSuggestions.some(s => selectedIds.has(s.id));
   
   return (
     <div className="fixed right-0 top-0 h-full w-80 border-l border-slate-700 bg-slate-900 shadow-xl z-50 flex flex-col">
@@ -47,6 +66,15 @@ export function SuggestionPanel() {
             <p className="text-xs text-slate-400">
               {pendingSuggestions.length} pending, {processedSuggestions.length} processed
             </p>
+          )}
+          {/* Active warp indicator */}
+          {activeWarp ? (
+            <div className="flex items-center gap-1 mt-1 text-xs text-green-400">
+              <Zap className="size-3" />
+              <span>Active: {activeWarp.label}</span>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 mt-1">No active warp</p>
           )}
         </div>
         <div className="flex items-center gap-2">
