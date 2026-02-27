@@ -1,97 +1,80 @@
 # External Integrations
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-02-26
 
 ## APIs & External Services
 
-**None detected.**
+**Third-party services:**
+- Not detected (no external SaaS API clients in `src/**`).
 
-This is a self-contained data science project with no external API dependencies.
+**Internal app APIs (Next route handlers):**
+- Crime range API: `src/app/api/crimes/range/route.ts`
+- Crime metadata: `src/app/api/crime/meta/route.ts`
+- Crime Arrow stream: `src/app/api/crime/stream/route.ts`
+- Crime facets: `src/app/api/crime/facets/route.ts`
+- Aggregated bins: `src/app/api/crime/bins/route.ts`
+- Global adaptive maps: `src/app/api/adaptive/global/route.ts`
+- Study log ingestion: `src/app/api/study/log/route.ts`
 
 ## Data Storage
 
 **Databases:**
-- None (local CSV files only)
+- Local DuckDB (embedded file DB)
+  - Connection: `src/lib/db.ts` (`getDb`, `getDbPath`)
+  - Client: `duckdb` package
 
 **File Storage:**
 - Local filesystem only
-- Raw data: `datapreprocessing/Crimes_-_2001_to_Present_20260114.csv` (2.3GB)
-- Output: Local PNG files for visualizations
+  - CSV source path for DB queries: `data/sources/Crimes_-_2001_to_Present_20260114.csv` (expected by `src/lib/db.ts`)
+  - Parquet path used by facets/setup script: `data/crime.parquet` (`src/app/api/crime/facets/route.ts`, `scripts/setup-data.js`)
+  - Study logs: `logs/study-sessions.jsonl` (`src/app/api/study/log/route.ts`)
 
 **Caching:**
-- None (data loaded fresh each run)
+- React Query in-memory client cache (`src/providers/QueryProvider.tsx`)
+- DuckDB table cache for global adaptive maps (`adaptive_global_cache` in `src/lib/queries.ts`)
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- None required
-- No user authentication in codebase
+- Not applicable.
+  - Implementation: None detected in `src/app/api/**` or middleware.
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None
+- None detected (no Sentry/Datadog/etc integration).
 
 **Logs:**
-- Standard print statements to stdout
-- No logging framework configured
+- Console logging across API/hooks/components (`src/lib/queries.ts`, `src/hooks/useCrimeData.ts`, `src/components/layout/TopBar.tsx`).
+- Structured study-session NDJSON logging endpoint in `src/app/api/study/log/route.ts`.
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Local development only
-- No deployment configuration
+- Not explicitly configured in repository.
+- App assumes Node runtime for server routes and local file access.
 
 **CI Pipeline:**
-- None
+- Not detected (no GitHub Actions/workflow files surfaced in this mapping pass).
 
 ## Environment Configuration
 
 **Required env vars:**
-- None
+- `USE_MOCK_DATA` (toggle mock mode)
+- `DISABLE_DUCKDB` (legacy equivalent toggle)
+- `DUCKDB_PATH` (optional DB path override)
 
 **Secrets location:**
-- No secrets required
+- Not applicable; no secret-bearing integrations detected.
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None
+- None from external systems.
 
 **Outgoing:**
-- None
-
-## Data Sources
-
-**Chicago Crime Data:**
-- Source: Chicago Data Portal (implied by filename)
-- Format: CSV
-- File: `Crimes_-_2001_to_Present_20260114.csv`
-- Size: 2.3GB (~8 million records)
-- Download: Manual (not automated)
-
-**Data Pipeline:**
-- Input: Raw CSV from Chicago Data Portal
-- Processing: `pipeline.py` CLI or `crime_pipeline.ipynb`
-- Output: Cleaned CSV and visualization PNGs
-
-## Network Dependencies
-
-**HTTP Libraries (Installed but Not Used):**
-- httpx 0.28.1
-- requests 2.32.5
-- urllib3 2.6.3
-
-These packages are present in the virtual environment (likely as transitive dependencies of JupyterLab) but no HTTP requests are made by the codebase.
-
-## Integration Opportunities
-
-**If expanding this project, consider:**
-- Chicago Data Portal API for automated data refresh
-- Database (PostgreSQL/PostGIS) for persistent storage
-- Cloud storage (S3) for large CSV files
-- Notebook hosting (JupyterHub, Google Colab)
+- None to external systems.
 
 ---
 
-*Integration audit: 2026-01-30*
+*Integration audit: 2026-02-26*

@@ -46,11 +46,51 @@ const MAX_LON = -87.5;
 const MIN_LAT = 41.6;
 const MAX_LAT = 42.1;
 
-const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
+type MockHotspot = {
+  district: string;
+  centerLon: number;
+  centerLat: number;
+  typeWeights: Partial<Record<string, number>>;
+};
+
+const MOCK_HOTSPOTS: MockHotspot[] = [
+  { district: '1', centerLon: -87.63, centerLat: 41.88, typeWeights: { THEFT: 4, BATTERY: 3, ROBBERY: 2 } },
+  { district: '6', centerLon: -87.66, centerLat: 41.74, typeWeights: { BATTERY: 4, ASSAULT: 3, BURGLARY: 2 } },
+  { district: '8', centerLon: -87.71, centerLat: 41.78, typeWeights: { MOTOR_VEHICLE_THEFT: 1, 'MOTOR VEHICLE THEFT': 4, THEFT: 2 } },
+  { district: '11', centerLon: -87.72, centerLat: 41.88, typeWeights: { BATTERY: 4, ROBBERY: 3, ASSAULT: 2 } },
+  { district: '18', centerLon: -87.64, centerLat: 41.92, typeWeights: { THEFT: 5, DECEPTIVE_PRACTICE: 1, 'DECEPTIVE PRACTICE': 3 } },
+  { district: '24', centerLon: -87.68, centerLat: 42.01, typeWeights: { BURGLARY: 4, THEFT: 3, CRIMINAL_DAMAGE: 1, 'CRIMINAL DAMAGE': 2 } },
+];
 
 const normalizeRange = (start: number, end: number) => {
   if (start <= end) return { start, end };
   return { start: end, end: start };
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const createSeededRandom = (seed: number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+};
+
+const weightedPick = <T>(items: T[], weights: number[], rng: () => number): T => {
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return items[Math.floor(rng() * items.length)] ?? items[0];
+  let cursor = rng() * total;
+  for (let i = 0; i < items.length; i += 1) {
+    cursor -= weights[i] ?? 0;
+    if (cursor <= 0) return items[i];
+  }
+  return items[items.length - 1];
+};
+
+const gaussianish = (rng: () => number) => {
+  // Sum of uniforms gives a cheap bell-ish distribution around 0.
+  return (rng() + rng() + rng() + rng() + rng() + rng()) - 3;
 };
 
 const generateMockCrimeRecords = (
@@ -59,39 +99,82 @@ const generateMockCrimeRecords = (
   options?: QueryCrimesOptions
 ): CrimeRecord[] => {
   const limit = options?.limit ?? 50000;
-  const recordCount = Math.min(limit, 2000);
+  const recordCount = Math.min(limit, 5000);
   const crimeTypes = options?.crimeTypes?.length ? options.crimeTypes : MOCK_CRIME_TYPES;
   const districts = options?.districts?.length ? options.districts : MOCK_DISTRICTS;
   const { start, end } = normalizeRange(startEpoch, endEpoch);
+  const span = Math.max(1, end - start);
+
+  const seed =
+    (Math.floor(start / 3600) * 31) ^
+    (Math.floor(end / 3600) * 17) ^
+    (crimeTypes.join('|').length * 101) ^
+    (districts.join('|').length * 53);
+  const rng = createSeededRandom(seed);
+
+  const activeHotspots = MOCK_HOTSPOTS.filter((hotspot) => districts.includes(hotspot.district));
+  const hotspots = activeHotspots.length > 0
+    ? activeHotspots
+    : districts.map((district) => ({
+        district,
+        centerLon: MIN_LON + rng() * (MAX_LON - MIN_LON),
+        centerLat: MIN_LAT + rng() * (MAX_LAT - MIN_LAT),
+        typeWeights: {} as Partial<Record<string, number>>,
+      }));
+
+  const temporalPeakCount = 3 + Math.floor(rng() * 3); // 3-5 peaks
+  const temporalPeaks = Array.from({ length: temporalPeakCount }, () => {
+    const center = start + Math.floor(rng() * span);
+    const width = Math.max(3600, span * (0.04 + rng() * 0.12)); // 4-16% of window
+    return { center, width };
+  });
 
   const records: CrimeRecord[] = [];
   for (let i = 0; i < recordCount; i++) {
-    const lon = randomBetween(MIN_LON, MAX_LON);
-    const lat = randomBetween(MIN_LAT, MAX_LAT);
-    const timestamp = Math.floor(randomBetween(start, end));
+    const hotspot = hotspots[Math.floor(rng() * hotspots.length)];
+
+    const peak = temporalPeaks[Math.floor(rng() * temporalPeaks.length)];
+    const usePeak = rng() < 0.78;
+    const timestamp = usePeak
+      ? Math.floor(clamp(peak.center + gaussianish(rng) * (peak.width / 2), start, end))
+      : Math.floor(start + rng() * span);
+
+    const spatialSpread = 0.015 + rng() * 0.02;
+    const lon = clamp(hotspot.centerLon + gaussianish(rng) * spatialSpread, MIN_LON, MAX_LON);
+    const lat = clamp(hotspot.centerLat + gaussianish(rng) * spatialSpread, MIN_LAT, MAX_LAT);
+
+    const candidateTypes = crimeTypes;
+    const typeWeights = candidateTypes.map((type) => hotspot.typeWeights[type] ?? 1);
+    const type = weightedPick(candidateTypes, typeWeights, rng);
+
+    const iucrBase = String(Math.floor(100 + rng() * 900));
     const year = new Date(timestamp * 1000).getUTCFullYear();
 
     records.push({
       timestamp,
-      type: crimeTypes[Math.floor(Math.random() * crimeTypes.length)],
+      type,
       lat,
       lon,
       x: ((lon - MIN_LON) / (MAX_LON - MIN_LON) * 100.0) - 50.0,
       z: ((lat - MIN_LAT) / (MAX_LAT - MIN_LAT) * 100.0) - 50.0,
-      iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
-      district: districts[Math.floor(Math.random() * districts.length)],
+      iucr: iucrBase,
+      district: hotspot.district,
       year,
     });
   }
 
+  records.sort((a, b) => a.timestamp - b.timestamp);
   return records;
 };
 
-const mockCrimeCount = (filters?: QueryFilters): number => {
+const mockCrimeCount = (startEpoch: number, endEpoch: number, filters?: QueryFilters): number => {
   const typeFactor = filters?.crimeTypes?.length ? filters.crimeTypes.length / MOCK_CRIME_TYPES.length : 1;
   const districtFactor = filters?.districts?.length ? filters.districts.length / MOCK_DISTRICTS.length : 1;
-  const base = 80000;
-  return Math.max(1000, Math.floor(base * typeFactor * districtFactor));
+  const { start, end } = normalizeRange(startEpoch, endEpoch);
+  const spanDays = Math.max(1, (end - start) / 86400);
+  const yearScale = spanDays / 365;
+  const basePerYear = 100000;
+  return Math.max(1000, Math.floor(basePerYear * yearScale * typeFactor * districtFactor));
 };
 
 /**
@@ -215,7 +298,7 @@ export const queryCrimeCount = async (
   filters?: QueryFilters
 ): Promise<number> => {
   if (isMockDataEnabled()) {
-    return mockCrimeCount(filters);
+    return mockCrimeCount(startEpoch, endEpoch, filters);
   }
   const db = await getDb();
   const tableName = await ensureSortedCrimesTable();

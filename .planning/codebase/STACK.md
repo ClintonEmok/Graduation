@@ -1,120 +1,91 @@
 # Technology Stack
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-02-26
 
 ## Languages
 
 **Primary:**
-- Python 3.13.3 - All data processing, analysis, and visualization code
+- TypeScript 5.9.x - App, API routes, stores, hooks, workers in `src/**/*.ts` and `src/**/*.tsx`
 
 **Secondary:**
-- None
+- JavaScript (Node/CommonJS) - Data setup scripts in `scripts/setup-data.js`
+- SQL (DuckDB dialect) - Query strings in `src/lib/queries.ts`, `src/lib/db.ts`, `src/app/api/crime/*.ts`
+- CSS (Tailwind v4 + CSS vars) - Global theme and utility layers in `src/app/globals.css`
 
 ## Runtime
 
 **Environment:**
-- CPython 3.13.3.final.0
-- virtualenv 20.31.2
+- Node.js runtime for Next.js app and server routes (explicit `runtime = 'nodejs'` in `src/app/api/crimes/range/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/adaptive/global/route.ts`)
+- Browser runtime for React UI + Web Worker in `src/workers/adaptiveTime.worker.ts`
 
 **Package Manager:**
-- pip 24.3.1
-- Lockfile: missing (no requirements.txt, pyproject.toml, or setup.py detected)
+- pnpm (lockfile present at `pnpm-lock.yaml`)
+- Lockfile: present
 
 ## Frameworks
 
 **Core:**
-- pandas 2.3.3 - Data manipulation and CSV processing
-- numpy 2.4.1 - Numerical computing
-- geopandas 1.1.2 - Geospatial data handling
+- Next.js 16.1.6 - App Router web application (`src/app/**`)
+- React 19.2.3 - Client rendering and interactive UI (`src/components/**`, `src/app/**`)
+- Zustand 5.0.10 - Client state stores (`src/store/**`, `src/lib/stores/viewportStore.ts`)
+- TanStack React Query 5.90.x - API query caching and revalidation (`src/providers/QueryProvider.tsx`, `src/hooks/useCrimeData.ts`)
 
-**Visualization:**
-- matplotlib 3.10.8 - Plotting and charts
-- seaborn 0.13.2 - Statistical visualization
+**Visualization/UI:**
+- D3 (array/brush/scale/time/selection/zoom) - Timeline interactions (`src/components/timeline/DualTimeline.tsx`)
+- React Three Fiber + Drei + Three.js - 3D scene rendering (`src/components/viz/**`)
+- Tailwind CSS v4 + shadcn/ui + Radix UI - Design system and primitives (`src/components/ui/**`, `components.json`, `src/app/globals.css`)
 
-**Geospatial:**
-- shapely 2.1.2 - Geometric objects and operations
-- pyproj 3.7.2 - Coordinate transformations
-- pyogrio 0.12.1 - Geospatial I/O
-
-**Development:**
-- jupyterlab 4.5.2 - Interactive notebook environment
-- ipython 9.9.0 - Enhanced Python shell
+**Data/Storage:**
+- DuckDB 1.4.4 - Local analytical DB for CSV-backed queries (`src/lib/db.ts`, `src/lib/queries.ts`)
+- Apache Arrow 21.x + loaders.gl - Arrow stream handling (`src/app/api/crime/stream/route.ts`, `src/store/useDataStore.ts`)
 
 **Testing:**
-- None detected
+- Vitest 4.0.x + jsdom dependency - Unit tests in `src/**/*.test.ts` configured by `vitest.config.ts`
 
 **Build/Dev:**
-- None (no build system configured)
+- ESLint 9 + `eslint-config-next` - Linting in `eslint.config.mjs`
+- PostCSS + Tailwind plugin - CSS pipeline in `postcss.config.mjs`
+- `patch-package` - Local dependency patching via `postinstall` in `package.json`
 
 ## Key Dependencies
 
 **Critical:**
-- pandas 2.3.3 - Core data processing for crime CSV (2.3GB file)
-- numpy 2.4.1 - Numerical operations for statistical analysis
-- geopandas 1.1.2 - Spatial data handling for geographic crime analysis
+- `next`, `react`, `react-dom` - App platform (`package.json`)
+- `zustand` - Shared cross-view state (`src/store/**`)
+- `@tanstack/react-query` - `useCrimeData` query orchestration (`src/hooks/useCrimeData.ts`)
+- `duckdb` - Server-side query backend (`src/lib/db.ts`, `src/lib/queries.ts`)
 
 **Infrastructure:**
-- jupyterlab 4.5.2 - Primary development interface
-- matplotlib 3.10.8 - All visualization output (20+ generated PNG files)
-
-**Data Science Stack (Full List):**
-- contourpy 1.3.3 - Contour calculations
-- cycler 0.12.1 - Composable style cycles
-- kiwisolver 1.4.9 - Constraint solving for layouts
-- pillow 12.1.0 - Image processing
-- fonttools 4.61.1 - Font handling
-
-**HTTP/Network (installed but not actively used):**
-- httpx 0.28.1
-- requests 2.32.5
-- urllib3 2.6.3
+- `apache-arrow` - Streamed columnar transport (`src/app/api/crime/stream/route.ts`)
+- `d3-*` packages - Brush/zoom and adaptive scales (`src/components/timeline/DualTimeline.tsx`)
+- `@react-three/fiber` + `three` - 3D rendering in viz scene (`src/components/viz/MainScene.tsx`)
 
 ## Configuration
 
 **Environment:**
-- No environment variables required
-- No .env files detected
-- No secrets or API keys needed
-
-**Virtual Environment:**
-- Location: `datapreprocessing/.venv/`
-- Python path: `/opt/homebrew/Cellar/python@3.13/3.13.3_1/bin`
-- Include system site-packages: false
-
-**IDE Configuration:**
-- PyCharm/IntelliJ project files in `datapreprocessing/.idea/`
-- Python SDK: "Python 3.13 (datapreprocessing)"
-- Black formatter configured
+- `USE_MOCK_DATA` / `DISABLE_DUCKDB` toggle mock mode in `src/lib/db.ts`
+- `DUCKDB_PATH` overrides DB file location in `src/lib/db.ts`
+- `next.config.ts` sets `serverExternalPackages: ["duckdb"]` for native module support
 
 **Build:**
-- No build configuration (pure Python scripts and notebooks)
+- TypeScript strict mode and `@/*` alias in `tsconfig.json`
+- Next lint defaults + custom ignore for `datapreprocessing/.venv/**` in `eslint.config.mjs`
+- Vitest include pattern `src/**/*.test.ts` in `vitest.config.ts`
+- Tailwind v4 imports and CSS variable theme in `src/app/globals.css`
 
 ## Platform Requirements
 
 **Development:**
-- macOS (darwin platform detected)
-- Homebrew Python 3.13 installation
-- ~4GB RAM recommended for processing 2.3GB CSV file
+- Node.js required (version not pinned in repo; inferred modern Node from Next 16 + `@types/node` 20)
+- Native DuckDB binding compatibility required when mock mode is disabled (symlink setup in `package.json` `postinstall`)
+- Local data paths expected by runtime code:
+  - CSV path: `data/sources/Crimes_-_2001_to_Present_20260114.csv` from `src/lib/db.ts`
+  - Parquet path: `data/crime.parquet` from `src/app/api/crime/facets/route.ts` and `scripts/setup-data.js`
 
 **Production:**
-- Not applicable (local data science project)
-- No deployment configuration
-
-## Project Structure
-
-**Source Files:**
-- `datapreprocessing/pipeline.py` - CLI preprocessing script (160 lines)
-- `datapreprocessing/crime_pipeline.ipynb` - Main analysis notebook
-- `datapreprocessing/cube comparison.ipynb` - 3D visualization comparison notebook
-
-**Data Files:**
-- `datapreprocessing/Crimes_-_2001_to_Present_20260114.csv` - Raw data (2.3GB)
-- 20 generated visualization PNGs (`viz_*.png`)
-
-**Generated Artifacts:**
-- `crime_preprocessing_visualizations.png`
-- `crime_statistical_distributions.png`
+- Next.js Node deployment (APIs are dynamic and Node runtime)
+- No cloud infra integrations detected; current design assumes local filesystem-backed data
 
 ---
 
-*Stack analysis: 2026-01-30*
+*Stack analysis: 2026-02-26*

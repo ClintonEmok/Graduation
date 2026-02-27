@@ -1,154 +1,129 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-02-26
 
 ## Tech Debt
 
-**Deprecated Pandas API Usage:**
-- Issue: Using deprecated `infer_datetime_format=True` parameter in pandas read_csv calls
-- Files: `datapreprocessing/pipeline.py` (lines 110, 126)
-- Impact: FutureWarning raised during execution; will break in future pandas versions
-- Fix approach: Remove the `infer_datetime_format` parameter entirely as strict parsing is now the default behavior
+**DualTimeline monolith:**
+- Issue: One component holds rendering + interaction + store synchronization + data selection logic.
+- Files: `src/components/timeline/DualTimeline.tsx`
+- Impact: High regression risk for brush/zoom/scrub changes; difficult to test and review.
+- Fix approach: Extract independent hooks/modules for (1) scale transforms, (2) brush/zoom sync, (3) point selection, (4) density strip derivation.
 
-**Code Duplication Between Script and Notebook:**
-- Issue: Preprocessing logic duplicated between `pipeline.py` and `crime_pipeline.ipynb`
-- Files: `datapreprocessing/pipeline.py`, `datapreprocessing/crime_pipeline.ipynb`
-- Impact: Changes to preprocessing logic must be made in two places; drift between implementations likely
-- Fix approach: Refactor common functions into a shared module and import in both script and notebook
+**Deprecated data store still active in flow:**
+- Issue: `useDataStore` is marked deprecated but is still required for timeline and timeslicing parity.
+- Files: `src/store/useDataStore.ts`, `src/app/timeslicing/page.tsx`, `src/components/timeline/DualTimeline.tsx`
+- Impact: Confusing ownership between React Query and store data; duplicate sources of truth.
+- Fix approach: Define one canonical timeline input contract and remove deprecated pathways incrementally.
 
-**Inconsistent Datetime Parsing:**
-- Issue: Notebooks show UserWarning about datetime format inference falling back to `dateutil`
-- Files: `datapreprocessing/crime_pipeline.ipynb` (cell outputs around line 233)
-- Impact: Slow parsing due to per-element processing; potential inconsistent behavior
-- Fix approach: Explicitly specify datetime format string (e.g., `%m/%d/%Y %I:%M:%S %p`)
+**Suggestion trigger path duplication:**
+- Issue: Legacy mock trigger hook remains alongside real generator hook.
+- Files: `src/hooks/useSuggestionTrigger.ts`, `src/hooks/useSuggestionGenerator.ts`
+- Impact: Future contributors may attach UI to outdated mock path.
+- Fix approach: Remove or clearly deprecate `useSuggestionTrigger.ts` and keep one workflow entry.
 
 ## Known Bugs
 
-**None identified at code level.**
+**Double buffering in crimes range pipeline:**
+- Symptoms: Queried range is expanded twice (client-side in hook and server-side in route default buffer logic).
+- Files: `src/hooks/useCrimeData.ts`, `src/app/api/crimes/range/route.ts`
+- Trigger: Any `useCrimeData` call with non-zero `bufferDays` (hook pre-buffers; API applies buffer again).
+- Workaround: Set `bufferDays: 0` at hook call sites until one layer is made authoritative.
 
-Notebook outputs show successful execution with expected data transformations.
+**Coordinate normalization mismatch across APIs:**
+- Symptoms: Different endpoints return incompatible x/z scales.
+- Files: `src/app/api/crimes/range/route.ts`, `src/app/api/crime/stream/route.ts`
+- Trigger: Mixing data from range API (`x/z` in `[-50,50]`) and stream API (`x/z` near `[0,1]` style formulas).
+- Workaround: Normalize in one adapter before mixing datasets.
 
 ## Security Considerations
 
-**Large Data File in Repository:**
-- Risk: 2.2GB CSV file (`Crimes_-_2001_to_Present_20260114.csv`) appears to be present in the repository
-- Files: `datapreprocessing/Crimes_-_2001_to_Present_20260114.csv`
-- Current mitigation: None visible
-- Recommendations: Add `.gitignore` file excluding `*.csv` and large data files; use Git LFS or external data storage
-
-**Missing .gitignore:**
-- Risk: Sensitive files, large data files, and virtual environment could be committed
-- Files: Project root and `datapreprocessing/` directory
-- Current mitigation: None - no `.gitignore` file found
-- Recommendations: Create `.gitignore` with entries for `.venv/`, `*.csv`, `.DS_Store`, `.idea/`, `*.png`, `__pycache__/`
-
-**Virtual Environment Committed:**
-- Risk: `.venv/` directory appears to be in the repository (observed via file exploration)
-- Files: `datapreprocessing/.venv/`
-- Current mitigation: None
-- Recommendations: Remove `.venv/` from tracking; add to `.gitignore`; provide `requirements.txt` instead
+**String-built SQL queries:**
+- Risk: Dynamic SQL string construction is used broadly.
+- Files: `src/lib/queries.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/crime/stream/route.ts`
+- Current mitigation: Some manual escaping for filter values in `src/lib/queries.ts`.
+- Recommendations: Centralize sanitized query builders and avoid direct interpolation where possible.
 
 ## Performance Bottlenecks
 
-**Row-by-Row Geometry Creation:**
-- Problem: Geometry column created using `df.apply()` with lambda function
-- Files: `datapreprocessing/crime_pipeline.ipynb` (Step 8, around line 1128-1132)
-- Cause: `apply(axis=1)` iterates row-by-row, bypassing pandas vectorization
-- Improvement path: Use `gpd.points_from_xy(df['Longitude'], df['Latitude'])` for vectorized Point creation
+**High-frequency logging in client paths:**
+- Problem: Large objects and repetitive logs execute during interactive usage.
+- Files: `src/components/layout/TopBar.tsx`, `src/hooks/useCrimeData.ts`, `src/components/viz/DataPoints.tsx`
+- Cause: Debug `console.log` left in render/interaction code.
+- Improvement path: Gate logs behind feature flags or remove in production path.
 
-**Full Dataset Loading:**
-- Problem: Notebook loads entire 8.4M+ row dataset into memory
-- Files: `datapreprocessing/crime_pipeline.ipynb`
-- Cause: Single `pd.read_csv()` call without chunking for analysis
-- Improvement path: For large analyses, use the chunked approach from `pipeline.py` or Dask/Polars
-
-**Distance Calculation Via Apply:**
-- Problem: Distance to downtown calculated using row-wise `.apply()` on geometry column
-- Files: `datapreprocessing/crime_pipeline.ipynb` (Step 8, lines 1138-1140)
-- Cause: Shapely distance called per-row in Python loop
-- Improvement path: Use vectorized shapely operations or numpy-based haversine formula
+**Large detail point mapping inside timeline render cycle:**
+- Problem: Repeated filtering/subsampling and SVG circle rendering for dense ranges.
+- Files: `src/components/timeline/DualTimeline.tsx`
+- Cause: Derivations and rendering occur in one large component with broad dependencies.
+- Improvement path: Memoize by stable signatures, reduce re-renders via selector granularity, and consider canvas for dense point layers.
 
 ## Fragile Areas
 
-**Hardcoded File Paths:**
-- Files: `datapreprocessing/crime_pipeline.ipynb` (line 26: `DATA_PATH = Path('Crimes_-_2001_to_Present_20260114.csv')`)
-- Why fragile: Path assumes execution from specific directory; filename includes date, will need updating for new data
-- Safe modification: Use environment variables or config file for data paths
-- Test coverage: None
+**Data path contract divergence:**
+- Files: `src/lib/db.ts`, `src/app/api/crime/facets/route.ts`, `scripts/setup-data.js`, `data/README.md`
+- Why fragile: CSV path (`data/sources/...csv`) and parquet path (`data/crime.parquet`) assumptions are inconsistent across modules.
+- Safe modification: Choose one canonical ingestion path and update all API/data docs together.
+- Test coverage: No integration tests validate end-to-end data-file contract.
 
-**Hardcoded Geographic Bounds:**
-- Files: `datapreprocessing/crime_pipeline.ipynb` (lines 71-76), `datapreprocessing/pipeline.py` (line 94)
-- Why fragile: City boundary values hardcoded; inconsistent between file and variable definitions
-- Safe modification: Move constants to a shared configuration module
-- Test coverage: None
-
-**Notebook Filename with Space:**
-- Files: `datapreprocessing/cube comparison.ipynb`
-- Why fragile: Filename contains space which can cause issues with command-line tools and imports
-- Safe modification: Rename to `cube_comparison.ipynb`
-- Test coverage: Not applicable
+**Timeslicing parity bridge relies on manual store mirroring:**
+- Files: `src/app/timeslicing/page.tsx`
+- Why fragile: Page-level effect writes into `useDataStore` and triggers adaptive compute solely for `DualTimeline` compatibility.
+- Safe modification: Introduce shared adapter hook for timeline input instead of route-local state mutation.
+- Test coverage: No tests on this mirroring effect.
 
 ## Scaling Limits
 
-**Memory Constraints:**
-- Current capacity: Loading 2.7M rows uses ~458MB (after filtering to 2015-2025)
-- Limit: Full dataset (8.4M rows) may exceed available memory on smaller machines
-- Scaling path: Use chunked processing (already implemented in `pipeline.py`), or migrate to Dask/Polars
+**Range API response sizing:**
+- Current capacity: `limit` default 50,000 with optional sampling (`sampleStride`) in `/api/crimes/range`.
+- Limit: Large windows can become sampled or heavy in client memory/rendering.
+- Scaling path: Add paged window loading or server-side aggregation endpoints for timeline-only consumers.
 
-**Single-Threaded Processing:**
-- Current capacity: Sequential row processing
-- Limit: Processing time scales linearly with data size
-- Scaling path: Parallelize chunk processing; use multiprocessing for independent operations
+**Mock fallback cardinality mismatch:**
+- Current capacity: Mock range returns up to 2,000 records even if client requests 50,000.
+- Limit: Behavior diverges from real-data path and can hide scaling issues.
+- Scaling path: Align mock generation controls with real route limits and metadata semantics.
 
 ## Dependencies at Risk
 
-**No Explicit Dependency Management:**
-- Risk: No `requirements.txt` or `pyproject.toml` found at project root
-- Impact: Reproducibility issues; version conflicts likely
-- Migration plan: Generate `pip freeze > requirements.txt` from `.venv`; consider `pyproject.toml` for modern packaging
-
-**Pandas Version Sensitivity:**
-- Risk: Deprecated API usage tied to specific pandas versions
-- Impact: Code will break on pandas 3.x
-- Migration plan: Update to non-deprecated API; pin pandas version range in requirements
+**Native DuckDB binding wiring:**
+- Risk: `postinstall` symlink workaround is ABI/path-sensitive.
+- Files: `package.json` (`postinstall`), `next.config.ts`
+- Impact: Install/runtime failures on environments that differ from expected `duckdb` binding layout.
+- Migration plan: Validate against current DuckDB package guidance or move heavy querying behind stable service boundary.
 
 ## Missing Critical Features
 
-**No Automated Tests:**
-- Problem: No test files found (`test_*.py`, `*_test.py`)
-- Blocks: Cannot verify preprocessing correctness after changes; regression risk
-- Recommendation: Add unit tests for `preprocess_chunk()`, `extract_lat_lon()`, and data validation logic
+**Suggestion workflow persistence and apply path:**
+- Problem: Suggestions can be accepted/rejected in store but there is no durable persistence or direct apply-to-slice pipeline.
+- Blocks: End-to-end semi-automated timeslicing flow completion.
+- Files: `src/store/useSuggestionStore.ts`, `src/app/timeslicing/components/SuggestionCard.tsx`
 
-**No Input Validation:**
-- Problem: No checks for input file existence before processing
-- Blocks: Unclear error messages when file missing
-- Recommendation: Add explicit file existence checks with helpful error messages
-
-**No Data Validation Pipeline:**
-- Problem: No schema validation for input CSV; assumes column names match expectations
-- Blocks: Silent failures if CSV format changes
-- Recommendation: Add column presence/type validation at start of pipeline
+**Mode switching implementation in generator:**
+- Problem: `mode` is fixed to `'manual'`; `setMode` is a no-op.
+- Blocks: Planned automatic/on-demand generation behavior.
+- Files: `src/hooks/useSuggestionGenerator.ts`
 
 ## Test Coverage Gaps
 
-**Preprocessing Functions:**
-- What's not tested: `preprocess_chunk()`, `extract_lat_lon()`, `iter_clean_chunks()`
-- Files: `datapreprocessing/pipeline.py`
-- Risk: Subtle bugs in data transformation go unnoticed
+**`useCrimeData` + `/api/crimes/range` contract:**
+- What's not tested: Buffering semantics, metadata shape, filter parameter handling end-to-end.
+- Files: `src/hooks/useCrimeData.ts`, `src/app/api/crimes/range/route.ts`
+- Risk: Silent drift between client assumptions and server response behavior.
 - Priority: High
 
-**Boundary Filtering Logic:**
-- What's not tested: Latitude/longitude bounds filtering
-- Files: `datapreprocessing/pipeline.py` (line 94), `datapreprocessing/crime_pipeline.ipynb`
-- Risk: Records incorrectly included or excluded
-- Priority: Medium
+**Suggestion algorithms and store integration:**
+- What's not tested: Confidence scoring behavior, boundary detection quality, suggestion status lifecycle.
+- Files: `src/lib/confidence-scoring.ts`, `src/lib/interval-detection.ts`, `src/lib/warp-generation.ts`, `src/hooks/useSuggestionGenerator.ts`, `src/store/useSuggestionStore.ts`
+- Risk: Unreliable suggestions during upcoming phase work.
+- Priority: High
 
-**Temporal Feature Extraction:**
-- What's not tested: Month, day, hour, weekday extraction from dates
-- Files: `datapreprocessing/pipeline.py` (lines 96-100)
-- Risk: Timezone or DST issues undetected
-- Priority: Medium
+**Timeline interaction regressions:**
+- What's not tested: Brush/zoom sync, adaptive axis inversion, selection behavior under warped scales.
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/app/timeline-test/page.tsx`
+- Risk: Breaks are only discovered manually.
+- Priority: High
 
 ---
 
-*Concerns audit: 2026-01-30*
+*Concerns audit: 2026-02-26*

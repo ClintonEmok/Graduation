@@ -1,189 +1,90 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-02-26
 
 ## Naming Patterns
 
 **Files:**
-- Python modules: `snake_case.py` (e.g., `pipeline.py`)
-- Jupyter notebooks: `descriptive_name.ipynb` with spaces allowed (e.g., `crime_pipeline.ipynb`, `cube comparison.ipynb`)
+- Use `PascalCase.tsx` for React components in `src/components/**` and `src/app/**/components/**`.
+- Use `useXxx.ts` for hooks and stores in `src/hooks/**` and `src/store/**`.
+- Use `route.ts` for API handlers under `src/app/api/**`.
+- Use `*.test.ts` for unit tests colocated with source.
 
 **Functions:**
-- Use `snake_case` for all function names
-- Examples from `datapreprocessing/pipeline.py`:
-  - `extract_lat_lon()`
-  - `preprocess_chunk()`
-  - `iter_clean_chunks()`
-  - `write_csv()`
-  - `basic_eda()`
+- Use `camelCase` for functions and local helpers (e.g., `detectBoundaries` in `src/lib/interval-detection.ts`, `computeMaps` in `src/store/useAdaptiveStore.ts`).
 
 **Variables:**
-- Local variables: `snake_case` (e.g., `missing_latlon`, `has_location_str`, `need_fill`)
-- Loop variables: short descriptive names (e.g., `df`, `col`, `chunk`)
-
-**Constants:**
-- Use `UPPER_SNAKE_CASE` for module-level constants
-- Examples from `datapreprocessing/pipeline.py`:
-  - `RAW_COLUMNS`
-  - `DTYPES`
-  - `DATE_COLUMNS`
-  - `CHUNKSIZE`
-  - `SAMPLE_ROWS`
+- Use `camelCase` for mutable/local variables.
+- Use `UPPER_SNAKE_CASE` for constants (e.g., `MOCK_START_SEC` in `src/lib/constants.ts`, `DEFAULT_DELAY_MS` in `src/hooks/useDebouncedDensity.ts`).
 
 **Types:**
-- Use standard Python typing module types: `Tuple`, `Iterable`, `Optional`
+- Use `PascalCase` interfaces/types (`CrimeRecord`, `UseCrimeDataOptions`, `BoundarySuggestion`).
 
 ## Code Style
 
 **Formatting:**
-- Black formatter configured (detected in PyCharm/IntelliJ IDE settings)
-- No standalone `.prettierrc` or `pyproject.toml` with formatting config
+- Use ESLint + Next presets (`eslint.config.mjs`) as the enforced baseline.
+- Keep existing quote/semicolon style per file; repo currently mixes generated double-quote files (`src/app/layout.tsx`) and single-quote files (`src/hooks/useCrimeData.ts`).
 
 **Linting:**
-- No explicit linting configuration detected
-- IDE-based linting via PyCharm
-
-**Line Length:**
-- Not strictly enforced
-- Long lines observed (e.g., line 94 in `pipeline.py` is ~130 characters)
+- Lint with `npm run lint`.
+- Respect ignored paths from `eslint.config.mjs` (including `datapreprocessing/.venv/**`).
 
 ## Import Organization
 
 **Order:**
-1. Future imports: `from __future__ import annotations`
-2. Standard library: `argparse`, `re`, `pathlib`, `typing`
-3. Third-party packages: `pandas`, `numpy`, `matplotlib`
-
-**Style:**
-```python
-#!/usr/bin/env python3
-"""Module docstring."""
-from __future__ import annotations
-
-import argparse
-import re
-from pathlib import Path
-from typing import Iterable, Tuple
-
-import pandas as pd
-```
+1. External packages (`react`, `next/server`, `d3-*`, etc.)
+2. `@/*` alias imports (`@/store/...`, `@/lib/...`)
+3. Relative imports (`./...`, `../...`)
 
 **Path Aliases:**
-- None configured
+- Use `@/*` alias from `tsconfig.json` for app source imports.
 
 ## Error Handling
 
 **Patterns:**
-- Use `errors="coerce"` for graceful date parsing failures
-- Filter out invalid data rather than raising exceptions
-- Example from `datapreprocessing/pipeline.py`:
-```python
-df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-df = df.loc[~(df["Latitude"].isna() & df["Longitude"].isna())]
-```
-
-**Validation:**
-- Bounds checking for geographic coordinates
-- Data filtering rather than error raising
+- API routes return `NextResponse.json` with status and error payload on validation/runtime errors (`src/app/api/crimes/range/route.ts`).
+- Data APIs prefer fallback demo payloads with warning headers rather than hard failures when DuckDB/data is unavailable (`src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`).
+- Client hooks throw/propagate fetch errors (`src/hooks/useCrimeData.ts`) and route UIs render error state.
 
 ## Logging
 
-**Framework:** `print()` statements (no logging framework)
+**Framework:** `console.*` plus optional buffered study logger (`src/lib/logger.ts`).
 
 **Patterns:**
-- Simple print for status messages: `print(f"Wrote cleaned data to {args.out}")`
-- Print for EDA output: `print("Shape (sample):", df.shape)`
+- Keep server errors as `console.error` in API/lib modules.
+- Avoid adding new verbose `console.log` in hot client paths; existing logs in `src/hooks/useCrimeData.ts` and `src/components/layout/TopBar.tsx` are already noisy.
 
 ## Comments
 
 **When to Comment:**
-- Module-level docstrings required
-- Function docstrings for non-trivial functions
-- Inline comments are minimal
+- Comment only when behavior is non-obvious (adaptive mapping math, store synchronization, fallback logic).
+- Prefer short, purpose-focused comments over narrative blocks.
 
-**Docstring Style:**
-```python
-"""Short one-line description."""
-```
-
-- Uses imperative mood ("Extract", "Preprocess", "Load")
-- Example from `datapreprocessing/pipeline.py`:
-```python
-def extract_lat_lon(location_series: pd.Series) -> Tuple[pd.Series, pd.Series]:
-    """Extract latitude/longitude floats from the Location string column."""
-```
+**JSDoc/TSDoc:**
+- Use block comments for exported hooks/types/modules when they define contracts (`src/hooks/useCrimeData.ts`, `src/types/crime.ts`).
 
 ## Function Design
 
 **Size:**
-- Functions are kept reasonably short (10-30 lines typical)
-- Single responsibility per function
+- Small/medium pure helpers in `src/lib/**`.
+- UI orchestrators can be large but should isolate pure helpers where possible (current exception: `src/components/timeline/DualTimeline.tsx`).
 
 **Parameters:**
-- Use type hints for all parameters
-- Use default values where appropriate
-- Example:
-```python
-def iter_clean_chunks(path: Path, chunksize: int) -> Iterable[pd.DataFrame]:
-```
+- Prefer typed options objects for extensible APIs (`UseCrimeDataOptions`, `BoundaryOptions`).
 
 **Return Values:**
-- Explicit return type annotations
-- Use tuples for multiple return values
-- Generators preferred for streaming data
+- Hooks return structured object results, not tuples (`UseCrimeDataResult`, `UseViewportCrimeDataResult`).
 
 ## Module Design
 
 **Exports:**
-- No `__all__` declarations
-- All public functions at module level
+- Prefer named exports for hooks/stores/utils.
+- Use default exports for route pages/layouts and selected provider components (`src/providers/QueryProvider.tsx`).
 
 **Barrel Files:**
-- Not used
-
-**Entry Points:**
-- Use `if __name__ == "__main__":` guard
-- Separate `main()` function for CLI entry
-
-## DataFrame Conventions
-
-**Mutation:**
-- Always copy DataFrames before in-place operations: `df = df.copy()`
-- Use `inplace=True` sparingly, prefer reassignment
-
-**Column Access:**
-- String column names with bracket notation: `df["Column Name"]`
-- Columns with spaces preserved from source data
-
-**Method Chaining:**
-- Limited chaining, prefer explicit intermediate steps
-
-## CLI Pattern
-
-**Framework:** `argparse`
-
-**Structure:**
-```python
-def main() -> None:
-    parser = argparse.ArgumentParser(description="...")
-    parser.add_argument("input", type=Path, help="...")
-    parser.add_argument("--out", type=Path, default=Path("output.csv"))
-    parser.add_argument("--flag", action="store_true")
-    args = parser.parse_args()
-    # ... logic using args
-```
-
-## Notebook Conventions
-
-**Cell Organization:**
-1. Imports and configuration constants at top
-2. Function definitions
-3. Execution/analysis cells
-
-**Configuration:**
-- Define constants in early cells: `CHUNKSIZE`, `SAMPLE_ROWS`, `DATA_PATH`
-- Use dictionaries for grouped settings: `DTYPES`, `CITY_BOUNDS`
+- Not used broadly; import directly from module paths.
 
 ---
 
-*Convention analysis: 2026-01-30*
+*Convention analysis: 2026-02-26*

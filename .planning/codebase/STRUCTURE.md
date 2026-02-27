@@ -1,173 +1,133 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-02-26
 
 ## Directory Layout
 
 ```
-Project/
-├── .planning/                    # GSD planning documents
-│   └── codebase/                 # Codebase analysis docs
-├── src/                          # Next.js Application Source
-│   ├── app/                      # Next.js App Router
-│   ├── components/               # React Components
-│   │   ├── map/                  # MapLibre Components
-│   │   ├── ui/                   # Shared UI Components (shadcn/ui)
-│   │   └── viz/                  # 3D Visualization Components
-│   └── lib/                      # Utility functions
-├── datapreprocessing/            # Main project directory
-│   ├── .git/                     # Git repository (no commits yet)
-│   ├── .idea/                    # PyCharm/IntelliJ IDE config
-│   ├── .venv/                    # Python virtual environment
-│   ├── pipeline.py               # CLI preprocessing script
-│   ├── crime_pipeline.ipynb      # Main EDA notebook
-│   ├── cube comparison.ipynb     # Time visualization notebook
-│   ├── Crimes_-_2001_to_Present_20260114.csv  # Raw dataset (~2.3GB)
-│   └── viz_*.png                 # Generated visualization outputs
+neon-tiger/
+├── src/                     # Application source
+│   ├── app/                 # Next.js App Router routes + API endpoints
+│   ├── components/          # UI and visualization components
+│   ├── hooks/               # Data and interaction hooks
+│   ├── lib/                 # Data/query utilities and algorithm modules
+│   ├── providers/           # App-level providers (React Query)
+│   ├── store/               # Zustand stores
+│   ├── types/               # Typed domain contracts
+│   └── workers/             # Web Worker compute modules
+├── data/                    # Local dataset area (README + generated/ignored data files)
+├── scripts/                 # Data setup and local test scripts
+├── .planning/codebase/      # Codebase mapping docs consumed by GSD planner/executor
+└── package.json             # Scripts + dependency graph
 ```
 
 ## Directory Purposes
 
-**src/:**
-- Purpose: Next.js application source code
-- Contains: App router, React components, 3D visualization logic
-- Key files: `src/components/map/MapBase.tsx`, `src/lib/projection.ts`
+**`src/app/`:**
+- Purpose: Feature routes and API route handlers.
+- Contains: UI route pages (`/timeslicing`, `/timeline-test`) and API endpoints (`/api/**`).
+- Key files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, `src/app/api/crimes/range/route.ts`.
 
-**datapreprocessing/:**
-- Purpose: Primary project containing all source code and data
-- Contains: Python scripts, Jupyter notebooks, CSV data, visualization outputs
-- Key files: `pipeline.py`, `crime_pipeline.ipynb`
+**`src/components/timeline/`:**
+- Purpose: Timeline rendering and interaction components.
+- Contains: `DualTimeline.tsx`, density tracks, axes, layers.
+- Key files: `src/components/timeline/DualTimeline.tsx`, `src/components/timeline/DensityHeatStrip.tsx`.
 
-**.venv/:**
-- Purpose: Python virtual environment with project dependencies
-- Contains: Installed packages (pandas, matplotlib, numpy, etc.)
-- Generated: Yes (via `python -m venv`)
-- Committed: No
+**`src/app/timeline-test/`:**
+- Purpose: QA route for timeline/slice interaction experiments.
+- Contains: feature-specific components and libs for slice creation/adjustment.
+- Key files: `src/app/timeline-test/page.tsx`, `src/app/timeline-test/lib/slice-adjustment.ts`, `src/app/timeline-test/components/SliceBoundaryHandlesLayer.tsx`.
 
-**.idea/:**
-- Purpose: PyCharm/IntelliJ IDE configuration
-- Contains: Project settings, code style, run configurations
-- Generated: Yes (by IDE)
-- Committed: Yes (in staging)
+**`src/app/timeslicing/`:**
+- Purpose: Semi-automated timeslicing workflow route.
+- Contains: suggestion panel/toolbar/cards and route-level orchestration.
+- Key files: `src/app/timeslicing/page.tsx`, `src/app/timeslicing/components/SuggestionToolbar.tsx`, `src/app/timeslicing/components/SuggestionPanel.tsx`.
 
-**.planning/codebase/:**
-- Purpose: GSD workflow documentation
-- Contains: Architecture and structure analysis documents
-- Generated: No (manually created)
-- Committed: Should be
+**`src/store/`:**
+- Purpose: Persistent/shared state.
+- Contains: data, adaptive, filter, slice, suggestion, and UI stores.
+- Key files: `src/store/useDataStore.ts`, `src/store/useAdaptiveStore.ts`, `src/store/useSliceStore.ts`, `src/store/useSuggestionStore.ts`.
+
+**`src/lib/`:**
+- Purpose: Query/data-access and algorithm modules.
+- Contains: DuckDB setup, SQL query functions, confidence/boundary/warp generators.
+- Key files: `src/lib/db.ts`, `src/lib/queries.ts`, `src/lib/warp-generation.ts`, `src/lib/interval-detection.ts`, `src/lib/confidence-scoring.ts`.
 
 ## Key File Locations
 
 **Entry Points:**
-- `datapreprocessing/pipeline.py`: CLI data preprocessing tool
-- `datapreprocessing/crime_pipeline.ipynb`: Interactive EDA notebook
-- `datapreprocessing/cube comparison.ipynb`: Time visualization experiments
+- `src/app/layout.tsx`: root providers (`ThemeProvider`, `QueryProvider`, `Toaster`).
+- `src/app/page.tsx`: home route.
+- `src/app/timeline-test/page.tsx`: timeline test harness.
+- `src/app/timeslicing/page.tsx`: timeslicing route.
 
 **Configuration:**
-- `datapreprocessing/.venv/`: Virtual environment (Python 3.13)
-- `datapreprocessing/.idea/`: IDE settings
+- `package.json`: scripts (`dev`, `build`, `test`, `lint`) and `postinstall` DuckDB symlink.
+- `tsconfig.json`: strict TS and `@/*` alias.
+- `eslint.config.mjs`: lint rules and ignores.
+- `vitest.config.ts`: test include pattern and alias.
 
 **Core Logic:**
-- `datapreprocessing/pipeline.py`: All transformation logic (160 lines)
-  - Lines 12-60: Schema constants (RAW_COLUMNS, DTYPES)
-  - Lines 65-70: `extract_lat_lon()` - coordinate parsing
-  - Lines 73-102: `preprocess_chunk()` - main transformation
-  - Lines 105-116: `iter_clean_chunks()` - chunked reading
-  - Lines 118-122: `write_csv()` - output writing
-  - Lines 125-139: `basic_eda()` - quick EDA
-  - Lines 142-159: `main()` - CLI entry point
+- `src/hooks/useCrimeData.ts`: canonical client fetch hook.
+- `src/app/api/crimes/range/route.ts`: canonical range API.
+- `src/components/timeline/DualTimeline.tsx`: brush/zoom/tick/selection orchestration.
+- `src/store/useAdaptiveStore.ts`: adaptive map store + worker integration.
 
-**Data:**
-- `datapreprocessing/Crimes_-_2001_to_Present_20260114.csv`: Raw input (~8.5M rows, 2.3GB)
-
-**Outputs:**
-- `datapreprocessing/viz_*.png`: 20 visualization files (numbered 01-20)
-- `datapreprocessing/crime_preprocessing_visualizations.png`: Combined viz
-- `datapreprocessing/crime_statistical_distributions.png`: Stats viz
+**Testing:**
+- Co-located tests in `src/**/*.test.ts`.
+- Representative test hubs: `src/store/useSliceStore.test.ts`, `src/store/useSliceAdjustmentStore.test.ts`, `src/lib/db.test.ts`, `src/lib/crime-api.test.ts`.
 
 ## Naming Conventions
 
 **Files:**
-- Python scripts: `snake_case.py` (e.g., `pipeline.py`)
-- Notebooks: `snake_case.ipynb` or descriptive with spaces (e.g., `cube comparison.ipynb`)
-- Data files: Source name preserved (e.g., `Crimes_-_2001_to_Present_*.csv`)
-- Visualizations: `viz_##_description.png` (numbered, snake_case)
+- React components: `PascalCase.tsx` (e.g., `DualTimeline.tsx`, `SuggestionPanel.tsx`).
+- Hooks/stores: `useXxx.ts` (e.g., `useCrimeData.ts`, `useAdaptiveStore.ts`).
+- API handlers: `route.ts` under feature directories (e.g., `src/app/api/crimes/range/route.ts`).
+- Tests: co-located `*.test.ts` (e.g., `src/lib/slice-utils.test.ts`).
 
-**Functions:**
-- Use `snake_case` (e.g., `preprocess_chunk`, `extract_lat_lon`)
-
-**Variables:**
-- Use `snake_case` for variables (e.g., `missing_latlon`, `need_fill`)
-- Use `UPPER_SNAKE_CASE` for constants (e.g., `RAW_COLUMNS`, `DTYPES`)
-
-**Columns (DataFrame):**
-- Original data: Title Case with spaces (e.g., `Primary Type`, `Case Number`)
-- Derived features: lowercase (e.g., `month`, `day`, `hour`, `weekday`, `is_weekend`)
+**Directories:**
+- Feature folders are kebab-case in app routes (`src/app/timeline-test`, `src/app/timeslicing`).
+- Domain folders are lower-case (`src/store`, `src/hooks`, `src/lib`).
 
 ## Where to Add New Code
 
-**New Transformation Logic:**
-- Add to `datapreprocessing/pipeline.py` as new function
-- Follow existing pattern: function takes DataFrame, returns DataFrame
-- Import in notebook if needed for interactive use
+**New feature page (timeline/time slicing):**
+- Primary code: `src/app/<feature>/page.tsx`
+- Route-specific components: `src/app/<feature>/components/`
+- Route-specific utilities: `src/app/<feature>/lib/`
 
-**New Analysis/Visualization:**
-- Add cells to `datapreprocessing/crime_pipeline.ipynb`
-- Or create new notebook in `datapreprocessing/` directory
-- Save output visualizations as `viz_##_description.png`
+**New suggestion workflow module:**
+- Store contract/state: `src/store/useSuggestionStore.ts` (or `src/store/use<Feature>Store.ts`)
+- Orchestration hook: `src/hooks/useSuggestionGenerator.ts`
+- Pure algorithms: `src/lib/<algorithm>.ts`
+- UI controls/cards: `src/app/timeslicing/components/`
 
-**New CLI Commands:**
-- Extend argparse in `datapreprocessing/pipeline.py:main()`
-- Add subparsers if multiple commands needed
+**New API-backed data flow:**
+- Client hook: `src/hooks/use<Domain>Data.ts`
+- API route: `src/app/api/<domain>/<action>/route.ts`
+- Query/data-access helper: `src/lib/queries.ts` (or a new focused module under `src/lib/`)
 
-**Utility Functions:**
-- Currently no separate utils module
-- Add to `pipeline.py` above the functions that use them
-- Consider creating `utils.py` if pipeline.py grows beyond 300 lines
-
-**Tests:**
-- Currently no test infrastructure
-- Would add as `datapreprocessing/test_pipeline.py`
-- Use pytest (add to requirements when creating)
+**Utilities:**
+- Shared cross-feature helpers: `src/lib/`
+- Viewport-specific store utilities: `src/lib/stores/`
 
 ## Special Directories
 
-**.venv/:**
-- Purpose: Python virtual environment
-- Generated: Yes
-- Committed: No (should be in .gitignore)
+**`data/`:**
+- Purpose: Local data assets and docs.
+- Generated: Yes (via `scripts/setup-data.js` for `data/source.csv` and `data/crime.parquet`).
+- Committed: README is committed; large data files are ignored by `.gitignore`.
 
-**.idea/:**
-- Purpose: IDE configuration (PyCharm)
-- Generated: Yes (by IDE)
-- Committed: Currently yes (unusual - typically gitignored)
+**`patches/`:**
+- Purpose: `patch-package` patch files applied on install.
+- Generated: Yes (when patching dependencies).
+- Committed: Yes.
 
-**.git/:**
-- Purpose: Git repository metadata
-- Generated: Yes
-- Committed: N/A (it IS the repo)
-- Note: Repository has staged files but no commits yet
-
-**Output Files (viz_*.png):**
-- Purpose: Generated visualizations from notebook
-- Generated: Yes (by running notebook cells)
-- Committed: Currently staged (consider gitignoring large outputs)
-
-## Git Status
-
-**Repository:** `datapreprocessing/.git`
-**Branch:** master (no commits)
-**Staged files:**
-- `.idea/` configuration files
-- `Crimes_-_2001_to_Present_20260114.csv` (2.3GB - should not be committed)
-- `crime_pipeline.ipynb`
-- `cube comparison.ipynb`
-- `pipeline.py`
-
-**Recommendations:**
-- Create `.gitignore` to exclude `.venv/`, `*.csv`, and large outputs
-- Remove large CSV from staging before first commit
+**`.planning/codebase/`:**
+- Purpose: Codebase maps for GSD planning/execution.
+- Generated: No (manual/agent-authored docs).
+- Committed: Yes.
 
 ---
 
-*Structure analysis: 2026-01-30*
+*Structure analysis: 2026-02-26*
