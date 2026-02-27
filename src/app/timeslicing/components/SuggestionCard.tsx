@@ -1,15 +1,38 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Check, Pencil, X, Save, Plus, Trash2 } from 'lucide-react';
+import { Check, Pencil, X, Save, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfidenceBadge } from './ConfidenceBadge';
+import { useDataStore } from '@/store/useDataStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { 
   useSuggestionStore, 
   type Suggestion, 
   type WarpProfileData, 
   type IntervalBoundaryData 
 } from '@/store/useSuggestionStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import { toast } from 'sonner';
+
+/**
+ * Format epoch seconds as readable date
+ */
+function formatEpochDate(epochSeconds: number): string {
+  return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Format a percentage (0-100) to a readable date using the timeline domain
+ */
+function formatPercentAsDate(percent: number, minEpoch: number, maxEpoch: number): string {
+  const epoch = normalizedToEpochSeconds(percent, minEpoch, maxEpoch);
+  return formatEpochDate(epoch);
+}
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
@@ -53,13 +76,31 @@ function formatSuggestionData(
   data: WarpProfileData | IntervalBoundaryData,
   type: Suggestion['type']
 ): React.ReactNode {
+  // Get timeline domain from data store
+  const minTimestampSec = useDataStore.getState().minTimestampSec;
+  const maxTimestampSec = useDataStore.getState().maxTimestampSec;
+  const hasValidDomain = minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec;
+  
   if (type === 'warp-profile' && 'intervals' in data) {
     const warpData = data as WarpProfileData;
     return (
       <div className="mt-2 text-xs text-slate-400">
         <div className="font-medium text-slate-300">{warpData.name}</div>
-        <div className="mt-1">
-          {warpData.intervals.length} interval(s)
+        <div className="mt-1 space-y-1">
+          {warpData.intervals.map((interval, index) => (
+            <div key={index} className="text-slate-400">
+              {hasValidDomain ? (
+                <>
+                  <span className="text-violet-400">{formatPercentAsDate(interval.startPercent, minTimestampSec!, maxTimestampSec!)}</span>
+                  {' - '}
+                  <span className="text-violet-400">{formatPercentAsDate(interval.endPercent, minTimestampSec!, maxTimestampSec!)}</span>
+                </>
+              ) : (
+                <span>{interval.startPercent.toFixed(1)}% - {interval.endPercent.toFixed(1)}%</span>
+              )}
+              <span className="ml-1 text-slate-500">(w: {interval.strength.toFixed(1)})</span>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -70,8 +111,12 @@ function formatSuggestionData(
     return (
       <div className="mt-2 text-xs text-slate-400">
         <div className="font-medium text-slate-300">Boundaries</div>
-        <div className="mt-1">
-          {boundaryData.boundaries.length} boundary point(s)
+        <div className="mt-1 space-y-0.5">
+          {boundaryData.boundaries.map((boundary, index) => (
+            <div key={index} className="text-teal-400">
+              {formatEpochDate(boundary)}
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -90,7 +135,13 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const { acceptSuggestion, rejectSuggestion, modifySuggestion, setActiveSuggestion, activeSuggestionId } = 
     useSuggestionStore();
   
+  // Get active warp from warp slice store
+  const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
+  const getActiveWarp = useWarpSliceStore((state) => state.getActiveWarp);
+  const activeWarp = getActiveWarp();
+  
   const [isEditing, setIsEditing] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [editData, setEditData] = useState<WarpProfileData | IntervalBoundaryData | null>(null);
   
   const isActive = activeSuggestionId === suggestion.id;
@@ -98,6 +149,11 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const isLowConfidence = suggestion.confidence < 50;
   const isModified = suggestion.status === 'modified';
   const typeStyles = getSuggestionTypeStyles(suggestion.type);
+  
+  // Check if this suggestion is the active warp
+  const isActiveWarp = suggestion.status === 'accepted' && 
+    suggestion.type === 'warp-profile' && 
+    activeWarpId !== null;
   
   // Determine border color based on type and status
   const getBorderColor = () => {
@@ -183,6 +239,19 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
       setEditData({ ...editData, boundaries: newBoundaries });
     }
   };
+  
+  // Get item count for collapsed display
+  const getItemCount = (): number => {
+    if (suggestion.type === 'warp-profile' && 'intervals' in suggestion.data) {
+      return (suggestion.data as WarpProfileData).intervals.length;
+    }
+    if (suggestion.type === 'interval-boundary' && 'boundaries' in suggestion.data) {
+      return (suggestion.data as IntervalBoundaryData).boundaries.length;
+    }
+    return 0;
+  };
+  
+  const itemCount = getItemCount();
   
   // Add new boundary
   const addBoundary = () => {
@@ -296,7 +365,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   return (
     <div 
       className={`
-        cursor-pointer rounded-lg border p-3 transition-all
+        cursor-pointer rounded-lg border p-3 transition-all overflow-hidden
+        animate-in fade-in slide-in-from-top-2 duration-200
         ${getBorderColor()}
       `}
       onClick={handleClick}
@@ -322,19 +392,50 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
                 {suggestion.status}
               </span>
             )}
+            {/* Active warp indicator - shown for accepted warp profiles */}
+            {isActiveWarp && (
+              <span 
+                className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30"
+                title="This warp is currently applied to the timeline"
+              >
+                ACTIVE
+              </span>
+            )}
           </div>
           <div className="mt-1">
             <ConfidenceBadge confidence={suggestion.confidence} />
           </div>
-          {formatSuggestionData(suggestion.data, suggestion.type)}
+          {/* Collapsed: show count, Expanded: show full details */}
+          {isCollapsed ? (
+            <div className="mt-2 text-xs text-slate-400">
+              {suggestion.type === 'warp-profile' 
+                ? `${itemCount} interval${itemCount !== 1 ? 's' : ''}`
+                : `${itemCount} boundary point${itemCount !== 1 ? 's' : ''}`
+              }
+            </div>
+          ) : (
+            formatSuggestionData(suggestion.data, suggestion.type)
+          )}
         </div>
+        
+        {/* Collapse/Expand toggle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(!isCollapsed);
+          }}
+          className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+          title={isCollapsed ? 'Expand details' : 'Collapse details'}
+        >
+          {isCollapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+        </button>
       </div>
       
       {/* Inline editing controls */}
-      {isEditing && renderEditControls()}
+      {isEditing && !isCollapsed && renderEditControls()}
       
-      {/* Action buttons */}
-      {isPending && !isEditing && (
+      {/* Action buttons - hide when collapsed */}
+      {isPending && !isEditing && !isCollapsed && (
         <div className="mt-3 flex gap-2">
           <Button
             size="sm"
@@ -366,8 +467,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
         </div>
       )}
       
-      {/* Save/Cancel buttons for editing */}
-      {isEditing && (
+      {/* Save/Cancel buttons for editing - hide when collapsed */}
+      {isEditing && !isCollapsed && (
         <div className="mt-3 flex gap-2">
           <Button
             size="sm"
