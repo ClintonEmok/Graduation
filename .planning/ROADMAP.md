@@ -283,6 +283,7 @@ Plans:
 - [ ] 37-06-PLAN.md — Comparison, tooltips & history
 - [ ] 37-07-PLAN.md — Collapsible suggestion cards
 - [ ] 37-08-PLAN.md — Single warp constraint & active indicator
+- [ ] 37-09-PLAN.md — Toasts, confidence filter, error handling
 
 **Phase 37: Review/Approval Workflows** (planned)
 
