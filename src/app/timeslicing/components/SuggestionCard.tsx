@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Check, Pencil, X, Save, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfidenceBadge } from './ConfidenceBadge';
@@ -158,6 +158,16 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editData, setEditData] = useState<WarpProfileData | IntervalBoundaryData | null>(null);
   const [isAcceptHovered, setIsAcceptHovered] = useState(false);
+  const [isTransitioningOut, setIsTransitioningOut] = useState(false);
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimerRef.current !== null) {
+        clearTimeout(transitionTimerRef.current);
+      }
+    };
+  }, []);
 
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
@@ -508,7 +518,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               {formatSuggestionType(suggestion.type)}
             </span>
             {/* Type badge */}
-            <span className={`text-xs px-1.5 py-0.5 rounded border ${typeStyles.badge} flex items-center gap-1`}>
+            <span className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${typeStyles.badge}`}>
               {typeStyles.icon}
               {suggestion.type === 'warp-profile' ? 'WARP' : 'INTERVAL'}
             </span>
