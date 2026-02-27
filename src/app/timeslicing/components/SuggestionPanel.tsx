@@ -444,7 +444,7 @@ export function SuggestionPanel() {
                       processedCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
                     }`}
                   >
-                    <div id="processed-suggestions" className="space-y-2 overflow-hidden">
+                    <div id="processed-suggestions" data-section="processed" className="space-y-2 overflow-hidden">
                       {!processedCollapsed &&
                         processedSuggestions.map((suggestion) => (
                           <SuggestionCard key={suggestion.id} suggestion={suggestion} />
