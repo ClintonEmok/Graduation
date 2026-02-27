@@ -4,15 +4,15 @@
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** Phase 37: Algorithm Integration
 **Status:** Phase 37 in progress
-**Next:** Phase 37 gap-closure plans (37-04 through 37-09)
+**Next:** Phase 37 gap-closure plans (remaining: 37-04, 37-05)
 
 ## Current Position
 Phase: **37 of 42** (Algorithm Integration)
-Plan: **5 of 9** in current phase
+Plan: **6 of 9** in current phase
 Status: **In progress**
-Last activity: 2026-02-27 - Completed 37-06-PLAN.md
+Last activity: 2026-02-27 - Completed 37-09-PLAN.md
 
-Progress: overall ███████████████████░ 97% (136/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
+Progress: overall ███████████████████░ 98% (137/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
 ```
 v1.0 Complete:
@@ -32,7 +32,7 @@ v1.1 Complete:
 v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-[ ] Phase 37: Algorithm Integration (5/9 plans complete)
+[ ] Phase 37: Algorithm Integration (6/9 plans complete)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -257,9 +257,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-27 17:40 UTC
-Stopped at: Completed 37-06-PLAN.md
-Next: Execute remaining Phase 37 gap-closure plans (37-04/05/09)
+Last session: 2026-02-27 17:41 UTC
+Stopped at: Completed 37-09-PLAN.md
+Next: Execute remaining Phase 37 gap-closure plans (37-04/05)
 
 ## Accumulated Context
 
@@ -373,8 +373,13 @@ Next: Execute remaining Phase 37 gap-closure plans (37-04/05/09)
 - Added explanatory tooltips for suggestion generation controls (Generate, Warps, Intervals, Snapping, Method)
 - Added dedicated history mode with accepted metadata and one-click re-apply actions
 
+**Delivered in 37-09 (Gap closure - feedback, filtering, and failures):**
+- Added undo completion toast feedback to round out accept/reject action feedback
+- Added confidence threshold filtering with quick presets and visible/total suggestion counts
+- Added generation error handling with store-backed error state, logging, and retry affordance in toolbar
+
 **Next focus:**
-- Continue Phase 37 gap closure (remaining: 37-04, 37-05, 37-09)
+- Continue Phase 37 gap closure (remaining: 37-04, 37-05)
 
 ---
-*Last updated: 2026-02-27 - Completed 37-06 gap-closure decision-support execution*
+*Last updated: 2026-02-27 - Completed 37-09 gap-closure feedback/filter/error execution*
