@@ -51,22 +51,26 @@ function formatSuggestionType(type: Suggestion['type']): string {
 
 function getSuggestionTypeStyles(type: Suggestion['type']): {
   badge: string;
+  title: string;
   icon: React.ReactNode;
 } {
   switch (type) {
     case 'warp-profile':
       return {
         badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+        title: 'text-violet-300',
         icon: <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12h2m16 0h2M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>,
       };
     case 'interval-boundary':
       return {
         badge: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+        title: 'text-teal-300',
         icon: <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>,
       };
     default:
       return {
         badge: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+        title: 'text-slate-200',
         icon: null,
       };
   }
@@ -136,9 +140,11 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     rejectSuggestion,
     modifySuggestion,
     setActiveSuggestion,
+    setPanelOpen,
     activeSuggestionId,
     selectedIds,
     toggleSelect,
+    suggestions,
   } = 
     useSuggestionStore();
   
@@ -154,11 +160,6 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
 
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
-  const hasValidDomain =
-    minTimestampSec !== null &&
-    maxTimestampSec !== null &&
-    maxTimestampSec > minTimestampSec;
-  
   const isActive = activeSuggestionId === suggestion.id;
   const isSelected = selectedIds.has(suggestion.id);
   const isPending = suggestion.status === 'pending';
@@ -187,8 +188,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     return isActive || isEditing ? 'border-teal-500 bg-teal-500/10' : isLowConfidence ? 'border-amber-500/50 bg-amber-500/5 hover:border-amber-400' : 'border-teal-700/50 bg-slate-900 hover:border-teal-600';
   };
   
-  const handleAccept = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleAccept = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     acceptSuggestion(suggestion.id);
     
     // Show toast notification
@@ -203,8 +204,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     }
   };
   
-  const handleReject = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleReject = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     rejectSuggestion(suggestion.id);
     
     // Show toast notification
@@ -320,43 +321,55 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
         <div className="mt-3 space-y-2 p-2 bg-slate-800/50 rounded">
           <div className="text-xs font-medium text-slate-300">Edit Intervals</div>
           {editData.intervals.map((interval, index) => (
-            <div key={index} className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400 w-8">#{index + 1}</span>
-              <label className="text-slate-500">Start:</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={interval.startPercent}
-                onChange={(e) => updateInterval(index, 'startPercent', Number(e.target.value))}
-                className="w-14 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
-              />
-              <label className="text-slate-500">End:</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={interval.endPercent}
-                onChange={(e) => updateInterval(index, 'endPercent', Number(e.target.value))}
-                className="w-14 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
-              />
-              <label className="text-slate-500">Str:</label>
-              <input
-                type="number"
-                min="0"
-                max="3"
-                step="0.1"
-                value={interval.strength}
-                onChange={(e) => updateInterval(index, 'strength', Number(e.target.value))}
-                className="w-12 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
-              />
-              <button
-                onClick={() => removeInterval(index)}
-                className="text-red-400 hover:text-red-300"
-                disabled={editData.intervals.length <= 1}
-              >
-                <Trash2 className="size-3" />
-              </button>
+            <div key={index} className="rounded border border-slate-700/70 bg-slate-900/40 p-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400 w-8">#{index + 1}</span>
+                <label className="text-slate-500">Start:</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={interval.startPercent}
+                  onChange={(e) => updateInterval(index, 'startPercent', Number(e.target.value))}
+                  className="w-14 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
+                />
+                <label className="text-slate-500">End:</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={interval.endPercent}
+                  onChange={(e) => updateInterval(index, 'endPercent', Number(e.target.value))}
+                  className="w-14 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
+                />
+                <label className="text-slate-500">Str:</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="3"
+                  step="0.1"
+                  value={interval.strength}
+                  onChange={(e) => updateInterval(index, 'strength', Number(e.target.value))}
+                  className="w-12 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
+                />
+                <button
+                  onClick={() => removeInterval(index)}
+                  className="text-red-400 hover:text-red-300"
+                  disabled={editData.intervals.length <= 1}
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
+              <div className="mt-1 pl-10 text-[11px] text-violet-300">
+                {hasValidDomain ? (
+                  <>
+                    {formatPercentAsDate(interval.startPercent, minTimestampSec!, maxTimestampSec!)} -{' '}
+                    {formatPercentAsDate(interval.endPercent, minTimestampSec!, maxTimestampSec!)}
+                  </>
+                ) : (
+                  <>{interval.startPercent.toFixed(1)}% - {interval.endPercent.toFixed(1)}%</>
+                )}
+              </div>
             </div>
           ))}
           <button
@@ -372,23 +385,27 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     if ('boundaries' in editData && suggestion.type === 'interval-boundary') {
       return (
         <div className="mt-3 space-y-2 p-2 bg-slate-800/50 rounded">
-          <div className="text-xs font-medium text-slate-300">Edit Boundaries (epoch seconds)</div>
+          <div className="text-xs font-medium text-slate-300">Edit Boundaries</div>
           {editData.boundaries.map((boundary, index) => (
-            <div key={index} className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400 w-8">#{index + 1}</span>
-              <input
-                type="number"
-                value={boundary}
-                onChange={(e) => updateBoundary(index, Number(e.target.value))}
-                className="w-32 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
-              />
-              <button
-                onClick={() => removeBoundary(index)}
-                className="text-red-400 hover:text-red-300"
-                disabled={editData.boundaries.length <= 2}
-              >
-                <Trash2 className="size-3" />
-              </button>
+            <div key={index} className="rounded border border-slate-700/70 bg-slate-900/40 p-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400 w-8">#{index + 1}</span>
+                <input
+                  type="number"
+                  value={boundary}
+                  onChange={(e) => updateBoundary(index, Number(e.target.value))}
+                  placeholder={formatEpochDate(boundary)}
+                  className="w-32 bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
+                />
+                <button
+                  onClick={() => removeBoundary(index)}
+                  className="text-red-400 hover:text-red-300"
+                  disabled={editData.boundaries.length <= 2}
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
+              <div className="mt-1 pl-10 text-[11px] text-teal-300">{formatEpochDate(boundary)}</div>
             </div>
           ))}
           <button
