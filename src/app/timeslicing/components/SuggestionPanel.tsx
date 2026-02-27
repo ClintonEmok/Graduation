@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Info, Zap, Undo2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,10 +8,8 @@ import { useSuggestionStore } from '@/store/useSuggestionStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useCrimeFilters, useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore';
 import { SuggestionCard } from './SuggestionCard';
+import { ComparisonView } from './ComparisonView';
 
-/**
- * Format date for display
- */
 function formatDate(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -20,24 +18,12 @@ function formatDate(epochSeconds: number): string {
   });
 }
 
-/**
- * Format history date
- */
-function formatHistoryDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
 export function SuggestionPanel() {
-  const { 
-    suggestions, 
-    isPanelOpen, 
-    setPanelOpen, 
-    clearSuggestions, 
+  const {
+    suggestions,
+    isPanelOpen,
+    setPanelOpen,
+    clearSuggestions,
     isEmptyState,
     selectedIds,
     selectAll,
@@ -48,12 +34,10 @@ export function SuggestionPanel() {
     undoSuggestion,
     lastAction,
     comparisonIds,
-    acceptedHistory,
-    clearHistory,
-    reapplyFromHistory,
+    setComparisonId,
+    clearComparison,
   } = useSuggestionStore();
-  
-  // Get active warp info
+
   const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
   const getActiveWarp = useWarpSliceStore((state) => state.getActiveWarp);
   const activeWarp = getActiveWarp();
@@ -66,41 +50,56 @@ export function SuggestionPanel() {
             suggestion.type === 'warp-profile' &&
             'name' in suggestion.data
         );
-  
-  // Get viewport context for display
+
   const crimeFilters = useCrimeFilters();
   const startDate = useViewportStart();
   const endDate = useViewportEnd();
-  
-  // Context display toggle
+
   const [showContext, setShowContext] = useState(false);
-  
-  // Processed section collapse state (persist in session)
   const [processedCollapsed, setProcessedCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('suggestions-processed-collapsed');
-      return stored === 'true';
+      return sessionStorage.getItem('suggestions-processed-collapsed') === 'true';
     }
     return false;
   });
-  
-  // Save collapse state to session storage
+
   useEffect(() => {
     sessionStorage.setItem('suggestions-processed-collapsed', String(processedCollapsed));
   }, [processedCollapsed]);
-  
+
   if (!isPanelOpen) {
     return null;
   }
-  
-  const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
-  const processedSuggestions = suggestions.filter(s => s.status !== 'pending');
+
+  const pendingSuggestions = suggestions.filter((suggestion) => suggestion.status === 'pending');
+  const processedSuggestions = suggestions.filter((suggestion) => suggestion.status !== 'pending');
   const selectedCount = selectedIds.size;
-  const hasPendingSelected = pendingSuggestions.some(s => selectedIds.has(s.id));
-  
+  const hasPendingSelected = pendingSuggestions.some((suggestion) => selectedIds.has(suggestion.id));
+  const comparisonSuggestions = comparisonIds.map((id) =>
+    id ? suggestions.find((suggestion) => suggestion.id === id) ?? null : null
+  );
+  const canCompare = comparisonSuggestions[0] !== null && comparisonSuggestions[1] !== null;
+
+  const toggleComparison = (id: string) => {
+    if (comparisonIds[0] === id) {
+      setComparisonId(0, null);
+      return;
+    }
+    if (comparisonIds[1] === id) {
+      setComparisonId(1, null);
+      return;
+    }
+    if (comparisonIds[0] === null) {
+      setComparisonId(0, id);
+      return;
+    }
+    if (comparisonIds[1] === null) {
+      setComparisonId(1, id);
+    }
+  };
+
   return (
-    <div className="fixed right-0 top-0 h-full w-80 border-l border-slate-700 bg-slate-900 shadow-xl z-50 flex flex-col">
-      {/* Header */}
+    <div className="fixed right-0 top-0 z-50 flex h-full w-80 flex-col border-l border-slate-700 bg-slate-900 shadow-xl">
       <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
         <div>
           <h2 className="font-semibold text-slate-200">Suggestions</h2>
@@ -109,25 +108,22 @@ export function SuggestionPanel() {
               {pendingSuggestions.length} pending, {processedSuggestions.length} processed
             </p>
           )}
-          {selectedCount > 0 && (
-            <p className="text-xs text-amber-400">{selectedCount} selected</p>
-          )}
-          {/* Active warp indicator */}
+          {selectedCount > 0 && <p className="text-xs text-amber-400">{selectedCount} selected</p>}
           {activeWarp ? (
-            <div className="flex items-center gap-1 mt-1 text-xs text-green-400">
+            <div className="mt-1 flex items-center gap-1 text-xs text-green-400">
               <Zap className="size-3" />
               <span>
-                Active warp: {activeWarpSuggestion && 'name' in activeWarpSuggestion.data
+                Active warp:{' '}
+                {activeWarpSuggestion && 'name' in activeWarpSuggestion.data
                   ? activeWarpSuggestion.data.name
                   : activeWarp.label}
               </span>
             </div>
           ) : (
-            <p className="text-xs text-slate-500 mt-1">No active warp</p>
+            <p className="mt-1 text-xs text-slate-500">No active warp</p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Context toggle button */}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -147,12 +143,7 @@ export function SuggestionPanel() {
               Clear
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setPanelOpen(false)}
-            className="h-7 w-7"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={() => setPanelOpen(false)} className="h-7 w-7">
             <X className="size-4" />
           </Button>
         </div>
@@ -188,8 +179,7 @@ export function SuggestionPanel() {
           </Button>
         </div>
       )}
-      
-      {/* Undo toast */}
+
       {showUndoToast && lastAction && (
         <div className="flex items-center justify-between border-b border-slate-700 bg-amber-900/30 px-4 py-2">
           <span className="text-xs text-amber-300">
@@ -199,19 +189,18 @@ export function SuggestionPanel() {
             variant="ghost"
             size="sm"
             onClick={undoSuggestion}
-            className="h-6 text-xs text-amber-300 hover:text-amber-200 hover:bg-amber-800/50"
+            className="h-6 text-xs text-amber-300 hover:bg-amber-800/50 hover:text-amber-200"
           >
-            <Undo2 className="size-3 mr-1" />
+            <Undo2 className="mr-1 size-3" />
             Undo
           </Button>
         </div>
       )}
-      
-      {/* Context display */}
+
       {showContext && (
         <div className="border-b border-slate-700 bg-slate-800/50 p-3">
-          <div className="text-xs font-medium text-slate-300 mb-2">Based on:</div>
-          <div className="text-xs text-slate-400 space-y-1">
+          <div className="mb-2 text-xs font-medium text-slate-300">Based on:</div>
+          <div className="space-y-1 text-xs text-slate-400">
             <div>
               {crimeFilters.crimeTypes.length > 0 ? (
                 <span>Crime types: {crimeFilters.crimeTypes.join(', ')}</span>
@@ -232,67 +221,93 @@ export function SuggestionPanel() {
           </div>
         </div>
       )}
-      
-      {/* Body */}
+
       <ScrollArea className="flex-1">
         <div className="p-3">
-          {/* Empty state message */}
           {isEmptyState ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-sm text-slate-400">
-                No crimes found in current view.
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Try expanding your filters or time range.
-              </p>
+              <p className="text-sm text-slate-400">No crimes found in current view.</p>
+              <p className="mt-1 text-xs text-slate-500">Try expanding your filters or time range.</p>
             </div>
           ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-sm text-slate-400">
-                No suggestions yet.
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Click &apos;Generate&apos; to create suggestions.
-              </p>
+              <p className="text-sm text-slate-400">No suggestions yet.</p>
+              <p className="mt-1 text-xs text-slate-500">Click &apos;Generate&apos; to create suggestions.</p>
             </div>
           ) : (
             <div className="space-y-3">
+              {(comparisonIds[0] || comparisonIds[1]) && (
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs text-slate-300">Comparison mode</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearComparison}
+                      className="h-6 px-2 text-xs text-slate-400 hover:text-slate-200"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  {canCompare && comparisonSuggestions[0] && comparisonSuggestions[1] ? (
+                    <ComparisonView
+                      suggestion1={comparisonSuggestions[0]}
+                      suggestion2={comparisonSuggestions[1]}
+                    />
+                  ) : (
+                    <p className="text-xs text-slate-500">Select two suggestions to compare side by side.</p>
+                  )}
+                </div>
+              )}
+
               {pendingSuggestions.length > 0 && (
                 <>
-                  <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Pending
-                  </h3>
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</h3>
                   <div className="space-y-2">
                     {pendingSuggestions.map((suggestion) => (
-                      <SuggestionCard 
-                        key={suggestion.id} 
-                        suggestion={suggestion} 
-                      />
+                      <div key={suggestion.id} className="space-y-1">
+                        <div className="flex justify-end">
+                          <Button
+                            variant={
+                              comparisonIds[0] === suggestion.id || comparisonIds[1] === suggestion.id
+                                ? 'default'
+                                : 'outline'
+                            }
+                            size="sm"
+                            onClick={() => toggleComparison(suggestion.id)}
+                            disabled={
+                              comparisonIds[0] !== suggestion.id &&
+                              comparisonIds[1] !== suggestion.id &&
+                              comparisonIds[0] !== null &&
+                              comparisonIds[1] !== null
+                            }
+                            className="h-6 px-2 text-[11px]"
+                          >
+                            {comparisonIds[0] === suggestion.id || comparisonIds[1] === suggestion.id
+                              ? 'Comparing'
+                              : 'Compare'}
+                          </Button>
+                        </div>
+                        <SuggestionCard suggestion={suggestion} />
+                      </div>
                     ))}
                   </div>
                 </>
               )}
-              
+
               {processedSuggestions.length > 0 && (
                 <>
                   <button
                     onClick={() => setProcessedCollapsed(!processedCollapsed)}
                     className="mt-4 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-500 hover:text-slate-400"
                   >
-                    {processedCollapsed ? (
-                      <ChevronRight className="size-3" />
-                    ) : (
-                      <ChevronDown className="size-3" />
-                    )}
+                    {processedCollapsed ? <ChevronRight className="size-3" /> : <ChevronDown className="size-3" />}
                     Processed ({processedSuggestions.length})
                   </button>
                   {!processedCollapsed && (
                     <div className="space-y-2">
                       {processedSuggestions.map((suggestion) => (
-                        <SuggestionCard 
-                          key={suggestion.id} 
-                          suggestion={suggestion} 
-                        />
+                        <SuggestionCard key={suggestion.id} suggestion={suggestion} />
                       ))}
                     </div>
                   )}

@@ -169,7 +169,6 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const isSelected = selectedIds.has(suggestion.id);
   const isPending = suggestion.status === 'pending';
   const isLowConfidence = suggestion.status === 'pending' && suggestion.confidence < 50;
-  const isModified = suggestion.status === 'modified';
   const typeStyles = getSuggestionTypeStyles(suggestion.type);
   
   // Check if this suggestion will replace the current warp
