@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { X, Info, Zap, CheckSquare, Square, Check, XCircle, Undo2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Info, Zap, Undo2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
@@ -20,6 +20,18 @@ function formatDate(epochSeconds: number): string {
   });
 }
 
+/**
+ * Format history date
+ */
+function formatHistoryDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export function SuggestionPanel() {
   const { 
     suggestions, 
@@ -35,12 +47,25 @@ export function SuggestionPanel() {
     showUndoToast,
     undoSuggestion,
     lastAction,
+    comparisonIds,
+    acceptedHistory,
+    clearHistory,
+    reapplyFromHistory,
   } = useSuggestionStore();
   
   // Get active warp info
   const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
   const getActiveWarp = useWarpSliceStore((state) => state.getActiveWarp);
   const activeWarp = getActiveWarp();
+  const activeWarpSuggestion =
+    activeWarpId === null
+      ? null
+      : suggestions.find(
+          (suggestion) =>
+            suggestion.id === activeWarpId &&
+            suggestion.type === 'warp-profile' &&
+            'name' in suggestion.data
+        );
   
   // Get viewport context for display
   const crimeFilters = useCrimeFilters();
@@ -49,6 +74,20 @@ export function SuggestionPanel() {
   
   // Context display toggle
   const [showContext, setShowContext] = useState(false);
+  
+  // Processed section collapse state (persist in session)
+  const [processedCollapsed, setProcessedCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('suggestions-processed-collapsed');
+      return stored === 'true';
+    }
+    return false;
+  });
+  
+  // Save collapse state to session storage
+  useEffect(() => {
+    sessionStorage.setItem('suggestions-processed-collapsed', String(processedCollapsed));
+  }, [processedCollapsed]);
   
   if (!isPanelOpen) {
     return null;
@@ -70,11 +109,18 @@ export function SuggestionPanel() {
               {pendingSuggestions.length} pending, {processedSuggestions.length} processed
             </p>
           )}
+          {selectedCount > 0 && (
+            <p className="text-xs text-amber-400">{selectedCount} selected</p>
+          )}
           {/* Active warp indicator */}
           {activeWarp ? (
             <div className="flex items-center gap-1 mt-1 text-xs text-green-400">
               <Zap className="size-3" />
-              <span>Active: {activeWarp.label}</span>
+              <span>
+                Active warp: {activeWarpSuggestion && 'name' in activeWarpSuggestion.data
+                  ? activeWarpSuggestion.data.name
+                  : activeWarp.label}
+              </span>
             </div>
           ) : (
             <p className="text-xs text-slate-500 mt-1">No active warp</p>
@@ -111,6 +157,37 @@ export function SuggestionPanel() {
           </Button>
         </div>
       </div>
+
+      {pendingSuggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-700 px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={selectedCount === pendingSuggestions.length ? deselectAll : selectAll}
+            className="h-7 px-2 text-xs text-slate-300 hover:text-slate-100"
+          >
+            {selectedCount === pendingSuggestions.length ? 'Deselect All' : 'Select All'}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={acceptSelected}
+            disabled={!hasPendingSelected}
+            className="h-7 px-2 text-xs"
+          >
+            Accept Selected
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={rejectSelected}
+            disabled={!hasPendingSelected}
+            className="h-7 px-2 text-xs"
+          >
+            Reject Selected
+          </Button>
+        </div>
+      )}
       
       {/* Undo toast */}
       {showUndoToast && lastAction && (
@@ -198,17 +275,27 @@ export function SuggestionPanel() {
               
               {processedSuggestions.length > 0 && (
                 <>
-                  <h3 className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Processed
-                  </h3>
-                  <div className="space-y-2">
-                    {processedSuggestions.map((suggestion) => (
-                      <SuggestionCard 
-                        key={suggestion.id} 
-                        suggestion={suggestion} 
-                      />
-                    ))}
-                  </div>
+                  <button
+                    onClick={() => setProcessedCollapsed(!processedCollapsed)}
+                    className="mt-4 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-500 hover:text-slate-400"
+                  >
+                    {processedCollapsed ? (
+                      <ChevronRight className="size-3" />
+                    ) : (
+                      <ChevronDown className="size-3" />
+                    )}
+                    Processed ({processedSuggestions.length})
+                  </button>
+                  {!processedCollapsed && (
+                    <div className="space-y-2">
+                      {processedSuggestions.map((suggestion) => (
+                        <SuggestionCard 
+                          key={suggestion.id} 
+                          suggestion={suggestion} 
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>

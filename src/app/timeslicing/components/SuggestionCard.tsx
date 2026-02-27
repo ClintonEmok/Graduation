@@ -74,11 +74,10 @@ function getSuggestionTypeStyles(type: Suggestion['type']): {
 
 function formatSuggestionData(
   data: WarpProfileData | IntervalBoundaryData,
-  type: Suggestion['type']
+  type: Suggestion['type'],
+  minTimestampSec: number | null,
+  maxTimestampSec: number | null
 ): React.ReactNode {
-  // Get timeline domain from data store
-  const minTimestampSec = useDataStore.getState().minTimestampSec;
-  const maxTimestampSec = useDataStore.getState().maxTimestampSec;
   const hasValidDomain = minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec;
   
   if (type === 'warp-profile' && 'intervals' in data) {
@@ -132,7 +131,15 @@ function formatSuggestionData(
 }
 
 export function SuggestionCard({ suggestion }: SuggestionCardProps) {
-  const { acceptSuggestion, rejectSuggestion, modifySuggestion, setActiveSuggestion, activeSuggestionId } = 
+  const {
+    acceptSuggestion,
+    rejectSuggestion,
+    modifySuggestion,
+    setActiveSuggestion,
+    activeSuggestionId,
+    selectedIds,
+    toggleSelect,
+  } = 
     useSuggestionStore();
   
   // Get active warp from warp slice store
@@ -146,6 +153,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const [isAcceptHovered, setIsAcceptHovered] = useState(false);
   
   const isActive = activeSuggestionId === suggestion.id;
+  const isSelected = selectedIds.has(suggestion.id);
   const isPending = suggestion.status === 'pending';
   const isLowConfidence = suggestion.status === 'pending' && suggestion.confidence < 50;
   const isModified = suggestion.status === 'modified';
@@ -159,7 +167,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   // Check if this suggestion is the active warp
   const isActiveWarp = suggestion.status === 'accepted' && 
     suggestion.type === 'warp-profile' && 
-    activeWarpId !== null;
+    activeWarpId === suggestion.id;
   
   // Determine border color based on type and status
   const getBorderColor = () => {
@@ -401,6 +409,19 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
+            {isPending && (
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  toggleSelect(suggestion.id);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="size-3.5 accent-amber-500"
+                aria-label="Select suggestion"
+              />
+            )}
             <span className="font-medium text-slate-200">
               {formatSuggestionType(suggestion.type)}
             </span>
