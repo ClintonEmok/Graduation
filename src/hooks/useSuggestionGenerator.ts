@@ -27,6 +27,8 @@ interface UseSuggestionGeneratorReturn {
   mode: TriggerMode;
   setMode: (mode: TriggerMode) => void;
   isGenerating: boolean;
+  generationError: string | null;
+  clearGenerationError: () => void;
 }
 
 /**
@@ -49,7 +51,13 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
-  const { suggestions, addSuggestion, clearSuggestions, setEmptyState } = useSuggestionStore();
+  const {
+    suggestions,
+    addSuggestion,
+    clearPendingSuggestions,
+    setEmptyState,
+    isPanelOpen,
+  } = useSuggestionStore();
   
   // Track if user has manually triggered at least once
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
@@ -59,6 +67,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   
   // Track generating state
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   
   // Get viewport state
   const viewportFilters = useCrimeFilters();
@@ -111,10 +120,11 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     }
 
     setIsGenerating(true);
+    setGenerationError(null);
     
     try {
-      // Clear existing suggestions first
-      clearSuggestions();
+      // Preserve accepted suggestions and regenerate pending suggestions only.
+      clearPendingSuggestions();
       
       if (!crimes || crimes.length === 0) {
         // Set store flag for empty state (not console.log)
@@ -163,10 +173,14 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           } as IntervalBoundaryData,
         });
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setGenerationError(`Generation failed: ${message}`);
+      console.error('Suggestion generation failed:', error);
     } finally {
       setIsGenerating(false);
     }
-  }, [addSuggestion, clearSuggestions, crimes, endDate, isLoading, setEmptyState, startDate]);
+  }, [addSuggestion, clearPendingSuggestions, crimes, endDate, isLoading, setEmptyState, startDate]);
 
   // Trigger function - generates real suggestions based on algorithms
   const handleTrigger = useCallback((params: GenerationParams) => {
@@ -178,13 +192,14 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   // Auto-generate when filters change (after debounce)
   // Only if user has previously clicked Generate (to avoid auto-trigger on initial load)
   useEffect(() => {
-    if (hasGeneratedOnce && generationParams && !isLoading) {
+    if (hasGeneratedOnce && generationParams && isPanelOpen && !isLoading) {
       generateSuggestions(generationParams);
     }
   }, [
     generateSuggestions,
     generationParams,
     hasGeneratedOnce,
+    isPanelOpen,
     isLoading,
     debouncedFilters.crimeTypes,
     debouncedFilters.districts,
@@ -200,5 +215,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     mode,
     setMode,
     isGenerating,
+    generationError,
+    clearGenerationError: () => setGenerationError(null),
   };
 }

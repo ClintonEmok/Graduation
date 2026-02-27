@@ -4,13 +4,16 @@ export type SuggestionType = 'warp-profile' | 'interval-boundary';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'modified';
 
 export type BoundaryMethod = 'peak' | 'change-point' | 'rule-based';
+export type SnapToUnit = 'hour' | 'day' | 'none';
+
+const PRESETS_STORAGE_KEY = 'timeslicing-generation-presets-v1';
 
 export interface GenerationPreset {
   id: string;
   name: string;
   warpCount: number;
   intervalCount: number;
-  snapToUnit: 'hour' | 'day' | 'none';
+  snapToUnit: SnapToUnit;
   boundaryMethod: BoundaryMethod;
 }
 
@@ -56,9 +59,12 @@ interface SuggestionStore {
   isEmptyState: boolean;
   warpCount: number;
   intervalCount: number;
+  snapToUnit: SnapToUnit;
+  boundaryMethod: BoundaryMethod;
   
   // Confidence filter state
   minConfidence: number;
+  generationError: string | null;
   
   // Bulk selection state
   selectedIds: Set<string>;
@@ -108,7 +114,11 @@ interface SuggestionStore {
   setEmptyState: (empty: boolean) => void;
   setWarpCount: (count: number) => void;
   setIntervalCount: (count: number) => void;
+  setSnapToUnit: (value: SnapToUnit) => void;
+  setBoundaryMethod: (value: BoundaryMethod) => void;
   setMinConfidence: (minConfidence: number) => void;
+  setGenerationError: (message: string | null) => void;
+  loadPresetsFromStorage: () => void;
   
   // Comparison actions
   setComparisonId: (index: 0 | 1, id: string | null) => void;
@@ -128,9 +138,12 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   isEmptyState: false,
   warpCount: 3,
   intervalCount: 3,
+  snapToUnit: 'none',
+  boundaryMethod: 'peak',
 
   // Confidence filter
   minConfidence: 0,
+  generationError: null,
 
   // Bulk selection
   selectedIds: new Set<string>(),
@@ -411,6 +424,7 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       suggestions: [],
       activeSuggestionId: null,
       isEmptyState: false,
+      generationError: null,
       selectedIds: new Set(),
       comparisonIds: [null, null],
       showUndoToast: false,
@@ -434,6 +448,7 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         suggestions: acceptedSuggestions,
         activeSuggestionId: activeSuggestionStillVisible ? state.activeSuggestionId : null,
         isEmptyState: false,
+        generationError: null,
         selectedIds: new Set(),
         comparisonIds: [null, null] as [null, null],
         showUndoToast: false,
@@ -450,6 +465,8 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   setIntervalCount: (count) => set({ intervalCount: Math.max(0, Math.min(6, count)) }),
   
   setMinConfidence: (minConfidence) => set({ minConfidence: Math.max(0, Math.min(100, minConfidence)) }),
+
+  setGenerationError: (message) => set({ generationError: message }),
 
   // Comparison actions
   setComparisonId: (index, id) =>
