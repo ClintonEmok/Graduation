@@ -4,15 +4,15 @@
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** Phase 37: Algorithm Integration
 **Status:** Phase 37 in progress
-**Next:** Phase 37 gap-closure plans (remaining: 37-04)
+**Next:** Phase 37 gap-closure plans (remaining: 37-05)
 
 ## Current Position
 Phase: **37 of 42** (Algorithm Integration)
-Plan: **6 of 9** in current phase
+Plan: **7 of 9** in current phase
 Status: **In progress**
-Last activity: 2026-02-27 - Completed 37-05-PLAN.md
+Last activity: 2026-02-27 - Completed 37-04-PLAN.md
 
-Progress: overall ███████████████████░ 98% (137/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
+Progress: overall ███████████████████░ 99% (138/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
 ```
 v1.0 Complete:
@@ -32,7 +32,7 @@ v1.1 Complete:
 v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-[ ] Phase 37: Algorithm Integration (6/9 plans complete)
+[ ] Phase 37: Algorithm Integration (7/9 plans complete)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -257,9 +257,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-27 17:41 UTC
-Stopped at: Completed 37-05-PLAN.md
-Next: Execute remaining Phase 37 gap-closure plan (37-04)
+Last session: 2026-02-27 17:42 UTC
+Stopped at: Completed 37-04-PLAN.md
+Next: Execute remaining Phase 37 gap-closure plan (37-05)
 
 ## Accumulated Context
 
@@ -383,8 +383,13 @@ Next: Execute remaining Phase 37 gap-closure plan (37-04)
 - Added per-card selection controls and selected-count visibility in the panel header
 - Added preset persistence behavior for generation settings in suggestion store state
 
+**Delivered in 37-04 (Gap closure - interaction patterns):**
+- Added undo tracking in suggestion store to support five-second accept/reject reversal
+- Added keyboard shortcut guidance text for Enter/Escape/Arrow card actions
+- Kept processed section explicitly grouped as a collapsible processed container
+
 **Next focus:**
-- Continue Phase 37 gap closure (remaining: 37-04)
+- Continue Phase 37 gap closure (remaining: 37-05)
 
 ---
-*Last updated: 2026-02-27 - Completed 37-05 gap-closure bulk actions and presets execution*
+*Last updated: 2026-02-27 - Completed 37-04 gap-closure interaction patterns execution*
