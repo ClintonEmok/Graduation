@@ -300,12 +300,17 @@ export function SuggestionPanel() {
                   <button
                     onClick={() => setProcessedCollapsed(!processedCollapsed)}
                     className="mt-4 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-500 hover:text-slate-400"
+                    aria-expanded={!processedCollapsed}
+                    aria-controls="processed-suggestions"
                   >
                     {processedCollapsed ? <ChevronRight className="size-3" /> : <ChevronDown className="size-3" />}
-                    Processed ({processedSuggestions.length})
+                    <span>Processed</span>
+                    <span className="rounded-full border border-slate-600 px-1.5 py-0.5 text-[10px] leading-none text-slate-300">
+                      {processedSuggestions.length}
+                    </span>
                   </button>
                   {!processedCollapsed && (
-                    <div className="space-y-2">
+                    <div id="processed-suggestions" className="space-y-2">
                       {processedSuggestions.map((suggestion) => (
                         <SuggestionCard key={suggestion.id} suggestion={suggestion} />
                       ))}
