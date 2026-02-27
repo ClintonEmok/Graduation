@@ -10,7 +10,7 @@ export interface WarpSlice {
 
 interface WarpSliceState {
   slices: WarpSlice[];
-  addSlice: () => string;
+  addSlice: (initial?: Partial<Omit<WarpSlice, 'id'>>) => string;
   updateSlice: (id: string, updates: Partial<Pick<WarpSlice, 'label' | 'range' | 'weight' | 'enabled'>>) => void;
   removeSlice: (id: string) => void;
   clearSlices: () => void;
@@ -31,24 +31,19 @@ const normalizeRange = (range: [number, number]): [number, number] => {
   return [start, end];
 };
 
-const createDefaultSlice = (index: number): WarpSlice => {
-  const start = clamp(12 + index * 10, 0, 94);
-  const end = clamp(start + 8, start + 1, 100);
-  return {
-    id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `warp-slice-${Date.now()}-${index}`,
-    label: `Warp ${index + 1}`,
-    range: [start, end],
-    weight: 1,
-    enabled: true,
-  };
-};
-
-export const useWarpSliceStore = create<WarpSliceState>((set) => ({
+export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
   slices: [],
-  addSlice: () => {
-    const nextSlice = createDefaultSlice(useWarpSliceStore.getState().slices.length);
+  addSlice: (initial) => {
+    const index = get().slices.length;
+    const nextSlice: WarpSlice = {
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `warp-slice-${Date.now()}-${index}`,
+      label: initial?.label ?? `Warp ${index + 1}`,
+      range: initial?.range ?? [clamp(12 + index * 10, 0, 94), clamp(20 + index * 10, 1, 100)],
+      weight: initial?.weight ?? 1,
+      enabled: initial?.enabled ?? true,
+    };
     set((state) => ({ slices: [...state.slices, nextSlice] }));
     return nextSlice.id;
   },

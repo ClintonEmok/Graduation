@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useMeasure } from '@/hooks/useMeasure';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useDataStore } from '@/store/useDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
+import { useSuggestionStore, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 
 // Default to full date range if no real data loaded yet
 const DEFAULT_START_EPOCH = 978307200; // 2001-01-01
 const DEFAULT_END_EPOCH = 1767571200; // 2026-01-01
+const MIN_VALID_DATA_EPOCH = 946684800; // 2000-01-01
 
 export default function TimeslicingPage() {
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
@@ -25,15 +30,20 @@ export default function TimeslicingPage() {
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   
+  // mapDomain defaults to [0, 100] in adaptive store, which is not an epoch range.
+  // Only treat adaptive domain as valid when it looks like real epoch seconds.
+  const hasValidAdaptiveDomain =
+    mapDomain[1] > mapDomain[0] && mapDomain[0] >= MIN_VALID_DATA_EPOCH;
+
   // Determine actual domain
-  const domainStartSec = mapDomain[0] !== 0 || mapDomain[1] !== 0 
-    ? mapDomain[0] 
+  const domainStartSec = hasValidAdaptiveDomain
+    ? mapDomain[0]
     : (minTimestampSec ?? DEFAULT_START_EPOCH);
-  const domainEndSec = mapDomain[0] !== 0 || mapDomain[1] !== 0 
-    ? mapDomain[1] 
+  const domainEndSec = hasValidAdaptiveDomain
+    ? mapDomain[1]
     : (maxTimestampSec ?? DEFAULT_END_EPOCH);
-  
-  const hasRealData = domainStartSec !== DEFAULT_START_EPOCH || domainEndSec !== DEFAULT_END_EPOCH;
+
+  const hasRealData = hasValidAdaptiveDomain || (minTimestampSec !== null && maxTimestampSec !== null);
   
   // Fetch crime data if we have real domain
   const { data: crimes, isLoading, error } = useCrimeData({
@@ -55,6 +65,125 @@ export default function TimeslicingPage() {
       hasData: true 
     };
   }, [crimes]);
+
+  // Cross-route parity with /timeline-test:
+  // DualTimeline overview histogram reads from useDataStore + adaptive maps.
+  // Timeslicing fetches via useCrimeData, so mirror fetched records into those stores.
+  useEffect(() => {
+    if (!crimes || crimes.length === 0) {
+      return;
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minZ = Number.POSITIVE_INFINITY;
+    let maxZ = Number.NEGATIVE_INFINITY;
+
+    const timestamps = new Float32Array(crimes.length);
+    const points = crimes.map((crime, index) => {
+      minX = Math.min(minX, crime.x);
+      maxX = Math.max(maxX, crime.x);
+      minZ = Math.min(minZ, crime.z);
+      maxZ = Math.max(maxZ, crime.z);
+      timestamps[index] = crime.timestamp;
+
+      return {
+        id: `${crime.timestamp}-${index}`,
+        timestamp: crime.timestamp,
+        x: crime.x,
+        y: 0,
+        z: crime.z,
+        type: crime.type,
+      };
+    });
+
+    useDataStore.setState({
+      data: points,
+      columns: null,
+      minTimestampSec: domainStartSec,
+      maxTimestampSec: domainEndSec,
+      minX: Number.isFinite(minX) ? minX : -50,
+      maxX: Number.isFinite(maxX) ? maxX : 50,
+      minZ: Number.isFinite(minZ) ? minZ : -50,
+      maxZ: Number.isFinite(maxZ) ? maxZ : 50,
+      dataCount: crimes.length,
+      isMock: false,
+    });
+
+    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec]);
+  }, [crimes, domainEndSec, domainStartSec]);
+
+  // Get time domain for slice creation
+  const minTs = useDataStore((s) => s.minTimestampSec);
+  const maxTs = useDataStore((s) => s.maxTimestampSec);
+  const addSlice = useSliceStore((s) => s.addSlice);
+  const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
+  
+  // Handle warp profile acceptance - create warp slices
+  const handleAcceptWarpProfile = useCallback((data: WarpProfileData) => {
+    if (!minTs || !maxTs) return;
+    
+    data.intervals.forEach((interval, index) => {
+      const startNorm = interval.startPercent;
+      const endNorm = interval.endPercent;
+      const weight = interval.strength;
+      
+      // Create warp slice
+      addWarpSlice({
+        label: `${data.name} ${index + 1}`,
+        range: [startNorm, endNorm],
+        weight,
+        enabled: true,
+      });
+    });
+  }, [addWarpSlice, minTs, maxTs]);
+  
+  // Handle interval boundary acceptance - create time slices
+  const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData) => {
+    if (!minTs || !maxTs || data.boundaries.length < 2) return;
+    
+    // Sort boundaries
+    const sorted = [...data.boundaries].sort((a, b) => a - b);
+    
+    // Create slices for each pair of boundaries
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const startEpoch = sorted[i];
+      const endEpoch = sorted[i + 1];
+      
+      // Convert to normalized (0-100)
+      const startPercent = ((startEpoch - minTs) / (maxTs - minTs)) * 100;
+      const endPercent = ((endEpoch - minTs) / (maxTs - minTs)) * 100;
+      
+      addSlice({
+        name: `Interval ${i + 1}`,
+        type: 'range',
+        range: [Math.max(0, Math.min(100, startPercent)), Math.max(0, Math.min(100, endPercent))],
+        isLocked: false,
+        isVisible: true,
+      });
+    }
+  }, [addSlice, minTs, maxTs]);
+  
+  // Listen for suggestion acceptance events
+  useEffect(() => {
+    const handleWarpEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ data: WarpProfileData }>;
+      handleAcceptWarpProfile(customEvent.detail.data);
+    };
+    
+    const handleIntervalEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ data: IntervalBoundaryData }>;
+      handleAcceptIntervalBoundary(customEvent.detail.data);
+    };
+    
+    window.addEventListener('accept-warp-profile', handleWarpEvent);
+    window.addEventListener('accept-interval-boundary', handleIntervalEvent);
+    
+    return () => {
+      window.removeEventListener('accept-warp-profile', handleWarpEvent);
+      window.removeEventListener('accept-interval-boundary', handleIntervalEvent);
+    };
+  }, [handleAcceptWarpProfile, handleAcceptIntervalBoundary]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">

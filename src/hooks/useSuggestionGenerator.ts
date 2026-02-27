@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { useSuggestionStore, type Suggestion, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useSuggestionStore, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
 import { useCrimeData } from '@/hooks/useCrimeData';
@@ -13,7 +13,8 @@ export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
  * Generation parameters passed from UI controls
  */
 export interface GenerationParams {
-  intervalCount: number;  // 3-12 per CONTEXT
+  warpCount: number;  // 0-6 per CONTEXT
+  intervalCount: number;  // 0-6 per CONTEXT
   snapToUnit: 'hour' | 'day' | 'none';
   boundaryMethod: BoundaryMethod;
 }
@@ -48,7 +49,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
-  const { suggestions, addSuggestion, clearSuggestions, setEmptyState, isEmptyState } = useSuggestionStore();
+  const { suggestions, addSuggestion, clearSuggestions, setEmptyState } = useSuggestionStore();
   
   // Track if user has manually triggered at least once
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
@@ -64,10 +65,10 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   const startDate = useViewportStore((state) => state.startDate);
   const endDate = useViewportStore((state) => state.endDate);
   
-  // Debounce filter changes (400ms per spec)
+  // Debounce filter changes (500ms per CONTEXT)
   const debouncedFilters = useDebounce(
     { crimeTypes: viewportFilters.crimeTypes, districts: viewportFilters.districts, startDate, endDate },
-    400
+    500
   );
   
   // Fetch crime data for analysis
@@ -105,25 +106,15 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
    * Generate suggestions using real algorithms
    */
   const generateSuggestions = useCallback(async (params: GenerationParams) => {
+    if (isLoading) {
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
       // Clear existing suggestions first
       clearSuggestions();
-      
-      // Get current viewport and filters
-      const { startDate: currentStart, endDate: currentEnd } = useViewportStore.getState();
-      const { crimeTypes, districts } = useViewportStore.getState().filters;
-      
-      // Fetch crime data for analysis - include geographic filter (districts)
-      const { data: crimes } = useCrimeData({
-        startEpoch: currentStart,
-        endEpoch: currentEnd,
-        crimeTypes: crimeTypes.length > 0 ? crimeTypes : undefined,
-        districts: districts.length > 0 ? districts : undefined,
-        bufferDays: 0,
-        limit: 100000,
-      });
       
       if (!crimes || crimes.length === 0) {
         // Set store flag for empty state (not console.log)
@@ -134,44 +125,48 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       // Clear empty state when we have data
       setEmptyState(false);
       
-      const timeRange = { start: currentStart, end: currentEnd };
+      const timeRange = { start: startDate, end: endDate };
       
-      // Generate warp profiles with user-configurable interval count
-      const profiles = generateWarpProfiles(crimes, timeRange, { 
-        profileCount: 3,
-        intervalCount: params.intervalCount,  // Pass user-configured interval count
-      });
-      
-      profiles.forEach((profile: WarpProfile) => {
-        addSuggestion({
-          type: 'warp-profile',
-          confidence: profile.confidence,
-          data: {
-            name: profile.name,
-            intervals: profile.intervals,
-          } as WarpProfileData,
+      // Generate warp profiles with user-configurable count
+      if (params.warpCount > 0) {
+        const profiles = generateWarpProfiles(crimes, timeRange, { 
+          profileCount: params.warpCount,
+          intervalCount: params.intervalCount || 3,
         });
-      });
+        
+        profiles.forEach((profile: WarpProfile) => {
+          addSuggestion({
+            type: 'warp-profile',
+            confidence: profile.confidence,
+            data: {
+              name: profile.name,
+              intervals: profile.intervals,
+            } as WarpProfileData,
+          });
+        });
+      }
       
       // Generate interval boundaries with user-configured options
-      const boundary = detectBoundaries(crimes, timeRange, {
-        method: params.boundaryMethod,
-        sensitivity: 'medium',
-        snapToUnit: params.snapToUnit,  // Pass snapping option
-        boundaryCount: params.intervalCount,  // Pass user-configured count
-      });
-      
-      addSuggestion({
-        type: 'interval-boundary',
-        confidence: boundary.confidence,
-        data: {
-          boundaries: boundary.boundaries,
-        } as IntervalBoundaryData,
-      });
+      if (params.intervalCount > 0) {
+        const boundary = detectBoundaries(crimes, timeRange, {
+          method: params.boundaryMethod,
+          sensitivity: 'medium',
+          snapToUnit: params.snapToUnit,  // Pass snapping option
+          boundaryCount: params.intervalCount,  // Pass user-configured count
+        });
+        
+        addSuggestion({
+          type: 'interval-boundary',
+          confidence: boundary.confidence,
+          data: {
+            boundaries: boundary.boundaries,
+          } as IntervalBoundaryData,
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
-  }, [addSuggestion, clearSuggestions, setEmptyState]);
+  }, [addSuggestion, clearSuggestions, crimes, endDate, isLoading, setEmptyState, startDate]);
 
   // Trigger function - generates real suggestions based on algorithms
   const handleTrigger = useCallback((params: GenerationParams) => {
@@ -187,6 +182,10 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       generateSuggestions(generationParams);
     }
   }, [
+    generateSuggestions,
+    generationParams,
+    hasGeneratedOnce,
+    isLoading,
     debouncedFilters.crimeTypes,
     debouncedFilters.districts,
     debouncedFilters.startDate,

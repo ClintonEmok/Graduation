@@ -13,7 +13,8 @@ interface SuggestionToolbarProps {
 
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   // Generation params state
-  const [intervalCount, setIntervalCount] = useState(5);  // default 5, range 3-12
+  const [warpCount, setWarpCount] = useState(3);  // default 3, range 0-6
+  const [intervalCount, setIntervalCount] = useState(3);  // default 3, range 0-6
   const [snapToUnit, setSnapToUnit] = useState<'hour' | 'day' | 'none'>('none');
   const [boundaryMethod, setBoundaryMethod] = useState<BoundaryMethod>('peak');
   
@@ -22,6 +23,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
 
   const handleGenerate = () => {
     const params: GenerationParams = {
+      warpCount,
       intervalCount,
       snapToUnit,
       boundaryMethod,
@@ -97,16 +99,30 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       
       {/* Secondary options row */}
       <div className="flex items-center gap-4 text-xs">
+        {/* Warp profiles count slider */}
+        <div className="flex items-center gap-2">
+          <label className="text-slate-400">Warps:</label>
+          <input
+            type="range"
+            min="0"
+            max="6"
+            value={warpCount}
+            onChange={(e) => setWarpCount(parseInt(e.target.value, 10))}
+            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+          />
+          <span className="text-slate-300 w-4">{warpCount}</span>
+        </div>
+
         {/* Interval count slider */}
         <div className="flex items-center gap-2">
           <label className="text-slate-400">Intervals:</label>
           <input
             type="range"
-            min="3"
-            max="12"
+            min="0"
+            max="6"
             value={intervalCount}
             onChange={(e) => setIntervalCount(parseInt(e.target.value, 10))}
-            className="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
           />
           <span className="text-slate-300 w-4">{intervalCount}</span>
         </div>
