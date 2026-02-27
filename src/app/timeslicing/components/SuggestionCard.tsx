@@ -151,6 +151,13 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editData, setEditData] = useState<WarpProfileData | IntervalBoundaryData | null>(null);
   const [isAcceptHovered, setIsAcceptHovered] = useState(false);
+
+  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const hasValidDomain =
+    minTimestampSec !== null &&
+    maxTimestampSec !== null &&
+    maxTimestampSec > minTimestampSec;
   
   const isActive = activeSuggestionId === suggestion.id;
   const isSelected = selectedIds.has(suggestion.id);
@@ -462,7 +469,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               }
             </div>
           ) : (
-            formatSuggestionData(suggestion.data, suggestion.type)
+            formatSuggestionData(suggestion.data, suggestion.type, minTimestampSec, maxTimestampSec)
           )}
         </div>
         
@@ -493,6 +500,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               onMouseEnter={() => setIsAcceptHovered(true)}
               onMouseLeave={() => setIsAcceptHovered(false)}
               className={`h-7 text-xs ${willReplaceWarp ? 'bg-amber-600 hover:bg-amber-500' : ''}`}
+              title={willReplaceWarp ? 'Accepting this warp will replace the current active warp' : 'Accept suggestion'}
             >
               <Check className="size-3" />
               Accept
@@ -523,7 +531,10 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-              <span>This will replace your current warp</span>
+              <span>
+                This will replace your current warp
+                {activeWarp ? ` (${activeWarp.label})` : ''}
+              </span>
             </div>
           )}
         </div>
