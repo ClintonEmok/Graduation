@@ -276,6 +276,10 @@ Plans:
 - [x] 37-01-PLAN.md — Generation triggers & auto-regeneration
 - [x] 37-02-PLAN.md — Accept/modify workflow integration
 
+**Gap Closure Plans:**
+- [ ] 37-03-PLAN.md — UX quick fixes (dates, preview, animations)
+- [ ] 37-04-PLAN.md — Interaction improvements (undo, keyboard, collapse)
+
 **Phase 37: Review/Approval Workflows** (planned)
 
 ### v1.3 Fully Automated Timeslicing Workflows
