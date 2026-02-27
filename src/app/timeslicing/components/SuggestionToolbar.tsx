@@ -67,7 +67,14 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <Button variant="default" size="sm" onClick={handleGenerate} disabled={isGenerating} className="gap-1.5">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className="gap-1.5"
+          title="Create new warp profile and interval boundary suggestions based on current data"
+        >
           <Sparkles className="size-4" />
           {isGenerating ? 'Generating...' : 'Generate Suggestions'}
         </Button>
@@ -118,7 +125,12 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
 
       <div className="flex items-center gap-4 text-xs">
         <div className="flex items-center gap-2">
-          <label className="text-slate-400">Warps:</label>
+          <label
+            className="text-slate-400"
+            title="Number of warp profiles to generate (affects time scaling)"
+          >
+            Warps:
+          </label>
           <input
             type="range"
             min="0"
@@ -126,12 +138,15 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             value={warpCount}
             onChange={(e) => setWarpCount(parseInt(e.target.value, 10))}
             className="h-1 w-16 cursor-pointer appearance-none rounded-lg bg-slate-700"
+            title="Number of warp profiles to generate (affects time scaling)"
           />
           <span className="w-4 text-slate-300">{warpCount}</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-slate-400">Intervals:</label>
+          <label className="text-slate-400" title="Number of boundary sets to generate">
+            Intervals:
+          </label>
           <input
             type="range"
             min="0"
@@ -139,17 +154,21 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             value={intervalCount}
             onChange={(e) => setIntervalCount(parseInt(e.target.value, 10))}
             className="h-1 w-16 cursor-pointer appearance-none rounded-lg bg-slate-700"
+            title="Number of boundary sets to generate"
           />
           <span className="w-4 text-slate-300">{intervalCount}</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-slate-400">Snapping:</label>
+          <label className="text-slate-400" title="Round boundaries to hour/day boundaries">
+            Snapping:
+          </label>
           <div className="flex overflow-hidden rounded-md border border-slate-700">
             {(['none', 'hour', 'day'] as const).map((option) => (
               <button
                 key={option}
                 onClick={() => setSnapToUnit(option)}
+                title="Round boundaries to hour/day boundaries"
                 className={`px-2 py-1 text-xs transition-colors ${
                   snapToUnit === option
                     ? 'bg-slate-600 text-white'
@@ -163,11 +182,14 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-slate-400">Method:</label>
+          <label className="text-slate-400" title="Algorithm used to detect boundaries">
+            Method:
+          </label>
           <select
             value={boundaryMethod}
             onChange={(e) => setBoundaryMethod(e.target.value as BoundaryMethod)}
             className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300"
+            title="Algorithm used to detect boundaries"
           >
             <option value="peak">Peak</option>
             <option value="change-point">Change Point</option>
