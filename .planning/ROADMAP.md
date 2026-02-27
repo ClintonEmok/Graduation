@@ -281,6 +281,7 @@ Plans:
 - [ ] 37-04-PLAN.md — Interaction improvements (undo, keyboard, collapse)
 - [ ] 37-05-PLAN.md — Bulk actions & presets
 - [ ] 37-06-PLAN.md — Comparison, tooltips & history
+- [ ] 37-07-PLAN.md — Collapsible suggestion cards
 
 **Phase 37: Review/Approval Workflows** (planned)
 
