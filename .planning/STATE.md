@@ -3,16 +3,16 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** Phase 37: Algorithm Integration
-**Status:** Phase 37 complete
-**Next:** Phase 38-42: Fully Automated Timeslicing Workflows (v1.3)
+**Status:** Phase 37 in progress
+**Next:** Phase 37 gap-closure plans (37-04 through 37-09)
 
 ## Current Position
 Phase: **37 of 42** (Algorithm Integration)
-Plan: **3 of 3** in current phase
-Status: **Phase complete**
-Last activity: 2026-02-27 - Completed 37-01-PLAN.md
+Plan: **4 of 9** in current phase
+Status: **In progress**
+Last activity: 2026-02-27 - Completed 37-03-PLAN.md
 
-Progress: overall ██████████████████░░ 92% (132/143 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
+Progress: overall ███████████████████░ 96% (135/140 plans) | v1.2 █████████░░░░░ 100% phases (7/7)
 
 ```
 v1.0 Complete:
@@ -32,7 +32,7 @@ v1.1 Complete:
 v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-[x] Phase 37: Algorithm Integration (3/3 plans complete)
+[ ] Phase 37: Algorithm Integration (4/9 plans complete)
 
 v1.3 Planned:
 [ ] Phase 38-42: Fully Automated Timeslicing Workflows
@@ -257,9 +257,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-02-27 17:37 UTC
-Stopped at: Completed 37-01-PLAN.md
-Next: Phase 38: Fully Automated Timeslicing Workflows
+Last session: 2026-02-27 17:39 UTC
+Stopped at: Completed 37-03-PLAN.md
+Next: Execute 37-04-PLAN.md
 
 ## Accumulated Context
 
@@ -340,7 +340,7 @@ Next: Phase 38: Fully Automated Timeslicing Workflows
 - Added low-confidence visual warnings (amber border, warning icon)
 - Added automatic re-analysis with 400ms debounce on filter changes
 
-**Phase 37 Completion (2026-02-27)**
+**Phase 37 Progress (2026-02-27)**
 **Prerequisites from Phase 36:**
 - ✅ confidence-scoring.ts, warp-generation.ts, interval-detection.ts algorithms available
 - ✅ useSuggestionStore with Suggestion types and CRUD actions
@@ -362,8 +362,14 @@ Next: Phase 38: Fully Automated Timeslicing Workflows
 - Added active warp UI indicators: ACTIVE badge on the current card and panel header active warp label
 - Added replacement warning on warp accept hover: "This will replace your current warp"
 
+**Delivered in 37-03 (Gap closure - timeline feedback and readability):**
+- Converted suggestion time values to readable dates in card previews and inline editors
+- Added hover preview overlays on timeline for warp intervals and interval boundaries
+- Added accepted suggestion-warp highlight overlay + legend to timeline view
+- Added smooth accept/reject card transitions and processed-list expand/collapse animation
+
 **Next focus:**
-- Phase 38: Fully Automated Timeslicing Workflows (v1.3)
+- Continue Phase 37 gap closure (37-04 through 37-09)
 
 ---
-*Last updated: 2026-02-27 - Completed 37-01 execution with per-task commits*
+*Last updated: 2026-02-27 - Completed 37-03 gap-closure UX execution*
