@@ -169,11 +169,27 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const handleAccept = (e: React.MouseEvent) => {
     e.stopPropagation();
     acceptSuggestion(suggestion.id);
+    
+    // Show toast notification
+    if (suggestion.type === 'warp-profile') {
+      toast.success('Warp profile applied', {
+        description: 'Your timeline has been updated with the new warp intervals.',
+      });
+    } else {
+      toast.success('Intervals created', {
+        description: 'Time slices have been added to your timeline.',
+      });
+    }
   };
   
   const handleReject = (e: React.MouseEvent) => {
     e.stopPropagation();
     rejectSuggestion(suggestion.id);
+    
+    // Show toast notification
+    toast.info('Suggestion rejected', {
+      description: 'The suggestion has been removed from the list.',
+    });
   };
   
   const handleModify = (e: React.MouseEvent) => {
@@ -188,6 +204,11 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     }
     setIsEditing(false);
     setEditData(null);
+    
+    // Show toast notification
+    toast.success('Changes saved', {
+      description: 'Your modifications have been applied.',
+    });
   };
   
   const handleCancelEdit = () => {

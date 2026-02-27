@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Info, Zap, CheckSquare, Square, Check, XCircle } from 'lucide-react';
+import { X, Info, Zap, CheckSquare, Square, Check, XCircle, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
@@ -32,6 +32,9 @@ export function SuggestionPanel() {
     deselectAll,
     acceptSelected,
     rejectSelected,
+    showUndoToast,
+    undoSuggestion,
+    lastAction,
   } = useSuggestionStore();
   
   // Get active warp info
@@ -108,6 +111,24 @@ export function SuggestionPanel() {
           </Button>
         </div>
       </div>
+      
+      {/* Undo toast */}
+      {showUndoToast && lastAction && (
+        <div className="flex items-center justify-between border-b border-slate-700 bg-amber-900/30 px-4 py-2">
+          <span className="text-xs text-amber-300">
+            {lastAction.type === 'accept' ? 'Accepted' : 'Rejected'}. Undo available.
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={undoSuggestion}
+            className="h-6 text-xs text-amber-300 hover:text-amber-200 hover:bg-amber-800/50"
+          >
+            <Undo2 className="size-3 mr-1" />
+            Undo
+          </Button>
+        </div>
+      )}
       
       {/* Context display */}
       {showContext && (
