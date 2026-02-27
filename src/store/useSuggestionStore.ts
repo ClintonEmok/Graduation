@@ -130,6 +130,45 @@ interface SuggestionStore {
   reapplyFromHistory: (historyId: string) => void;
 }
 
+function persistPresets(presets: GenerationPreset[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+}
+
+function readStoredPresets(): GenerationPreset[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(PRESETS_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as GenerationPreset[];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter(
+      (preset) =>
+        typeof preset.id === 'string' &&
+        typeof preset.name === 'string' &&
+        typeof preset.warpCount === 'number' &&
+        typeof preset.intervalCount === 'number' &&
+        (preset.snapToUnit === 'none' || preset.snapToUnit === 'hour' || preset.snapToUnit === 'day') &&
+        (preset.boundaryMethod === 'peak' ||
+          preset.boundaryMethod === 'change-point' ||
+          preset.boundaryMethod === 'rule-based')
+    );
+  } catch {
+    return [];
+  }
+}
+
 export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   suggestions: [],
   isPanelOpen: true,
@@ -387,17 +426,23 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         name,
         warpCount: state.warpCount,
         intervalCount: state.intervalCount,
-        snapToUnit: 'none',
-        boundaryMethod: 'peak',
+        snapToUnit: state.snapToUnit,
+        boundaryMethod: state.boundaryMethod,
       };
-      return { presets: [...state.presets, preset] };
+      const presets = [...state.presets, preset];
+      persistPresets(presets);
+      return { presets, activePresetId: preset.id };
     }),
     
   deletePreset: (id) =>
-    set((state) => ({
-      presets: state.presets.filter(p => p.id !== id),
-      activePresetId: state.activePresetId === id ? null : state.activePresetId,
-    })),
+    set((state) => {
+      const presets = state.presets.filter((p) => p.id !== id);
+      persistPresets(presets);
+      return {
+        presets,
+        activePresetId: state.activePresetId === id ? null : state.activePresetId,
+      };
+    }),
     
   setActivePreset: (id) => set({ activePresetId: id }),
   
@@ -405,8 +450,17 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
     set({
       warpCount: preset.warpCount,
       intervalCount: preset.intervalCount,
+      snapToUnit: preset.snapToUnit,
+      boundaryMethod: preset.boundaryMethod,
       activePresetId: preset.id,
     }),
+
+  loadPresetsFromStorage: () => {
+    const presets = readStoredPresets();
+    if (presets.length > 0) {
+      set({ presets });
+    }
+  },
 
   setPanelOpen: (open) => set({ isPanelOpen: open }),
 
@@ -463,6 +517,10 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   setWarpCount: (count) => set({ warpCount: Math.max(0, Math.min(6, count)) }),
   
   setIntervalCount: (count) => set({ intervalCount: Math.max(0, Math.min(6, count)) }),
+
+  setSnapToUnit: (value) => set({ snapToUnit: value }),
+
+  setBoundaryMethod: (value) => set({ boundaryMethod: value }),
   
   setMinConfidence: (minConfidence) => set({ minConfidence: Math.max(0, Math.min(100, minConfidence)) }),
 
@@ -501,17 +559,31 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
     set((state) => {
       const entry = state.acceptedHistory.find((h) => h.id === historyId);
       if (!entry) return state;
-      
-      // Add the suggestion back as pending
-      const newSuggestion = {
-        ...entry.suggestion,
+
+      if (typeof window !== 'undefined') {
+        if (entry.suggestion.type === 'warp-profile') {
+          window.dispatchEvent(
+            new CustomEvent('accept-warp-profile', {
+              detail: { id: entry.suggestion.id, data: entry.suggestion.data },
+            })
+          );
+        } else if (entry.suggestion.type === 'interval-boundary') {
+          window.dispatchEvent(
+            new CustomEvent('accept-interval-boundary', {
+              detail: { id: entry.suggestion.id, data: entry.suggestion.data },
+            })
+          );
+        }
+      }
+
+      const replayed: HistoryEntry = {
         id: crypto.randomUUID(),
-        createdAt: Date.now(),
-        status: 'pending' as const,
+        suggestion: { ...entry.suggestion, createdAt: Date.now(), status: 'accepted' },
+        acceptedAt: Date.now(),
       };
-      
+
       return {
-        suggestions: [...state.suggestions, newSuggestion],
+        acceptedHistory: [replayed, ...state.acceptedHistory].slice(0, 50),
       };
     }),
 }));
