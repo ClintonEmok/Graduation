@@ -273,8 +273,8 @@ Plans:
 - Visual distinction: Colors and badges for warp profiles vs interval boundaries
 
 **Plans:** 2 plans
-- [ ] 37-01-PLAN.md — Generation triggers & auto-regeneration
-- [ ] 37-02-PLAN.md — Accept/modify workflow integration
+- [x] 37-01-PLAN.md — Generation triggers & auto-regeneration
+- [x] 37-02-PLAN.md — Accept/modify workflow integration
 
 **Phase 37: Review/Approval Workflows** (planned)
 
@@ -320,7 +320,7 @@ Plans:
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
 | 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
-| 37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
 | 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 
 ---
