@@ -6,6 +6,7 @@ export interface WarpSlice {
   range: [number, number];
   weight: number;
   enabled: boolean;
+  source: 'manual' | 'suggestion';
   warpProfileId: string | null;
 }
 
@@ -52,6 +53,7 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
       range: initial?.range ?? [clamp(12 + index * 10, 0, 94), clamp(20 + index * 10, 1, 100)],
       weight: initial?.weight ?? 1,
       enabled: initial?.enabled ?? true,
+      source: initial?.source ?? 'manual',
       warpProfileId: initial?.warpProfileId ?? null,
     };
     set((state) => ({ slices: [...state.slices, nextSlice] }));
@@ -122,6 +124,7 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
       range: sliceData?.range ?? [12, 20],
       weight: sliceData?.weight ?? 1,
       enabled: sliceData?.enabled ?? true,
+      source: sliceData?.source ?? 'manual',
       warpProfileId: nextWarpProfileId,
     };
 

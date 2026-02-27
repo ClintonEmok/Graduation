@@ -119,6 +119,7 @@ export default function TimeslicingPage() {
   const addSlice = useSliceStore((s) => s.addSlice);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
+  const warpSlices = useWarpSliceStore((state) => state.slices);
   const hoveredSuggestionId = useSuggestionStore((state) => state.hoveredSuggestionId);
   const suggestions = useSuggestionStore((state) => state.suggestions);
 
@@ -152,6 +153,14 @@ export default function TimeslicingPage() {
 
     return { type: null as Suggestion['type'] | null, intervals: [], boundaries: [] };
   }, [hoveredSuggestion, minTs, maxTs]);
+
+  const acceptedSuggestionWarpIntervals = useMemo(
+    () =>
+      warpSlices
+        .filter((slice) => slice.source === 'suggestion' && slice.enabled)
+        .map((slice) => [slice.range[0], slice.range[1]] as [number, number]),
+    [warpSlices]
+  );
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
   const handleAcceptWarpProfile = useCallback((suggestionId: string, data: WarpProfileData) => {
@@ -169,6 +178,7 @@ export default function TimeslicingPage() {
         range: [interval.startPercent, interval.endPercent],
         weight: interval.strength,
         enabled: true,
+        source: 'suggestion',
         warpProfileId: suggestionId,
       });
     });
@@ -280,6 +290,20 @@ export default function TimeslicingPage() {
             ) : timelineWidth > 0 ? (
               <>
                 <DualTimeline />
+                {acceptedSuggestionWarpIntervals.length > 0 && (
+                  <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">
+                    {acceptedSuggestionWarpIntervals.map((interval, index) => (
+                      <div
+                        key={`accepted-warp-${index}`}
+                        className="absolute top-0 h-full border-2 border-dashed border-amber-300/85 bg-violet-500/10"
+                        style={{
+                          left: `${interval[0]}%`,
+                          width: `${Math.max(0.5, interval[1] - interval[0])}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
                 {hoverPreview.type !== null && (
                   <div className="pointer-events-none absolute inset-3 z-20 overflow-hidden rounded-sm">
                     {hoverPreview.type === 'warp-profile' &&
@@ -312,6 +336,20 @@ export default function TimeslicingPage() {
             ) : (
               <div className="h-40" />
             )}
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-5 rounded-sm border-2 border-dashed border-amber-300/80 bg-violet-500/15" />
+              Warp from suggestion
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-5 rounded-sm border border-violet-400/70 bg-violet-500/15" />
+              Hover preview (warp)
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-px bg-teal-300/90" />
+              Hover preview (boundary)
+            </span>
           </div>
         </section>
 
