@@ -12,13 +12,18 @@ interface SuggestionToolbarProps {
 }
 
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
-  const [warpCount, setWarpCount] = useState(3);
-  const [intervalCount, setIntervalCount] = useState(3);
   const [snapToUnit, setSnapToUnit] = useState<'hour' | 'day' | 'none'>('none');
   const [boundaryMethod, setBoundaryMethod] = useState<BoundaryMethod>('peak');
   const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
 
-  const { trigger, suggestionCount, pendingCount, isGenerating } = useSuggestionGenerator();
+  const {
+    trigger,
+    suggestionCount,
+    pendingCount,
+    isGenerating,
+    generationError,
+    clearGenerationError,
+  } = useSuggestionGenerator();
   const {
     suggestions,
     clearSuggestions,
@@ -26,8 +31,10 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     isPanelOpen,
     minConfidence,
     setMinConfidence,
-    generationError,
-    setGenerationError,
+    warpCount,
+    intervalCount,
+    setWarpCount,
+    setIntervalCount,
   } = useSuggestionStore();
 
   const visibleCount = useMemo(() => {
@@ -35,7 +42,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   }, [minConfidence, suggestions]);
 
   const handleGenerate = () => {
-    setGenerationError(null);
+    clearGenerationError();
     const params: GenerationParams = {
       warpCount,
       intervalCount,
