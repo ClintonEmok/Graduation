@@ -140,6 +140,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     rejectSuggestion,
     modifySuggestion,
     setActiveSuggestion,
+    setHoveredSuggestion,
     setPanelOpen,
     activeSuggestionId,
     selectedIds,
@@ -160,6 +161,10 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
 
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const hasValidDomain =
+    minTimestampSec !== null &&
+    maxTimestampSec !== null &&
+    maxTimestampSec > minTimestampSec;
   const isActive = activeSuggestionId === suggestion.id;
   const isSelected = selectedIds.has(suggestion.id);
   const isPending = suggestion.status === 'pending';
@@ -241,6 +246,52 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const handleClick = () => {
     if (!isEditing) {
       setActiveSuggestion(isActive ? null : suggestion.id);
+    }
+  };
+
+  const handleArrowNavigation = (direction: 'up' | 'down') => {
+    const currentIndex = suggestions.findIndex((item) => item.id === suggestion.id);
+    if (currentIndex === -1 || suggestions.length <= 1) {
+      return;
+    }
+
+    const delta = direction === 'down' ? 1 : -1;
+    const nextIndex = (currentIndex + delta + suggestions.length) % suggestions.length;
+    const nextSuggestion = suggestions[nextIndex];
+    setActiveSuggestion(nextSuggestion.id);
+
+    if (typeof document !== 'undefined') {
+      const nextCard = document.getElementById(`suggestion-card-${nextSuggestion.id}`);
+      nextCard?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' && isPending && !isEditing) {
+      e.preventDefault();
+      handleAccept();
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (isEditing) {
+        handleCancelEdit();
+      } else {
+        setPanelOpen(false);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      handleArrowNavigation('down');
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      handleArrowNavigation('up');
     }
   };
   
@@ -423,12 +474,20 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   
   return (
     <div 
+      id={`suggestion-card-${suggestion.id}`}
+      tabIndex={0}
+      role="button"
+      aria-label={`${formatSuggestionType(suggestion.type)} suggestion card`}
       className={`
         cursor-pointer rounded-lg border p-3 transition-all overflow-hidden
         animate-in fade-in slide-in-from-top-2 duration-200
         ${getBorderColor()}
       `}
       onClick={handleClick}
+      onFocus={() => setActiveSuggestion(suggestion.id)}
+      onKeyDown={handleKeyDown}
+      onMouseEnter={() => setHoveredSuggestion(suggestion.id)}
+      onMouseLeave={() => setHoveredSuggestion(null)}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -446,7 +505,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
                 aria-label="Select suggestion"
               />
             )}
-            <span className="font-medium text-slate-200">
+            <span className={`font-medium ${typeStyles.title}`}>
               {formatSuggestionType(suggestion.type)}
             </span>
             {/* Type badge */}
@@ -554,6 +613,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
               </span>
             </div>
           )}
+          <div className="text-[11px] text-slate-500">Press Enter to accept</div>
         </div>
       )}
       

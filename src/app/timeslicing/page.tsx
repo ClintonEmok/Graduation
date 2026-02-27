@@ -10,7 +10,7 @@ import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
-import { useSuggestionStore, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { useSuggestionStore, type Suggestion, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { Toaster } from 'sonner';
 
 // Default to full date range if no real data loaded yet
@@ -119,6 +119,39 @@ export default function TimeslicingPage() {
   const addSlice = useSliceStore((s) => s.addSlice);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
+  const hoveredSuggestionId = useSuggestionStore((state) => state.hoveredSuggestionId);
+  const suggestions = useSuggestionStore((state) => state.suggestions);
+
+  const hoveredSuggestion = useMemo(
+    () => suggestions.find((suggestion) => suggestion.id === hoveredSuggestionId) ?? null,
+    [hoveredSuggestionId, suggestions]
+  );
+
+  const hoverPreview = useMemo(() => {
+    if (!hoveredSuggestion || !minTs || !maxTs || maxTs <= minTs) {
+      return { type: null as Suggestion['type'] | null, intervals: [] as Array<[number, number]>, boundaries: [] as number[] };
+    }
+
+    if (hoveredSuggestion.type === 'warp-profile' && 'intervals' in hoveredSuggestion.data) {
+      const intervals = hoveredSuggestion.data.intervals.map((interval) => ([
+        Math.max(0, Math.min(100, interval.startPercent)),
+        Math.max(0, Math.min(100, interval.endPercent)),
+      ] as [number, number]));
+
+      return { type: hoveredSuggestion.type, intervals, boundaries: [] };
+    }
+
+    if (hoveredSuggestion.type === 'interval-boundary' && 'boundaries' in hoveredSuggestion.data) {
+      const span = maxTs - minTs;
+      const boundaries = hoveredSuggestion.data.boundaries
+        .map((epoch) => ((epoch - minTs) / span) * 100)
+        .map((percent) => Math.max(0, Math.min(100, percent)));
+
+      return { type: hoveredSuggestion.type, intervals: [], boundaries };
+    }
+
+    return { type: null as Suggestion['type'] | null, intervals: [], boundaries: [] };
+  }, [hoveredSuggestion, minTs, maxTs]);
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
   const handleAcceptWarpProfile = useCallback((suggestionId: string, data: WarpProfileData) => {
@@ -245,7 +278,37 @@ export default function TimeslicingPage() {
                 Error loading data: {error.message}
               </div>
             ) : timelineWidth > 0 ? (
-              <DualTimeline />
+              <>
+                <DualTimeline />
+                {hoverPreview.type !== null && (
+                  <div className="pointer-events-none absolute inset-3 z-20 overflow-hidden rounded-sm">
+                    {hoverPreview.type === 'warp-profile' &&
+                      hoverPreview.intervals.map((interval, index) => (
+                        <div
+                          key={`hover-warp-${index}`}
+                          className="absolute top-0 h-full border border-violet-400/70 bg-violet-500/15"
+                          style={{
+                            left: `${interval[0]}%`,
+                            width: `${Math.max(0.5, interval[1] - interval[0])}%`,
+                          }}
+                        />
+                      ))}
+
+                    {hoverPreview.type === 'interval-boundary' &&
+                      hoverPreview.boundaries.map((boundary, index) => (
+                        <div
+                          key={`hover-boundary-${index}`}
+                          className="absolute top-0 h-full w-px bg-teal-300/85"
+                          style={{ left: `${boundary}%` }}
+                        />
+                      ))}
+
+                    <div className="absolute left-2 top-2 rounded bg-slate-950/80 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
+                      Preview: {hoverPreview.type === 'warp-profile' ? 'Warp intervals' : 'Boundary markers'}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="h-40" />
             )}
