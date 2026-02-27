@@ -6,6 +6,7 @@ export interface WarpSlice {
   range: [number, number];
   weight: number;
   enabled: boolean;
+  warpProfileId: string | null;
 }
 
 interface WarpSliceState {
@@ -51,6 +52,7 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
       range: initial?.range ?? [clamp(12 + index * 10, 0, 94), clamp(20 + index * 10, 1, 100)],
       weight: initial?.weight ?? 1,
       enabled: initial?.enabled ?? true,
+      warpProfileId: initial?.warpProfileId ?? null,
     };
     set((state) => ({ slices: [...state.slices, nextSlice] }));
     return nextSlice.id;
@@ -74,10 +76,23 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
     }));
   },
   removeSlice: (id) => {
-    set((state) => ({ 
-      slices: state.slices.filter((slice) => slice.id !== id),
-      activeWarpId: state.activeWarpId === id ? null : state.activeWarpId
-    }));
+    set((state) => {
+      const removedSlice = state.slices.find((slice) => slice.id === id);
+      const nextSlices = state.slices.filter((slice) => slice.id !== id);
+
+      if (!removedSlice || !removedSlice.warpProfileId || state.activeWarpId !== removedSlice.warpProfileId) {
+        return { slices: nextSlices };
+      }
+
+      const hasActiveProfileSlices = nextSlices.some(
+        (slice) => slice.warpProfileId === removedSlice.warpProfileId
+      );
+
+      return {
+        slices: nextSlices,
+        activeWarpId: hasActiveProfileSlices ? state.activeWarpId : null,
+      };
+    });
   },
   clearSlices: () => {
     set({ slices: [], activeWarpId: null });
@@ -90,27 +105,31 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
   },
   getActiveWarp: () => {
     const state = get();
-    return state.slices.find(slice => slice.id === state.activeWarpId);
+    if (!state.activeWarpId) return undefined;
+    return state.slices.find((slice) => slice.warpProfileId === state.activeWarpId);
   },
   replaceActiveWarp: (sliceData) => {
-    const state = get();
-    // Clear existing active warp
-    const newSlices = state.slices.filter(slice => slice.id !== state.activeWarpId);
+    const nextWarpProfileId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `warp-profile-${Date.now()}`;
+
     // Create new warp slice
-    const index = newSlices.length;
     const newSlice: WarpSlice = {
       id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
-        : `warp-slice-${Date.now()}-${index}`,
-      label: sliceData?.label ?? `Warp ${index + 1}`,
-      range: sliceData?.range ?? [clamp(12 + index * 10, 0, 94), clamp(20 + index * 10, 1, 100)],
+        : `warp-slice-${Date.now()}-0`,
+      label: sliceData?.label ?? 'Warp 1',
+      range: sliceData?.range ?? [12, 20],
       weight: sliceData?.weight ?? 1,
       enabled: sliceData?.enabled ?? true,
+      warpProfileId: nextWarpProfileId,
     };
-    set({ 
-      slices: [...newSlices, newSlice],
-      activeWarpId: newSlice.id
+
+    set({
+      slices: [newSlice],
+      activeWarpId: nextWarpProfileId,
     });
-    return newSlice.id;
+
+    return nextWarpProfileId;
   },
 }));

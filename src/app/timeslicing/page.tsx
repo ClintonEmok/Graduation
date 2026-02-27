@@ -11,7 +11,6 @@ import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
 import { useSuggestionStore, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
-import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { Toaster } from 'sonner';
 
 // Default to full date range if no real data loaded yet
@@ -119,36 +118,28 @@ export default function TimeslicingPage() {
   const maxTs = useDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
-  const replaceActiveWarp = useWarpSliceStore((s) => s.replaceActiveWarp);
-  const clearActiveWarp = useWarpSliceStore((s) => s.clearActiveWarp);
+  const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
-  const handleAcceptWarpProfile = useCallback((data: WarpProfileData) => {
+  const handleAcceptWarpProfile = useCallback((suggestionId: string, data: WarpProfileData) => {
     if (!minTs || !maxTs) return;
-    
-    // Clear existing active warp first (single warp constraint)
-    clearActiveWarp();
+
+    // Replace any existing warp profile slices (single active warp constraint)
+    clearWarpSlices();
+
+    useWarpSliceStore.getState().setActiveWarp(suggestionId);
     
     // Create new warp slices from intervals
     data.intervals.forEach((interval, index) => {
-      const startNorm = interval.startPercent;
-      const endNorm = interval.endPercent;
-      const weight = interval.strength;
-      
-      // Create warp slice and set as active if first interval
-      const sliceId = addWarpSlice({
+      addWarpSlice({
         label: `${data.name} ${index + 1}`,
-        range: [startNorm, endNorm],
-        weight,
+        range: [interval.startPercent, interval.endPercent],
+        weight: interval.strength,
         enabled: true,
+        warpProfileId: suggestionId,
       });
-      
-      // Set first slice as the active warp
-      if (index === 0) {
-        useWarpSliceStore.getState().setActiveWarp(sliceId);
-      }
     });
-  }, [addWarpSlice, clearActiveWarp, minTs, maxTs]);
+  }, [addWarpSlice, clearWarpSlices, minTs, maxTs]);
   
   // Handle interval boundary acceptance - create time slices
   const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData) => {
@@ -179,8 +170,8 @@ export default function TimeslicingPage() {
   // Listen for suggestion acceptance events
   useEffect(() => {
     const handleWarpEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ data: WarpProfileData }>;
-      handleAcceptWarpProfile(customEvent.detail.data);
+      const customEvent = e as CustomEvent<{ id: string; data: WarpProfileData }>;
+      handleAcceptWarpProfile(customEvent.detail.id, customEvent.detail.data);
     };
     
     const handleIntervalEvent = (e: Event) => {
@@ -275,6 +266,20 @@ export default function TimeslicingPage() {
       
       {/* Suggestion Side Panel */}
       <SuggestionPanel />
+      
+      {/* Toast notifications */}
+      <Toaster 
+        position="bottom-right" 
+        theme="dark" 
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1e293b',
+            border: '#334155',
+            color: '#e2e8f0',
+          },
+        }}
+      />
     </main>
   );
 }
