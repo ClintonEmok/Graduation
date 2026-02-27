@@ -514,13 +514,14 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
 
   setEmptyState: (empty) => set({ isEmptyState: empty }),
   
-  setWarpCount: (count) => set({ warpCount: Math.max(0, Math.min(6, count)) }),
+  setWarpCount: (count) => set({ warpCount: Math.max(0, Math.min(6, count)), activePresetId: null }),
   
-  setIntervalCount: (count) => set({ intervalCount: Math.max(0, Math.min(6, count)) }),
+  setIntervalCount: (count) =>
+    set({ intervalCount: Math.max(0, Math.min(6, count)), activePresetId: null }),
 
-  setSnapToUnit: (value) => set({ snapToUnit: value }),
+  setSnapToUnit: (value) => set({ snapToUnit: value, activePresetId: null }),
 
-  setBoundaryMethod: (value) => set({ boundaryMethod: value }),
+  setBoundaryMethod: (value) => set({ boundaryMethod: value, activePresetId: null }),
   
   setMinConfidence: (minConfidence) => set({ minConfidence: Math.max(0, Math.min(100, minConfidence)) }),
 
