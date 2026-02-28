@@ -330,7 +330,16 @@ Plans:
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
 | 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
-| 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 38 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+
+### Phase 38: context aware timeslicing based on crime type
+
+**Goal:** [To be planned]
+**Depends on:** Phase 37
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 38 to break down)
 
 ---
 

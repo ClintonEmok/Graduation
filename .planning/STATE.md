@@ -272,6 +272,7 @@ Next: Execute remaining Phase 37 gap-closure plan (37-05)
 ### Roadmap Evolution
 - Phase 29 inserted: remake burstlist as first-class slices (downstream phases shifted)
 - Phase 34 inserted: Performance Optimization for 8.4M record dataset
+- Phase 38 added: context aware timeslicing based on crime type
 
 ### Phase 34 Completion
 **Prerequisites from Phase 33:**
