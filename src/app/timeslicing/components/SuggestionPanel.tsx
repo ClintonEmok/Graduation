@@ -11,6 +11,7 @@ import { useCrimeFilters, useViewportStart, useViewportEnd } from '@/lib/stores/
 import { useFilterStore } from '@/store/useFilterStore';
 import { SuggestionCard } from './SuggestionCard';
 import { ComparisonView } from './ComparisonView';
+import { ProfileManager } from './ProfileManager';
 
 function formatDate(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
@@ -302,6 +303,8 @@ export function SuggestionPanel() {
           </div>
         </div>
       )}
+
+      <ProfileManager />
 
       <ScrollArea className="flex-1">
         <div className="p-3">
