@@ -48,6 +48,27 @@ function summarizeHistoryParameters(data: unknown): string {
   return 'Custom parameters';
 }
 
+function summarizeHistoryContext(entry: { contextMetadata?: { crimeTypes: string[]; isFullDataset: boolean; profileName?: string } }): string {
+  const metadata = entry.contextMetadata;
+  if (!metadata) {
+    return 'Context unavailable';
+  }
+
+  if (metadata.profileName) {
+    return metadata.profileName;
+  }
+
+  if (metadata.crimeTypes.length === 0) {
+    return 'All crimes';
+  }
+
+  if (metadata.crimeTypes.length === 1) {
+    return metadata.crimeTypes[0];
+  }
+
+  return `${metadata.crimeTypes.length} crime types`;
+}
+
 export function SuggestionPanel() {
   const {
     suggestions,
@@ -346,6 +367,12 @@ export function SuggestionPanel() {
                       <div className="mt-1 text-slate-500">
                         {summarizeHistoryParameters(entry.suggestion.data)}
                       </div>
+                      {entry.contextMetadata && (
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          <span className="text-slate-400">Context:</span> {summarizeHistoryContext(entry)}
+                          {entry.contextMetadata.isFullDataset ? ' (full range)' : ''}
+                        </div>
+                      )}
                       <div className="mt-2 flex justify-end">
                         <Button
                           variant="outline"

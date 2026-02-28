@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import { getCurrentContext, type ContextMode } from '@/hooks/useContextExtractor';
+import { useViewportStore } from '@/lib/stores/viewportStore';
+import { useFilterStore } from '@/store/useFilterStore';
+import { useContextProfileStore } from '@/store/useContextProfileStore';
 
 export type SuggestionType = 'time-scale' | 'interval-boundary';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'modified';
@@ -43,6 +47,15 @@ export interface HistoryEntry {
   id: string;
   suggestion: Suggestion;
   acceptedAt: number;
+  contextMetadata?: {
+    crimeTypes: string[];
+    timeRange: {
+      start: number;
+      end: number;
+    };
+    isFullDataset: boolean;
+    profileName?: string;
+  };
 }
 
 type UndoAction = {
@@ -84,6 +97,9 @@ interface SuggestionStore {
   // History state
   acceptedHistory: HistoryEntry[];
 
+  // Context scope state
+  contextMode: ContextMode;
+
   // Actions
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'status'>) => void;
   acceptSuggestion: (id: string) => void;
@@ -118,6 +134,7 @@ interface SuggestionStore {
   setBoundaryMethod: (value: BoundaryMethod) => void;
   setMinConfidence: (minConfidence: number) => void;
   setGenerationError: (message: string | null) => void;
+  setContextMode: (mode: ContextMode) => void;
   loadPresetsFromStorage: () => void;
   
   // Comparison actions
@@ -202,6 +219,9 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   // History state
   acceptedHistory: [],
 
+  // Context scope state
+  contextMode: 'visible',
+
   addSuggestion: (suggestion) =>
     set((state) => ({
       suggestions: [
@@ -252,10 +272,34 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       }
 
       // Add to history
+      const viewportState = useViewportStore.getState();
+      const filterState = useFilterStore.getState();
+      const activeProfile = useContextProfileStore.getState().getActiveProfile();
+      const context = getCurrentContext({
+        mode: state.contextMode,
+        crimeTypes:
+          viewportState.filters.crimeTypes.length > 0
+            ? viewportState.filters.crimeTypes
+            : filterState.selectedTypes.map((typeId) => `type:${typeId}`),
+        districts:
+          viewportState.filters.districts.length > 0
+            ? viewportState.filters.districts
+            : filterState.selectedDistricts.map((districtId) => `district:${districtId}`),
+        viewportStart: viewportState.startDate,
+        viewportEnd: viewportState.endDate,
+        selectedTimeRange: filterState.selectedTimeRange,
+      });
+
       const historyEntry: HistoryEntry = {
         id: crypto.randomUUID(),
         suggestion,
         acceptedAt: Date.now(),
+        contextMetadata: {
+          crimeTypes: context.crimeTypes,
+          timeRange: context.timeRange,
+          isFullDataset: context.isFullDataset,
+          profileName: activeProfile?.name,
+        },
       };
 
       return {
@@ -526,6 +570,8 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   setMinConfidence: (minConfidence) => set({ minConfidence: Math.max(0, Math.min(100, minConfidence)) }),
 
   setGenerationError: (message) => set({ generationError: message }),
+
+  setContextMode: (mode) => set({ contextMode: mode }),
 
   // Comparison actions
   setComparisonId: (index, id) =>
