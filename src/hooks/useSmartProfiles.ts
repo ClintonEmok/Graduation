@@ -45,30 +45,32 @@ function normalizeCrimeType(type: string): string {
   return type.trim().toLowerCase();
 }
 
+export function detectSmartProfile(context: FilterContext): SmartProfile | null {
+  const normalizedCrimeTypes = context.crimeTypes.map(normalizeCrimeType).filter(Boolean);
+
+  if (normalizedCrimeTypes.length === 0) {
+    return SMART_PROFILES['all-crimes'];
+  }
+
+  if (normalizedCrimeTypes.length === 1 && normalizedCrimeTypes[0] === 'burglary') {
+    return SMART_PROFILES.burglary;
+  }
+
+  const uniqueCrimeTypes = Array.from(new Set(normalizedCrimeTypes));
+  const violentCount = uniqueCrimeTypes.filter((type) =>
+    VIOLENT_CRIME_TYPES.includes(type as (typeof VIOLENT_CRIME_TYPES)[number])
+  ).length;
+  const hasOnlyViolentTypes = uniqueCrimeTypes.every((type) =>
+    VIOLENT_CRIME_TYPES.includes(type as (typeof VIOLENT_CRIME_TYPES)[number])
+  );
+
+  if (hasOnlyViolentTypes && violentCount >= 2) {
+    return SMART_PROFILES['violent-crime'];
+  }
+
+  return null;
+}
+
 export function useSmartProfiles(context: FilterContext): SmartProfile | null {
-  return useMemo(() => {
-    const normalizedCrimeTypes = context.crimeTypes.map(normalizeCrimeType).filter(Boolean);
-
-    if (normalizedCrimeTypes.length === 0) {
-      return SMART_PROFILES['all-crimes'];
-    }
-
-    if (normalizedCrimeTypes.length === 1 && normalizedCrimeTypes[0] === 'burglary') {
-      return SMART_PROFILES.burglary;
-    }
-
-    const uniqueCrimeTypes = Array.from(new Set(normalizedCrimeTypes));
-    const violentCount = uniqueCrimeTypes.filter((type) =>
-      VIOLENT_CRIME_TYPES.includes(type as (typeof VIOLENT_CRIME_TYPES)[number])
-    ).length;
-    const hasOnlyViolentTypes = uniqueCrimeTypes.every((type) =>
-      VIOLENT_CRIME_TYPES.includes(type as (typeof VIOLENT_CRIME_TYPES)[number])
-    );
-
-    if (hasOnlyViolentTypes && violentCount >= 2) {
-      return SMART_PROFILES['violent-crime'];
-    }
-
-    return null;
-  }, [context]);
+  return useMemo(() => detectSmartProfile(context), [context]);
 }

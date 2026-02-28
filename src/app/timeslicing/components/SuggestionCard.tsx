@@ -177,7 +177,18 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const viewportEnd = useViewportStore((state) => state.endDate);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const { getCurrentContext } = useContextExtractor();
-  const suggestionContext = React.useMemo(() => getCurrentContext('visible'), [getCurrentContext]);
+  const suggestionContext = React.useMemo(
+    () =>
+      suggestion.contextMetadata
+        ? {
+            crimeTypes: suggestion.contextMetadata.crimeTypes,
+            districts: [],
+            timeRange: suggestion.contextMetadata.timeRange,
+            isFullDataset: suggestion.contextMetadata.isFullDataset,
+          }
+        : getCurrentContext('visible'),
+    [getCurrentContext, suggestion.contextMetadata]
+  );
   const smartProfile = useSmartProfiles(suggestionContext);
   const [rangeStart, rangeEnd] = React.useMemo(() => {
     if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
@@ -593,7 +604,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
             <ContextBadge
               crimeTypes={suggestionContext.crimeTypes}
               isFullDataset={suggestionContext.isFullDataset}
-              smartProfileName={smartProfile?.name}
+              smartProfileName={suggestion.contextMetadata?.profileName ?? smartProfile?.name}
             />
           </div>
           {/* Collapsed: show count, Expanded: show full details */}

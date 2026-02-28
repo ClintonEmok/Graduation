@@ -34,11 +34,22 @@ export interface IntervalBoundaryData {
   boundaries: number[]; // epoch seconds
 }
 
+export interface SuggestionContextMetadata {
+  crimeTypes: string[];
+  timeRange: {
+    start: number;
+    end: number;
+  };
+  isFullDataset: boolean;
+  profileName?: string;
+}
+
 export interface Suggestion {
   id: string;
   type: SuggestionType;
   confidence: number; // 0-100
   data: TimeScaleData | IntervalBoundaryData;
+  contextMetadata?: SuggestionContextMetadata;
   createdAt: number;
   status: SuggestionStatus;
 }
@@ -47,15 +58,7 @@ export interface HistoryEntry {
   id: string;
   suggestion: Suggestion;
   acceptedAt: number;
-  contextMetadata?: {
-    crimeTypes: string[];
-    timeRange: {
-      start: number;
-      end: number;
-    };
-    isFullDataset: boolean;
-    profileName?: string;
-  };
+  contextMetadata?: SuggestionContextMetadata;
 }
 
 type UndoAction = {
@@ -298,7 +301,7 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
           crimeTypes: context.crimeTypes,
           timeRange: context.timeRange,
           isFullDataset: context.isFullDataset,
-          profileName: activeProfile?.name,
+          profileName: activeProfile?.name ?? suggestion.contextMetadata?.profileName,
         },
       };
 

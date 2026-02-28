@@ -7,6 +7,8 @@ import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection'
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useContextExtractor } from '@/hooks/useContextExtractor';
+import { detectSmartProfile } from '@/hooks/useSmartProfiles';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
 
@@ -18,6 +20,7 @@ export interface GenerationParams {
   intervalCount: number;  // 0-6 per CONTEXT
   snapToUnit: 'hour' | 'day' | 'none';
   boundaryMethod: BoundaryMethod;
+  contextMode: 'visible' | 'all';
 }
 
 interface UseSuggestionGeneratorReturn {
@@ -52,6 +55,9 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
+  const FULL_DATASET_START = 978307200;
+  const FULL_DATASET_END = 1767571200;
+
   const {
     suggestions,
     addSuggestion,
@@ -77,29 +83,36 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const { getCurrentContext } = useContextExtractor();
 
-  const [startDate, endDate] = useMemo(() => {
-    if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
-      const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
-      const end = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
-      if (start !== end) {
-        return [start, end];
+  const [analysisStartDate, analysisEndDate] = useMemo(() => {
+    const mode = generationParams?.contextMode ?? 'visible';
+
+    if (mode === 'all') {
+      if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
+        const selectedStart = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
+        const selectedEnd = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
+        if (selectedStart !== selectedEnd) {
+          return [selectedStart, selectedEnd];
+        }
       }
+
+      return [FULL_DATASET_START, FULL_DATASET_END];
     }
 
     return [viewportStart, viewportEnd];
-  }, [selectedTimeRange, viewportEnd, viewportStart]);
+  }, [generationParams?.contextMode, selectedTimeRange, viewportEnd, viewportStart]);
   
   // Debounce filter changes (500ms per CONTEXT)
   const debouncedFilters = useDebounce(
-    { crimeTypes: viewportFilters.crimeTypes, districts: viewportFilters.districts, startDate, endDate },
-    500
+    { crimeTypes: viewportFilters.crimeTypes, districts: viewportFilters.districts, startDate: analysisStartDate, endDate: analysisEndDate },
+    750
   );
   
   // Fetch crime data for analysis
   const { data: crimes, isLoading, isFetching, meta, bufferedRange } = useCrimeData({
-    startEpoch: startDate,
-    endEpoch: endDate,
+    startEpoch: analysisStartDate,
+    endEpoch: analysisEndDate,
     crimeTypes: viewportFilters.crimeTypes.length > 0 ? viewportFilters.crimeTypes : undefined,
     districts: viewportFilters.districts.length > 0 ? viewportFilters.districts : undefined,
     bufferDays: 0,
@@ -165,7 +178,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       // Clear empty state when we have data
       setEmptyState(false);
       
-      const timeRange = { start: startDate, end: endDate };
+      const context = getCurrentContext(params.contextMode);
+      const smartProfile = detectSmartProfile(context);
+      const timeRange = {
+        start: context.timeRange.start,
+        end: context.timeRange.end,
+      };
       
       // Generate warp profiles with user-configurable count
       if (params.warpCount > 0) {
@@ -178,6 +196,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           addSuggestion({
             type: 'time-scale',
             confidence: profile.confidence,
+            contextMetadata: {
+              crimeTypes: context.crimeTypes,
+              timeRange: context.timeRange,
+              isFullDataset: context.isFullDataset,
+              profileName: smartProfile?.name,
+            },
             data: {
               name: profile.name,
               intervals: profile.intervals,
@@ -198,6 +222,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
         addSuggestion({
           type: 'interval-boundary',
           confidence: boundary.confidence,
+          contextMetadata: {
+            crimeTypes: context.crimeTypes,
+            timeRange: context.timeRange,
+            isFullDataset: context.isFullDataset,
+            profileName: smartProfile?.name,
+          },
           data: {
             boundaries: boundary.boundaries,
           } as IntervalBoundaryData,
@@ -212,7 +242,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     } finally {
       setIsGenerating(false);
     }
-  }, [addSuggestion, clearPendingSuggestions, crimes, endDate, isLoading, setEmptyState, setGenerationError, startDate]);
+  }, [addSuggestion, clearPendingSuggestions, crimes, getCurrentContext, isLoading, setEmptyState, setGenerationError]);
 
   // Trigger function - generates real suggestions based on algorithms
   const handleTrigger = useCallback((params: GenerationParams) => {
@@ -228,7 +258,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       return;
     }
 
-    if (isLoading || isFetching) {
+    if (isLoading || isFetching || isGenerating) {
       return;
     }
 
@@ -247,6 +277,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     isPanelOpen,
     isLoading,
     isFetching,
+    isGenerating,
     debouncedFilters.crimeTypes,
     debouncedFilters.districts,
     debouncedFilters.startDate,

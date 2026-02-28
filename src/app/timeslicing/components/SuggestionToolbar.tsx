@@ -55,7 +55,6 @@ function AnalyzeVisibleAllToggle({ mode, onChange }: AnalyzeVisibleAllToggleProp
 
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
-  const [contextMode, setContextMode] = useState<AnalysisScopeMode>('visible');
 
   const {
     trigger,
@@ -83,9 +82,11 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     setBoundaryMethod,
     presets,
     activePresetId,
+    contextMode,
     savePreset,
     loadPreset,
     setActivePreset,
+    setContextMode,
     loadPresetsFromStorage,
   } = useSuggestionStore();
 
@@ -122,7 +123,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       snapToUnit,
       boundaryMethod,
       contextMode,
-    } as GenerationParams;
+    } satisfies GenerationParams;
     trigger(params);
   };
 
