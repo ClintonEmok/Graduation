@@ -9,7 +9,7 @@ interface ContextBadgeProps {
   smartProfileName?: string;
 }
 
-function getCrimeSummary(crimeTypes: string[]): string {
+function getCrimeTypeLabel(crimeTypes: string[]): string {
   if (crimeTypes.length === 0) {
     return 'All crimes';
   }
@@ -26,10 +26,11 @@ export function ContextBadge({ crimeTypes, isFullDataset, smartProfileName }: Co
     return (
       <Badge
         variant="outline"
-        className="mt-1 inline-flex border-amber-600/60 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-200"
+        className="inline-flex h-5 items-center gap-1 border-amber-500/40 bg-amber-500/10 px-2 py-0 text-[10px] font-medium text-amber-200"
       >
-        <Lightbulb className="mr-1 size-3" />
-        {smartProfileName}
+        <Lightbulb className="size-3" />
+        <span>{smartProfileName}</span>
+        {isFullDataset ? <span className="text-amber-300/90">(full range)</span> : null}
       </Badge>
     );
   }
@@ -37,10 +38,10 @@ export function ContextBadge({ crimeTypes, isFullDataset, smartProfileName }: Co
   return (
     <Badge
       variant="outline"
-      className="mt-1 inline-flex border-slate-600 bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-slate-300"
+      className="inline-flex h-5 items-center border-slate-600/70 bg-slate-800/70 px-2 py-0 text-[10px] font-medium text-slate-300"
     >
-      {getCrimeSummary(crimeTypes)}
-      {isFullDataset ? <span className="ml-1 text-slate-400">(full range)</span> : null}
+      <span>{getCrimeTypeLabel(crimeTypes)}</span>
+      {isFullDataset ? <span className="text-slate-400">(full range)</span> : null}
     </Badge>
   );
 }
