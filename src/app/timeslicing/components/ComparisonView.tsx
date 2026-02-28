@@ -7,7 +7,7 @@ import { ConfidenceBadge } from './ConfidenceBadge';
 import { 
   useSuggestionStore, 
   type Suggestion, 
-  type WarpProfileData, 
+  type TimeScaleData, 
   type IntervalBoundaryData 
 } from '@/store/useSuggestionStore';
 
@@ -18,8 +18,8 @@ interface ComparisonViewProps {
 
 function formatSuggestionType(type: Suggestion['type']): string {
   switch (type) {
-    case 'warp-profile':
-      return 'Warp';
+    case 'time-scale':
+      return 'Time Scale';
     case 'interval-boundary':
       return 'Interval';
     default:
@@ -27,7 +27,7 @@ function formatSuggestionType(type: Suggestion['type']): string {
   }
 }
 
-function formatWarpData(data: WarpProfileData): React.ReactNode {
+function formatTimeScaleData(data: TimeScaleData): React.ReactNode {
   return (
     <div className="space-y-2">
       <div className="font-medium text-slate-200">{data.name}</div>
@@ -77,8 +77,8 @@ function formatBoundaryData(data: IntervalBoundaryData): React.ReactNode {
 }
 
 function renderSuggestionContent(suggestion: Suggestion): React.ReactNode {
-  if (suggestion.type === 'warp-profile' && 'intervals' in suggestion.data) {
-    return formatWarpData(suggestion.data as WarpProfileData);
+  if (suggestion.type === 'time-scale' && 'intervals' in suggestion.data) {
+    return formatTimeScaleData(suggestion.data as TimeScaleData);
   }
   
   if (suggestion.type === 'interval-boundary' && 'boundaries' in suggestion.data) {
@@ -93,10 +93,10 @@ function renderSuggestionContent(suggestion: Suggestion): React.ReactNode {
 }
 
 function renderVisualDiff(suggestion1: Suggestion, suggestion2: Suggestion): React.ReactNode {
-  if (suggestion1.type === 'warp-profile' && suggestion2.type === 'warp-profile') {
-    const first = suggestion1.data as WarpProfileData;
-    const second = suggestion2.data as WarpProfileData;
-    const avg = (items: WarpProfileData['intervals']) =>
+  if (suggestion1.type === 'time-scale' && suggestion2.type === 'time-scale') {
+    const first = suggestion1.data as TimeScaleData;
+    const second = suggestion2.data as TimeScaleData;
+    const avg = (items: TimeScaleData['intervals']) =>
       items.length === 0 ? 0 : items.reduce((sum, interval) => sum + interval.strength, 0) / items.length;
 
     return (
@@ -194,7 +194,7 @@ export function ComparisonView({ suggestion1, suggestion2 }: ComparisonViewProps
         {/* Suggestion 1 */}
         <div className={`
           rounded-lg border p-3
-          ${suggestion1.type === 'warp-profile' ? 'border-violet-500/50 bg-violet-500/5' : 'border-teal-500/50 bg-teal-500/5'}
+          ${suggestion1.type === 'time-scale' ? 'border-violet-500/50 bg-violet-500/5' : 'border-teal-500/50 bg-teal-500/5'}
           ${higherConfidence.id === suggestion1.id ? 'ring-1 ring-amber-400/50' : ''}
         `}>
           <div className="flex items-center justify-between mb-2">
@@ -221,7 +221,7 @@ export function ComparisonView({ suggestion1, suggestion2 }: ComparisonViewProps
         {/* Suggestion 2 */}
         <div className={`
           rounded-lg border p-3
-          ${suggestion2.type === 'warp-profile' ? 'border-violet-500/50 bg-violet-500/5' : 'border-teal-500/50 bg-teal-500/5'}
+          ${suggestion2.type === 'time-scale' ? 'border-violet-500/50 bg-violet-500/5' : 'border-teal-500/50 bg-teal-500/5'}
           ${higherConfidence.id === suggestion2.id ? 'ring-1 ring-amber-400/50' : ''}
         `}>
           <div className="flex items-center justify-between mb-2">

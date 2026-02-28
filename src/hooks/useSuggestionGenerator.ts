@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { useSuggestionStore, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { useSuggestionStore, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
 import { useCrimeData } from '@/hooks/useCrimeData';
@@ -176,12 +176,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
         
         profiles.forEach((profile: WarpProfile) => {
           addSuggestion({
-            type: 'warp-profile',
+            type: 'time-scale',
             confidence: profile.confidence,
             data: {
               name: profile.name,
               intervals: profile.intervals,
-            } as WarpProfileData,
+            } as TimeScaleData,
           });
         });
       }

@@ -113,7 +113,7 @@ export const useWarpSliceStore = create<WarpSliceState>((set, get) => ({
   replaceActiveWarp: (sliceData) => {
     const nextWarpProfileId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
-      : `warp-profile-${Date.now()}`;
+      : `time-scale-${Date.now()}`;
 
     // Create new warp slice
     const newSlice: WarpSlice = {

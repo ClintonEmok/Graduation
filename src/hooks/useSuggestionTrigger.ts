@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from 'react';
-import { useSuggestionStore, type Suggestion, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { useSuggestionStore, type Suggestion, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
 
@@ -14,11 +14,11 @@ interface UseSuggestionTriggerReturn {
   setMode: (mode: TriggerMode) => void;
 }
 
-// Generate mock warp profile suggestions
-const generateMockWarpProfileSuggestions = (): Omit<Suggestion, 'id' | 'createdAt' | 'status'>[] => {
+// Generate mock time scale suggestions
+const generateMockTimeScaleSuggestions = (): Omit<Suggestion, 'id' | 'createdAt' | 'status'>[] => {
   return [
     {
-      type: 'warp-profile',
+      type: 'time-scale',
       confidence: 87,
       data: {
         name: 'High Density Winter',
@@ -29,10 +29,10 @@ const generateMockWarpProfileSuggestions = (): Omit<Suggestion, 'id' | 'createdA
           { startPercent: 65, endPercent: 85, strength: 1.8 },
           { startPercent: 85, endPercent: 100, strength: 1.0 },
         ],
-      } as WarpProfileData,
+      } as TimeScaleData,
     },
     {
-      type: 'warp-profile',
+      type: 'time-scale',
       confidence: 72,
       data: {
         name: 'Summer Surge Pattern',
@@ -40,10 +40,10 @@ const generateMockWarpProfileSuggestions = (): Omit<Suggestion, 'id' | 'createdA
           { startPercent: 20, endPercent: 50, strength: 1.3 },
           { startPercent: 50, endPercent: 80, strength: 0.9 },
         ],
-      } as WarpProfileData,
+      } as TimeScaleData,
     },
     {
-      type: 'warp-profile',
+      type: 'time-scale',
       confidence: 61,
       data: {
         name: 'Year-End Adjustment',
@@ -51,7 +51,7 @@ const generateMockWarpProfileSuggestions = (): Omit<Suggestion, 'id' | 'createdA
           { startPercent: 0, endPercent: 25, strength: 1.1 },
           { startPercent: 75, endPercent: 100, strength: 1.4 },
         ],
-      } as WarpProfileData,
+      } as TimeScaleData,
     },
   ];
 };
@@ -111,13 +111,13 @@ export function useSuggestionTrigger(): UseSuggestionTriggerReturn {
 
   // Trigger function - generates mock suggestions
   const trigger = useCallback(() => {
-    // Generate a mix of warp profile and interval boundary suggestions
-    const warpSuggestions = generateMockWarpProfileSuggestions();
+    // Generate a mix of time scale and interval boundary suggestions
+    const timeScaleSuggestions = generateMockTimeScaleSuggestions();
     const boundarySuggestions = generateMockIntervalBoundarySuggestions();
     
     // Add all mock suggestions to the store
     // In later phases, this will be replaced with actual ML/suggestion algorithms
-    warpSuggestions.forEach((suggestion) => {
+    timeScaleSuggestions.forEach((suggestion) => {
       addSuggestion(suggestion);
     });
     
