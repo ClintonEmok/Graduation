@@ -330,7 +330,7 @@ Plans:
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
 | 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
-| 38 | 3/3 | Complete   | 2026-02-28 | - |
+| 38 | 3/3 | Complete    | 2026-02-28 | - |
 
 ### Phase 38: context aware timeslicing based on crime type
 

@@ -2,8 +2,8 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** Phase 38: Context-Aware Timeslicing Based on Crime Type
-**Status:** Phase 38 complete
+**Current Phase:** 38
+**Status:** Milestone complete
 **Next:** Plan/execute next v1.3 phase
 
 ## Current Position
