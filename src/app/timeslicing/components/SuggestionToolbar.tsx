@@ -224,9 +224,9 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
         <div className="flex items-center gap-2">
           <label
             className="text-slate-400"
-            title="Number of warp profiles to generate (affects time scaling)"
+            title="Number of time scale profiles to generate (affects time scaling)"
           >
-            Warps:
+            Time Scales:
           </label>
           <input
             type="range"
@@ -235,7 +235,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             value={warpCount}
             onChange={(e) => setWarpCount(parseInt(e.target.value, 10))}
             className="h-1 w-16 cursor-pointer appearance-none rounded-lg bg-slate-700"
-            title="Number of warp profiles to generate (affects time scaling)"
+            title="Number of time scale profiles to generate (affects time scaling)"
           />
           <span className="w-4 text-slate-300">{warpCount}</span>
         </div>

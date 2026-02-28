@@ -10,7 +10,7 @@ import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { 
   useSuggestionStore, 
   type Suggestion, 
-  type WarpProfileData, 
+  type TimeScaleData, 
   type IntervalBoundaryData 
 } from '@/store/useSuggestionStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
@@ -41,8 +41,8 @@ interface SuggestionCardProps {
 
 function formatSuggestionType(type: Suggestion['type']): string {
   switch (type) {
-    case 'warp-profile':
-      return 'Warp';
+    case 'time-scale':
+      return 'Time Scale';
     case 'interval-boundary':
       return 'Interval';
     default:
@@ -56,7 +56,7 @@ function getSuggestionTypeStyles(type: Suggestion['type']): {
   icon: React.ReactNode;
 } {
   switch (type) {
-    case 'warp-profile':
+    case 'time-scale':
       return {
         badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
         title: 'text-violet-300',
@@ -78,15 +78,15 @@ function getSuggestionTypeStyles(type: Suggestion['type']): {
 }
 
 function formatSuggestionData(
-  data: WarpProfileData | IntervalBoundaryData,
+  data: TimeScaleData | IntervalBoundaryData,
   type: Suggestion['type'],
   minTimestampSec: number | null,
   maxTimestampSec: number | null
 ): React.ReactNode {
   const hasValidDomain = minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec;
   
-  if (type === 'warp-profile' && 'intervals' in data) {
-    const warpData = data as WarpProfileData;
+  if (type === 'time-scale' && 'intervals' in data) {
+    const warpData = data as TimeScaleData;
     return (
       <div className="mt-2 text-xs text-slate-400">
         <div className="font-medium text-slate-300">{warpData.name}</div>
@@ -157,7 +157,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [editData, setEditData] = useState<WarpProfileData | IntervalBoundaryData | null>(null);
+  const [editData, setEditData] = useState<TimeScaleData | IntervalBoundaryData | null>(null);
   const [isAcceptHovered, setIsAcceptHovered] = useState(false);
   const [isTransitioningOut, setIsTransitioningOut] = useState(false);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,19 +193,19 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   
   // Check if this suggestion will replace the current warp
   const willReplaceWarp = suggestion.status === 'pending' && 
-    suggestion.type === 'warp-profile' && 
+    suggestion.type === 'time-scale' && 
     activeWarpId !== null;
   
   // Check if this suggestion is the active warp
   const isActiveWarp = suggestion.status === 'accepted' && 
-    suggestion.type === 'warp-profile' && 
+    suggestion.type === 'time-scale' && 
     activeWarpId === suggestion.id;
   
   // Determine border color based on type and status
   const getBorderColor = () => {
     if (suggestion.status === 'accepted') return 'border-emerald-500/50 bg-emerald-500/5';
     if (suggestion.status === 'rejected') return 'border-red-500/50 bg-red-500/5 opacity-60';
-    if (suggestion.type === 'warp-profile') {
+    if (suggestion.type === 'time-scale') {
       return isActive || isEditing ? 'border-violet-500 bg-violet-500/10' : isLowConfidence ? 'border-amber-500/50 bg-amber-500/5 hover:border-amber-400' : 'border-violet-700/50 bg-slate-900 hover:border-violet-600';
     }
     // interval-boundary
@@ -237,8 +237,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     });
     
     // Show toast notification
-    if (suggestion.type === 'warp-profile') {
-      toast.success('Warp profile applied', {
+    if (suggestion.type === 'time-scale') {
+      toast.success('Time Scale applied', {
         description: 'Your timeline has been updated with the new warp intervals.',
       });
     } else {
@@ -377,8 +377,8 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   
   // Get item count for collapsed display
   const getItemCount = (): number => {
-    if (suggestion.type === 'warp-profile' && 'intervals' in suggestion.data) {
-      return (suggestion.data as WarpProfileData).intervals.length;
+    if (suggestion.type === 'time-scale' && 'intervals' in suggestion.data) {
+      return (suggestion.data as TimeScaleData).intervals.length;
     }
     if (suggestion.type === 'interval-boundary' && 'boundaries' in suggestion.data) {
       return (suggestion.data as IntervalBoundaryData).boundaries.length;
@@ -408,7 +408,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const renderEditControls = () => {
     if (!editData) return null;
     
-    if ('intervals' in editData && suggestion.type === 'warp-profile') {
+    if ('intervals' in editData && suggestion.type === 'time-scale') {
       return (
         <div className="mt-3 space-y-2 p-2 bg-slate-800/50 rounded">
           <div className="text-xs font-medium text-slate-300">Edit Intervals</div>
@@ -553,7 +553,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
             {/* Type badge */}
             <span className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${typeStyles.badge}`}>
               {typeStyles.icon}
-              {suggestion.type === 'warp-profile' ? 'WARP' : 'INTERVAL'}
+              {suggestion.type === 'time-scale' ? 'TIME SCALE' : 'INTERVAL'}
             </span>
             {suggestion.status !== 'pending' && (
               <span className={`
@@ -565,7 +565,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
                 {suggestion.status}
               </span>
             )}
-            {/* Active warp indicator - shown for accepted warp profiles */}
+            {/* Active time scale indicator - shown for accepted time scale profiles */}
             {isActiveWarp && (
               <span 
                 className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30"
@@ -586,7 +586,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
           {/* Collapsed: show count, Expanded: show full details */}
           {isCollapsed ? (
             <div className="mt-2 text-xs text-slate-400">
-              {suggestion.type === 'warp-profile' 
+              {suggestion.type === 'time-scale' 
                 ? `${itemCount} interval${itemCount !== 1 ? 's' : ''}`
                 : `${itemCount} boundary point${itemCount !== 1 ? 's' : ''}`
               }

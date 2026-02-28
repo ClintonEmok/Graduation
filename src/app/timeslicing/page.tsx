@@ -10,7 +10,7 @@ import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
-import { useSuggestionStore, type Suggestion, type WarpProfileData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import { useSuggestionStore, type Suggestion, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { Toaster } from 'sonner';
@@ -178,7 +178,7 @@ export default function TimeslicingPage() {
       return { type: null as Suggestion['type'] | null, intervals: [] as Array<[number, number]>, boundaries: [] as number[] };
     }
 
-    if (hoveredSuggestion.type === 'warp-profile' && 'intervals' in hoveredSuggestion.data) {
+    if (hoveredSuggestion.type === 'time-scale' && 'intervals' in hoveredSuggestion.data) {
       const intervals = hoveredSuggestion.data.intervals.map((interval) => ([
         Math.max(0, Math.min(100, interval.startPercent)),
         Math.max(0, Math.min(100, interval.endPercent)),
@@ -212,7 +212,7 @@ export default function TimeslicingPage() {
     const toDomainPercent = (epoch: number) =>
       Math.max(0, Math.min(100, ((epoch - domainStartSec) / domainSpan) * 100));
 
-    if (hoveredSuggestion.type === 'warp-profile' && 'intervals' in hoveredSuggestion.data) {
+    if (hoveredSuggestion.type === 'time-scale' && 'intervals' in hoveredSuggestion.data) {
       const intervals = hoveredSuggestion.data.intervals.map((interval) => {
         const startEpoch = rangeStart + (interval.startPercent / 100) * selectionSpan;
         const endEpoch = rangeStart + (interval.endPercent / 100) * selectionSpan;
@@ -239,7 +239,7 @@ export default function TimeslicingPage() {
   );
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
-  const handleAcceptWarpProfile = useCallback((suggestionId: string, data: WarpProfileData) => {
+  const handleAcceptWarpProfile = useCallback((suggestionId: string, data: TimeScaleData) => {
     if (!rangeStart || !rangeEnd) return;
 
     // Replace any existing warp profile slices (single active warp constraint)
@@ -289,7 +289,7 @@ export default function TimeslicingPage() {
   // Listen for suggestion acceptance events
   useEffect(() => {
     const handleWarpEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ id: string; data: WarpProfileData }>;
+      const customEvent = e as CustomEvent<{ id: string; data: TimeScaleData }>;
       handleAcceptWarpProfile(customEvent.detail.id, customEvent.detail.data);
     };
     
@@ -298,11 +298,11 @@ export default function TimeslicingPage() {
       handleAcceptIntervalBoundary(customEvent.detail.data);
     };
     
-    window.addEventListener('accept-warp-profile', handleWarpEvent);
+    window.addEventListener('accept-time-scale', handleWarpEvent);
     window.addEventListener('accept-interval-boundary', handleIntervalEvent);
     
     return () => {
-      window.removeEventListener('accept-warp-profile', handleWarpEvent);
+      window.removeEventListener('accept-time-scale', handleWarpEvent);
       window.removeEventListener('accept-interval-boundary', handleIntervalEvent);
     };
   }, [handleAcceptWarpProfile, handleAcceptIntervalBoundary]);
@@ -382,7 +382,7 @@ export default function TimeslicingPage() {
                 )}
                 {hoverPreviewGlobal.type !== null && (
                   <div className="pointer-events-none absolute inset-3 z-20 overflow-hidden rounded-sm">
-                    {hoverPreviewGlobal.type === 'warp-profile' &&
+                    {hoverPreviewGlobal.type === 'time-scale' &&
                       hoverPreviewGlobal.intervals.map((interval, index) => (
                         <div
                           key={`hover-warp-${index}`}
@@ -404,7 +404,7 @@ export default function TimeslicingPage() {
                       ))}
 
                     <div className="absolute left-2 top-2 rounded bg-slate-950/80 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
-                      Preview: {hoverPreviewGlobal.type === 'warp-profile' ? 'Warp intervals' : 'Boundary markers'}
+                      Preview: {hoverPreviewGlobal.type === 'time-scale' ? 'Time Scale intervals' : 'Boundary markers'}
                     </div>
                   </div>
                 )}
@@ -416,7 +416,7 @@ export default function TimeslicingPage() {
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-3 w-5 rounded-sm border-2 border-dashed border-amber-300/80 bg-violet-500/15" />
-              Warp from suggestion
+              Time Scale from suggestion
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-3 w-5 rounded-sm border border-violet-400/70 bg-violet-500/15" />
@@ -462,7 +462,7 @@ export default function TimeslicingPage() {
               />
               {hoverPreviewSelection.type !== null && (
                 <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">
-                  {hoverPreviewSelection.type === 'warp-profile' &&
+                  {hoverPreviewSelection.type === 'time-scale' &&
                     hoverPreviewSelection.intervals.map((interval, index) => (
                       <div
                         key={`hover-selection-warp-${index}`}
@@ -484,7 +484,7 @@ export default function TimeslicingPage() {
                     ))}
 
                   <div className="absolute left-2 top-2 rounded bg-slate-950/80 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
-                    Preview: {hoverPreviewSelection.type === 'warp-profile' ? 'Warp intervals' : 'Boundary markers'}
+                    Preview: {hoverPreviewSelection.type === 'time-scale' ? 'Time Scale intervals' : 'Boundary markers'}
                   </div>
                 </div>
               )}

@@ -37,7 +37,7 @@ function summarizeHistoryParameters(data: unknown): string {
   }
 
   if ('intervals' in data && Array.isArray(data.intervals)) {
-    return `${data.intervals.length} warp interval${data.intervals.length === 1 ? '' : 's'}`;
+    return `${data.intervals.length} time scale interval${data.intervals.length === 1 ? '' : 's'}`;
   }
 
   if ('boundaries' in data && Array.isArray(data.boundaries)) {
@@ -80,7 +80,7 @@ export function SuggestionPanel() {
       : suggestions.find(
           (suggestion) =>
             suggestion.id === activeWarpId &&
-            suggestion.type === 'warp-profile' &&
+            suggestion.type === 'time-scale' &&
             'name' in suggestion.data
         );
 
@@ -333,7 +333,7 @@ export function SuggestionPanel() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-slate-200">
-                          {entry.suggestion.type === 'warp-profile' ? 'Warp profile' : 'Interval boundaries'}
+                          {entry.suggestion.type === 'time-scale' ? 'Time Scale' : 'Interval boundaries'}
                         </span>
                         <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-200">
                           {entry.suggestion.confidence}%

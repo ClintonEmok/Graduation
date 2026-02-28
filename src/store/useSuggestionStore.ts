@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type SuggestionType = 'warp-profile' | 'interval-boundary';
+export type SuggestionType = 'time-scale' | 'interval-boundary';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'modified';
 
 export type BoundaryMethod = 'peak' | 'change-point' | 'rule-based';
@@ -17,7 +17,7 @@ export interface GenerationPreset {
   boundaryMethod: BoundaryMethod;
 }
 
-export interface WarpProfileData {
+export interface TimeScaleData {
   name: string;
   intervals: Array<{
     startPercent: number;
@@ -34,7 +34,7 @@ export interface Suggestion {
   id: string;
   type: SuggestionType;
   confidence: number; // 0-100
-  data: WarpProfileData | IntervalBoundaryData;
+  data: TimeScaleData | IntervalBoundaryData;
   createdAt: number;
   status: SuggestionStatus;
 }
@@ -235,10 +235,10 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       }, 5000);
 
       // When accepting pending suggestions, trigger slice creation via custom event.
-      if (suggestion.status === 'pending' && suggestion.type === 'warp-profile') {
+      if (suggestion.status === 'pending' && suggestion.type === 'time-scale') {
         // Dispatch custom event for warp slice creation
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('accept-warp-profile', { 
+          window.dispatchEvent(new CustomEvent('accept-time-scale', { 
             detail: { id, data: suggestion.data } 
           }));
         }
@@ -385,8 +385,8 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         const suggestion = state.suggestions.find(s => s.id === id);
         if (suggestion && suggestion.status === 'pending') {
           if (typeof window !== 'undefined') {
-            if (suggestion.type === 'warp-profile') {
-              window.dispatchEvent(new CustomEvent('accept-warp-profile', { 
+            if (suggestion.type === 'time-scale') {
+              window.dispatchEvent(new CustomEvent('accept-time-scale', { 
                 detail: { id, data: suggestion.data } 
               }));
             } else if (suggestion.type === 'interval-boundary') {
@@ -562,9 +562,9 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       if (!entry) return state;
 
       if (typeof window !== 'undefined') {
-        if (entry.suggestion.type === 'warp-profile') {
+        if (entry.suggestion.type === 'time-scale') {
           window.dispatchEvent(
-            new CustomEvent('accept-warp-profile', {
+            new CustomEvent('accept-time-scale', {
               detail: { id: entry.suggestion.id, data: entry.suggestion.data },
             })
           );
