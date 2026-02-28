@@ -330,16 +330,18 @@ Plans:
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
 | 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
-| 38 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 38 | v1.3 Timeslicing Workflows | 3/3 | 📋 Planned | - |
 
 ### Phase 38: context aware timeslicing based on crime type
 
-**Goal:** [To be planned]
+**Goal:** Context-aware optimization per active investigation context with smart profile auto-detection and custom profile creation
 **Depends on:** Phase 37
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 38 to break down)
+- [ ] 38-01-PLAN.md — Context Extraction Foundation (useContextExtractor, useSmartProfiles, mode toggle)
+- [ ] 38-02-PLAN.md — Profile Management (useContextProfileStore, ProfileManager component)
+- [ ] 38-03-PLAN.md — Integration & UI Polish (ContextBadge, history metadata, auto-regenerate)
 
 ---
 
