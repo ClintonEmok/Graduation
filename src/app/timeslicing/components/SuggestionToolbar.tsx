@@ -11,8 +11,51 @@ interface SuggestionToolbarProps {
   className?: string;
 }
 
+type AnalysisScopeMode = 'visible' | 'all';
+
+interface AnalyzeVisibleAllToggleProps {
+  mode: AnalysisScopeMode;
+  onChange: (mode: AnalysisScopeMode) => void;
+}
+
+function AnalyzeVisibleAllToggle({ mode, onChange }: AnalyzeVisibleAllToggleProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <label
+        className="text-slate-400"
+        title="Visible analyzes only the current timeline viewport. All analyzes the selected time range."
+      >
+        Analysis scope:
+      </label>
+      <div className="inline-flex rounded-full border border-slate-700 bg-slate-900/70 p-0.5">
+        <button
+          type="button"
+          onClick={() => onChange('visible')}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            mode === 'visible' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700/70'
+          }`}
+          title="Analyze only crimes in the currently visible timeline range"
+        >
+          Analyze Visible
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('all')}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            mode === 'all' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700/70'
+          }`}
+          title="Analyze all crimes in the selected time range"
+        >
+          Analyze All
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
+  const [contextMode, setContextMode] = useState<AnalysisScopeMode>('visible');
 
   const {
     trigger,
@@ -73,12 +116,13 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
 
   const handleGenerate = () => {
     setGenerationError(null);
-    const params: GenerationParams = {
+    const params = {
       warpCount,
       intervalCount,
       snapToUnit,
       boundaryMethod,
-    };
+      contextMode,
+    } as GenerationParams;
     trigger(params);
   };
 
@@ -128,18 +172,6 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="gap-1.5"
-          title="Create new warp profile and interval boundary suggestions based on current data"
-        >
-          <Sparkles className="size-4" />
-          {isGenerating ? 'Generating...' : 'Generate Suggestions'}
-        </Button>
-
         {suggestionCount > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-slate-300">{suggestionCount} total</span>
@@ -277,6 +309,24 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
             ))}
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <AnalyzeVisibleAllToggle mode={contextMode} onChange={setContextMode} />
+        </div>
+
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className="gap-1.5"
+          title="Create new warp profile and interval boundary suggestions based on current scope and data"
+        >
+          <Sparkles className="size-4" />
+          {isGenerating ? 'Generating...' : 'Generate Suggestions'}
+        </Button>
+
+        <div className="flex-1" />
 
         <div className="flex items-center gap-2">
           <label className="text-slate-400" title="Algorithm used to detect boundaries">
