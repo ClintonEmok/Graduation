@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Check, Pencil, X, Save, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfidenceBadge } from './ConfidenceBadge';
+import { ContextBadge } from './ContextBadge';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
@@ -14,6 +15,8 @@ import {
   type IntervalBoundaryData 
 } from '@/store/useSuggestionStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import { useContextExtractor } from '@/hooks/useContextExtractor';
+import { useSmartProfiles } from '@/hooks/useSmartProfiles';
 import { toast } from 'sonner';
 
 /**
@@ -173,6 +176,9 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const { getCurrentContext } = useContextExtractor();
+  const suggestionContext = React.useMemo(() => getCurrentContext('visible'), [getCurrentContext]);
+  const smartProfile = useSmartProfiles(suggestionContext);
   const [rangeStart, rangeEnd] = React.useMemo(() => {
     if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
       const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
@@ -582,6 +588,13 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
                 Selection: {formatEpochDate(rangeStart)} - {formatEpochDate(rangeEnd)}
               </span>
             )}
+          </div>
+          <div className="mt-1">
+            <ContextBadge
+              crimeTypes={suggestionContext.crimeTypes}
+              isFullDataset={suggestionContext.isFullDataset}
+              smartProfileName={smartProfile?.name}
+            />
           </div>
           {/* Collapsed: show count, Expanded: show full details */}
           {isCollapsed ? (
