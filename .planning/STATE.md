@@ -4,15 +4,15 @@
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 39
 **Status:** In progress
-**Next:** Execute 39-02 timeline UX improvements plan
+**Next:** Execute remaining Phase 39 plans (39-02, 39-04)
 
 ## Current Position
 Phase: **39 of 42** (Timeline UX Improvements)
-Plan: **1 of 4** in current phase
+Plan: **3 of 4** in current phase
 Status: **In progress**
-Last activity: 2026-03-01 - Completed 39-01-PLAN.md
+Last activity: 2026-03-01 - Completed 39-03-PLAN.md
 
-Progress: overall ███████████████████░ 97% (143/147 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
+Progress: overall ███████████████████░ 98% (144/147 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
 
 ```
 v1.0 Complete:
@@ -36,7 +36,7 @@ v1.2 Complete:
 
 v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
-[ ] Phase 39: Timeline UX Improvements (1/4 plans complete)
+[ ] Phase 39: Timeline UX Improvements (2/4 plans complete)
 [ ] Phase 40-42: Fully Automated Timeslicing Workflows
 ```
 
@@ -46,7 +46,7 @@ v1.3 In Progress:
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
 | Phase Completion | 25/25 | 7/7 |
 | Milestone Status | ✅ Shipped | ✅ Shipped |
-| Phase 39 P01 | 4 min | 3 tasks | 2 files |
+| Phase 39 P03 | 6 min | 2 tasks | 2 files |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
@@ -256,10 +256,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-03-01 22:34 UTC
-Stopped at: Completed 39-01-PLAN.md
+Last session: 2026-03-01 22:36 UTC
+Stopped at: Completed 39-03-PLAN.md
 Resume file: None
-Next: Execute 39-02-PLAN.md
+Next: Execute remaining Phase 39 plans (39-02, 39-04)
 
 ## Accumulated Context
 
@@ -428,8 +428,13 @@ Next: Execute 39-02-PLAN.md
 - Added top-right pill badge indicating current `Linear` vs `Adaptive` time scale mode
 - Added compact low-high gradient legend to `DensityHeatStrip` and enabled it on overview strip
 
+**Delivered in 39-03 (Warp preview + cursor visibility):**
+- Added 50ms debounced warp preview feedback in `AdaptiveControls` with local draft state and commit-on-release behavior
+- Added explicit "previewing..." status and axis distortion preview indicator while dragging warp factor
+- Increased top cursor handle prominence in `DualTimeline` for easier current-time spotting/grab affordance
+
 **Next focus:**
-- Execute 39-02 brush range display enhancements
+- Execute remaining Phase 39 plans (39-02 brush range display, 39-04 polish)
 
 ---
-*Last updated: 2026-02-28 - Completed 38-03 context-aware integration execution*
+*Last updated: 2026-03-01 - Completed 39-03 warp preview + cursor visibility execution*
