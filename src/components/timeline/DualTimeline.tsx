@@ -1289,10 +1289,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             <circle
               cx={cursorX}
               cy={0}
-              r={4.5}
+              r={5.5}
               fill={TIME_CURSOR_COLOR}
               stroke="rgba(255,255,255,0.95)"
-              strokeWidth={1.5}
+              strokeWidth={2}
               filter="url(#timeCursorGlow)"
             />
             {selectionX !== null && (
