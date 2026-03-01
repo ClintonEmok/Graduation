@@ -58,7 +58,7 @@ interface TimelineSliceGeometry {
   isBurst: boolean;
   isPoint: boolean;
   overlapCount: number;
-  color?: string;
+  color: string | undefined;
 }
 
 const computeDensityMap = (
@@ -164,7 +164,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const isComputing = useAdaptiveStore((state) => state.isComputing);
   const slices = useSliceStore((state) => state.slices);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const activeSliceUpdatedAt = useSliceStore((state) => state.activeSliceUpdatedAt);
   const userWarpSlices = useWarpSliceStore((state) =>
     state.slices
       .filter((slice) => slice.enabled && slice.source === 'manual')
@@ -977,7 +976,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [sliceGeometries]);
 
   const isTimelineLoading = isViewportLoading;
-  const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
 
   const brushDateFormatter = useMemo(
     () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -1000,7 +998,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
       <div className="pointer-events-none absolute right-3 top-2 z-20">
         <span
           className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white shadow-sm"
@@ -1217,7 +1215,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                     : 0.38;
 
               return (
-                <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
+                <g key={`${geometry.id}-${geometry.isActive ? 'active' : 'base'}`}>
                   <rect
                     x={geometry.left}
                     y={3}
@@ -1347,6 +1345,14 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             </g>
             </g>
           </svg>
+          {isTimelineLoading && (
+            <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+                <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-primary/40 border-t-primary" aria-hidden="true" />
+                Loading timeline data...
+              </div>
+            </div>
+          )}
           {hoveredDetail && (
             <div
               className="pointer-events-none absolute top-0 z-10 rounded bg-background/95 px-2 py-1 text-xs text-foreground shadow-sm"
