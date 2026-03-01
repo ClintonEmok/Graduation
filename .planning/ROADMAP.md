@@ -330,9 +330,36 @@ Plans:
 | 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
 | 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
-| 38 | 3/3 | Complete    | 2026-02-28 | - |
+| 38 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-28 |
+| 39 | Timeline UX Improvements | 4/4 | ✅ Complete | 2026-03-02 |
 
-### Phase 38: context aware timeslicing based on crime type
+### Phase 39: Timeline UX Improvements
+
+**Goal:** Enhance timeline UX with visual overlays, indicators, and feedback mechanisms.
+**Depends on:** Phase 38 (context-aware timeslicing)
+**Plans:** 4 plans (39-01, 39-02, 39-03, 39-04)
+
+**Details:**
+- User warp overlay showing affected time periods
+- Mode indicator (Linear/Adaptive badge)
+- Density legend explaining color scale
+- Brush range date display
+- Warp factor real-time preview
+- Enhanced time cursor visibility
+- Loading indicator during data fetch
+- Empty state for no data
+- Multi-slice overlap visualization
+- Selection highlight enhancement
+
+**Plan Overview:**
+- [x] 39-01-PLAN.md — Warp overlay + mode indicator + density legend
+- [x] 39-02-PLAN.md — Brush range display
+- [x] 39-03-PLAN.md — Warp preview + time cursor enhancement
+- [x] 39-04-PLAN.md — Loading/empty states + slice polish
+
+---
+
+## Planned Milestones
 
 **Goal:** Context-aware optimization per active investigation context with smart profile auto-detection and custom profile creation
 **Depends on:** Phase 37
