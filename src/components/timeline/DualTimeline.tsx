@@ -976,6 +976,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [sliceGeometries]);
 
   const isTimelineLoading = isViewportLoading;
+  const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
 
   const brushDateFormatter = useMemo(
     () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -1350,6 +1351,14 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">
                 <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-primary/40 border-t-primary" aria-hidden="true" />
                 Loading timeline data...
+              </div>
+            </div>
+          )}
+          {isDetailEmpty && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
+              <div className="rounded-md border border-border/60 bg-background/90 px-4 py-3 text-center shadow-sm">
+                <p className="text-sm font-medium text-foreground">No data in this range</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try expanding the brush range or adjusting filters.</p>
               </div>
             </div>
           )}
