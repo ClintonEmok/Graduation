@@ -57,7 +57,7 @@ interface TimelineSliceGeometry {
   isBurst: boolean;
   isPoint: boolean;
   overlapCount: number;
-  color?: string;
+  color: string | undefined;
 }
 
 const computeDensityMap = (
@@ -1007,7 +1007,15 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="relative w-full">
+      <div className="pointer-events-none absolute right-3 top-2 z-20">
+        <span
+          className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white shadow-sm"
+          style={{ backgroundColor: timeScaleMode === 'adaptive' ? '#4f46e5' : '#6b7280' }}
+        >
+          {timeScaleMode === 'adaptive' ? 'Adaptive' : 'Linear'}
+        </span>
+      </div>
       <div className="flex flex-col gap-6">
         <div
           className="flex flex-wrap items-center justify-between gap-3"
@@ -1017,9 +1025,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           }}
         >
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-            <div className="text-xs text-muted-foreground">
-              Mode: {timeScaleMode === 'adaptive' ? 'Adaptive' : 'Linear'}
-            </div>
             <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
             <div className="relative w-full">
               {width > 0 ? (
