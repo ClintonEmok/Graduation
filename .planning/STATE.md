@@ -3,16 +3,16 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 39
-**Status:** In progress
-**Next:** Execute remaining Phase 39 plan (39-04)
+**Status:** Phase complete
+**Next:** Plan/execute Phase 40
 
 ## Current Position
 Phase: **39 of 42** (Timeline UX Improvements)
-Plan: **3 of 4** in current phase
-Status: **In progress**
-Last activity: 2026-03-01 - Completed 39-02-PLAN.md
+Plan: **4 of 4** in current phase
+Status: **Phase complete**
+Last activity: 2026-03-01 - Completed 39-04-PLAN.md
 
-Progress: overall ████████████████████ 99% (145/147 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
+Progress: overall ████████████████████ 99% (146/147 plans) | v1.3 ██░░░░░░░░░░░░░░░ 40% phases (2/5)
 
 ```
 v1.0 Complete:
@@ -36,7 +36,7 @@ v1.2 Complete:
 
 v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
-[ ] Phase 39: Timeline UX Improvements (3/4 plans complete)
+[x] Phase 39: Timeline UX Improvements (4/4 plans complete)
 [ ] Phase 40-42: Fully Automated Timeslicing Workflows
 ```
 
@@ -46,7 +46,7 @@ v1.3 In Progress:
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
 | Phase Completion | 25/25 | 7/7 |
 | Milestone Status | ✅ Shipped | ✅ Shipped |
-| Phase 39 P02 | 6 min | 1 task | 1 file |
+| Phase 39 P04 | 10 min | 4 tasks | 2 files |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
@@ -256,10 +256,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-03-01 22:37 UTC
-Stopped at: Completed 39-02-PLAN.md
+Last session: 2026-03-01 22:40 UTC
+Stopped at: Completed 39-04-PLAN.md
 Resume file: None
-Next: Execute remaining Phase 39 plan (39-04)
+Next: Plan/execute Phase 40
 
 ## Accumulated Context
 
@@ -438,8 +438,14 @@ Next: Execute remaining Phase 39 plan (39-04)
 - Formatted brush bounds as exact date ranges (e.g., `Jan 1, 2001 - Mar 15, 2002`) using normalized-to-epoch conversion
 - Added `No selection` fallback when brush selection is cleared
 
+**Delivered in 39-04 (Loading/empty states + selection/overlap polish):**
+- Added non-blocking centered loading indicator in `DualTimeline` driven by `useViewportCrimeData.isLoading` and exposed `aria-busy` on timeline container
+- Added empty-state card (`No data in this range`) with guidance to expand brush range or adjust filters when selected range has no records
+- Added store-level `getOverlapCounts()` in `useSliceStore` and consumed overlap counts in `DualTimeline` for stronger 3+ overlap differentiation (opacity, hatch intensity, dashed borders, overlap badge)
+- Added `activeSliceUpdatedAt` selection state in `useSliceStore` and used it to retrigger active-slice pulse emphasis with stronger selected-time glow/pulse marker
+
 **Next focus:**
-- Execute remaining Phase 39 plan (39-04 polish)
+- Plan and execute Phase 40 fully automated timeslicing work
 
 ---
-*Last updated: 2026-03-01 - Completed 39-02 brush range display execution*
+*Last updated: 2026-03-01 - Completed 39-04 timeline UX polish execution*
