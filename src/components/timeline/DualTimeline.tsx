@@ -31,6 +31,7 @@ const AXIS_HEIGHT = 28;
 const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
+const TIME_CURSOR_COLOR = '#10b981';
 
 const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
   amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
@@ -57,7 +58,7 @@ interface TimelineSliceGeometry {
   isBurst: boolean;
   isPoint: boolean;
   overlapCount: number;
-  color: string | undefined;
+  color?: string;
 }
 
 const computeDensityMap = (
@@ -978,14 +979,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const isTimelineLoading = isViewportLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
 
-  const densityLegend = useMemo(
-    () => ({
-      low: `Low (${DENSITY_DOMAIN[0].toFixed(2)})`,
-      high: `High (${DENSITY_DOMAIN[1].toFixed(2)})`
-    }),
-    []
-  );
-
   const brushDateFormatter = useMemo(
     () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
     []
@@ -1018,7 +1011,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       </div>
       <div className="flex flex-col gap-6">
         <div
-          className="flex flex-wrap items-center justify-between gap-3"
+          className="flex flex-wrap items-center gap-3"
           style={{
             paddingLeft: OVERVIEW_MARGIN.left,
             paddingRight: OVERVIEW_MARGIN.right
@@ -1037,6 +1030,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   densityDomain={DENSITY_DOMAIN}
                   colorLow={DENSITY_COLOR_LOW}
                   colorHigh={DENSITY_COLOR_HIGH}
+                  showLegend
+                  legendLabels={{ low: 'Low', high: 'High' }}
                 />
               ) : (
                 <div className="h-3" />
@@ -1049,25 +1044,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   />
                 </div>
               )}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-sm"
-                style={{ backgroundColor: `rgb(${DENSITY_COLOR_LOW.join(',')})` }}
-                aria-hidden="true"
-              />
-              <span>{densityLegend.low}</span>
-            </div>
-            <span aria-hidden="true">→</span>
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-sm"
-                style={{ backgroundColor: `rgb(${DENSITY_COLOR_HIGH.join(',')})` }}
-                aria-hidden="true"
-              />
-              <span>{densityLegend.high}</span>
             </div>
           </div>
         </div>
@@ -1173,8 +1149,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
             <defs>
               <filter id="timeCursorGlow" x="-50%" y="-10%" width="200%" height="120%">
-                <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor="#10b981" floodOpacity="0.65" />
+                <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor={TIME_CURSOR_COLOR} floodOpacity="0.65" />
               </filter>
+              <pattern id="sliceOverlapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(35)">
+                <line x1="0" y1="0" x2="0" y2="6" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="2" />
+              </pattern>
             </defs>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
             {resolvedDetailRenderMode === 'points'
@@ -1227,20 +1206,91 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               );
             })}
 
+            {orderedSliceGeometries.map((geometry) => {
+              const color = resolveSliceColor(geometry.color);
+              const baseOpacity = geometry.isActive
+                ? 0.68
+                : geometry.overlapCount >= 3
+                  ? 0.2
+                  : geometry.overlapCount === 2
+                    ? 0.28
+                    : 0.38;
+
+              return (
+                <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
+                  <rect
+                    x={geometry.left}
+                    y={3}
+                    width={Math.max(2, geometry.width)}
+                    height={DETAIL_HEIGHT - 6}
+                    rx={3}
+                    fill={geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill}
+                    stroke={geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke}
+                    strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1}
+                    opacity={baseOpacity}
+                  />
+                  {geometry.overlapCount >= 2 && !geometry.isActive && (
+                    <rect
+                      x={geometry.left}
+                      y={3}
+                      width={Math.max(2, geometry.width)}
+                      height={DETAIL_HEIGHT - 6}
+                      rx={3}
+                      fill="url(#sliceOverlapHatch)"
+                      opacity={0.32}
+                    />
+                  )}
+                  {geometry.isActive && (
+                    <rect
+                      x={geometry.left}
+                      y={2}
+                      width={Math.max(2, geometry.width)}
+                      height={DETAIL_HEIGHT - 4}
+                      rx={3}
+                      fill="none"
+                      stroke={geometry.isBurst ? 'rgba(253, 186, 116, 0.95)' : 'rgba(125, 211, 252, 0.95)'}
+                      strokeWidth={2.2}
+                      opacity={0.9}
+                    >
+                      <animate attributeName="opacity" values="0.55;1;0.55" dur="1.8s" repeatCount="indefinite" />
+                    </rect>
+                  )}
+                </g>
+              );
+            })}
+
+            {maxSliceOverlap >= 3 && (
+              <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}>
+                <rect width={86} height={18} rx={9} fill="rgba(15, 23, 42, 0.75)" stroke="rgba(148, 163, 184, 0.55)" />
+                <text x={43} y={12} textAnchor="middle" fontSize={10} fill="rgba(226, 232, 240, 0.95)">
+                  {maxSliceOverlap}x overlap
+                </text>
+              </g>
+            )}
+
             <line
               x1={cursorX}
               x2={cursorX}
               y1={0}
               y2={DETAIL_HEIGHT}
-              stroke="#10b981"
+              stroke={TIME_CURSOR_COLOR}
               strokeWidth={2}
               filter="url(#timeCursorGlow)"
             />
             <circle
               cx={cursorX}
               cy={0}
+              r={8}
+              fill="rgba(16,185,129,0.2)"
+              stroke="rgba(16,185,129,0.45)"
+              strokeWidth={1}
+              pointerEvents="none"
+            />
+            <circle
+              cx={cursorX}
+              cy={0}
               r={4.5}
-              fill="#10b981"
+              fill={TIME_CURSOR_COLOR}
               stroke="rgba(255,255,255,0.95)"
               strokeWidth={1.5}
               filter="url(#timeCursorGlow)"

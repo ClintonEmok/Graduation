@@ -154,9 +154,15 @@ export function DensityHeatStrip({
         aria-busy={isLoading}
       />
       {showLegend && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
           <span>{legendLabels.low}</span>
-          <span aria-hidden="true">→</span>
+          <span
+            className="h-2 w-20 rounded-sm border border-foreground/15"
+            style={{
+              background: `linear-gradient(90deg, rgb(${colorLow.join(',')}) 0%, rgb(${colorHigh.join(',')}) 100%)`
+            }}
+            aria-hidden="true"
+          />
           <span>{legendLabels.high}</span>
         </div>
       )}
