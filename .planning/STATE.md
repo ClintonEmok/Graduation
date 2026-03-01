@@ -4,15 +4,15 @@
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 39
 **Status:** In progress
-**Next:** Execute remaining Phase 39 plans (39-02, 39-04)
+**Next:** Execute remaining Phase 39 plan (39-04)
 
 ## Current Position
 Phase: **39 of 42** (Timeline UX Improvements)
 Plan: **3 of 4** in current phase
 Status: **In progress**
-Last activity: 2026-03-01 - Completed 39-03-PLAN.md
+Last activity: 2026-03-01 - Completed 39-02-PLAN.md
 
-Progress: overall ███████████████████░ 98% (144/147 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
+Progress: overall ████████████████████ 99% (145/147 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
 
 ```
 v1.0 Complete:
@@ -36,7 +36,7 @@ v1.2 Complete:
 
 v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
-[ ] Phase 39: Timeline UX Improvements (2/4 plans complete)
+[ ] Phase 39: Timeline UX Improvements (3/4 plans complete)
 [ ] Phase 40-42: Fully Automated Timeslicing Workflows
 ```
 
@@ -46,7 +46,7 @@ v1.3 In Progress:
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
 | Phase Completion | 25/25 | 7/7 |
 | Milestone Status | ✅ Shipped | ✅ Shipped |
-| Phase 39 P03 | 6 min | 2 tasks | 2 files |
+| Phase 39 P02 | 6 min | 1 task | 1 file |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
@@ -256,10 +256,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-03-01 22:36 UTC
-Stopped at: Completed 39-03-PLAN.md
+Last session: 2026-03-01 22:37 UTC
+Stopped at: Completed 39-02-PLAN.md
 Resume file: None
-Next: Execute remaining Phase 39 plans (39-02, 39-04)
+Next: Execute remaining Phase 39 plan (39-04)
 
 ## Accumulated Context
 
@@ -433,8 +433,13 @@ Next: Execute remaining Phase 39 plans (39-02, 39-04)
 - Added explicit "previewing..." status and axis distortion preview indicator while dragging warp factor
 - Increased top cursor handle prominence in `DualTimeline` for easier current-time spotting/grab affordance
 
+**Delivered in 39-02 (Brush range text display):**
+- Added live brush range text under mode indicator in `DualTimeline` from `useCoordinationStore.brushRange`
+- Formatted brush bounds as exact date ranges (e.g., `Jan 1, 2001 - Mar 15, 2002`) using normalized-to-epoch conversion
+- Added `No selection` fallback when brush selection is cleared
+
 **Next focus:**
-- Execute remaining Phase 39 plans (39-02 brush range display, 39-04 polish)
+- Execute remaining Phase 39 plan (39-04 polish)
 
 ---
-*Last updated: 2026-03-01 - Completed 39-03 warp preview + cursor visibility execution*
+*Last updated: 2026-03-01 - Completed 39-02 brush range display execution*
