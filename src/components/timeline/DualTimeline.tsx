@@ -21,6 +21,8 @@ import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
+import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -30,11 +32,90 @@ const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
 
+const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
+  amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
+  blue: { fill: 'rgba(59, 130, 246, 0.24)', stroke: 'rgba(96, 165, 250, 0.9)' },
+  green: { fill: 'rgba(34, 197, 94, 0.26)', stroke: 'rgba(74, 222, 128, 0.9)' },
+  red: { fill: 'rgba(248, 113, 113, 0.26)', stroke: 'rgba(252, 165, 165, 0.9)' },
+  purple: { fill: 'rgba(167, 139, 250, 0.24)', stroke: 'rgba(196, 181, 253, 0.9)' },
+  cyan: { fill: 'rgba(34, 211, 238, 0.24)', stroke: 'rgba(103, 232, 249, 0.9)' },
+  pink: { fill: 'rgba(244, 114, 182, 0.26)', stroke: 'rgba(251, 207, 232, 0.9)' },
+  gray: { fill: 'rgba(148, 163, 184, 0.24)', stroke: 'rgba(203, 213, 225, 0.9)' },
+};
+
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 type StrictTimelineScale = ScaleTime<number, number>;
+
+interface TimelineSliceGeometry {
+  id: string;
+  left: number;
+  width: number;
+  isActive: boolean;
+  isBurst: boolean;
+  isPoint: boolean;
+  overlapCount: number;
+  color?: string;
+}
+
+const computeDensityMap = (
+  timestamps: number[],
+  domain: [number, number],
+  binCount: number,
+  kernelWidth: number
+): Float32Array => {
+  const [start, end] = domain;
+  const span = end - start || 1;
+  const bins = new Float32Array(binCount);
+
+  for (let i = 0; i < timestamps.length; i += 1) {
+    const t = timestamps[i];
+    if (!Number.isFinite(t)) continue;
+    const norm = (t - start) / span;
+    if (norm < 0 || norm > 1) continue;
+    const idx = Math.min(Math.floor(norm * binCount), binCount - 1);
+    bins[idx] += 1;
+  }
+
+  let smoothed = bins;
+  if (kernelWidth > 1) {
+    smoothed = new Float32Array(binCount);
+    for (let i = 0; i < binCount; i += 1) {
+      let sum = 0;
+      let count = 0;
+      for (let k = -kernelWidth; k <= kernelWidth; k += 1) {
+        const idx = i + k;
+        if (idx >= 0 && idx < binCount) {
+          sum += bins[idx];
+          count += 1;
+        }
+      }
+      smoothed[i] = count > 0 ? sum / count : 0;
+    }
+  }
+
+  let maxVal = 0;
+  for (let i = 0; i < smoothed.length; i += 1) {
+    if (smoothed[i] > maxVal) maxVal = smoothed[i];
+  }
+  if (maxVal === 0) maxVal = 1;
+
+  const normalized = new Float32Array(binCount);
+  for (let i = 0; i < binCount; i += 1) {
+    normalized[i] = smoothed[i] / maxVal;
+  }
+
+  return normalized;
+};
+
+const resolveSliceColor = (color?: string): { fill: string; stroke: string } => {
+  if (!color) {
+    return { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+  }
+  return SLICE_COLOR_PALETTE[color] ?? { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+};
 
 interface DualTimelineProps {
   adaptiveWarpMapOverride?: Float32Array | null;
@@ -44,6 +125,8 @@ interface DualTimelineProps {
   interactive?: boolean;
   timestampSecondsOverride?: number[];
   detailPointsOverride?: number[];
+  detailRenderMode?: 'auto' | 'points' | 'bins';
+  detailBinCount?: number;
 }
 
 export const DualTimeline: React.FC<DualTimelineProps> = ({
@@ -54,6 +137,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   interactive = true,
   timestampSecondsOverride,
   detailPointsOverride,
+  detailRenderMode = 'auto',
+  detailBinCount = 60,
 }) => {
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
@@ -66,12 +151,18 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const brushRange = useCoordinationStore((state) => state.brushRange);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
+  const userWarpSlices = useWarpSliceStore((state) =>
+    state.slices
+      .filter((slice) => slice.enabled && slice.source === 'manual')
+      .map((slice) => ({ ...slice, isUserWarp: true }))
+  );
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
@@ -195,7 +286,40 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     return points.filter((_, index) => index % step === 0);
   }, [detailPointsOverride, viewportCrimes, timestampSeconds, detailRangeSec]);
 
+  const detailSpanDays = useMemo(() => {
+    const spanSeconds = Math.abs(detailRangeSec[1] - detailRangeSec[0]);
+    return spanSeconds / 86400;
+  }, [detailRangeSec]);
+
+  const resolvedDetailRenderMode = useMemo(() => {
+    if (detailRenderMode === 'auto') {
+      return detailSpanDays > 180 ? 'bins' : 'points';
+    }
+    return detailRenderMode;
+  }, [detailRenderMode, detailSpanDays]);
+
+  const detailBins = useMemo(() => {
+    if (resolvedDetailRenderMode !== 'bins') return [];
+    if (!detailPoints.length) return [];
+    const binner = bin<number, number>()
+      .value((d) => d)
+      .domain([detailRangeSec[0], detailRangeSec[1]])
+      .thresholds(detailBinCount);
+    return binner(detailPoints);
+  }, [detailBinCount, detailPoints, detailRangeSec, resolvedDetailRenderMode]);
+
+  const detailMax = useMemo(
+    () => (detailBins.length ? max(detailBins, (d) => d.length) || 1 : 1),
+    [detailBins]
+  );
+
   const detailDensityMap = useMemo(() => {
+    const hasPoints = detailPoints.length > 0;
+    const binCount = densityMap?.length ?? ADAPTIVE_BIN_COUNT;
+    if (hasPoints && detailSpanDays <= 180) {
+      return computeDensityMap(detailPoints, detailRangeSec, binCount, ADAPTIVE_KERNEL_WIDTH);
+    }
+
     if (!densityMap || densityMap.length === 0) return densityMap;
     const span = domainEnd - domainStart || 1;
     const startRatio = clamp((detailRangeSec[0] - domainStart) / span, 0, 1);
@@ -206,7 +330,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     const startIndex = clamp(Math.floor(rangeStart * lastIndex), 0, lastIndex);
     const endIndex = clamp(Math.ceil(rangeEnd * lastIndex), startIndex, lastIndex);
     return densityMap.subarray(startIndex, Math.min(densityMap.length, endIndex + 1));
-  }, [densityMap, detailRangeSec, domainEnd, domainStart]);
+  }, [densityMap, detailPoints, detailRangeSec, detailSpanDays, domainEnd, domainStart]);
 
   const sampleWarpSeconds = useCallback(
     (linearSec: number, warpMapVal: Float32Array, warpDomain: [number, number]) => {
@@ -474,7 +598,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       .extent([[0, 0], [overviewInnerWidth, OVERVIEW_HEIGHT]])
       .on('brush end', (event) => {
         if (isSyncingRef.current) return;
-        if (!event.selection) return;
+        if (!event.selection) {
+          setBrushRange(null);
+          return;
+        }
         const [x0, x1] = event.selection as [number, number];
         const startSec = overviewInteractionScale.invert(x0).getTime() / 1000;
         const endSec = overviewInteractionScale.invert(x1).getTime() / 1000;
@@ -525,7 +652,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     detailRangeSec,
     interactive,
     overviewInnerWidth,
-    overviewInteractionScale
+    overviewInteractionScale,
+    setBrushRange
   ]);
 
   const scrubFromEvent = useCallback(
@@ -563,17 +691,21 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
       const epochSeconds = detailScale.invert(x).getTime() / 1000;
 
-      const nearest = findNearestIndexByTime(epochSeconds);
-      if (nearest) {
-        const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
-        const maxDistance = Math.max(rangeSpan * 0.01, 60);
-        if (nearest.distance <= maxDistance) {
-          const ts = nearest.point.timestampSec ?? epochSeconds;
-          const label =
-            minTimestampSec !== null && maxTimestampSec !== null
-              ? new Date(ts * 1000).toLocaleString()
-              : `t=${ts.toFixed(2)}`;
-          setHoveredDetail({ x, label });
+      if (resolvedDetailRenderMode === 'points') {
+        const nearest = findNearestIndexByTime(epochSeconds);
+        if (nearest) {
+          const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
+          const maxDistance = Math.max(rangeSpan * 0.01, 60);
+          if (nearest.distance <= maxDistance) {
+            const ts = nearest.point.timestampSec ?? epochSeconds;
+            const label =
+              minTimestampSec !== null && maxTimestampSec !== null
+                ? new Date(ts * 1000).toLocaleString()
+                : `t=${ts.toFixed(2)}`;
+            setHoveredDetail({ x, label });
+          } else {
+            setHoveredDetail(null);
+          }
         } else {
           setHoveredDetail(null);
         }
@@ -584,7 +716,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       if (!isScrubbingRef.current) return;
       scrubFromEvent(event);
     },
-    [detailInnerWidth, detailScale, detailRangeSec, interactive, minTimestampSec, maxTimestampSec, scrubFromEvent]
+    [detailInnerWidth, detailScale, detailRangeSec, interactive, minTimestampSec, maxTimestampSec, resolvedDetailRenderMode, scrubFromEvent]
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<SVGRectElement>) => {
@@ -720,6 +852,25 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     return { left, width: widthSpan };
   }, [detailRangeSec, overviewInnerWidth, overviewScale]);
 
+  const userWarpOverlayBands = useMemo(
+    () =>
+      userWarpSlices
+        .filter((slice) => slice.isUserWarp === true)
+        .map((slice) => {
+          const startSec = normalizedToEpochSeconds(clamp(slice.range[0], 0, 100), domainStart, domainEnd);
+          const endSec = normalizedToEpochSeconds(clamp(slice.range[1], 0, 100), domainStart, domainEnd);
+          const rangeStart = Math.max(domainStart, Math.min(startSec, endSec));
+          const rangeEnd = Math.min(domainEnd, Math.max(startSec, endSec));
+          return {
+            id: slice.id,
+            startSec: rangeStart,
+            endSec: rangeEnd
+          };
+        })
+        .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
+    [domainEnd, domainStart, userWarpSlices]
+  );
+
   const densityLegend = useMemo(
     () => ({
       low: `Low (${DENSITY_DOMAIN[0].toFixed(2)})`,
@@ -727,6 +878,25 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     }),
     []
   );
+
+  const brushDateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    []
+  );
+
+  const brushRangeLabel = useMemo(() => {
+    if (!brushRange) {
+      return 'No selection';
+    }
+
+    const [startNorm, endNorm] = brushRange;
+    const startSec = normalizedToEpochSeconds(Math.min(startNorm, endNorm), domainStart, domainEnd);
+    const endSec = normalizedToEpochSeconds(Math.max(startNorm, endNorm), domainStart, domainEnd);
+
+    return `${brushDateFormatter.format(new Date(startSec * 1000))} - ${brushDateFormatter.format(
+      new Date(endSec * 1000)
+    )}`;
+  }, [brushDateFormatter, brushRange, domainEnd, domainStart]);
 
 
   return (
@@ -739,29 +909,35 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             paddingRight: OVERVIEW_MARGIN.right
           }}
         >
-          <div className="relative">
-            {width > 0 ? (
-              <DensityHeatStrip
-                densityMap={densityMap}
-                width={overviewInnerWidth}
-                scale={overviewScale}
-                height={12}
-                isLoading={isComputing}
-                densityDomain={DENSITY_DOMAIN}
-                colorLow={DENSITY_COLOR_LOW}
-                colorHigh={DENSITY_COLOR_HIGH}
-              />
-            ) : (
-              <div className="h-3" />
-            )}
-            {stripSelection && (
-              <div className="pointer-events-none absolute inset-0">
-                <div
-                  className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
-                  style={{ left: stripSelection.left, width: stripSelection.width }}
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <div className="text-xs text-muted-foreground">
+              Mode: {timeScaleMode === 'adaptive' ? 'Adaptive' : 'Linear'}
+            </div>
+            <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
+            <div className="relative w-full">
+              {width > 0 ? (
+                <DensityHeatStrip
+                  densityMap={densityMap}
+                  width={overviewInnerWidth}
+                  scale={overviewScale}
+                  height={12}
+                  isLoading={isComputing}
+                  densityDomain={DENSITY_DOMAIN}
+                  colorLow={DENSITY_COLOR_LOW}
+                  colorHigh={DENSITY_COLOR_HIGH}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="h-3" />
+              )}
+              {stripSelection && (
+                <div className="pointer-events-none absolute inset-0">
+                  <div
+                    className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
+                    style={{ left: stripSelection.left, width: stripSelection.width }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -806,6 +982,25 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   width={barWidth}
                   height={barHeight}
                   className="fill-primary/20"
+                />
+              );
+            })}
+            {userWarpOverlayBands.map((slice) => {
+              const x0 = overviewScale(new Date(slice.startSec * 1000));
+              const x1 = overviewScale(new Date(slice.endSec * 1000));
+              const left = Math.min(x0, x1);
+              const widthSpan = Math.max(1, Math.abs(x1 - x0));
+              return (
+                <rect
+                  key={`overview-user-warp-${slice.id}`}
+                  x={left}
+                  y={0}
+                  width={widthSpan}
+                  height={OVERVIEW_HEIGHT}
+                  fill="rgba(139, 92, 246, 0.15)"
+                  stroke="rgba(99, 102, 241, 0.55)"
+                  strokeDasharray="4 3"
+                  strokeWidth={1}
                 />
               );
             })}
@@ -865,15 +1060,52 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           </div>
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
-            {detailPoints.map((timestamp, index) => {
-              const x = detailScale(new Date(timestamp * 1000));
+            {resolvedDetailRenderMode === 'points'
+              ? detailPoints.map((timestamp, index) => {
+                  const x = detailScale(new Date(timestamp * 1000));
+                  return (
+                    <circle
+                      key={`detail-point-${index}`}
+                      cx={x}
+                      cy={DETAIL_HEIGHT - 6}
+                      r={2}
+                      className="fill-primary/60"
+                    />
+                  );
+                })
+              : detailBins.map((bucket, index) => {
+                  if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
+                  const x0 = detailScale(new Date(bucket.x0 * 1000));
+                  const x1 = detailScale(new Date(bucket.x1 * 1000));
+                  const barWidth = Math.max(0, x1 - x0 - 1);
+                  const barHeight = (bucket.length / detailMax) * DETAIL_HEIGHT;
+                  return (
+                    <rect
+                      key={`detail-bin-${index}`}
+                      x={x0}
+                      y={DETAIL_HEIGHT - barHeight}
+                      width={barWidth}
+                      height={barHeight}
+                      className="fill-primary/20"
+                    />
+                  );
+                })}
+            {userWarpOverlayBands.map((slice) => {
+              const x0 = detailScale(new Date(slice.startSec * 1000));
+              const x1 = detailScale(new Date(slice.endSec * 1000));
+              const left = Math.min(x0, x1);
+              const widthSpan = Math.max(1, Math.abs(x1 - x0));
               return (
-                <circle
-                  key={`detail-point-${index}`}
-                  cx={x}
-                  cy={DETAIL_HEIGHT - 6}
-                  r={2}
-                  className="fill-primary/60"
+                <rect
+                  key={`detail-user-warp-${slice.id}`}
+                  x={left}
+                  y={0}
+                  width={widthSpan}
+                  height={DETAIL_HEIGHT}
+                  fill="rgba(139, 92, 246, 0.15)"
+                  stroke="rgba(99, 102, 241, 0.55)"
+                  strokeDasharray="4 3"
+                  strokeWidth={1}
                 />
               );
             })}
