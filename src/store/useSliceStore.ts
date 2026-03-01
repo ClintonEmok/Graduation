@@ -23,6 +23,7 @@ export interface TimeSlice {
 interface SliceStore {
   slices: TimeSlice[];
   activeSliceId: string | null;
+  activeSliceUpdatedAt: number;
   getOverlapCounts: () => Record<string, number>;
   addSlice: (initial: Partial<TimeSlice>) => void;
   addBurstSlice: (burstWindow: { start: number; end: number }) => TimeSlice | null;
@@ -118,6 +119,7 @@ export const useSliceStore = create<SliceStore>()(
     (set, get) => ({
       slices: [],
       activeSliceId: null,
+      activeSliceUpdatedAt: 0,
       getOverlapCounts: () => {
         const visibleRanges = get().slices
           .filter((slice) => slice.isVisible && slice.type === 'range' && Array.isArray(slice.range))
@@ -165,6 +167,7 @@ export const useSliceStore = create<SliceStore>()(
           return {
             slices: sortSlices([...state.slices, nextSlice]),
             activeSliceId: id, // Automatically set as active on creation
+            activeSliceUpdatedAt: Date.now(),
           };
         }),
       findMatchingSlice: (start, end, tolerance, options) => {
@@ -189,7 +192,7 @@ export const useSliceStore = create<SliceStore>()(
         const [rangeStart, rangeEnd] = toNormalizedStoreRange(burstWindow.start, burstWindow.end);
         const existing = get().findMatchingSlice(rangeStart, rangeEnd, undefined, { burstOnly: true });
         if (existing) {
-          set({ activeSliceId: existing.id });
+          set({ activeSliceId: existing.id, activeSliceUpdatedAt: Date.now() });
           return existing;
         }
 
@@ -210,15 +213,21 @@ export const useSliceStore = create<SliceStore>()(
         set((state) => ({
           slices: sortSlices([...state.slices, burstSlice]),
           activeSliceId: id,
+          activeSliceUpdatedAt: Date.now(),
         }));
 
         return burstSlice;
       },
       removeSlice: (id) =>
-        set((state) => ({
-          slices: state.slices.filter((s) => s.id !== id),
-          activeSliceId: state.activeSliceId === id ? null : state.activeSliceId,
-        })),
+        set((state) => {
+          const activeSliceId = state.activeSliceId === id ? null : state.activeSliceId;
+          return {
+            slices: state.slices.filter((s) => s.id !== id),
+            activeSliceId,
+            activeSliceUpdatedAt:
+              activeSliceId !== state.activeSliceId ? Date.now() : state.activeSliceUpdatedAt,
+          };
+        }),
       mergeSlices: (ids) => {
         if (ids.length < 2) {
           return null;
@@ -272,6 +281,7 @@ export const useSliceStore = create<SliceStore>()(
             mergedSlice,
           ]),
           activeSliceId: mergedId,
+          activeSliceUpdatedAt: Date.now(),
         }));
 
         return mergedId;
@@ -296,8 +306,8 @@ export const useSliceStore = create<SliceStore>()(
             s.id === id ? { ...s, isVisible: !s.isVisible } : s
           ),
         })),
-      clearSlices: () => set({ slices: [], activeSliceId: null }),
-      setActiveSlice: (id) => set({ activeSliceId: id }),
+      clearSlices: () => set({ slices: [], activeSliceId: null, activeSliceUpdatedAt: Date.now() }),
+      setActiveSlice: (id) => set({ activeSliceId: id, activeSliceUpdatedAt: Date.now() }),
     }),
     {
       name: 'slice-store-v1',

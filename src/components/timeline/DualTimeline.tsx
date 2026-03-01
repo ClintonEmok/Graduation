@@ -164,6 +164,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const isComputing = useAdaptiveStore((state) => state.isComputing);
   const slices = useSliceStore((state) => state.slices);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const activeSliceUpdatedAt = useSliceStore((state) => state.activeSliceUpdatedAt);
   const getSliceOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
   const userWarpSlices = useWarpSliceStore((state) =>
     state.slices
@@ -1207,7 +1208,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                     : 0.38;
 
               return (
-                <g key={`${geometry.id}-${geometry.isActive ? 'active' : 'base'}`}>
+                <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
                   <rect
                     x={geometry.left}
                     y={3}
@@ -1287,15 +1288,30 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               filter="url(#timeCursorGlow)"
             />
             {selectionX !== null && (
-              <line
-                x1={selectionX}
-                x2={selectionX}
-                y1={0}
-                y2={DETAIL_HEIGHT}
-                className="stroke-sky-400"
-                strokeWidth={2}
-                strokeDasharray="4 2"
-              />
+              <g>
+                <line
+                  x1={selectionX}
+                  x2={selectionX}
+                  y1={0}
+                  y2={DETAIL_HEIGHT}
+                  stroke="rgba(56, 189, 248, 0.3)"
+                  strokeWidth={6}
+                />
+                <line
+                  x1={selectionX}
+                  x2={selectionX}
+                  y1={0}
+                  y2={DETAIL_HEIGHT}
+                  stroke="rgba(125, 211, 252, 0.95)"
+                  strokeWidth={2.2}
+                  strokeDasharray="4 2"
+                >
+                  <animate attributeName="opacity" values="0.45;1;0.45" dur="1.7s" repeatCount="indefinite" />
+                </line>
+                <circle cx={selectionX} cy={4} r={3.5} fill="rgba(186, 230, 253, 0.95)">
+                  <animate attributeName="r" values="3;4.5;3" dur="1.7s" repeatCount="indefinite" />
+                </circle>
+              </g>
             )}
             <rect
               ref={zoomRef}
