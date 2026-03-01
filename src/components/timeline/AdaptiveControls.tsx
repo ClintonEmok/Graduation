@@ -13,21 +13,94 @@ export function AdaptiveControls({ className }: { className?: string }) {
   const setBurstMetric = useAdaptiveStore((s) => s.setBurstMetric);
   const burstThreshold = useAdaptiveStore((s) => s.burstThreshold);
   const setBurstThreshold = useAdaptiveStore((s) => s.setBurstThreshold);
+  const [draftWarpFactor, setDraftWarpFactor] = React.useState<number | null>(null);
+  const [previewWarpFactor, setPreviewWarpFactor] = React.useState(warpFactor);
+  const [isPreviewingWarp, setIsPreviewingWarp] = React.useState(false);
+  const warpPreviewTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    if (draftWarpFactor !== null) {
+      return;
+    }
+    setPreviewWarpFactor(warpFactor);
+  }, [draftWarpFactor, warpFactor]);
+
+  React.useEffect(() => {
+    if (draftWarpFactor === null) {
+      return;
+    }
+    if (warpPreviewTimeoutRef.current) {
+      clearTimeout(warpPreviewTimeoutRef.current);
+    }
+    warpPreviewTimeoutRef.current = setTimeout(() => {
+      setPreviewWarpFactor(draftWarpFactor);
+    }, 50);
+
+    return () => {
+      if (warpPreviewTimeoutRef.current) {
+        clearTimeout(warpPreviewTimeoutRef.current);
+      }
+    };
+  }, [draftWarpFactor]);
+
+  const displayedWarpFactor = draftWarpFactor ?? warpFactor;
+  const displayedWarpPercent = Math.round(displayedWarpFactor * 100);
+  const previewWarpPercent = Math.round(previewWarpFactor * 100);
+
+  const handleWarpChange = (values: number[]) => {
+    const next = values[0];
+    if (!Number.isFinite(next)) {
+      return;
+    }
+    setDraftWarpFactor(next);
+    setIsPreviewingWarp(true);
+  };
+
+  const handleWarpCommit = (values: number[]) => {
+    const next = values[0];
+    if (!Number.isFinite(next)) {
+      setDraftWarpFactor(null);
+      setIsPreviewingWarp(false);
+      return;
+    }
+    setWarpFactor(next);
+    setDraftWarpFactor(null);
+    setPreviewWarpFactor(next);
+    setIsPreviewingWarp(false);
+  };
 
   return (
     <div className={cn("flex flex-col gap-3 w-full", className)}>
         <div className="flex justify-between items-center">
             <Label className="text-sm font-medium">Adaptive Warp</Label>
-            <span className="text-xs font-mono text-muted-foreground">{Math.round(warpFactor * 100)}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-muted-foreground">{displayedWarpPercent}%</span>
+              {isPreviewingWarp ? (
+                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+                  previewing...
+                </span>
+              ) : null}
+            </div>
         </div>
         <Slider
           min={0}
           max={1}
           step={0.01}
-          value={[warpFactor]}
-          onValueChange={(vals) => setWarpFactor(vals[0])}
+          value={[displayedWarpFactor]}
+          onValueChange={handleWarpChange}
+          onValueCommit={handleWarpCommit}
           className="w-full"
         />
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span>Axis distortion preview</span>
+          <div className="relative h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+            <div
+              className="absolute inset-y-0 left-0 bg-emerald-500/70 transition-[width] duration-75"
+              style={{ width: `${previewWarpPercent}%` }}
+            />
+          </div>
+          <span className="font-mono">{previewWarpPercent}%</span>
+        </div>
         <p className="text-[10px] text-muted-foreground">
             Distort time to highlight dense clusters of events.
         </p>
