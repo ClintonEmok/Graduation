@@ -164,6 +164,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const isComputing = useAdaptiveStore((state) => state.isComputing);
   const slices = useSliceStore((state) => state.slices);
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const getSliceOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
   const userWarpSlices = useWarpSliceStore((state) =>
     state.slices
       .filter((slice) => slice.enabled && slice.source === 'manual')
@@ -877,6 +878,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     [domainEnd, domainStart, userWarpSlices]
   );
 
+  const sliceOverlapCounts = getSliceOverlapCounts();
+
   const sliceGeometries = useMemo<TimelineSliceGeometry[]>(() => {
     if (!slices.length || detailInnerWidth <= 0) {
       return [];
@@ -908,7 +911,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             isActive: activeSliceId === slice.id,
             isBurst: !!slice.isBurst,
             isPoint: false,
-            overlapCount: 1,
+            overlapCount: sliceOverlapCounts[slice.id] ?? 1,
             color: slice.color,
           };
         }
@@ -931,20 +934,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       })
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
 
-    return geometries.map((geometry) => {
-      if (geometry.isPoint) {
-        return geometry;
-      }
-      const overlapCount = geometries.reduce((count, candidate) => {
-        if (candidate.isPoint) {
-          return count;
-        }
-        const overlaps = geometry.left < candidate.left + candidate.width && candidate.left < geometry.left + geometry.width;
-        return overlaps ? count + 1 : count;
-      }, 0);
-      return { ...geometry, overlapCount };
-    });
-  }, [activeSliceId, detailInnerWidth, detailScale, domainEnd, domainStart, slices]);
+    return geometries;
+  }, [activeSliceId, detailInnerWidth, detailScale, domainEnd, domainStart, sliceOverlapCounts, slices]);
 
   const maxSliceOverlap = useMemo(
     () =>
@@ -1226,6 +1217,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                     fill={geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill}
                     stroke={geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke}
                     strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1}
+                    strokeDasharray={geometry.overlapCount >= 3 ? '5 3' : undefined}
                     opacity={baseOpacity}
                   />
                   {geometry.overlapCount >= 2 && !geometry.isActive && (
@@ -1236,7 +1228,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                       height={DETAIL_HEIGHT - 6}
                       rx={3}
                       fill="url(#sliceOverlapHatch)"
-                      opacity={0.32}
+                      opacity={geometry.overlapCount >= 3 ? 0.42 : 0.3}
                     />
                   )}
                   {geometry.isActive && (

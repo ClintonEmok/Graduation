@@ -23,6 +23,7 @@ export interface TimeSlice {
 interface SliceStore {
   slices: TimeSlice[];
   activeSliceId: string | null;
+  getOverlapCounts: () => Record<string, number>;
   addSlice: (initial: Partial<TimeSlice>) => void;
   addBurstSlice: (burstWindow: { start: number; end: number }) => TimeSlice | null;
   findMatchingSlice: (
@@ -117,6 +118,37 @@ export const useSliceStore = create<SliceStore>()(
     (set, get) => ({
       slices: [],
       activeSliceId: null,
+      getOverlapCounts: () => {
+        const visibleRanges = get().slices
+          .filter((slice) => slice.isVisible && slice.type === 'range' && Array.isArray(slice.range))
+          .map((slice) => {
+            const [start, end] = slice.range!;
+            const [normalizedStart, normalizedEnd] = toNormalizedStoreRange(start, end);
+            return {
+              id: slice.id,
+              start: normalizedStart,
+              end: normalizedEnd,
+            };
+          });
+
+        const overlapCounts: Record<string, number> = {};
+        visibleRanges.forEach((slice) => {
+          overlapCounts[slice.id] = 1;
+        });
+
+        for (let i = 0; i < visibleRanges.length; i += 1) {
+          for (let j = i + 1; j < visibleRanges.length; j += 1) {
+            const left = visibleRanges[i];
+            const right = visibleRanges[j];
+            if (left.start < right.end && right.start < left.end) {
+              overlapCounts[left.id] += 1;
+              overlapCounts[right.id] += 1;
+            }
+          }
+        }
+
+        return overlapCounts;
+      },
       addSlice: (initial) =>
         set((state) => {
           const id = crypto.randomUUID();
