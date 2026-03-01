@@ -146,7 +146,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
-  const { currentTime, setTime, setRange, timeResolution } = useTimeStore();
+  const currentTime = useTimeStore((state) => state.currentTime);
+  const setTime = useTimeStore((state) => state.setTime);
+  const setRange = useTimeStore((state) => state.setRange);
+  const timeResolution = useTimeStore((state) => state.timeResolution);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
@@ -158,6 +161,9 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
+  const slices = useSliceStore((state) => state.slices);
+  const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const activeSliceUpdatedAt = useSliceStore((state) => state.activeSliceUpdatedAt);
   const userWarpSlices = useWarpSliceStore((state) =>
     state.slices
       .filter((slice) => slice.enabled && slice.source === 'manual')
@@ -871,6 +877,107 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     [domainEnd, domainStart, userWarpSlices]
   );
 
+  const sliceGeometries = useMemo<TimelineSliceGeometry[]>(() => {
+    if (!slices.length || detailInnerWidth <= 0) {
+      return [];
+    }
+
+    const spanSec = Math.max(1, domainEnd - domainStart);
+    const toX = (normalized: number) => {
+      const clampedNorm = clamp(normalized, 0, 100);
+      const sec = domainStart + (clampedNorm / 100) * spanSec;
+      return detailScale(new Date(sec * 1000));
+    };
+
+    const geometries = slices
+      .filter((slice) => slice.isVisible)
+      .map((slice) => {
+        if (slice.type === 'range' && slice.range) {
+          const startX = toX(Math.min(slice.range[0], slice.range[1]));
+          const endX = toX(Math.max(slice.range[0], slice.range[1]));
+          const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
+          const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
+          if (right <= 0 || left >= detailInnerWidth) {
+            return null;
+          }
+
+          return {
+            id: slice.id,
+            left,
+            width: Math.max(2, right - left),
+            isActive: activeSliceId === slice.id,
+            isBurst: !!slice.isBurst,
+            isPoint: false,
+            overlapCount: 1,
+            color: slice.color,
+          };
+        }
+
+        const x = toX(slice.time);
+        if (x < 0 || x > detailInnerWidth) {
+          return null;
+        }
+
+        return {
+          id: slice.id,
+          left: Math.max(0, Math.min(detailInnerWidth, x - 1)),
+          width: 2,
+          isActive: activeSliceId === slice.id,
+          isBurst: !!slice.isBurst,
+          isPoint: true,
+          overlapCount: 1,
+          color: slice.color,
+        };
+      })
+      .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
+
+    return geometries.map((geometry) => {
+      if (geometry.isPoint) {
+        return geometry;
+      }
+      const overlapCount = geometries.reduce((count, candidate) => {
+        if (candidate.isPoint) {
+          return count;
+        }
+        const overlaps = geometry.left < candidate.left + candidate.width && candidate.left < geometry.left + geometry.width;
+        return overlaps ? count + 1 : count;
+      }, 0);
+      return { ...geometry, overlapCount };
+    });
+  }, [activeSliceId, detailInnerWidth, detailScale, domainEnd, domainStart, slices]);
+
+  const maxSliceOverlap = useMemo(
+    () =>
+      sliceGeometries.reduce((maxOverlap, geometry) => {
+        if (geometry.isPoint) {
+          return maxOverlap;
+        }
+        return Math.max(maxOverlap, geometry.overlapCount);
+      }, 1),
+    [sliceGeometries]
+  );
+
+  const orderedSliceGeometries = useMemo(() => {
+    const stackWeight = (geometry: TimelineSliceGeometry) => {
+      let weight = 0;
+      if (geometry.overlapCount >= 2) {
+        weight += 1;
+      }
+      if (geometry.isBurst) {
+        weight += 1;
+      }
+      if (geometry.isActive) {
+        weight += 3;
+      }
+      return weight;
+    };
+
+    return [...sliceGeometries].sort((a, b) => stackWeight(a) - stackWeight(b));
+  }, [sliceGeometries]);
+
+  const isTimelineLoading = isViewportLoading;
+  const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
+
   const densityLegend = useMemo(
     () => ({
       low: `Low (${DENSITY_DOMAIN[0].toFixed(2)})`,
@@ -1059,6 +1166,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             )}
           </div>
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
+            <defs>
+              <filter id="timeCursorGlow" x="-50%" y="-10%" width="200%" height="120%">
+                <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor="#10b981" floodOpacity="0.65" />
+              </filter>
+            </defs>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
             {resolvedDetailRenderMode === 'points'
               ? detailPoints.map((timestamp, index) => {
@@ -1115,8 +1227,18 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               x2={cursorX}
               y1={0}
               y2={DETAIL_HEIGHT}
-              className="stroke-primary"
+              stroke="#10b981"
               strokeWidth={2}
+              filter="url(#timeCursorGlow)"
+            />
+            <circle
+              cx={cursorX}
+              cy={0}
+              r={4.5}
+              fill="#10b981"
+              stroke="rgba(255,255,255,0.95)"
+              strokeWidth={1.5}
+              filter="url(#timeCursorGlow)"
             />
             {selectionX !== null && (
               <line
