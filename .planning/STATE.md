@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 38
-**Status:** Milestone complete
-**Next:** Plan/execute next v1.3 phase
+**Current Phase:** 39
+**Status:** In progress
+**Next:** Execute 39-02 timeline UX improvements plan
 
 ## Current Position
-Phase: **38 of 42** (Context-Aware Timeslicing Based on Crime Type)
-Plan: **3 of 3** in current phase
-Status: **Phase complete**
-Last activity: 2026-02-28 - Completed 38-03-PLAN.md
+Phase: **39 of 42** (Timeline UX Improvements)
+Plan: **1 of 4** in current phase
+Status: **In progress**
+Last activity: 2026-03-01 - Completed 39-01-PLAN.md
 
-Progress: overall ███████████████████░ 99% (141/143 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
+Progress: overall ███████████████████░ 97% (143/147 plans) | v1.3 █░░░░░░░░░░░░░░░ 20% phases (1/5)
 
 ```
 v1.0 Complete:
@@ -32,10 +32,12 @@ v1.1 Complete:
 v1.2 Complete:
 [x] Phase 35: Semi-Automated Timeslicing Workflows (3/3 plans complete)
 [x] Phase 36: Suggestion Generation Algorithms (4/4 plans complete)
-[ ] Phase 37: Algorithm Integration (8/9 plans complete)
+[x] Phase 37: Algorithm Integration (9/9 plans complete)
 
-v1.3 Planned:
-[ ] Phase 38-42: Fully Automated Timeslicing Workflows
+v1.3 In Progress:
+[x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
+[ ] Phase 39: Timeline UX Improvements (1/4 plans complete)
+[ ] Phase 40-42: Fully Automated Timeslicing Workflows
 ```
 
 ## Performance Metrics
@@ -44,7 +46,7 @@ v1.3 Planned:
 | Requirement Coverage | 25/26 core (96%) | 22/22 (100%) |
 | Phase Completion | 25/25 | 7/7 |
 | Milestone Status | ✅ Shipped | ✅ Shipped |
-| Phase 38 P03 | 4 min | 4 tasks | 7 files |
+| Phase 39 P01 | 4 min | 3 tasks | 2 files |
 
 ## Project Reference
 See: `.planning/PROJECT.md` (updated 2026-02-16)
@@ -250,17 +252,14 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Blockers/Concerns
 
-**Performance (Phase 34 to address):**
-- Loading 8.4 million crime records makes the application slow
-- Need to optimize: data streaming, point rendering, query performance, caching
-
 **None currently**
 
 ## Session Continuity
 
-Last session: 2026-02-28 01:45 UTC
-Stopped at: Completed 38-03-PLAN.md
-Next: Plan/execute next v1.3 phase
+Last session: 2026-03-01 22:34 UTC
+Stopped at: Completed 39-01-PLAN.md
+Resume file: None
+Next: Execute 39-02-PLAN.md
 
 ## Accumulated Context
 
@@ -417,7 +416,20 @@ Next: Plan/execute next v1.3 phase
 - Added history context summaries so accepted items show generation context provenance
 
 **Next focus:**
-- Transition to next v1.3 phase planning/execution
+- Execute Phase 39 timeline UX improvement plans
+
+### Phase 39 Progress (2026-03-01)
+**Prerequisites from Phase 38:**
+- ✅ Context-aware timeslicing integration complete
+- ✅ Warp slice workflows and adaptive mode controls available in timeline
+
+**Delivered in 39-01 (Warp overlay + mode indicator + density legend):**
+- Added user-warp overlay bands on overview and detail timelines using `useWarpSliceStore` manual slices
+- Added top-right pill badge indicating current `Linear` vs `Adaptive` time scale mode
+- Added compact low-high gradient legend to `DensityHeatStrip` and enabled it on overview strip
+
+**Next focus:**
+- Execute 39-02 brush range display enhancements
 
 ---
 *Last updated: 2026-02-28 - Completed 38-03 context-aware integration execution*
