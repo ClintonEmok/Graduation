@@ -4,11 +4,13 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useSuggestionStore, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
+import { generateRankedAutoProposalSets } from '@/lib/full-auto-orchestrator';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useContextExtractor } from '@/hooks/useContextExtractor';
 import { detectSmartProfile } from '@/hooks/useSmartProfiles';
+import type { RankedAutoProposalSets } from '@/types/autoProposalSet';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
 
@@ -21,6 +23,7 @@ export interface GenerationParams {
   snapToUnit: 'hour' | 'day' | 'none';
   boundaryMethod: BoundaryMethod;
   contextMode: 'visible' | 'all';
+  fullAuto?: boolean;
 }
 
 interface UseSuggestionGeneratorReturn {
@@ -33,6 +36,7 @@ interface UseSuggestionGeneratorReturn {
   isGenerating: boolean;
   generationError: string | null;
   lastSampleUpdateAt: number | null;
+  fullAutoSets: RankedAutoProposalSets | null;
 }
 
 /**
@@ -77,6 +81,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   // Track generating state
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastSampleUpdateAt, setLastSampleUpdateAt] = useState<number | null>(null);
+  const [fullAutoSets, setFullAutoSets] = useState<RankedAutoProposalSets | null>(null);
   
   // Get viewport state
   const viewportFilters = useCrimeFilters();
@@ -172,6 +177,14 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       if (!crimes || crimes.length === 0) {
         // Set store flag for empty state (not console.log)
         setEmptyState(true);
+        setFullAutoSets({
+          generatedAt: Date.now(),
+          sets: [],
+          recommendedId: null,
+          reasonMetadata: {
+            noResultReason: 'No data available in the current context. Expand date range or filters.',
+          },
+        });
         return false;
       }
       
@@ -184,6 +197,63 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
         start: context.timeRange.start,
         end: context.timeRange.end,
       };
+
+      const useFullAutoPath = params.fullAuto !== false;
+
+      if (useFullAutoPath) {
+        const rankedResult = generateRankedAutoProposalSets({
+          crimes,
+          context: {
+            crimeTypes: context.crimeTypes,
+            timeRange: context.timeRange,
+            isFullDataset: context.isFullDataset,
+            profileName: smartProfile?.name,
+          },
+          params: {
+            warpCount: params.warpCount,
+            intervalCount: params.intervalCount,
+            boundaryMethod: params.boundaryMethod,
+            snapToUnit: params.snapToUnit,
+          },
+        });
+
+        setFullAutoSets(rankedResult);
+
+        rankedResult.sets.forEach((set) => {
+          addSuggestion({
+            type: 'time-scale',
+            confidence: set.confidence,
+            contextMetadata: {
+              crimeTypes: context.crimeTypes,
+              timeRange: context.timeRange,
+              isFullDataset: context.isFullDataset,
+              profileName: smartProfile?.name,
+            },
+            data: {
+              name: `${set.warp.name} (Rank ${set.rank})${set.isRecommended ? ' - Recommended' : ''}`,
+              intervals: set.warp.intervals,
+            } as TimeScaleData,
+          });
+
+          addSuggestion({
+            type: 'interval-boundary',
+            confidence: set.confidence,
+            contextMetadata: {
+              crimeTypes: context.crimeTypes,
+              timeRange: context.timeRange,
+              isFullDataset: context.isFullDataset,
+              profileName: smartProfile?.name,
+            },
+            data: {
+              boundaries: set.intervals.boundaries,
+            } as IntervalBoundaryData,
+          });
+        });
+
+        return rankedResult.sets.length > 0;
+      }
+
+      setFullAutoSets(null);
       
       // Generate warp profiles with user-configurable count
       if (params.warpCount > 0) {
@@ -295,5 +365,6 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     isGenerating,
     generationError,
     lastSampleUpdateAt,
+    fullAutoSets,
   };
 }
