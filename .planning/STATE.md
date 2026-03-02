@@ -8,9 +8,9 @@
 
 ## Current Position
 Phase: **40 of 42** (Fully Automated Timeslicing Orchestration)
-Plan: **9 of 9** in current phase
+Plan: **10 of 10** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-02 - Completed 40-09-PLAN.md (fix warp overlay for suggestion-sourced slices)
+Last activity: 2026-03-03 - Completed 40-10-PLAN.md (auto-switch to adaptive mode when warp accepted)
 
 Progress: overall ████████████████████ 100% (151/151 plans) | v1.3 ████████░░░░░░░░░░░ 80% phases (4/5)
 
@@ -37,7 +37,7 @@ v1.2 Complete:
 v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
 [x] Phase 39: Timeline UX Improvements (4/4 plans complete)
-[x] Phase 40: Fully Automated Timeslicing Orchestration (9/9 plans complete)
+[x] Phase 40: Fully Automated Timeslicing Orchestration (10/10 plans complete)
 ```
 
 ## Performance Metrics
@@ -484,8 +484,14 @@ Next: Plan Phase 41 (Full-Auto Optimization & Ranking)
 - Falls back to percentages if epoch props not provided
 - Passed viewport `startDate` and `endDate` from `SuggestionPanel` to cards
 
+**Delivered in 40-10 (Gap closure - auto-switch to adaptive mode):**
+- Imported setTimeScaleMode from useTimeStore
+- Added setTimeScaleMode('adaptive') call in handleAcceptWarpProfile after creating warp slices
+- Added setTimeScaleMode('adaptive') call in handleAcceptFullAutoPackage after creating warp slices
+- Timeline now auto-switches to adaptive mode when warp is accepted, making warping visually effective
+
 **Next focus:**
 - Plan and execute Phase 41 (full-auto optimization and ranking refinement)
 
 ---
-*Last updated: 2026-03-02 - Completed 40-07 disable auto burst slices (Phase 40 complete)*
+*Last updated: 2026-03-03 - Completed 40-10 auto-switch to adaptive mode (Phase 40 complete)*
