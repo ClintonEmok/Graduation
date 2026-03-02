@@ -13,6 +13,7 @@ import { SuggestionToolbar } from './components/SuggestionToolbar';
 import { useSuggestionStore, type Suggestion, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
+import { useTimeStore } from '@/store/useTimeStore';
 import type { AutoProposalSet } from '@/types/autoProposalSet';
 import { Toaster } from 'sonner';
 
@@ -298,6 +299,9 @@ export default function TimeslicingPage() {
         warpProfileId: suggestionId,
       });
     });
+
+    // Switch to adaptive mode so warping takes effect
+    useTimeStore.getState().setTimeScaleMode('adaptive');
   }, [addWarpSlice, clearWarpSlices, rangeStart, rangeEnd]);
   
   // Handle interval boundary acceptance - create time slices
@@ -384,6 +388,9 @@ export default function TimeslicingPage() {
             warpProfileId: proposalSet.id,
           });
         });
+
+        // Switch to adaptive mode so warping takes effect
+        useTimeStore.getState().setTimeScaleMode('adaptive');
 
         const acceptedAt = Date.now();
         addToHistory({
