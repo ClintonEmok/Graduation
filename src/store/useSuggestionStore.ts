@@ -3,6 +3,7 @@ import { getCurrentContext, type ContextMode } from '@/hooks/useContextExtractor
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useContextProfileStore } from '@/store/useContextProfileStore';
+import type { AutoProposalSet, RankedAutoProposalSets } from '@/types/autoProposalSet';
 
 export type SuggestionType = 'time-scale' | 'interval-boundary';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'modified';
@@ -103,6 +104,14 @@ interface SuggestionStore {
   // Context scope state
   contextMode: ContextMode;
 
+  // Full-auto package state
+  fullAutoProposalSets: AutoProposalSet[];
+  selectedFullAutoSetId: string | null;
+  recommendedFullAutoSetId: string | null;
+  fullAutoLowConfidenceReason: string | null;
+  fullAutoNoResultReason: string | null;
+  hasFullAutoLowConfidence: boolean;
+
   // Actions
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'status'>) => void;
   acceptSuggestion: (id: string) => void;
@@ -139,6 +148,11 @@ interface SuggestionStore {
   setGenerationError: (message: string | null) => void;
   setContextMode: (mode: ContextMode) => void;
   loadPresetsFromStorage: () => void;
+
+  // Full-auto package actions
+  setFullAutoProposalResults: (result: RankedAutoProposalSets | null) => void;
+  selectFullAutoProposalSet: (id: string | null) => void;
+  clearFullAutoProposalSets: () => void;
   
   // Comparison actions
   setComparisonId: (index: 0 | 1, id: string | null) => void;
@@ -224,6 +238,14 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
 
   // Context scope state
   contextMode: 'visible',
+
+  // Full-auto package state
+  fullAutoProposalSets: [],
+  selectedFullAutoSetId: null,
+  recommendedFullAutoSetId: null,
+  fullAutoLowConfidenceReason: null,
+  fullAutoNoResultReason: null,
+  hasFullAutoLowConfidence: false,
 
   addSuggestion: (suggestion) =>
     set((state) => ({
@@ -531,6 +553,12 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       showUndoToast: false,
       lastAction: null,
       undoTimeout: null,
+      fullAutoProposalSets: [],
+      selectedFullAutoSetId: null,
+      recommendedFullAutoSetId: null,
+      fullAutoLowConfidenceReason: null,
+      fullAutoNoResultReason: null,
+      hasFullAutoLowConfidence: false,
     });
   },
 
@@ -555,6 +583,12 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         showUndoToast: false,
         lastAction: null,
         undoTimeout: null,
+        fullAutoProposalSets: [],
+        selectedFullAutoSetId: null,
+        recommendedFullAutoSetId: null,
+        fullAutoLowConfidenceReason: null,
+        fullAutoNoResultReason: null,
+        hasFullAutoLowConfidence: false,
       };
     });
   },
@@ -575,6 +609,58 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   setGenerationError: (message) => set({ generationError: message }),
 
   setContextMode: (mode) => set({ contextMode: mode }),
+
+  setFullAutoProposalResults: (result) =>
+    set(() => {
+      if (!result) {
+        return {
+          fullAutoProposalSets: [],
+          selectedFullAutoSetId: null,
+          recommendedFullAutoSetId: null,
+          fullAutoLowConfidenceReason: null,
+          fullAutoNoResultReason: null,
+          hasFullAutoLowConfidence: false,
+        };
+      }
+
+      const lowConfidenceReasonFromSets =
+        result.sets.find((set) => Boolean(set.reasonMetadata?.lowConfidenceReason))?.reasonMetadata
+          ?.lowConfidenceReason ?? null;
+      const hasLowConfidence =
+        Boolean(result.reasonMetadata?.lowConfidenceReason) || lowConfidenceReasonFromSets !== null;
+
+      return {
+        fullAutoProposalSets: result.sets,
+        selectedFullAutoSetId: result.recommendedId,
+        recommendedFullAutoSetId: result.recommendedId,
+        fullAutoLowConfidenceReason:
+          result.reasonMetadata?.lowConfidenceReason ?? lowConfidenceReasonFromSets,
+        fullAutoNoResultReason: result.reasonMetadata?.noResultReason ?? null,
+        hasFullAutoLowConfidence: hasLowConfidence,
+      };
+    }),
+
+  selectFullAutoProposalSet: (id) =>
+    set((state) => {
+      if (id === null) {
+        return { selectedFullAutoSetId: null };
+      }
+
+      const exists = state.fullAutoProposalSets.some((set) => set.id === id);
+      return {
+        selectedFullAutoSetId: exists ? id : state.selectedFullAutoSetId,
+      };
+    }),
+
+  clearFullAutoProposalSets: () =>
+    set({
+      fullAutoProposalSets: [],
+      selectedFullAutoSetId: null,
+      recommendedFullAutoSetId: null,
+      fullAutoLowConfidenceReason: null,
+      fullAutoNoResultReason: null,
+      hasFullAutoLowConfidence: false,
+    }),
 
   // Comparison actions
   setComparisonId: (index, id) =>
