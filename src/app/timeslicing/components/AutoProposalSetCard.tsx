@@ -62,7 +62,7 @@ export function AutoProposalSetCard({
             <div className="text-right text-xs text-slate-400">
               <p>{proposalSet.warp.name}</p>
               <p>
-                {proposalSet.warp.intervals.length} warp intervals, {proposalSet.intervals.boundaries.length} boundaries
+                {proposalSet.warp.intervals.length} warp intervals
               </p>
             </div>
           </div>

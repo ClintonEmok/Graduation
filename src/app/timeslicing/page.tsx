@@ -296,7 +296,7 @@ export default function TimeslicingPage() {
   }, [addWarpSlice, clearWarpSlices, rangeStart, rangeEnd]);
   
   // Handle interval boundary acceptance - create time slices
-  const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData) => {
+  const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData, source?: 'manual' | 'suggestion', packageId?: string) => {
     if (!rangeStart || !rangeEnd || data.boundaries.length < 2) return;
     
     // Sort boundaries
@@ -317,6 +317,8 @@ export default function TimeslicingPage() {
         range: [Math.max(0, Math.min(100, startPercent)), Math.max(0, Math.min(100, endPercent))],
         isLocked: false,
         isVisible: true,
+        source,
+        packageId,
       });
     }
   }, [addSlice, rangeStart, rangeEnd]);
@@ -324,7 +326,6 @@ export default function TimeslicingPage() {
   const findPackageSuggestionIds = useCallback(
     (proposalSet: AutoProposalSet) => {
       const expectedWarpName = `${proposalSet.warp.name} (Rank ${proposalSet.rank})${proposalSet.isRecommended ? ' - Recommended' : ''}`;
-      const normalizedBoundaries = [...proposalSet.intervals.boundaries].sort((a, b) => a - b);
 
       const warpSuggestion = suggestions.find(
         (suggestion) =>
@@ -334,20 +335,10 @@ export default function TimeslicingPage() {
           suggestion.data.name === expectedWarpName
       );
 
-      const intervalSuggestion = suggestions.find((suggestion) => {
-        if (suggestion.status !== 'pending' || suggestion.type !== 'interval-boundary' || !('boundaries' in suggestion.data)) {
-          return false;
-        }
-        const suggestionBoundaries = [...suggestion.data.boundaries].sort((a, b) => a - b);
-        if (suggestionBoundaries.length !== normalizedBoundaries.length) {
-          return false;
-        }
-        return suggestionBoundaries.every((value, index) => value === normalizedBoundaries[index]);
-      });
-
+      // No interval boundaries in warp-only packages
       return {
         warpSuggestionId: warpSuggestion?.id ?? null,
-        intervalSuggestionId: intervalSuggestion?.id ?? null,
+        intervalSuggestionId: null,
       };
     },
     [suggestions]
@@ -365,7 +356,7 @@ export default function TimeslicingPage() {
       }
 
       const proposalSet = fullAutoProposalSets.find((entry) => entry.id === targetId);
-      if (!proposalSet || proposalSet.warp.intervals.length === 0 || proposalSet.intervals.boundaries.length < 2) {
+      if (!proposalSet || proposalSet.warp.intervals.length === 0) {
         return;
       }
 
@@ -377,6 +368,7 @@ export default function TimeslicingPage() {
         clearSlices();
         setActiveWarp(proposalSet.id);
 
+        // Create warp slices only - no boundaries
         proposalSet.warp.intervals.forEach((interval, index) => {
           addWarpSlice({
             label: `${proposalSet.warp.name} ${index + 1}`,
@@ -388,16 +380,6 @@ export default function TimeslicingPage() {
           });
         });
 
-        handleAcceptIntervalBoundary({ boundaries: proposalSet.intervals.boundaries });
-
-        const { warpSuggestionId, intervalSuggestionId } = findPackageSuggestionIds(proposalSet);
-        if (warpSuggestionId) {
-          acceptSuggestion(warpSuggestionId);
-        }
-        if (intervalSuggestionId) {
-          acceptSuggestion(intervalSuggestionId);
-        }
-
         const acceptedAt = Date.now();
         addToHistory({
           id: `full-auto-package-${proposalSet.id}-warp-${acceptedAt}`,
@@ -406,16 +388,6 @@ export default function TimeslicingPage() {
           data: {
             name: `${proposalSet.warp.name} (Package Rank ${proposalSet.rank})`,
             intervals: proposalSet.warp.intervals,
-          },
-          createdAt: acceptedAt,
-          status: 'accepted',
-        });
-        addToHistory({
-          id: `full-auto-package-${proposalSet.id}-interval-${acceptedAt}`,
-          type: 'interval-boundary',
-          confidence: proposalSet.confidence,
-          data: {
-            boundaries: proposalSet.intervals.boundaries,
           },
           createdAt: acceptedAt,
           status: 'accepted',
@@ -433,15 +405,12 @@ export default function TimeslicingPage() {
       }
     },
     [
-      acceptSuggestion,
       addToHistory,
       addWarpSlice,
       clearSlices,
       clearWarpSlices,
-      findPackageSuggestionIds,
       fullAutoNoResultReason,
       fullAutoProposalSets,
-      handleAcceptIntervalBoundary,
       selectedFullAutoSetId,
       setActiveWarp,
     ]
@@ -597,6 +566,10 @@ export default function TimeslicingPage() {
             <span className="inline-flex items-center gap-1.5">
               <span className="h-3 w-px bg-teal-300/90" />
               Hover preview (boundary)
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-5 rounded-sm border border-dashed border-violet-300/85 bg-violet-500/20" />
+              Slice from package
             </span>
           </div>
         </section>

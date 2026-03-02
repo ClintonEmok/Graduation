@@ -42,7 +42,7 @@ export interface AutoProposalSet {
   confidence: number
   score: AutoProposalScoreBreakdown
   warp: AutoProposalWarpProfile
-  intervals: AutoProposalIntervalSet
+  intervals?: AutoProposalIntervalSet
   reasonMetadata?: AutoProposalReasonMetadata
 }
 

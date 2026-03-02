@@ -18,7 +18,7 @@ function buildCrime(id: number, timestamp: number): CrimeRecord {
 }
 
 describe('generateRankedAutoProposalSets', () => {
-  test('returns top 3 ranked complete sets with recommendation marker', () => {
+  test('returns top 3 ranked warp-only packages with recommendation marker', () => {
     const start = 1704067200;
     const end = 1735689600;
     const crimes = Array.from({ length: 180 }, (_, index) => {
@@ -35,8 +35,6 @@ describe('generateRankedAutoProposalSets', () => {
       },
       params: {
         warpCount: 3,
-        intervalCount: 3,
-        boundaryMethod: 'peak',
         snapToUnit: 'none',
       },
     });
@@ -48,7 +46,8 @@ describe('generateRankedAutoProposalSets', () => {
     expect(result.sets[0].score.total).toBeGreaterThanOrEqual(result.sets[1].score.total);
     expect(result.sets[1].score.total).toBeGreaterThanOrEqual(result.sets[2].score.total);
     expect(result.sets[0].warp.intervals.length).toBeGreaterThan(0);
-    expect(result.sets[0].intervals.boundaries.length).toBeGreaterThan(0);
+    // No intervals/boundaries in warp-only packages
+    expect(result.sets[0].intervals).toBeUndefined();
   });
 
   test('keeps deterministic ordering for same input', () => {
@@ -68,8 +67,6 @@ describe('generateRankedAutoProposalSets', () => {
       },
       params: {
         warpCount: 3,
-        intervalCount: 3,
-        boundaryMethod: 'change-point',
         snapToUnit: 'day',
       },
     });
@@ -83,8 +80,6 @@ describe('generateRankedAutoProposalSets', () => {
       },
       params: {
         warpCount: 3,
-        intervalCount: 3,
-        boundaryMethod: 'change-point',
         snapToUnit: 'day',
       },
     });
@@ -104,8 +99,6 @@ describe('generateRankedAutoProposalSets', () => {
       },
       params: {
         warpCount: 3,
-        intervalCount: 3,
-        boundaryMethod: 'rule-based',
         snapToUnit: 'none',
       },
     });
@@ -129,8 +122,6 @@ describe('generateRankedAutoProposalSets', () => {
       },
       params: {
         warpCount: 2,
-        intervalCount: 3,
-        boundaryMethod: 'peak',
         snapToUnit: 'none',
       },
     });

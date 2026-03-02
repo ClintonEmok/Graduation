@@ -19,9 +19,9 @@ export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
  */
 export interface GenerationParams {
   warpCount: number;  // 0-6 per CONTEXT
-  intervalCount: number;  // 0-6 per CONTEXT
+  intervalCount?: number;  // 0-6 per CONTEXT (for manual generation)
   snapToUnit: 'hour' | 'day' | 'none';
-  boundaryMethod: BoundaryMethod;
+  boundaryMethod?: BoundaryMethod;  // for manual generation
   contextMode: 'visible' | 'all';
   fullAuto?: boolean;
 }
@@ -255,8 +255,6 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           },
           params: {
             warpCount: params.warpCount,
-            intervalCount: params.intervalCount,
-            boundaryMethod: params.boundaryMethod,
             snapToUnit: params.snapToUnit,
           },
         });
@@ -283,20 +281,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
               intervals: set.warp.intervals,
             } as TimeScaleData,
           });
-
-          addSuggestion({
-            type: 'interval-boundary',
-            confidence: set.confidence,
-            contextMetadata: {
-              crimeTypes: context.crimeTypes,
-              timeRange: context.timeRange,
-              isFullDataset: context.isFullDataset,
-              profileName: smartProfile?.name,
-            },
-            data: {
-              boundaries: set.intervals.boundaries,
-            } as IntervalBoundaryData,
-          });
+          // Note: Full-auto packages are warp-only, no interval boundaries
         });
 
         if (isStaleRequest()) {
@@ -340,12 +325,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       }
       
       // Generate interval boundaries with user-configured options
-      if (params.intervalCount > 0) {
+      if (params.intervalCount && params.intervalCount > 0) {
         const boundary = detectBoundaries(crimes, timeRange, {
-          method: params.boundaryMethod,
+          method: params.boundaryMethod || 'peak',
           sensitivity: 'medium',
-          snapToUnit: params.snapToUnit,  // Pass snapping option
-          boundaryCount: params.intervalCount,  // Pass user-configured count
+          snapToUnit: params.snapToUnit,
+          boundaryCount: params.intervalCount,
         });
         
         addSuggestion({
