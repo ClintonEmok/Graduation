@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useSuggestionStore, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
@@ -37,6 +37,8 @@ interface UseSuggestionGeneratorReturn {
   generationError: string | null;
   lastSampleUpdateAt: number | null;
   fullAutoSets: RankedAutoProposalSets | null;
+  autoRunStatus: 'idle' | 'running' | 'fresh' | 'error';
+  lastRunSource: 'auto' | 'manual' | null;
 }
 
 /**
@@ -69,12 +71,16 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     setEmptyState,
     generationError,
     setGenerationError,
-    isPanelOpen,
     setFullAutoProposalResults,
+    warpCount,
+    intervalCount,
+    snapToUnit,
+    boundaryMethod,
+    contextMode,
   } = useSuggestionStore();
-  
-  // Track if user has manually triggered at least once
-  const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
+
+  const latestRequestIdRef = useRef(0);
+  const lastAutoSignatureRef = useRef<string | null>(null);
   
   // Generation params from UI
   const [generationParams, setGenerationParams] = useState<GenerationParams | null>(null);
@@ -83,6 +89,8 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastSampleUpdateAt, setLastSampleUpdateAt] = useState<number | null>(null);
   const [fullAutoSets, setFullAutoSets] = useState<RankedAutoProposalSets | null>(null);
+  const [autoRunStatus, setAutoRunStatus] = useState<'idle' | 'running' | 'fresh' | 'error'>('idle');
+  const [lastRunSource, setLastRunSource] = useState<'auto' | 'manual' | null>(null);
   
   // Get viewport state
   const viewportFilters = useCrimeFilters();
@@ -90,6 +98,18 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   const viewportEnd = useViewportStore((state) => state.endDate);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const { getCurrentContext } = useContextExtractor();
+
+  const defaultParams = useMemo(
+    () => ({
+      warpCount,
+      intervalCount,
+      snapToUnit,
+      boundaryMethod,
+      contextMode,
+      fullAuto: true,
+    } satisfies GenerationParams),
+    [boundaryMethod, contextMode, intervalCount, snapToUnit, warpCount]
+  );
 
   const [analysisStartDate, analysisEndDate] = useMemo(() => {
     const mode = generationParams?.contextMode ?? 'visible';
@@ -163,16 +183,28 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   /**
    * Generate suggestions using real algorithms
    */
-  const generateSuggestions = useCallback(async (params: GenerationParams) => {
+  const generateSuggestions = useCallback(async (params: GenerationParams, source: 'auto' | 'manual') => {
     if (isLoading) {
       return false;
     }
 
+    const requestId = latestRequestIdRef.current + 1;
+    latestRequestIdRef.current = requestId;
+
     setIsGenerating(true);
     setGenerationError(null);
+    setLastRunSource(source);
+    if (source === 'auto') {
+      setAutoRunStatus('running');
+    }
     
     try {
+      const isStaleRequest = () => latestRequestIdRef.current !== requestId;
+
       // Preserve accepted suggestions and regenerate pending suggestions only.
+      if (isStaleRequest()) {
+        return false;
+      }
       clearPendingSuggestions();
       
       if (!crimes || crimes.length === 0) {
@@ -187,8 +219,16 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           },
         } satisfies RankedAutoProposalSets;
 
+        if (isStaleRequest()) {
+          return false;
+        }
+
         setFullAutoSets(emptyResult);
         setFullAutoProposalResults(emptyResult);
+        setLastSampleUpdateAt(Date.now());
+        if (source === 'auto') {
+          setAutoRunStatus('fresh');
+        }
         return false;
       }
       
@@ -220,6 +260,10 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
             snapToUnit: params.snapToUnit,
           },
         });
+
+        if (isStaleRequest()) {
+          return false;
+        }
 
         setFullAutoSets(rankedResult);
         setFullAutoProposalResults(rankedResult);
@@ -254,6 +298,15 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
             } as IntervalBoundaryData,
           });
         });
+
+        if (isStaleRequest()) {
+          return false;
+        }
+
+        setLastSampleUpdateAt(Date.now());
+        if (source === 'auto') {
+          setAutoRunStatus('fresh');
+        }
 
         return rankedResult.sets.length > 0;
       }
@@ -309,14 +362,28 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           } as IntervalBoundaryData,
         });
       }
+      if (isStaleRequest()) {
+        return false;
+      }
+
+      setLastSampleUpdateAt(Date.now());
+      if (source === 'auto') {
+        setAutoRunStatus('fresh');
+      }
+
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setGenerationError(`Generation failed: ${message}`);
       console.error('Suggestion generation failed:', error);
+      if (source === 'auto') {
+        setAutoRunStatus('error');
+      }
       return false;
     } finally {
-      setIsGenerating(false);
+      if (latestRequestIdRef.current === requestId) {
+        setIsGenerating(false);
+      }
     }
   }, [
     addSuggestion,
@@ -331,43 +398,69 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
 
   // Trigger function - generates real suggestions based on algorithms
   const handleTrigger = useCallback((params: GenerationParams) => {
-    setHasGeneratedOnce(true);
     setGenerationParams(params);
-    void generateSuggestions(params);
+    void generateSuggestions(params, 'manual');
   }, [generateSuggestions]);
 
-  // Auto-generate when filters change (after debounce)
-  // Only if user has previously clicked Generate (to avoid auto-trigger on initial load)
-  useEffect(() => {
-    if (!hasGeneratedOnce || !generationParams || !isPanelOpen) {
-      return;
-    }
+  const autoRunSignature = useMemo(
+    () => JSON.stringify({
+      filters: debouncedFilters,
+      sampleSignature,
+      params: {
+        warpCount: defaultParams.warpCount,
+        intervalCount: defaultParams.intervalCount,
+        snapToUnit: defaultParams.snapToUnit,
+        boundaryMethod: defaultParams.boundaryMethod,
+        contextMode: defaultParams.contextMode,
+      },
+    }),
+    [
+      debouncedFilters,
+      defaultParams.boundaryMethod,
+      defaultParams.contextMode,
+      defaultParams.intervalCount,
+      defaultParams.snapToUnit,
+      defaultParams.warpCount,
+      sampleSignature,
+    ]
+  );
 
+  // Auto-generate on entry and meaningful context changes with debounce.
+  useEffect(() => {
+    if (!generationParams) {
+      setGenerationParams(defaultParams);
+    }
+  }, [defaultParams, generationParams]);
+
+  useEffect(() => {
     if (isLoading || isFetching || isGenerating) {
       return;
     }
 
-    const run = async () => {
-      const ok = await generateSuggestions(generationParams);
-      if (ok) {
-        setLastSampleUpdateAt(Date.now());
-      }
-    };
+    if (lastAutoSignatureRef.current === autoRunSignature) {
+      return;
+    }
 
-    void run();
+    const timeoutId = setTimeout(() => {
+      if (lastAutoSignatureRef.current === autoRunSignature) {
+        return;
+      }
+
+      lastAutoSignatureRef.current = autoRunSignature;
+      setGenerationParams(defaultParams);
+      void generateSuggestions(defaultParams, 'auto');
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [
+    autoRunSignature,
+    defaultParams,
     generateSuggestions,
-    generationParams,
-    hasGeneratedOnce,
-    isPanelOpen,
-    isLoading,
     isFetching,
     isGenerating,
-    debouncedFilters.crimeTypes,
-    debouncedFilters.districts,
-    debouncedFilters.startDate,
-    debouncedFilters.endDate,
-    sampleSignature,
+    isLoading,
   ]);
 
   return {
@@ -381,5 +474,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     generationError,
     lastSampleUpdateAt,
     fullAutoSets,
+    autoRunStatus,
+    lastRunSource,
   };
 }
