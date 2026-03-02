@@ -332,7 +332,7 @@ Plans:
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
 | 38 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-28 |
 | 39 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-03-02 |
-| 40 | v1.3 Fully Automated Timeslicing | 8/8 | ✅ Complete | 2026-03-02 |
+| 40 | v1.3 Fully Automated Timeslicing | 9/9 | ✅ Complete | 2026-03-02 |
 | 41 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
 | 42 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
 
@@ -382,6 +382,7 @@ Plans:
 - [x] 40-06-PLAN.md — Gap closure: Show dates instead of percentages
 - [x] 40-07-PLAN.md — Gap closure: Disable auto burst slices on timeslicing
 - [x] 40-08-PLAN.md — Gap closure: Clear existing burst slices on page load
+- [x] 40-09-PLAN.md — Gap closure: Fix warp overlay to show suggestion-sourced slices
 
 ### Phase 41: Full-Auto Optimization & Ranking
 
