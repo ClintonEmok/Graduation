@@ -4,12 +4,15 @@ import React, { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { AutoProposalSet } from '@/types/autoProposalSet';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 
 interface AutoProposalSetCardProps {
   proposalSet: AutoProposalSet;
   isSelected: boolean;
   isRecommended: boolean;
   onSelect: (id: string) => void;
+  startEpoch?: number;
+  endEpoch?: number;
 }
 
 function formatScore(value: number): string {
@@ -20,11 +23,20 @@ function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+function formatEpochDate(epochSeconds: number): string {
+  return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+  });
+}
+
 export function AutoProposalSetCard({
   proposalSet,
   isSelected,
   isRecommended,
   onSelect,
+  startEpoch,
+  endEpoch,
 }: AutoProposalSetCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const lowConfidenceReason = proposalSet.reasonMetadata?.lowConfidenceReason ?? null;
@@ -114,16 +126,27 @@ export function AutoProposalSetCard({
           <div className="mt-3 space-y-2 rounded border border-slate-700/80 bg-slate-950/60 p-2 text-xs">
             <p className="font-medium uppercase tracking-wide text-slate-400">Warp Intervals</p>
             <div className="space-y-1">
-              {proposalSet.warp.intervals.map((interval, index) => (
-                <div key={index} className="flex items-center justify-between text-slate-300">
-                  <span>
-                    {formatPercent(interval.startPercent)} → {formatPercent(interval.endPercent)}
-                  </span>
-                  <span className="font-medium text-violet-300">
-                    {formatPercent(interval.strength * 100)} warp
-                  </span>
-                </div>
-              ))}
+              {proposalSet.warp.intervals.map((interval, index) => {
+                // Convert percentages to date ranges if epoch bounds provided
+                const hasEpochBounds = startEpoch !== undefined && endEpoch !== undefined;
+                const startDateStr = hasEpochBounds
+                  ? formatEpochDate(normalizedToEpochSeconds(interval.startPercent, startEpoch, endEpoch))
+                  : formatPercent(interval.startPercent);
+                const endDateStr = hasEpochBounds
+                  ? formatEpochDate(normalizedToEpochSeconds(interval.endPercent, startEpoch, endEpoch))
+                  : formatPercent(interval.endPercent);
+
+                return (
+                  <div key={index} className="flex items-center justify-between text-slate-300">
+                    <span>
+                      {startDateStr} → {endDateStr}
+                    </span>
+                    <span className="font-medium text-violet-300">
+                      {formatPercent(interval.strength * 100)} warp
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </>

@@ -459,6 +459,8 @@ export function SuggestionPanel() {
                           isSelected={selectedFullAutoSetId === proposalSet.id}
                           isRecommended={recommendedFullAutoSetId === proposalSet.id || proposalSet.isRecommended}
                           onSelect={selectFullAutoProposalSet}
+                          startEpoch={startDate}
+                          endEpoch={endDate}
                         />
                       ))}
                     </div>
