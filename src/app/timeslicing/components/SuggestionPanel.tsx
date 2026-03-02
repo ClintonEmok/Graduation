@@ -13,6 +13,7 @@ import { SuggestionCard } from './SuggestionCard';
 import { ComparisonView } from './ComparisonView';
 import { ProfileManager } from './ProfileManager';
 import { AutoProposalSetCard } from './AutoProposalSetCard';
+import type { AutoProposalSet } from '@/types/autoProposalSet';
 
 function formatDate(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
@@ -183,6 +184,63 @@ export function SuggestionPanel() {
     toast.success('Suggestion reapplied from history');
   };
 
+  const handleTestExtremeWarp = () => {
+    // Create an extreme warp package for visual testing
+    const extremeWarpPackage: AutoProposalSet = {
+      id: `test-extreme-warp-${Date.now()}`,
+      rank: 0,
+      isRecommended: true,
+      confidence: 100,
+      score: {
+        coverage: 100,
+        relevance: 100,
+        overlap: 100,
+        continuity: 100,
+        contextFit: 100,
+        total: 100,
+      },
+      warp: {
+        name: 'Test Extreme Warp (DEBUG)',
+        emphasis: 'aggressive',
+        confidence: 100,
+        intervals: [
+          // 0-20%: 10x stretch (extremely stretched)
+          {
+            startPercent: 0,
+            endPercent: 20,
+            strength: 10,
+          },
+          // 20-80%: 0.1x compress (extremely compressed)
+          {
+            startPercent: 20,
+            endPercent: 80,
+            strength: 0.1,
+          },
+          // 80-100%: 8x stretch (extremely stretched)
+          {
+            startPercent: 80,
+            endPercent: 100,
+            strength: 8,
+          },
+        ],
+      },
+    };
+
+    // Update the store with this test package
+    selectFullAutoProposalSet(extremeWarpPackage.id);
+    
+    // Dispatch the accept event to apply the warp
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('accept-full-auto-package', {
+          detail: { proposalSetId: extremeWarpPackage.id, autoProposalSet: extremeWarpPackage },
+        })
+      );
+    }
+
+    toast.success('Test extreme warp applied! Check the timeline.');
+  };
+
   return (
     <div className="fixed right-0 top-0 z-50 flex h-full w-80 flex-col border-l border-slate-700 bg-slate-900 shadow-xl">
       <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
@@ -343,6 +401,20 @@ export function SuggestionPanel() {
       )}
 
       <ProfileManager />
+
+      {/* Debug: Test Extreme Warp Button */}
+      <div className="border-b border-slate-700 px-4 py-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleTestExtremeWarp}
+          className="w-full text-xs"
+          title="Generate an extreme warp with 10x, 0.1x, 8x multipliers to visually test warping"
+        >
+          <Zap className="mr-1 size-3" />
+          Test Extreme Warp (DEBUG)
+        </Button>
+      </div>
 
       <ScrollArea className="flex-1">
         <div className="p-3">

@@ -105,12 +105,12 @@ export async function GET(request: Request) {
       LIMIT 50000
     `;
 
-    // Manually fetch data and serialize to Arrow
-    const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
-        if (err) reject(err);
-        else resolve(res);
-      });
+     // Manually fetch data and serialize to Arrow
+     const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+       db.all(query, (err: Error | null, res: unknown[]) => {
+         if (err) reject(err);
+         else resolve(res as Record<string, unknown>[]);
+       });
     });
 
     const table = tableFromJSON(rows);
