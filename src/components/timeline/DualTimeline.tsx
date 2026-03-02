@@ -32,6 +32,7 @@ const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
 const TIME_CURSOR_COLOR = '#10b981';
+const DETAIL_DENSITY_RECOMPUTE_MAX_DAYS = 60;
 
 const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
   amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
@@ -166,11 +167,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const activeSliceId = useSliceStore((state) => state.activeSliceId);
   const activeSliceUpdatedAt = useSliceStore((state) => state.activeSliceUpdatedAt);
   const getSliceOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
-  const userWarpSlices = useWarpSliceStore((state) =>
-    state.slices
-      .filter((slice) => slice.enabled && slice.source === 'manual')
-      .map((slice) => ({ ...slice, isUserWarp: true }))
-  );
+  const warpSlices = useWarpSliceStore((state) => state.slices);
   const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
@@ -301,7 +298,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const resolvedDetailRenderMode = useMemo(() => {
     if (detailRenderMode === 'auto') {
-      return detailSpanDays > 180 ? 'bins' : 'points';
+      return detailSpanDays > DETAIL_DENSITY_RECOMPUTE_MAX_DAYS ? 'bins' : 'points';
     }
     return detailRenderMode;
   }, [detailRenderMode, detailSpanDays]);
@@ -324,7 +321,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const detailDensityMap = useMemo(() => {
     const hasPoints = detailPoints.length > 0;
     const binCount = densityMap?.length ?? ADAPTIVE_BIN_COUNT;
-    if (hasPoints && detailSpanDays <= 180) {
+    if (hasPoints && detailSpanDays <= DETAIL_DENSITY_RECOMPUTE_MAX_DAYS) {
       return computeDensityMap(detailPoints, detailRangeSec, binCount, ADAPTIVE_KERNEL_WIDTH);
     }
 
@@ -862,8 +859,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const userWarpOverlayBands = useMemo(
     () =>
-      userWarpSlices
-        .filter((slice) => slice.isUserWarp === true)
+      warpSlices
+        .filter((slice) => slice.enabled && slice.source === 'manual')
         .map((slice) => {
           const startSec = normalizedToEpochSeconds(clamp(slice.range[0], 0, 100), domainStart, domainEnd);
           const endSec = normalizedToEpochSeconds(clamp(slice.range[1], 0, 100), domainStart, domainEnd);
@@ -872,11 +869,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           return {
             id: slice.id,
             startSec: rangeStart,
-            endSec: rangeEnd
+            endSec: rangeEnd,
           };
         })
         .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
-    [domainEnd, domainStart, userWarpSlices]
+    [domainEnd, domainStart, warpSlices]
   );
 
   const sliceOverlapCounts = getSliceOverlapCounts();
@@ -992,14 +989,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   return (
     <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
-      <div className="pointer-events-none absolute right-3 top-2 z-20">
-        <span
-          className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white shadow-sm"
-          style={{ backgroundColor: timeScaleMode === 'adaptive' ? '#4f46e5' : '#6b7280' }}
-        >
-          {timeScaleMode === 'adaptive' ? 'Adaptive' : 'Linear'}
-        </span>
-      </div>
       <div className="flex flex-col gap-6">
         <div
           className="flex flex-wrap items-center gap-3"
@@ -1009,7 +998,20 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           }}
         >
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-            <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
+            <div className="flex w-full items-center justify-between gap-3">
+              <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
+              <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="leading-none">Low</span>
+                <span
+                  className="h-2 w-20 rounded-sm border border-foreground/15"
+                  style={{
+                    background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)`
+                  }}
+                  aria-hidden="true"
+                />
+                <span className="leading-none">High</span>
+              </div>
+            </div>
             <div className="relative w-full">
               {width > 0 ? (
                 <DensityHeatStrip
@@ -1021,8 +1023,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   densityDomain={DENSITY_DOMAIN}
                   colorLow={DENSITY_COLOR_LOW}
                   colorHigh={DENSITY_COLOR_HIGH}
-                  showLegend
-                  legendLabels={{ low: 'Low', high: 'High' }}
                 />
               ) : (
                 <div className="h-3" />
