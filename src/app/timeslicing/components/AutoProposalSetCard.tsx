@@ -16,6 +16,10 @@ function formatScore(value: number): string {
   return `${Math.round(value)}%`;
 }
 
+function formatPercent(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
+
 export function AutoProposalSetCard({
   proposalSet,
   isSelected,
@@ -90,21 +94,39 @@ export function AutoProposalSetCard({
       </div>
 
       {isExpanded && (
-        <div className="mt-3 space-y-2 rounded border border-slate-700/80 bg-slate-950/60 p-2 text-xs">
-          <p className="font-medium uppercase tracking-wide text-slate-400">Score Breakdown</p>
-          <div className="grid grid-cols-2 gap-1 text-slate-300">
-            <span>Coverage</span>
-            <span className="text-right">{formatScore(proposalSet.score.coverage)}</span>
-            <span>Relevance</span>
-            <span className="text-right">{formatScore(proposalSet.score.relevance)}</span>
-            <span>Overlap</span>
-            <span className="text-right">{formatScore(proposalSet.score.overlap)}</span>
-            <span>Continuity</span>
-            <span className="text-right">{formatScore(proposalSet.score.continuity)}</span>
-            <span>Context fit</span>
-            <span className="text-right">{formatScore(proposalSet.score.contextFit)}</span>
+        <>
+          <div className="mt-3 space-y-2 rounded border border-slate-700/80 bg-slate-950/60 p-2 text-xs">
+            <p className="font-medium uppercase tracking-wide text-slate-400">Score Breakdown</p>
+            <div className="grid grid-cols-2 gap-1 text-slate-300">
+              <span>Coverage</span>
+              <span className="text-right">{formatScore(proposalSet.score.coverage)}</span>
+              <span>Relevance</span>
+              <span className="text-right">{formatScore(proposalSet.score.relevance)}</span>
+              <span>Overlap</span>
+              <span className="text-right">{formatScore(proposalSet.score.overlap)}</span>
+              <span>Continuity</span>
+              <span className="text-right">{formatScore(proposalSet.score.continuity)}</span>
+              <span>Context fit</span>
+              <span className="text-right">{formatScore(proposalSet.score.contextFit)}</span>
+            </div>
           </div>
-        </div>
+
+          <div className="mt-3 space-y-2 rounded border border-slate-700/80 bg-slate-950/60 p-2 text-xs">
+            <p className="font-medium uppercase tracking-wide text-slate-400">Warp Intervals</p>
+            <div className="space-y-1">
+              {proposalSet.warp.intervals.map((interval, index) => (
+                <div key={index} className="flex items-center justify-between text-slate-300">
+                  <span>
+                    {formatPercent(interval.startPercent)} → {formatPercent(interval.endPercent)}
+                  </span>
+                  <span className="font-medium text-violet-300">
+                    {formatPercent(interval.strength * 100)} warp
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       <div className="mt-3 flex justify-end">
