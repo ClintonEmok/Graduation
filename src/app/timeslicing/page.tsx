@@ -6,13 +6,14 @@ import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useDataStore } from '@/store/useDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
+import { useSliceStore } from '@/store/useSliceStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { SuggestionPanel } from './components/SuggestionPanel';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
 import { useSuggestionStore, type Suggestion, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
+import type { AutoProposalSet } from '@/types/autoProposalSet';
 import { Toaster } from 'sonner';
 
 // Default to full date range if no real data loaded yet
@@ -48,7 +49,7 @@ export default function TimeslicingPage() {
   const hasRealData = hasValidAdaptiveDomain || (minTimestampSec !== null && maxTimestampSec !== null);
   
   // Fetch crime data if we have real domain
-  const { data: crimes, isLoading, error } = useCrimeData({
+  const { data: crimes, meta: crimeMeta, isLoading, error } = useCrimeData({
     startEpoch: domainStartSec,
     endEpoch: domainEndSec,
     bufferDays: 30,
@@ -59,14 +60,41 @@ export default function TimeslicingPage() {
 
   // Calculate data stats
   const dataStats = useMemo(() => {
-    if (!crimes || crimes.length === 0) {
-      return { count: 0, hasData: false };
-    }
-    return { 
-      count: crimes.length, 
-      hasData: true 
+    const returned = crimeMeta?.returned ?? crimes.length;
+    const total = crimeMeta?.totalMatches ?? returned;
+    return {
+      count: total,
+      returned,
+      hasData: total > 0,
+      sampled: Boolean(crimeMeta?.sampled),
+      isMock: Boolean(crimeMeta?.isMock),
     };
-  }, [crimes]);
+  }, [crimeMeta, crimes.length]);
+
+  const dataSummaryLabel = useMemo(() => {
+    if (isLoading) {
+      return 'Loading...';
+    }
+    if (!dataStats.hasData) {
+      return 'No data';
+    }
+
+    const base = `${dataStats.count.toLocaleString()} crimes`;
+    const details: string[] = [];
+    const bufferDays = crimeMeta?.buffer?.days ?? 0;
+
+    if (dataStats.sampled || dataStats.returned !== dataStats.count) {
+      details.push(`showing ${dataStats.returned.toLocaleString()}`);
+    }
+    if (bufferDays > 0) {
+      details.push(`buffered ±${bufferDays}d`);
+    }
+    if (dataStats.isMock) {
+      details.push('demo data');
+    }
+
+    return details.length > 0 ? `${base} (${details.join(', ')})` : base;
+  }, [crimeMeta, dataStats, isLoading]);
 
   // Cross-route parity with /timeline-test:
   // DualTimeline overview histogram reads from useDataStore + adaptive maps.
@@ -164,9 +192,15 @@ export default function TimeslicingPage() {
   const addSlice = useSliceStore((s) => s.addSlice);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
+  const setActiveWarp = useWarpSliceStore((s) => s.setActiveWarp);
   const warpSlices = useWarpSliceStore((state) => state.slices);
   const hoveredSuggestionId = useSuggestionStore((state) => state.hoveredSuggestionId);
   const suggestions = useSuggestionStore((state) => state.suggestions);
+  const fullAutoProposalSets = useSuggestionStore((state) => state.fullAutoProposalSets);
+  const selectedFullAutoSetId = useSuggestionStore((state) => state.selectedFullAutoSetId);
+  const fullAutoNoResultReason = useSuggestionStore((state) => state.fullAutoNoResultReason);
+  const acceptSuggestion = useSuggestionStore((state) => state.acceptSuggestion);
+  const addToHistory = useSuggestionStore((state) => state.addToHistory);
 
   const hoveredSuggestion = useMemo(
     () => suggestions.find((suggestion) => suggestion.id === hoveredSuggestionId) ?? null,
@@ -285,6 +319,130 @@ export default function TimeslicingPage() {
       });
     }
   }, [addSlice, rangeStart, rangeEnd]);
+
+  const findPackageSuggestionIds = useCallback(
+    (proposalSet: AutoProposalSet) => {
+      const expectedWarpName = `${proposalSet.warp.name} (Rank ${proposalSet.rank})${proposalSet.isRecommended ? ' - Recommended' : ''}`;
+      const normalizedBoundaries = [...proposalSet.intervals.boundaries].sort((a, b) => a - b);
+
+      const warpSuggestion = suggestions.find(
+        (suggestion) =>
+          suggestion.status === 'pending' &&
+          suggestion.type === 'time-scale' &&
+          'name' in suggestion.data &&
+          suggestion.data.name === expectedWarpName
+      );
+
+      const intervalSuggestion = suggestions.find((suggestion) => {
+        if (suggestion.status !== 'pending' || suggestion.type !== 'interval-boundary' || !('boundaries' in suggestion.data)) {
+          return false;
+        }
+        const suggestionBoundaries = [...suggestion.data.boundaries].sort((a, b) => a - b);
+        if (suggestionBoundaries.length !== normalizedBoundaries.length) {
+          return false;
+        }
+        return suggestionBoundaries.every((value, index) => value === normalizedBoundaries[index]);
+      });
+
+      return {
+        warpSuggestionId: warpSuggestion?.id ?? null,
+        intervalSuggestionId: intervalSuggestion?.id ?? null,
+      };
+    },
+    [suggestions]
+  );
+
+  const handleAcceptFullAutoPackage = useCallback(
+    (proposalSetId?: string) => {
+      if (fullAutoNoResultReason) {
+        return;
+      }
+
+      const targetId = proposalSetId ?? selectedFullAutoSetId;
+      if (!targetId) {
+        return;
+      }
+
+      const proposalSet = fullAutoProposalSets.find((entry) => entry.id === targetId);
+      if (!proposalSet || proposalSet.warp.intervals.length === 0 || proposalSet.intervals.boundaries.length < 2) {
+        return;
+      }
+
+      const previousWarpState = useWarpSliceStore.getState();
+      const previousSliceState = useSliceStore.getState();
+
+      try {
+        clearWarpSlices();
+        setActiveWarp(proposalSet.id);
+
+        proposalSet.warp.intervals.forEach((interval, index) => {
+          addWarpSlice({
+            label: `${proposalSet.warp.name} ${index + 1}`,
+            range: [interval.startPercent, interval.endPercent],
+            weight: interval.strength,
+            enabled: true,
+            source: 'suggestion',
+            warpProfileId: proposalSet.id,
+          });
+        });
+
+        handleAcceptIntervalBoundary({ boundaries: proposalSet.intervals.boundaries });
+
+        const { warpSuggestionId, intervalSuggestionId } = findPackageSuggestionIds(proposalSet);
+        if (warpSuggestionId) {
+          acceptSuggestion(warpSuggestionId);
+        }
+        if (intervalSuggestionId) {
+          acceptSuggestion(intervalSuggestionId);
+        }
+
+        const acceptedAt = Date.now();
+        addToHistory({
+          id: `full-auto-package-${proposalSet.id}-warp-${acceptedAt}`,
+          type: 'time-scale',
+          confidence: proposalSet.confidence,
+          data: {
+            name: `${proposalSet.warp.name} (Package Rank ${proposalSet.rank})`,
+            intervals: proposalSet.warp.intervals,
+          },
+          createdAt: acceptedAt,
+          status: 'accepted',
+        });
+        addToHistory({
+          id: `full-auto-package-${proposalSet.id}-interval-${acceptedAt}`,
+          type: 'interval-boundary',
+          confidence: proposalSet.confidence,
+          data: {
+            boundaries: proposalSet.intervals.boundaries,
+          },
+          createdAt: acceptedAt,
+          status: 'accepted',
+        });
+      } catch {
+        useWarpSliceStore.setState({
+          slices: previousWarpState.slices,
+          activeWarpId: previousWarpState.activeWarpId,
+        });
+        useSliceStore.setState({
+          slices: previousSliceState.slices,
+          activeSliceId: previousSliceState.activeSliceId,
+          activeSliceUpdatedAt: previousSliceState.activeSliceUpdatedAt,
+        });
+      }
+    },
+    [
+      acceptSuggestion,
+      addToHistory,
+      addWarpSlice,
+      clearWarpSlices,
+      findPackageSuggestionIds,
+      fullAutoNoResultReason,
+      fullAutoProposalSets,
+      handleAcceptIntervalBoundary,
+      selectedFullAutoSetId,
+      setActiveWarp,
+    ]
+  );
   
   // Listen for suggestion acceptance events
   useEffect(() => {
@@ -297,15 +455,22 @@ export default function TimeslicingPage() {
       const customEvent = e as CustomEvent<{ data: IntervalBoundaryData }>;
       handleAcceptIntervalBoundary(customEvent.detail.data);
     };
+
+    const handleFullAutoPackageEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ proposalSetId?: string }>;
+      handleAcceptFullAutoPackage(customEvent.detail?.proposalSetId);
+    };
     
     window.addEventListener('accept-time-scale', handleWarpEvent);
     window.addEventListener('accept-interval-boundary', handleIntervalEvent);
+    window.addEventListener('accept-full-auto-package', handleFullAutoPackageEvent);
     
     return () => {
       window.removeEventListener('accept-time-scale', handleWarpEvent);
       window.removeEventListener('accept-interval-boundary', handleIntervalEvent);
+      window.removeEventListener('accept-full-auto-package', handleFullAutoPackageEvent);
     };
-  }, [handleAcceptWarpProfile, handleAcceptIntervalBoundary]);
+  }, [handleAcceptFullAutoPackage, handleAcceptWarpProfile, handleAcceptIntervalBoundary]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
@@ -320,12 +485,12 @@ export default function TimeslicingPage() {
 
         {/* Status Bar */}
         <section className="rounded-xl border border-slate-700/60 bg-slate-900/65 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300">
               <span>
                 Data:{' '}
                 <strong className="text-slate-100">
-                  {isLoading ? 'Loading...' : dataStats.hasData ? `${dataStats.count.toLocaleString()} crimes` : 'No data'}
+                  {dataSummaryLabel}
                 </strong>
               </span>
               {hasRealData && (
@@ -337,7 +502,7 @@ export default function TimeslicingPage() {
                 </span>
               )}
             </div>
-            
+
             {/* Suggestion Toolbar */}
             <SuggestionToolbar />
           </div>
@@ -365,7 +530,11 @@ export default function TimeslicingPage() {
               </div>
             ) : timelineWidth > 0 ? (
               <>
-                <DualTimeline />
+                <DualTimeline
+                  detailRangeOverride={[rangeStart, rangeEnd]}
+                  detailPointsOverride={selectionDetailPoints}
+                  detailRenderMode="auto"
+                />
                 {acceptedSuggestionWarpIntervals.length > 0 && (
                   <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">
                     {acceptedSuggestionWarpIntervals.map((interval, index) => (
@@ -492,16 +661,6 @@ export default function TimeslicingPage() {
           )}
         </section>
 
-        {/* Suggestion Side Panel Placeholder - for future phases */}
-        <section className="rounded-xl border border-slate-700/60 bg-slate-900/65 p-5">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300 mb-4">
-            Suggestion Panel
-          </h2>
-          <p className="text-sm text-slate-400">
-            Suggestion generation and review UI will appear here. 
-            This is the foundation for semi-automated timeslicing workflows.
-          </p>
-        </section>
       </div>
       
       {/* Suggestion Side Panel */}
