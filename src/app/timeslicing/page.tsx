@@ -506,6 +506,7 @@ export default function TimeslicingPage() {
                   detailRangeOverride={[rangeStart, rangeEnd]}
                   detailPointsOverride={selectionDetailPoints}
                   detailRenderMode="auto"
+                  disableAutoBurstSlices={true}
                 />
                 {acceptedSuggestionWarpIntervals.length > 0 && (
                   <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">
@@ -604,6 +605,7 @@ export default function TimeslicingPage() {
                 interactive={false}
                 timestampSecondsOverride={selectionTimestamps}
                 detailPointsOverride={selectionDetailPoints}
+                disableAutoBurstSlices={true}
               />
               {hoverPreviewSelection.type !== null && (
                 <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">

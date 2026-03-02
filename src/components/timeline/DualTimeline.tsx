@@ -58,6 +58,7 @@ interface TimelineSliceGeometry {
   isActive: boolean;
   isBurst: boolean;
   isPoint: boolean;
+  isSuggestion: boolean;
   overlapCount: number;
   color: string | undefined;
 }
@@ -129,6 +130,7 @@ interface DualTimelineProps {
   detailPointsOverride?: number[];
   detailRenderMode?: 'auto' | 'points' | 'bins';
   detailBinCount?: number;
+  disableAutoBurstSlices?: boolean;
 }
 
 export const DualTimeline: React.FC<DualTimelineProps> = ({
@@ -141,6 +143,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   detailPointsOverride,
   detailRenderMode = 'auto',
   detailBinCount = 60,
+  disableAutoBurstSlices = false,
 }) => {
   const data = useDataStore((state) => state.data);
   const columns = useDataStore((state) => state.columns);
@@ -748,8 +751,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const burstWindows = useBurstWindows();
   
-  // Auto-create burst slices when burst data becomes available
-  useAutoBurstSlices(burstWindows);
+  // Auto-create burst slices when burst data becomes available (unless disabled)
+  if (!disableAutoBurstSlices) {
+    useAutoBurstSlices(burstWindows);
+  }
   
 
   const handleSelectFromEvent = useCallback(
@@ -909,6 +914,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             isActive: activeSliceId === slice.id,
             isBurst: !!slice.isBurst,
             isPoint: false,
+            isSuggestion: slice.source === 'suggestion',
             overlapCount: sliceOverlapCounts[slice.id] ?? 1,
             color: slice.color,
           };
@@ -926,6 +932,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           isActive: activeSliceId === slice.id,
           isBurst: !!slice.isBurst,
           isPoint: true,
+          isSuggestion: slice.source === 'suggestion',
           overlapCount: 1,
           color: slice.color,
         };
@@ -1207,6 +1214,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                     ? 0.28
                     : 0.38;
 
+              // Suggestion slices get a distinct violet styling
+              const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
+              const suggestionFill = 'rgba(139, 92, 246, 0.2)';
+              const suggestionStroke = 'rgba(167, 139, 250, 0.85)';
+
               return (
                 <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
                   <rect
@@ -1215,10 +1227,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                     width={Math.max(2, geometry.width)}
                     height={DETAIL_HEIGHT - 6}
                     rx={3}
-                    fill={geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill}
-                    stroke={geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke}
+                    fill={isSuggestionSlice ? suggestionFill : (geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill)}
+                    stroke={isSuggestionSlice ? suggestionStroke : (geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke)}
                     strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1}
-                    strokeDasharray={geometry.overlapCount >= 3 ? '5 3' : undefined}
+                    strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : undefined}
                     opacity={baseOpacity}
                   />
                   {geometry.overlapCount >= 2 && !geometry.isActive && (
