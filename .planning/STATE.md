@@ -8,9 +8,9 @@
 
 ## Current Position
 Phase: **40 of 42** (Fully Automated Timeslicing Orchestration)
-Plan: **5 of 5** in current phase
+Plan: **6 of 6** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-02 - Completed 40-05-PLAN.md (warp interval display)
+Last activity: 2026-03-02 - Completed 40-06-PLAN.md (date range conversion)
 
 Progress: overall ████████████████████ 100% (150/150 plans) | v1.3 ████████░░░░░░░░░░░ 80% phases (4/5)
 
@@ -37,7 +37,7 @@ v1.2 Complete:
 v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
 [x] Phase 39: Timeline UX Improvements (4/4 plans complete)
-[x] Phase 40-42: Fully Automated Timeslicing Workflows (5/5 plans complete)
+[x] Phase 40-42: Fully Automated Timeslicing Workflows (6/6 plans complete)
 ```
 
 ## Performance Metrics
@@ -257,7 +257,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 40-05-PLAN.md (warp interval display)
+Stopped at: Completed 40-06-PLAN.md (date range conversion)
 Resume file: None
 Next: Plan Phase 41 (Full-Auto Optimization & Ranking)
 
@@ -475,8 +475,17 @@ Next: Plan Phase 41 (Full-Auto Optimization & Ranking)
 - Added Warp Intervals section in expanded `AutoProposalSetCard` showing each interval as "start% → end% (strength% warp)"
 - Users can now see exact time periods being warped and by how much for informed selection
 
+**Delivered in 40-06 (Gap closure - date range conversion):**
+- Added `startEpoch` and `endEpoch` props to `AutoProposalSetCard` for actual time bounds
+- Imported `normalizedToEpochSeconds` from time-domain for percentage-to-epoch conversion
+- Added `formatEpochDate` helper for "MMM YYYY" format (e.g., "Jan 2001")
+- Warp intervals now display as "Jan 2001 - Jun 2003" instead of "0.0% → 25.0%"
+- Strength still shows as percentage (e.g., "75.0% warp")
+- Falls back to percentages if epoch props not provided
+- Passed viewport `startDate` and `endDate` from `SuggestionPanel` to cards
+
 **Next focus:**
 - Plan and execute Phase 41 (full-auto optimization and ranking refinement)
 
 ---
-*Last updated: 2026-03-02 - Completed 40-05 warp interval display (Phase 40 complete)*
+*Last updated: 2026-03-02 - Completed 40-06 date range conversion (Phase 40 complete)*
