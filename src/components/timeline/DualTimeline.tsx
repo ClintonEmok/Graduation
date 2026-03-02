@@ -865,7 +865,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const userWarpOverlayBands = useMemo(
     () =>
       warpSlices
-        .filter((slice) => slice.enabled && slice.source === 'manual')
+        .filter((slice) => slice.enabled)
         .map((slice) => {
           const startSec = normalizedToEpochSeconds(clamp(slice.range[0], 0, 100), domainStart, domainEnd);
           const endSec = normalizedToEpochSeconds(clamp(slice.range[1], 0, 100), domainStart, domainEnd);
