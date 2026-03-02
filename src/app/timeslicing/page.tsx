@@ -191,6 +191,11 @@ export default function TimeslicingPage() {
   const maxTs = useDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
   const clearSlices = useSliceStore((s) => s.clearSlices);
+  
+  // Clear existing slices on mount to prevent stale burst slices from persisting
+  useEffect(() => {
+    clearSlices();
+  }, [clearSlices]);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
   const setActiveWarp = useWarpSliceStore((s) => s.setActiveWarp);
