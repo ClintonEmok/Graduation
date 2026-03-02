@@ -1,10 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Filter, PanelRightOpen, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Filter, PanelRightOpen, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionGenerator, type GenerationParams } from '@/hooks/useSuggestionGenerator';
+import { getAllCrimeTypeIds, getCrimeTypeName } from '@/lib/category-maps';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
+import { useCrimeFilters, useViewportStore } from '@/lib/stores/viewportStore';
 import { BoundaryMethod } from '@/lib/interval-detection';
 
 interface SuggestionToolbarProps {
@@ -20,18 +25,18 @@ interface AnalyzeVisibleAllToggleProps {
 
 function AnalyzeVisibleAllToggle({ mode, onChange }: AnalyzeVisibleAllToggleProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex max-w-full flex-wrap items-center gap-2">
       <label
-        className="text-slate-400"
+        className="shrink-0 text-slate-400"
         title="Visible analyzes only the current timeline viewport. All analyzes the selected time range."
       >
         Analysis scope:
       </label>
-      <div className="inline-flex rounded-full border border-slate-700 bg-slate-900/70 p-0.5">
+      <div className="inline-flex max-w-full flex-wrap rounded-full border border-slate-700 bg-slate-900/70 p-0.5">
         <button
           type="button"
           onClick={() => onChange('visible')}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+          className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
             mode === 'visible' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700/70'
           }`}
           title="Analyze only crimes in the currently visible timeline range"
@@ -41,7 +46,7 @@ function AnalyzeVisibleAllToggle({ mode, onChange }: AnalyzeVisibleAllToggleProp
         <button
           type="button"
           onClick={() => onChange('all')}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+          className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
             mode === 'all' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700/70'
           }`}
           title="Analyze all crimes in the selected time range"
@@ -55,6 +60,7 @@ function AnalyzeVisibleAllToggle({ mode, onChange }: AnalyzeVisibleAllToggleProp
 
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
+  const [crimeTypeQuery, setCrimeTypeQuery] = useState('');
 
   const {
     trigger,
@@ -63,6 +69,8 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     isGenerating,
     generationError,
     lastSampleUpdateAt,
+    autoRunStatus,
+    lastRunSource,
   } = useSuggestionGenerator();
   const {
     suggestions,
@@ -88,7 +96,15 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     setActivePreset,
     setContextMode,
     loadPresetsFromStorage,
+    fullAutoProposalSets,
+    selectedFullAutoSetId,
+    fullAutoNoResultReason,
+    fullAutoLowConfidenceReason,
+    hasFullAutoLowConfidence,
   } = useSuggestionStore();
+
+  const crimeFilters = useCrimeFilters();
+  const setCrimeTypes = useViewportStore((state) => state.setCrimeTypes);
 
   useEffect(() => {
     loadPresetsFromStorage();
@@ -103,16 +119,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       return null;
     }
 
-    const seconds = Math.max(0, Math.floor((Date.now() - lastSampleUpdateAt) / 1000));
-    if (seconds < 10) {
-      return 'Updated for new sample just now';
-    }
-    if (seconds < 60) {
-      return `Updated for new sample ${seconds}s ago`;
-    }
-
-    const minutes = Math.floor(seconds / 60);
-    return `Updated for new sample ${minutes}m ago`;
+    return `Last refresh ${new Date(lastSampleUpdateAt).toLocaleTimeString()}`;
   }, [lastSampleUpdateAt]);
 
   const handleGenerate = () => {
@@ -123,8 +130,17 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       snapToUnit,
       boundaryMethod,
       contextMode,
+      fullAuto: true,
     } satisfies GenerationParams;
     trigger(params);
+  };
+
+  const handleAcceptSelectedPackage = () => {
+    window.dispatchEvent(new CustomEvent('accept-full-auto-package', {
+      detail: {
+        proposalSetId: selectedFullAutoSetId ?? undefined,
+      },
+    }));
   };
 
   const handleSavePreset = () => {
@@ -157,6 +173,82 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     activePresetId === null
       ? 'Custom'
       : presets.find((preset) => preset.id === activePresetId)?.name ?? 'Custom';
+
+  const crimeTypeOptions = useMemo(() => {
+    const names = getAllCrimeTypeIds()
+      .map((id) => getCrimeTypeName(id))
+      .filter((name) => name && name !== 'Unknown');
+    return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+  }, []);
+
+  const filteredCrimeTypeOptions = useMemo(() => {
+    const query = crimeTypeQuery.trim().toLowerCase();
+    if (!query) return crimeTypeOptions;
+    return crimeTypeOptions.filter((name) => name.toLowerCase().includes(query));
+  }, [crimeTypeOptions, crimeTypeQuery]);
+
+  const selectedCrimeTypeLabel = useMemo(() => {
+    if (crimeFilters.crimeTypes.length === 0) return 'All types';
+    if (crimeFilters.crimeTypes.length === 1) return crimeFilters.crimeTypes[0];
+    return `${crimeFilters.crimeTypes.length} selected`;
+  }, [crimeFilters.crimeTypes]);
+
+  const toggleCrimeType = (name: string) => {
+    if (crimeFilters.crimeTypes.length === 0) {
+      setCrimeTypes([name]);
+      return;
+    }
+    if (crimeFilters.crimeTypes.includes(name)) {
+      const next = crimeFilters.crimeTypes.filter((type) => type !== name);
+      setCrimeTypes(next);
+      return;
+    }
+    setCrimeTypes([...crimeFilters.crimeTypes, name]);
+  };
+
+  const handleSelectAllCrimeTypes = () => {
+    setCrimeTypes([]);
+  };
+
+  const selectedPackage = useMemo(
+    () => fullAutoProposalSets.find((proposal) => proposal.id === selectedFullAutoSetId) ?? null,
+    [fullAutoProposalSets, selectedFullAutoSetId]
+  );
+
+  const noResultActive = Boolean(fullAutoNoResultReason);
+  const canAcceptPackage = Boolean(selectedPackage) && !noResultActive && !isGenerating;
+
+  const fullAutoStatusText = useMemo(() => {
+    if (isGenerating && autoRunStatus === 'running') {
+      return 'Auto-refreshing package suggestions...';
+    }
+    if (isGenerating) {
+      return 'Generating package suggestions...';
+    }
+    if (autoRunStatus === 'error') {
+      return 'Auto-run failed. Use manual rerun to refresh suggestions.';
+    }
+    if (noResultActive) {
+      return 'No package available. Adjust context or filters, then rerun.';
+    }
+    if (hasFullAutoLowConfidence) {
+      return fullAutoLowConfidenceReason ?? 'Low-confidence package set. Review before accepting.';
+    }
+    if (lastRunSource === 'manual') {
+      return 'Showing latest manual rerun results.';
+    }
+    if (lastRunSource === 'auto') {
+      return 'Auto-generated package set is up to date.';
+    }
+    return 'Auto-run will generate package suggestions from current context.';
+  }, [
+    autoRunStatus,
+    fullAutoLowConfidenceReason,
+    hasFullAutoLowConfidence,
+    isGenerating,
+    lastRunSource,
+    noResultActive,
+  ]);
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
@@ -222,7 +314,44 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
         </Button>
       </div>
 
-      <div className="flex items-center gap-4 text-xs">
+      <div className={`rounded-md border px-3 py-2 text-xs ${noResultActive ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-slate-700/70 bg-slate-900/60 text-slate-300'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>{fullAutoStatusText}</span>
+          {selectedPackage && (
+            <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-200">
+              Selected package: Rank #{selectedPackage.rank}
+            </span>
+          )}
+        </div>
+        {noResultActive && fullAutoNoResultReason && (
+          <p className="mt-1 text-[11px] text-amber-200/90">{fullAutoNoResultReason}</p>
+        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="gap-1.5 whitespace-nowrap"
+            title="Manually rerun full-auto package generation"
+          >
+            <Sparkles className="size-4" />
+            {isGenerating ? 'Running...' : 'Rerun Full-Auto'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleAcceptSelectedPackage}
+            disabled={!canAcceptPackage}
+            className="whitespace-nowrap"
+            title={noResultActive ? 'Acceptance is blocked until results are available' : 'Apply selected full-auto package'}
+          >
+            Accept Selected Package
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs">
         <div className="flex items-center gap-2">
           <label className="text-slate-400" title="Save and reuse generation settings">
             Preset:
@@ -274,6 +403,71 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <label className="text-slate-400" title="Filter suggestions by crime type">
+            Crime types:
+          </label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                <Filter className="size-3.5" />
+                {selectedCrimeTypeLabel}
+                <ChevronDown className="size-3.5 text-slate-400" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 p-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300">Select crime types</span>
+                <button
+                  type="button"
+                  onClick={handleSelectAllCrimeTypes}
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  All types
+                </button>
+              </div>
+              <div className="mt-2">
+                <Input
+                  value={crimeTypeQuery}
+                  onChange={(event) => setCrimeTypeQuery(event.target.value)}
+                  placeholder="Search crime types"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <ScrollArea className="mt-2 h-48 pr-2">
+                <div className="space-y-1">
+                  {filteredCrimeTypeOptions.length === 0 ? (
+                    <div className="px-2 py-2 text-xs text-slate-400">No matching crime types.</div>
+                  ) : (
+                    filteredCrimeTypeOptions.map((name) => {
+                      const isSelected =
+                        crimeFilters.crimeTypes.length === 0
+                          ? false
+                          : crimeFilters.crimeTypes.includes(name);
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => toggleCrimeType(name)}
+                          className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-xs text-slate-200 hover:bg-slate-800"
+                        >
+                          <span>{name}</span>
+                          {isSelected ? <Check className="size-3.5 text-emerald-400" /> : null}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+              <div className="mt-2 text-[11px] text-slate-400">
+                {crimeFilters.crimeTypes.length === 0
+                  ? 'All crime types included.'
+                  : `${crimeFilters.crimeTypes.length} selected.`}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="flex items-center gap-2">
           <label className="text-slate-400" title="Number of boundary sets to generate">
             Intervals:
           </label>
@@ -311,23 +505,9 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="w-full lg:w-auto">
           <AnalyzeVisibleAllToggle mode={contextMode} onChange={setContextMode} />
         </div>
-
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="gap-1.5"
-          title="Create new warp profile and interval boundary suggestions based on current scope and data"
-        >
-          <Sparkles className="size-4" />
-          {isGenerating ? 'Generating...' : 'Generate Suggestions'}
-        </Button>
-
-        <div className="flex-1" />
 
         <div className="flex items-center gap-2">
           <label className="text-slate-400" title="Algorithm used to detect boundaries">
