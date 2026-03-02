@@ -70,6 +70,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     generationError,
     setGenerationError,
     isPanelOpen,
+    setFullAutoProposalResults,
   } = useSuggestionStore();
   
   // Track if user has manually triggered at least once
@@ -177,14 +178,17 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       if (!crimes || crimes.length === 0) {
         // Set store flag for empty state (not console.log)
         setEmptyState(true);
-        setFullAutoSets({
+        const emptyResult = {
           generatedAt: Date.now(),
           sets: [],
           recommendedId: null,
           reasonMetadata: {
             noResultReason: 'No data available in the current context. Expand date range or filters.',
           },
-        });
+        } satisfies RankedAutoProposalSets;
+
+        setFullAutoSets(emptyResult);
+        setFullAutoProposalResults(emptyResult);
         return false;
       }
       
@@ -218,6 +222,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
         });
 
         setFullAutoSets(rankedResult);
+        setFullAutoProposalResults(rankedResult);
 
         rankedResult.sets.forEach((set) => {
           addSuggestion({
@@ -254,6 +259,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       }
 
       setFullAutoSets(null);
+      setFullAutoProposalResults(null);
       
       // Generate warp profiles with user-configurable count
       if (params.warpCount > 0) {
@@ -312,7 +318,16 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     } finally {
       setIsGenerating(false);
     }
-  }, [addSuggestion, clearPendingSuggestions, crimes, getCurrentContext, isLoading, setEmptyState, setGenerationError]);
+  }, [
+    addSuggestion,
+    clearPendingSuggestions,
+    crimes,
+    getCurrentContext,
+    isLoading,
+    setEmptyState,
+    setFullAutoProposalResults,
+    setGenerationError,
+  ]);
 
   // Trigger function - generates real suggestions based on algorithms
   const handleTrigger = useCallback((params: GenerationParams) => {

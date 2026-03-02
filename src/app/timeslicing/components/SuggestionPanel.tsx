@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { X, Info, Zap, Undo2, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Info, Zap, Undo2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { SuggestionCard } from './SuggestionCard';
 import { ComparisonView } from './ComparisonView';
 import { ProfileManager } from './ProfileManager';
+import { AutoProposalSetCard } from './AutoProposalSetCard';
 
 function formatDate(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleDateString('en-US', {
@@ -91,6 +92,13 @@ export function SuggestionPanel() {
     acceptedHistory,
     clearHistory,
     reapplyFromHistory,
+    fullAutoProposalSets,
+    selectedFullAutoSetId,
+    recommendedFullAutoSetId,
+    fullAutoLowConfidenceReason,
+    fullAutoNoResultReason,
+    hasFullAutoLowConfidence,
+    selectFullAutoProposalSet,
   } = useSuggestionStore();
 
   const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
@@ -140,6 +148,12 @@ export function SuggestionPanel() {
   const selectionRange = selectedTimeRange
     ? [Math.min(selectedTimeRange[0], selectedTimeRange[1]), Math.max(selectedTimeRange[0], selectedTimeRange[1])]
     : [startDate, endDate];
+  const topRankedProposalSets = fullAutoProposalSets.slice(0, 3);
+  const hasAutoProposalSetData = topRankedProposalSets.length > 0;
+  const selectedFullAutoSet =
+    selectedFullAutoSetId === null
+      ? null
+      : fullAutoProposalSets.find((proposalSet) => proposalSet.id === selectedFullAutoSetId) ?? null;
 
   const toggleComparison = (id: string) => {
     if (comparisonIds[0] === id) {
@@ -188,6 +202,9 @@ export function SuggestionPanel() {
             <p className="text-xs text-violet-300">Showing {visibleSuggestions.length} of {suggestions.length} suggestions</p>
           )}
           {selectedCount > 0 && <p className="text-xs text-amber-400">{selectedCount} selected</p>}
+          {selectedFullAutoSet && (
+            <p className="text-xs text-emerald-300">Selected package: Rank #{selectedFullAutoSet.rank}</p>
+          )}
           {activeWarp ? (
             <div className="mt-1 flex items-center gap-1 text-xs text-green-400">
               <Zap className="size-3" />
@@ -393,18 +410,66 @@ export function SuggestionPanel() {
               <p className="text-sm text-slate-400">No crimes found in current view.</p>
               <p className="mt-1 text-xs text-slate-500">Try expanding your filters or time range.</p>
             </div>
-          ) : suggestions.length === 0 ? (
+          ) : suggestions.length === 0 && !hasAutoProposalSetData && !fullAutoNoResultReason && !hasFullAutoLowConfidence ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-sm text-slate-400">No suggestions yet.</p>
               <p className="mt-1 text-xs text-slate-500">Click &apos;Generate&apos; to create suggestions.</p>
             </div>
-          ) : visibleSuggestions.length === 0 ? (
+          ) : visibleSuggestions.length === 0 && !hasAutoProposalSetData && !fullAutoNoResultReason && !hasFullAutoLowConfidence ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-sm text-slate-400">No suggestions match this confidence filter.</p>
               <p className="mt-1 text-xs text-slate-500">Lower the minimum confidence to see more results.</p>
             </div>
           ) : (
             <div className="space-y-3">
+              {(hasAutoProposalSetData || fullAutoNoResultReason || hasFullAutoLowConfidence) && (
+                <div className="space-y-2 rounded-lg border border-slate-700/80 bg-slate-800/30 p-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">Full-auto packages</h3>
+                    {recommendedFullAutoSetId && (
+                      <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                        Ranked top 3
+                      </span>
+                    )}
+                  </div>
+
+                  {fullAutoNoResultReason && (
+                    <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
+                      <p className="font-medium text-amber-300">No package available</p>
+                      <p className="mt-0.5">{fullAutoNoResultReason}</p>
+                    </div>
+                  )}
+
+                  {!fullAutoNoResultReason && hasFullAutoLowConfidence && fullAutoLowConfidenceReason && (
+                    <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
+                      <div className="flex items-center gap-1 font-medium text-amber-300">
+                        <AlertTriangle className="size-3" />
+                        Low confidence package guidance
+                      </div>
+                      <p className="mt-0.5">{fullAutoLowConfidenceReason}</p>
+                    </div>
+                  )}
+
+                  {hasAutoProposalSetData ? (
+                    <div className="space-y-2">
+                      {topRankedProposalSets.map((proposalSet) => (
+                        <AutoProposalSetCard
+                          key={proposalSet.id}
+                          proposalSet={proposalSet}
+                          isSelected={selectedFullAutoSetId === proposalSet.id}
+                          isRecommended={recommendedFullAutoSetId === proposalSet.id || proposalSet.isRecommended}
+                          onSelect={selectFullAutoProposalSet}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    !fullAutoNoResultReason && (
+                      <p className="text-xs text-slate-500">Generate suggestions to review ranked full-auto packages.</p>
+                    )
+                  )}
+                </div>
+              )}
+
               {(comparisonIds[0] || comparisonIds[1]) && (
                 <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-2">
                   <div className="mb-2 flex items-center justify-between">
