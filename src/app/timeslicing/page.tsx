@@ -190,6 +190,7 @@ export default function TimeslicingPage() {
   const minTs = useDataStore((s) => s.minTimestampSec);
   const maxTs = useDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
+  const clearSlices = useSliceStore((s) => s.clearSlices);
   const addWarpSlice = useWarpSliceStore((s) => s.addSlice);
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
   const setActiveWarp = useWarpSliceStore((s) => s.setActiveWarp);
@@ -373,6 +374,7 @@ export default function TimeslicingPage() {
 
       try {
         clearWarpSlices();
+        clearSlices();
         setActiveWarp(proposalSet.id);
 
         proposalSet.warp.intervals.forEach((interval, index) => {
@@ -434,6 +436,7 @@ export default function TimeslicingPage() {
       acceptSuggestion,
       addToHistory,
       addWarpSlice,
+      clearSlices,
       clearWarpSlices,
       findPackageSuggestionIds,
       fullAutoNoResultReason,
