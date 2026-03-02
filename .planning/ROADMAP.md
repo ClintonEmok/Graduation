@@ -5,8 +5,8 @@
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
 - ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
 - 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
-- 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-37 (suggested warp profiles + suggested intervals + review)
-- 📋 **v1.3 Fully Automated Timeslicing Workflows** — Phase 38-42 (automatic warp + interval generation + review)
+- 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-39 (suggested warp profiles + suggested intervals + review)
+- 📋 **v1.3 Fully Automated Timeslicing Workflows** — Phase 40-42 (automatic warp + interval generation + review)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
@@ -298,7 +298,7 @@ Plans:
 - User reviews and fine-tunes generated outputs
 - Multiple algorithm options (density-based, event-based, etc.)
 
-**Phases:** 38-42 (planned)
+**Phases:** 40-42 (planned)
 
 ### v2.0 Spatially-Constrained 3D Timeslicing (future)
 
@@ -331,7 +331,10 @@ Plans:
 | 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
 | 38 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-28 |
-| 39 | Timeline UX Improvements | 4/4 | ✅ Complete | 2026-03-02 |
+| 39 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-03-02 |
+| 40 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
+| 41 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
+| 42 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
 
 ### Phase 39: Timeline UX Improvements
 
@@ -359,16 +362,56 @@ Plans:
 
 ---
 
-## Planned Milestones
+### Phase 40: Fully Automated Timeslicing Orchestration
 
-**Goal:** Context-aware optimization per active investigation context with smart profile auto-detection and custom profile creation
-**Depends on:** Phase 37
-**Plans:** 3/3 plans complete
+**Goal:** Generate complete warp + interval proposal sets automatically from the active context and present them for review.
+**Depends on:** Phase 39 (Timeline UX Improvements)
+**Plans:** 0 plans (to be planned)
+
+**Details:**
+- Trigger full auto generation from current context profile and filters
+- Produce review-ready outputs without manual preconfiguration
+- Keep user-in-the-loop review and fine-tune workflow
+
+**Plan Overview:**
+- [ ] TBD — create via /gsd/plan-phase 40
+
+### Phase 41: Full-Auto Optimization & Ranking
+
+**Goal:** Optimize and rank full-auto candidates for coverage, relevance, overlap minimization, and temporal continuity.
+**Depends on:** Phase 40
+**Plans:** 0 plans (to be planned)
+
+**Details:**
+- Score candidate sets across quality dimensions
+- Rank alternatives and expose best default recommendation
+- Preserve context-aware behavior across investigation modes
+
+**Plan Overview:**
+- [ ] TBD — create via /gsd/plan-phase 41
+
+### Phase 42: Full-Auto Review & Finalization
+
+**Goal:** Finalize end-to-end full-auto workflow with robust review, acceptance, and rerun behavior.
+**Depends on:** Phase 41
+**Plans:** 0 plans (to be planned)
+
+**Details:**
+- Complete user review and acceptance loop for auto-generated sets
+- Add low-confidence/no-result handling and rerun pathways
+- Ensure final workflow consistency with existing suggestion UX
+
+**Plan Overview:**
+- [ ] TBD — create via /gsd/plan-phase 42
+
+---
+
+## v1.3 Phase Checklist
 
 Plans:
-- [ ] 38-01-PLAN.md — Context Extraction Foundation (useContextExtractor, useSmartProfiles, mode toggle)
-- [ ] 38-02-PLAN.md — Profile Management (useContextProfileStore, ProfileManager component)
-- [ ] 38-03-PLAN.md — Integration & UI Polish (ContextBadge, history metadata, auto-regenerate)
+- [ ] Phase 40 plans — TBD
+- [ ] Phase 41 plans — TBD
+- [ ] Phase 42 plans — TBD
 
 ---
 
