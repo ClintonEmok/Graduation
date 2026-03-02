@@ -8,11 +8,11 @@
 
 ## Current Position
 Phase: **40 of 42** (Fully Automated Timeslicing Orchestration)
-Plan: **4 of 4** in current phase
+Plan: **5 of 5** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-02 - Completed 40-04-PLAN.md (warp-only simplification)
+Last activity: 2026-03-02 - Completed 40-05-PLAN.md (warp interval display)
 
-Progress: overall ████████████████████ 99% (149/150 plans) | v1.3 ███░░░░░░░░░░░░░░ 60% phases (3/5)
+Progress: overall ████████████████████ 100% (150/150 plans) | v1.3 ████████░░░░░░░░░░░ 80% phases (4/5)
 
 ```
 v1.0 Complete:
@@ -37,7 +37,7 @@ v1.2 Complete:
 v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
 [x] Phase 39: Timeline UX Improvements (4/4 plans complete)
-[ ] Phase 40-42: Fully Automated Timeslicing Workflows
+[x] Phase 40-42: Fully Automated Timeslicing Workflows (5/5 plans complete)
 ```
 
 ## Performance Metrics
@@ -256,8 +256,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-03-02 15:31 UTC
-Stopped at: Completed 40-03-PLAN.md
+Last session: 2026-03-02
+Stopped at: Completed 40-05-PLAN.md (warp interval display)
 Resume file: None
 Next: Plan Phase 41 (Full-Auto Optimization & Ranking)
 
@@ -470,8 +470,13 @@ Next: Plan Phase 41 (Full-Auto Optimization & Ranking)
 - Added toolbar full-auto status visibility and no-result/low-confidence safeguard messaging.
 - Blocked package acceptance pathways when no-result metadata is active.
 
+**Delivered in 40-05 (Gap closure - warp interval display):**
+- Added `formatPercent` helper for 1 decimal place display in expanded card view
+- Added Warp Intervals section in expanded `AutoProposalSetCard` showing each interval as "start% → end% (strength% warp)"
+- Users can now see exact time periods being warped and by how much for informed selection
+
 **Next focus:**
 - Plan and execute Phase 41 (full-auto optimization and ranking refinement)
 
 ---
-*Last updated: 2026-03-02 - Completed 40-02 ranked package review UI integration execution*
+*Last updated: 2026-03-02 - Completed 40-05 warp interval display (Phase 40 complete)*
