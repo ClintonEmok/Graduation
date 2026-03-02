@@ -332,7 +332,7 @@ Plans:
 | 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
 | 38 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-28 |
 | 39 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-03-02 |
-| 40 | v1.3 Fully Automated Timeslicing | 3/3 | ✅ Complete | 2026-03-02 |
+| 40 | v1.3 Fully Automated Timeslicing | 4/4 | ✅ Complete | 2026-03-02 |
 | 41 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
 | 42 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
 
@@ -377,6 +377,7 @@ Plans:
 - [x] 40-01-PLAN.md — Full-auto orchestration core (proposal sets + ranking)
 - [x] 40-02-PLAN.md — Ranked package review UI integration
 - [x] 40-03-PLAN.md — Auto-run policy, package accept, and safeguards
+- [x] 40-04-PLAN.md — Gap closure: Simplify to warp-only packages
 
 ### Phase 41: Full-Auto Optimization & Ranking
 
