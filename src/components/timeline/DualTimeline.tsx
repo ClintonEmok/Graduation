@@ -47,6 +47,7 @@ const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
+const DEBUG_PREVIEW_WARP_PROFILE_ID = '__debug-full-auto-preview__';
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 type StrictTimelineScale = ScaleTime<number, number>;
@@ -875,6 +876,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             id: slice.id,
             startSec: rangeStart,
             endSec: rangeEnd,
+            isDebugPreview: slice.warpProfileId === DEBUG_PREVIEW_WARP_PROFILE_ID,
           };
         })
         .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
@@ -914,7 +916,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             isActive: activeSliceId === slice.id,
             isBurst: !!slice.isBurst,
             isPoint: false,
-            isSuggestion: slice.source === 'suggestion',
+            isSuggestion: (slice as { source?: string }).source === 'suggestion',
             overlapCount: sliceOverlapCounts[slice.id] ?? 1,
             color: slice.color,
           };
@@ -932,7 +934,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           isActive: activeSliceId === slice.id,
           isBurst: !!slice.isBurst,
           isPoint: true,
-          isSuggestion: slice.source === 'suggestion',
+          isSuggestion: (slice as { source?: string }).source === 'suggestion',
           overlapCount: 1,
           color: slice.color,
         };
@@ -1083,9 +1085,9 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   y={0}
                   width={widthSpan}
                   height={OVERVIEW_HEIGHT}
-                  fill="rgba(139, 92, 246, 0.15)"
-                  stroke="rgba(99, 102, 241, 0.55)"
-                  strokeDasharray="4 3"
+                  fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.16)' : 'rgba(139, 92, 246, 0.15)'}
+                  stroke={slice.isDebugPreview ? 'rgba(34, 211, 238, 0.7)' : 'rgba(99, 102, 241, 0.55)'}
+                  strokeDasharray={slice.isDebugPreview ? '2 2' : '4 3'}
                   strokeWidth={1}
                 />
               );
@@ -1196,9 +1198,9 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   y={0}
                   width={widthSpan}
                   height={DETAIL_HEIGHT}
-                  fill="rgba(139, 92, 246, 0.15)"
-                  stroke="rgba(99, 102, 241, 0.55)"
-                  strokeDasharray="4 3"
+                  fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.16)' : 'rgba(139, 92, 246, 0.15)'}
+                  stroke={slice.isDebugPreview ? 'rgba(34, 211, 238, 0.7)' : 'rgba(99, 102, 241, 0.55)'}
+                  strokeDasharray={slice.isDebugPreview ? '2 2' : '4 3'}
                   strokeWidth={1}
                 />
               );

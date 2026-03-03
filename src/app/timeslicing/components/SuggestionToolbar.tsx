@@ -185,7 +185,13 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     if (!isDev) return;
 
     clearDebugPreviewSlices();
-    if (!debugTimelinePreview) return;
+    if (!debugTimelinePreview) {
+      const { activeWarpId, clearActiveWarp } = useWarpSliceStore.getState();
+      if (activeWarpId === DEBUG_PREVIEW_WARP_PROFILE_ID) {
+        clearActiveWarp();
+      }
+      return;
+    }
 
     const previewIntervals = debugWarpIntervals
       .map((interval, index) => ({
@@ -195,7 +201,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       }))
       .filter((interval) => interval.range[1] > interval.range[0]);
 
-    const { addSlice } = useWarpSliceStore.getState();
+    const { addSlice, setActiveWarp, activeWarpId, clearActiveWarp } = useWarpSliceStore.getState();
     previewIntervals.forEach((interval) => {
       addSlice({
         label: interval.label,
@@ -206,6 +212,14 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
         warpProfileId: DEBUG_PREVIEW_WARP_PROFILE_ID,
       });
     });
+
+    if (previewIntervals.length > 0) {
+      setActiveWarp(DEBUG_PREVIEW_WARP_PROFILE_ID);
+      useTimeStore.getState().setTimeScaleMode('adaptive');
+      useAdaptiveStore.getState().setWarpFactor(1);
+    } else if (activeWarpId === DEBUG_PREVIEW_WARP_PROFILE_ID) {
+      clearActiveWarp();
+    }
   }, [clearDebugPreviewSlices, debugTimelinePreview, debugWarpIntervals, isDev]);
 
   useEffect(() => {

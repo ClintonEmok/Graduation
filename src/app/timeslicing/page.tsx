@@ -74,6 +74,19 @@ const buildSliceAuthoredWarpMap = (
   return warpMap;
 };
 
+const remapSelectionPercentToDomainPercent = (
+  percent: number,
+  selectionDomain: [number, number],
+  fullDomain: [number, number]
+) => {
+  const [selectionStart, selectionEnd] = selectionDomain;
+  const [fullStart, fullEnd] = fullDomain;
+  const selectionSpan = Math.max(1e-9, selectionEnd - selectionStart);
+  const fullSpan = Math.max(1e-9, fullEnd - fullStart);
+  const epoch = selectionStart + (Math.max(0, Math.min(100, percent)) / 100) * selectionSpan;
+  return ((epoch - fullStart) / fullSpan) * 100;
+};
+
 export default function TimeslicingPage() {
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
@@ -81,7 +94,9 @@ export default function TimeslicingPage() {
   // Get domain from adaptive store (populated when real data loads)
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
+  const isDev = process.env.NODE_ENV !== 'production';
   
   // Get data from data store for fallback
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
@@ -255,6 +270,7 @@ export default function TimeslicingPage() {
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
   const setActiveWarp = useWarpSliceStore((s) => s.setActiveWarp);
   const warpSlices = useWarpSliceStore((state) => state.slices);
+  const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const hoveredSuggestionId = useSuggestionStore((state) => state.hoveredSuggestionId);
   const suggestions = useSuggestionStore((state) => state.suggestions);
@@ -328,12 +344,19 @@ export default function TimeslicingPage() {
 
   const sliceAuthoredWarpMapMain = useMemo(() => {
     if (timeScaleMode !== 'adaptive') return null;
+    const mainWarpSlices = warpSlices.map((slice) => ({
+      ...slice,
+      range: [
+        remapSelectionPercentToDomainPercent(slice.range[0], [rangeStart, rangeEnd], [domainStartSec, domainEndSec]),
+        remapSelectionPercentToDomainPercent(slice.range[1], [rangeStart, rangeEnd], [domainStartSec, domainEndSec]),
+      ] as [number, number],
+    }));
     return buildSliceAuthoredWarpMap(
-      warpSlices,
+      mainWarpSlices,
       [domainStartSec, domainEndSec],
       Math.max(96, densityMap?.length || 0)
     );
-  }, [densityMap?.length, domainEndSec, domainStartSec, timeScaleMode, warpSlices]);
+  }, [densityMap?.length, domainEndSec, domainStartSec, rangeEnd, rangeStart, timeScaleMode, warpSlices]);
 
   const sliceAuthoredWarpMapSelection = useMemo(() => {
     if (timeScaleMode !== 'adaptive') return null;
@@ -343,6 +366,19 @@ export default function TimeslicingPage() {
       Math.max(96, selectionDetailPoints.length || 0)
     );
   }, [rangeEnd, rangeStart, selectionDetailPoints.length, timeScaleMode, warpSlices]);
+
+  const enabledWarpSliceCount = useMemo(
+    () => warpSlices.filter((slice) => slice.enabled).length,
+    [warpSlices]
+  );
+
+  const debugPreviewSliceCount = useMemo(
+    () =>
+      warpSlices.filter(
+        (slice) => slice.enabled && slice.warpProfileId === '__debug-full-auto-preview__'
+      ).length,
+    [warpSlices]
+  );
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
   const handleAcceptWarpProfile = useCallback((suggestionId: string, data: TimeScaleData) => {
@@ -644,6 +680,18 @@ export default function TimeslicingPage() {
               Slice from package
             </span>
           </div>
+          {isDev && (
+            <div className="mt-2 rounded-md border border-cyan-500/30 bg-cyan-950/20 px-2 py-1.5 text-[11px] text-cyan-100">
+              <span className="mr-3">Debug</span>
+              <span className="mr-3">mode: <strong>{timeScaleMode}</strong></span>
+              <span className="mr-3">factor: <strong>{warpFactor.toFixed(2)}</strong></span>
+              <span className="mr-3">activeWarp: <strong>{activeWarpId ?? 'none'}</strong></span>
+              <span className="mr-3">enabledSlices: <strong>{enabledWarpSliceCount}</strong></span>
+              <span className="mr-3">debugPreviewSlices: <strong>{debugPreviewSliceCount}</strong></span>
+              <span className="mr-3">mainMapPts: <strong>{sliceAuthoredWarpMapMain?.length ?? 0}</strong></span>
+              <span>selectionMapPts: <strong>{sliceAuthoredWarpMapSelection?.length ?? 0}</strong></span>
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">
