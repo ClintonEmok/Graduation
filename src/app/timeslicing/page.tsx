@@ -22,6 +22,58 @@ const DEFAULT_START_EPOCH = 978307200; // 2001-01-01
 const DEFAULT_END_EPOCH = 1767571200; // 2026-01-01
 const MIN_VALID_DATA_EPOCH = 946684800; // 2000-01-01
 
+const buildSliceAuthoredWarpMap = (
+  slices: Array<{ enabled: boolean; range: [number, number]; weight: number }>,
+  domain: [number, number],
+  sampleCount: number
+): Float32Array | null => {
+  const enabledSlices = slices.filter((slice) => slice.enabled);
+  if (enabledSlices.length === 0 || sampleCount < 2) return null;
+
+  const [domainStart, domainEnd] = domain;
+  const domainSpan = Math.max(1e-9, domainEnd - domainStart);
+  const density = new Float32Array(sampleCount);
+
+  for (let i = 0; i < sampleCount; i += 1) {
+    const ratio = sampleCount === 1 ? 0 : i / (sampleCount - 1);
+    const percent = ratio * 100;
+    let boost = 0;
+
+    for (const slice of enabledSlices) {
+      const start = Math.min(slice.range[0], slice.range[1]);
+      const end = Math.max(slice.range[0], slice.range[1]);
+      if (percent < start || percent > end) continue;
+
+      const center = (start + end) / 2;
+      const halfWidth = Math.max(0.5, (end - start) / 2);
+      const normalizedDistance = Math.abs((percent - center) / halfWidth);
+      const falloff = Math.max(0, 1 - normalizedDistance);
+      boost += Math.max(0, slice.weight) * (0.35 + 0.65 * falloff);
+    }
+
+    density[i] = 1 + boost;
+  }
+
+  const cumulative = new Float32Array(sampleCount);
+  cumulative[0] = 0;
+  for (let i = 1; i < sampleCount; i += 1) {
+    const prev = density[i - 1] ?? 1;
+    const curr = density[i] ?? 1;
+    cumulative[i] = cumulative[i - 1] + (prev + curr) * 0.5;
+  }
+
+  const total = cumulative[sampleCount - 1] ?? 0;
+  if (!Number.isFinite(total) || total <= 0) return null;
+
+  const warpMap = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i += 1) {
+    const progress = (cumulative[i] ?? 0) / total;
+    warpMap[i] = domainStart + progress * domainSpan;
+  }
+
+  return warpMap;
+};
+
 export default function TimeslicingPage() {
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
@@ -29,6 +81,7 @@ export default function TimeslicingPage() {
   // Get domain from adaptive store (populated when real data loads)
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
   
   // Get data from data store for fallback
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
@@ -63,12 +116,13 @@ export default function TimeslicingPage() {
   const dataStats = useMemo(() => {
     const returned = crimeMeta?.returned ?? crimes.length;
     const total = crimeMeta?.totalMatches ?? returned;
+    const isMock = Boolean((crimeMeta as { isMock?: boolean } | null)?.isMock);
     return {
       count: total,
       returned,
       hasData: total > 0,
       sampled: Boolean(crimeMeta?.sampled),
-      isMock: Boolean(crimeMeta?.isMock),
+      isMock,
     };
   }, [crimeMeta, crimes.length]);
 
@@ -201,6 +255,7 @@ export default function TimeslicingPage() {
   const clearWarpSlices = useWarpSliceStore((s) => s.clearSlices);
   const setActiveWarp = useWarpSliceStore((s) => s.setActiveWarp);
   const warpSlices = useWarpSliceStore((state) => state.slices);
+  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const hoveredSuggestionId = useSuggestionStore((state) => state.hoveredSuggestionId);
   const suggestions = useSuggestionStore((state) => state.suggestions);
   const fullAutoProposalSets = useSuggestionStore((state) => state.fullAutoProposalSets);
@@ -271,13 +326,23 @@ export default function TimeslicingPage() {
     return { type: null as Suggestion['type'] | null, intervals: [], boundaries: [] };
   }, [hoveredSuggestion, rangeStart, rangeEnd, domainStartSec, domainEndSec]);
 
-  const acceptedSuggestionWarpIntervals = useMemo(
-    () =>
-      warpSlices
-        .filter((slice) => slice.source === 'suggestion' && slice.enabled)
-        .map((slice) => [slice.range[0], slice.range[1]] as [number, number]),
-    [warpSlices]
-  );
+  const sliceAuthoredWarpMapMain = useMemo(() => {
+    if (timeScaleMode !== 'adaptive') return null;
+    return buildSliceAuthoredWarpMap(
+      warpSlices,
+      [domainStartSec, domainEndSec],
+      Math.max(96, densityMap?.length || 0)
+    );
+  }, [densityMap?.length, domainEndSec, domainStartSec, timeScaleMode, warpSlices]);
+
+  const sliceAuthoredWarpMapSelection = useMemo(() => {
+    if (timeScaleMode !== 'adaptive') return null;
+    return buildSliceAuthoredWarpMap(
+      warpSlices,
+      [rangeStart, rangeEnd],
+      Math.max(96, selectionDetailPoints.length || 0)
+    );
+  }, [rangeEnd, rangeStart, selectionDetailPoints.length, timeScaleMode, warpSlices]);
   
   // Handle warp profile acceptance - create warp slices (replaces active warp)
   const handleAcceptWarpProfile = useCallback((suggestionId: string, data: TimeScaleData) => {
@@ -300,9 +365,10 @@ export default function TimeslicingPage() {
       });
     });
 
-    // Switch to adaptive mode so warping takes effect
+    // Switch to adaptive mode + full factor so warping is visible immediately
     useTimeStore.getState().setTimeScaleMode('adaptive');
-  }, [addWarpSlice, clearWarpSlices, rangeStart, rangeEnd]);
+    setWarpFactor(1);
+  }, [addWarpSlice, clearWarpSlices, rangeStart, rangeEnd, setWarpFactor]);
   
   // Handle interval boundary acceptance - create time slices
   const handleAcceptIntervalBoundary = useCallback((data: IntervalBoundaryData, source?: 'manual' | 'suggestion', packageId?: string) => {
@@ -326,8 +392,6 @@ export default function TimeslicingPage() {
         range: [Math.max(0, Math.min(100, startPercent)), Math.max(0, Math.min(100, endPercent))],
         isLocked: false,
         isVisible: true,
-        source,
-        packageId,
       });
     }
   }, [addSlice, rangeStart, rangeEnd]);
@@ -389,8 +453,17 @@ export default function TimeslicingPage() {
           });
         });
 
-        // Switch to adaptive mode so warping takes effect
+        // Switch to adaptive mode + full factor so warping is visible immediately
         useTimeStore.getState().setTimeScaleMode('adaptive');
+        setWarpFactor(1);
+
+        if (proposalSet.intervals?.boundaries && proposalSet.intervals.boundaries.length >= 2) {
+          handleAcceptIntervalBoundary(
+            { boundaries: proposalSet.intervals.boundaries },
+            'suggestion',
+            proposalSet.id
+          );
+        }
 
         const acceptedAt = Date.now();
         addToHistory({
@@ -425,6 +498,8 @@ export default function TimeslicingPage() {
       fullAutoProposalSets,
       selectedFullAutoSetId,
       setActiveWarp,
+      handleAcceptIntervalBoundary,
+      setWarpFactor,
     ]
   );
   
@@ -519,21 +594,9 @@ export default function TimeslicingPage() {
                   detailPointsOverride={selectionDetailPoints}
                   detailRenderMode="auto"
                   disableAutoBurstSlices={true}
+                  adaptiveWarpMapOverride={sliceAuthoredWarpMapMain}
+                  adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
                 />
-                {acceptedSuggestionWarpIntervals.length > 0 && (
-                  <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">
-                    {acceptedSuggestionWarpIntervals.map((interval, index) => (
-                      <div
-                        key={`accepted-warp-${index}`}
-                        className="absolute top-0 h-full border-2 border-dashed border-amber-300/85 bg-violet-500/10"
-                        style={{
-                          left: `${interval[0]}%`,
-                          width: `${Math.max(0.5, interval[1] - interval[0])}%`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
                 {hoverPreviewGlobal.type !== null && (
                   <div className="pointer-events-none absolute inset-3 z-20 overflow-hidden rounded-sm">
                     {hoverPreviewGlobal.type === 'time-scale' &&
@@ -568,10 +631,6 @@ export default function TimeslicingPage() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-3 w-5 rounded-sm border-2 border-dashed border-amber-300/80 bg-violet-500/15" />
-              Time Scale from suggestion
-            </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-3 w-5 rounded-sm border border-violet-400/70 bg-violet-500/15" />
               Hover preview (warp)
@@ -618,6 +677,8 @@ export default function TimeslicingPage() {
                 timestampSecondsOverride={selectionTimestamps}
                 detailPointsOverride={selectionDetailPoints}
                 disableAutoBurstSlices={true}
+                adaptiveWarpMapOverride={sliceAuthoredWarpMapSelection}
+                adaptiveWarpDomainOverride={[rangeStart, rangeEnd]}
               />
               {hoverPreviewSelection.type !== null && (
                 <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">

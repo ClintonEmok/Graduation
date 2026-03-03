@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, ChevronDown, Filter, PanelRightOpen, Sparkles, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Check, ChevronDown, Filter, PanelRightOpen, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -9,6 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionGenerator, type GenerationParams } from '@/hooks/useSuggestionGenerator';
 import { getAllCrimeTypeIds, getCrimeTypeName } from '@/lib/category-maps';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import { useTimeStore } from '@/store/useTimeStore';
 import { useCrimeFilters, useViewportStore } from '@/lib/stores/viewportStore';
 import { BoundaryMethod } from '@/lib/interval-detection';
 
@@ -17,6 +20,44 @@ interface SuggestionToolbarProps {
 }
 
 type AnalysisScopeMode = 'visible' | 'all';
+
+type DebugWarpInterval = {
+  id: string;
+  startPercent: number;
+  endPercent: number;
+  strength: number;
+};
+
+type DebugBoundary = {
+  id: string;
+  epochSec: number;
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const DEBUG_PREVIEW_WARP_PROFILE_ID = '__debug-full-auto-preview__';
+
+const percentToEpochSec = (percent: number, domain: [number, number]) => {
+  const [start, end] = domain;
+  return start + (clamp(percent, 0, 100) / 100) * (end - start);
+};
+
+const epochSecToPercent = (epochSec: number, domain: [number, number]) => {
+  const [start, end] = domain;
+  const span = Math.max(1e-9, end - start);
+  return clamp(((epochSec - start) / span) * 100, 0, 100);
+};
+
+const toDateTimeLocalInput = (epochSec: number) => {
+  const date = new Date(epochSec * 1000);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const parseDateTimeLocalInput = (value: string) => {
+  const parsed = new Date(value).getTime();
+  if (!Number.isFinite(parsed)) return null;
+  return parsed / 1000;
+};
 
 interface AnalyzeVisibleAllToggleProps {
   mode: AnalysisScopeMode;
@@ -61,6 +102,35 @@ function AnalyzeVisibleAllToggle({ mode, onChange }: AnalyzeVisibleAllToggleProp
 export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   const [showConfidenceFilter, setShowConfidenceFilter] = useState(false);
   const [crimeTypeQuery, setCrimeTypeQuery] = useState('');
+  const [debugWarpName, setDebugWarpName] = useState('Debug Warp');
+  const [debugWarpIntervals, setDebugWarpIntervals] = useState<DebugWarpInterval[]>(() => {
+    const base = [
+      { startPercent: 0, endPercent: 25, strength: 0.6 },
+      { startPercent: 25, endPercent: 60, strength: 0.9 },
+      { startPercent: 60, endPercent: 100, strength: 0.5 },
+    ];
+    return base.map((entry, index) => ({
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `debug-warp-${Date.now()}-${index}`,
+      ...entry,
+    }));
+  });
+  const [debugIntervalBoundaries, setDebugIntervalBoundaries] = useState<DebugBoundary[]>([]);
+  const [debugConfidence, setDebugConfidence] = useState(80);
+  const [debugRank, setDebugRank] = useState(1);
+  const [debugRecommended, setDebugRecommended] = useState(true);
+  const [debugTimelinePreview, setDebugTimelinePreview] = useState(true);
+  const isDev = process.env.NODE_ENV !== 'production';
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+
+  const clearDebugPreviewSlices = useCallback(() => {
+    const { slices, removeSlice } = useWarpSliceStore.getState();
+    const previewSliceIds = slices
+      .filter((slice) => slice.warpProfileId === DEBUG_PREVIEW_WARP_PROFILE_ID)
+      .map((slice) => slice.id);
+    previewSliceIds.forEach((id) => removeSlice(id));
+  }, []);
 
   const {
     trigger,
@@ -101,6 +171,7 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
     fullAutoNoResultReason,
     fullAutoLowConfidenceReason,
     hasFullAutoLowConfidence,
+    setFullAutoProposalResults,
   } = useSuggestionStore();
 
   const crimeFilters = useCrimeFilters();
@@ -109,6 +180,39 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
   useEffect(() => {
     loadPresetsFromStorage();
   }, [loadPresetsFromStorage]);
+
+  useEffect(() => {
+    if (!isDev) return;
+
+    clearDebugPreviewSlices();
+    if (!debugTimelinePreview) return;
+
+    const previewIntervals = debugWarpIntervals
+      .map((interval, index) => ({
+        label: `Debug Preview ${index + 1}`,
+        range: [clamp(interval.startPercent, 0, 100), clamp(interval.endPercent, 0, 100)] as [number, number],
+        weight: clamp(interval.strength, 0, 3),
+      }))
+      .filter((interval) => interval.range[1] > interval.range[0]);
+
+    const { addSlice } = useWarpSliceStore.getState();
+    previewIntervals.forEach((interval) => {
+      addSlice({
+        label: interval.label,
+        range: interval.range,
+        weight: interval.weight,
+        enabled: true,
+        source: 'suggestion',
+        warpProfileId: DEBUG_PREVIEW_WARP_PROFILE_ID,
+      });
+    });
+  }, [clearDebugPreviewSlices, debugTimelinePreview, debugWarpIntervals, isDev]);
+
+  useEffect(() => {
+    return () => {
+      clearDebugPreviewSlices();
+    };
+  }, [clearDebugPreviewSlices]);
 
   const visibleCount = useMemo(() => {
     return suggestions.filter((suggestion) => suggestion.confidence >= minConfidence).length;
@@ -133,6 +237,133 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       fullAuto: true,
     } satisfies GenerationParams;
     trigger(params);
+  };
+
+  const addDebugWarpInterval = () => {
+    setDebugWarpIntervals((prev) => {
+      const index = prev.length;
+      return [
+        ...prev,
+        {
+          id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `debug-warp-${Date.now()}-${index}`,
+          startPercent: clamp(12 + index * 8, 0, 92),
+          endPercent: clamp(20 + index * 8, 1, 100),
+          strength: 1,
+        },
+      ];
+    });
+  };
+
+  const updateDebugWarpInterval = (id: string, updates: Partial<Omit<DebugWarpInterval, 'id'>>) => {
+    setDebugWarpIntervals((prev) =>
+      prev.map((interval) => {
+        if (interval.id !== id) return interval;
+        const nextStart = updates.startPercent ?? interval.startPercent;
+        const nextEnd = updates.endPercent ?? interval.endPercent;
+        return {
+          ...interval,
+          startPercent: clamp(nextStart, 0, 100),
+          endPercent: clamp(nextEnd, 0, 100),
+          strength: clamp(updates.strength ?? interval.strength, 0, 3),
+        };
+      })
+    );
+  };
+
+  const removeDebugWarpInterval = (id: string) => {
+    setDebugWarpIntervals((prev) => prev.filter((interval) => interval.id !== id));
+  };
+
+  const addDebugBoundary = () => {
+    setDebugIntervalBoundaries((prev) => {
+      const base = mapDomain?.[0] ?? 0;
+      const nextEpoch = Number.isFinite(base) ? base : 0;
+      return [
+        ...prev,
+        {
+          id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `debug-boundary-${Date.now()}-${prev.length}`,
+          epochSec: nextEpoch,
+        },
+      ];
+    });
+  };
+
+  const updateDebugBoundary = (id: string, epochSec: number) => {
+    setDebugIntervalBoundaries((prev) =>
+      prev.map((boundary) => (boundary.id === id ? { ...boundary, epochSec } : boundary))
+    );
+  };
+
+  const removeDebugBoundary = (id: string) => {
+    setDebugIntervalBoundaries((prev) => prev.filter((boundary) => boundary.id !== id));
+  };
+
+  const handleApplyDebugPackage = () => {
+    setGenerationError(null);
+    const warpIntervals = debugWarpIntervals
+      .map((interval) => ({
+        startPercent: clamp(interval.startPercent, 0, 100),
+        endPercent: clamp(interval.endPercent, 0, 100),
+        strength: clamp(interval.strength, 0, 3),
+      }))
+      .filter((interval) => interval.endPercent > interval.startPercent);
+    if (warpIntervals.length === 0) {
+      setGenerationError('Debug package: add at least one warp interval with valid start/end.');
+      return;
+    }
+
+    const boundaries = debugIntervalBoundaries
+      .map((boundary) => boundary.epochSec)
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+    const clampedConfidence = Math.max(0, Math.min(100, debugConfidence));
+    const score = {
+      coverage: Math.min(100, clampedConfidence + 5),
+      relevance: clampedConfidence,
+      overlap: Math.max(0, clampedConfidence - 5),
+      continuity: Math.min(100, clampedConfidence + 2),
+      contextFit: Math.min(100, clampedConfidence + 3),
+      total: clampedConfidence,
+    };
+    const id = `debug-package-${Date.now()}`;
+
+    setFullAutoProposalResults({
+      generatedAt: Date.now(),
+      recommendedId: debugRecommended ? id : null,
+      sets: [
+        {
+          id,
+          rank: Math.max(1, debugRank),
+          isRecommended: debugRecommended,
+          confidence: clampedConfidence,
+          score,
+          warp: {
+            name: debugWarpName.trim() || 'Debug Warp',
+            emphasis: 'balanced',
+            confidence: clampedConfidence,
+            intervals: warpIntervals,
+          },
+          intervals: boundaries.length >= 2
+            ? {
+                boundaries,
+                method: 'rule-based',
+                confidence: clampedConfidence,
+              }
+            : undefined,
+        },
+      ],
+    });
+
+    useTimeStore.getState().setTimeScaleMode('adaptive');
+    useAdaptiveStore.getState().setWarpFactor(1);
+  };
+
+  const handleClearDebugPackage = () => {
+    setFullAutoProposalResults(null);
   };
 
   const handleAcceptSelectedPackage = () => {
@@ -350,6 +581,209 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
           </Button>
         </div>
       </div>
+
+      {isDev && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-100">
+          <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-amber-300">
+            <span>Debug full-auto package</span>
+            <span>dev only</span>
+          </div>
+          <div className="mt-2 space-y-2">
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-[11px] text-amber-200">Warp name</label>
+                <Input
+                  value={debugWarpName}
+                  onChange={(event) => setDebugWarpName(event.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-amber-200">Confidence</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={debugConfidence}
+                  onChange={(event) => setDebugConfidence(Number(event.target.value))}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-amber-200">Rank</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={3}
+                  value={debugRank}
+                  onChange={(event) => setDebugRank(Number(event.target.value))}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-amber-200">Recommended</label>
+                <div className="flex h-7 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={debugRecommended}
+                    onChange={(event) => setDebugRecommended(event.target.checked)}
+                  />
+                  <span className="text-[11px] text-amber-200">Mark as recommended</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-amber-200">Timeline preview</label>
+                <div className="flex h-7 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={debugTimelinePreview}
+                    onChange={(event) => setDebugTimelinePreview(event.target.checked)}
+                  />
+                  <span className="text-[11px] text-amber-200">Highlight warp intervals on timeline</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 rounded border border-amber-500/30 bg-amber-950/20 p-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-amber-200">Warp intervals</span>
+                <button
+                  type="button"
+                  onClick={addDebugWarpInterval}
+                  className="inline-flex items-center gap-1 rounded border border-cyan-500/60 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-100 transition hover:border-cyan-400"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add interval</span>
+                </button>
+              </div>
+              {debugWarpIntervals.length === 0 ? (
+                <p className="rounded border border-dashed border-amber-500/30 px-2 py-2 text-[11px] text-amber-200/80">
+                  No warp intervals yet. Add one to define the package warp.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {debugWarpIntervals.map((interval) => (
+                    <div key={interval.id} className="space-y-2 rounded border border-amber-500/30 bg-amber-950/30 p-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded border border-amber-500/30 bg-amber-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+                          Interval
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeDebugWarpInterval(interval.id)}
+                          className="inline-flex items-center gap-1 rounded border border-red-500/50 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-100 transition hover:border-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <label className="flex items-center justify-between gap-2 rounded border border-amber-500/30 bg-amber-950/40 px-2 py-1">
+                          <span className="text-[11px] text-amber-200">Start</span>
+                          <input
+                            type="datetime-local"
+                            step={60}
+                            value={toDateTimeLocalInput(percentToEpochSec(interval.startPercent, mapDomain))}
+                            onChange={(event) => {
+                              const nextEpoch = parseDateTimeLocalInput(event.target.value);
+                              if (nextEpoch === null) return;
+                              const nextStart = epochSecToPercent(nextEpoch, mapDomain);
+                              updateDebugWarpInterval(interval.id, { startPercent: nextStart });
+                            }}
+                            className="w-44 rounded border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-right text-[11px] text-amber-100"
+                          />
+                        </label>
+                        <label className="flex items-center justify-between gap-2 rounded border border-amber-500/30 bg-amber-950/40 px-2 py-1">
+                          <span className="text-[11px] text-amber-200">End</span>
+                          <input
+                            type="datetime-local"
+                            step={60}
+                            value={toDateTimeLocalInput(percentToEpochSec(interval.endPercent, mapDomain))}
+                            onChange={(event) => {
+                              const nextEpoch = parseDateTimeLocalInput(event.target.value);
+                              if (nextEpoch === null) return;
+                              const nextEnd = epochSecToPercent(nextEpoch, mapDomain);
+                              updateDebugWarpInterval(interval.id, { endPercent: nextEnd });
+                            }}
+                            className="w-44 rounded border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-right text-[11px] text-amber-100"
+                          />
+                        </label>
+                        <label className="flex items-center justify-between gap-2 rounded border border-amber-500/30 bg-amber-950/40 px-2 py-1">
+                          <span className="text-[11px] text-amber-200">Strength</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={3}
+                            step={0.1}
+                            value={interval.strength.toFixed(1)}
+                            onChange={(event) =>
+                              updateDebugWarpInterval(interval.id, { strength: Number(event.target.value) })
+                            }
+                            className="w-20 rounded border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-right text-[11px] text-amber-100"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2 rounded border border-amber-500/30 bg-amber-950/20 p-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-amber-200">Interval boundaries</span>
+                <button
+                  type="button"
+                  onClick={addDebugBoundary}
+                  className="inline-flex items-center gap-1 rounded border border-cyan-500/60 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-100 transition hover:border-cyan-400"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add boundary</span>
+                </button>
+              </div>
+              {debugIntervalBoundaries.length === 0 ? (
+                <p className="rounded border border-dashed border-amber-500/30 px-2 py-2 text-[11px] text-amber-200/80">
+                  Optional. Add two or more boundaries to create time slices.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {debugIntervalBoundaries.map((boundary, index) => (
+                    <div key={boundary.id} className="flex flex-wrap items-center gap-2 rounded border border-amber-500/30 bg-amber-950/30 p-2">
+                      <span className="text-[11px] text-amber-200">#{index + 1}</span>
+                      <input
+                        type="datetime-local"
+                        step={60}
+                        value={toDateTimeLocalInput(boundary.epochSec)}
+                        onChange={(event) => {
+                          const nextEpoch = parseDateTimeLocalInput(event.target.value);
+                          if (nextEpoch === null) return;
+                          updateDebugBoundary(boundary.id, nextEpoch);
+                        }}
+                        className="w-44 rounded border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-right text-[11px] text-amber-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeDebugBoundary(boundary.id)}
+                        className="inline-flex items-center gap-1 rounded border border-red-500/50 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-100 transition hover:border-red-400"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleApplyDebugPackage}>
+                Apply Debug Package
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleClearDebugPackage}>
+                Clear Debug Package
+              </Button>
+              <span className="text-[11px] text-amber-300/80">Boundaries are sorted on apply. Two+ required to create slices.</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <div className="flex items-center gap-2">
