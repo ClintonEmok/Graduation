@@ -31,6 +31,13 @@ function formatEpochDate(epochSeconds: number): string {
   });
 }
 
+const SCORE_BREAKDOWN_DIMENSIONS: Array<{ label: string; value: (score: AutoProposalSet['score']) => number }> = [
+  { label: 'Coverage', value: (score) => score.coverage },
+  { label: 'Relevance', value: (score) => score.relevance },
+  { label: 'Overlap', value: (score) => score.overlap },
+  { label: 'Continuity', value: (score) => score.continuity },
+];
+
 export function AutoProposalSetCard({
   proposalSet,
   isSelected,
@@ -123,14 +130,12 @@ export function AutoProposalSetCard({
           <div className="mt-3 space-y-2 rounded border border-slate-700/80 bg-slate-950/60 p-2 text-xs">
             <p className="font-medium uppercase tracking-wide text-slate-400">Score Breakdown</p>
             <div className="grid grid-cols-2 gap-1 text-slate-300">
-              <span>Coverage</span>
-              <span className="text-right">{formatScore(proposalSet.score.coverage)}</span>
-              <span>Relevance</span>
-              <span className="text-right">{formatScore(proposalSet.score.relevance)}</span>
-              <span>Overlap</span>
-              <span className="text-right">{formatScore(proposalSet.score.overlap)}</span>
-              <span>Continuity</span>
-              <span className="text-right">{formatScore(proposalSet.score.continuity)}</span>
+              {SCORE_BREAKDOWN_DIMENSIONS.map((dimension) => (
+                <React.Fragment key={dimension.label}>
+                  <span>{dimension.label}</span>
+                  <span className="text-right">{formatScore(dimension.value(proposalSet.score))}</span>
+                </React.Fragment>
+              ))}
             </div>
           </div>
 
