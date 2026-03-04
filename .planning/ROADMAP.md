@@ -6,7 +6,7 @@
 - ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
 - 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
 - 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-39 (suggested warp profiles + suggested intervals + review)
-- ✅ **v1.3 Fully Automated Timeslicing Workflows** — Phases 40-41 (shipped 2026-03-04)
+- 📋 **v1.3 Fully Automated Timeslicing Workflows** — Phases 40-42 (gap closure in progress)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
@@ -298,7 +298,7 @@ Plans:
 - User reviews and fine-tunes generated outputs
 - Multiple algorithm options (density-based, event-based, etc.)
 
-**Phases:** 40-41 (complete)
+**Phases:** 40-42
 
 ### v2.0 Spatially-Constrained 3D Timeslicing (future)
 
@@ -398,9 +398,21 @@ Plans:
 - [x] 41-01-PLAN.md — Scoring logic & types (weights, overlap detection, whyRecommended)
 - [x] 41-02-PLAN.md — UI display (AutoProposalSetCard whyRecommended, SuggestionPanel integration)
 
-### Phase 42: Full-Auto Review & Finalization
+### Phase 42: Full-Auto Package Acceptance Alignment (Gap Closure)
 
-**Status:** Not required for v1.3. Scope closed after Phase 41.
+**Goal:** Align full-auto package generation and acceptance semantics so end-to-end package acceptance applies the intended artifacts consistently.
+**Depends on:** Phase 41
+**Plans:** 1 plan (42-01)
+
+**Gap Closure:** Closes v1.3 milestone audit integration and flow gaps
+
+**Details:**
+- Resolve contract mismatch between generated package contents and acceptance handler expectations
+- Ensure package acceptance behavior is consistent with milestone UX definition
+- Keep ranking, recommendation rationale, and manual rerun behavior intact
+
+**Plan Overview:**
+- [ ] 42-01-PLAN.md — Close acceptance semantics gap (generation contract + acceptance wiring + verification)
 
 ---
 
@@ -409,6 +421,7 @@ Plans:
 Plans:
 - [x] Phase 40 plans — Complete (10/10)
 - [x] Phase 41 plans — Complete (2/2)
+- [ ] Phase 42 plans — Pending (0/1)
 
 ---
 
