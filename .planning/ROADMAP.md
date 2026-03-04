@@ -388,7 +388,7 @@ Plans:
 
 **Goal:** Optimize and rank full-auto candidates for coverage, relevance, overlap minimization, and temporal continuity.
 **Depends on:** Phase 40
-**Plans:** 0 plans (to be planned)
+**Plans:** 2 plans (41-01, 41-02)
 
 **Details:**
 - Score candidate sets across quality dimensions
@@ -396,7 +396,8 @@ Plans:
 - Preserve context-aware behavior across investigation modes
 
 **Plan Overview:**
-- [ ] TBD — create via /gsd/plan-phase 41
+- [x] 41-01-PLAN.md — Scoring logic & types (weights, overlap detection, whyRecommended)
+- [x] 41-02-PLAN.md — UI display (AutoProposalSetCard whyRecommended, SuggestionPanel integration)
 
 ### Phase 42: Full-Auto Review & Finalization
 
@@ -417,8 +418,8 @@ Plans:
 ## v1.3 Phase Checklist
 
 Plans:
-- [x] Phase 40 plans — Complete (3/3)
-- [ ] Phase 41 plans — TBD
+- [x] Phase 40 plans — Complete (10/10)
+- [x] Phase 41 plans — Complete (2/2)
 - [ ] Phase 42 plans — TBD
 
 ---
