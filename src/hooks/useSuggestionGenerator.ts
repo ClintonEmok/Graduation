@@ -13,6 +13,22 @@ import { detectSmartProfile } from '@/hooks/useSmartProfiles';
 import type { RankedAutoProposalSets } from '@/types/autoProposalSet';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
+export type AutoRunStatus = 'idle' | 'running' | 'fresh' | 'error';
+export type AutoRunSource = 'auto' | 'manual' | null;
+
+export function transitionAutoRunLifecycle(
+  currentStatus: AutoRunStatus,
+  source: Exclude<AutoRunSource, null>,
+  stage: 'start' | 'success' | 'error'
+): AutoRunStatus {
+  if (source === 'manual') {
+    return currentStatus;
+  }
+
+  if (stage === 'start') return 'running';
+  if (stage === 'success') return 'fresh';
+  return 'error';
+}
 
 /**
  * Generation parameters passed from UI controls
@@ -37,8 +53,8 @@ interface UseSuggestionGeneratorReturn {
   generationError: string | null;
   lastSampleUpdateAt: number | null;
   fullAutoSets: RankedAutoProposalSets | null;
-  autoRunStatus: 'idle' | 'running' | 'fresh' | 'error';
-  lastRunSource: 'auto' | 'manual' | null;
+  autoRunStatus: AutoRunStatus;
+  lastRunSource: AutoRunSource;
 }
 
 /**
@@ -89,8 +105,8 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastSampleUpdateAt, setLastSampleUpdateAt] = useState<number | null>(null);
   const [fullAutoSets, setFullAutoSets] = useState<RankedAutoProposalSets | null>(null);
-  const [autoRunStatus, setAutoRunStatus] = useState<'idle' | 'running' | 'fresh' | 'error'>('idle');
-  const [lastRunSource, setLastRunSource] = useState<'auto' | 'manual' | null>(null);
+  const [autoRunStatus, setAutoRunStatus] = useState<AutoRunStatus>('idle');
+  const [lastRunSource, setLastRunSource] = useState<AutoRunSource>(null);
   
   // Get viewport state
   const viewportFilters = useCrimeFilters();
@@ -194,9 +210,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     setIsGenerating(true);
     setGenerationError(null);
     setLastRunSource(source);
-    if (source === 'auto') {
-      setAutoRunStatus('running');
-    }
+    setAutoRunStatus((prev) => transitionAutoRunLifecycle(prev, source, 'start'));
     
     try {
       const isStaleRequest = () => latestRequestIdRef.current !== requestId;
@@ -226,9 +240,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
         setFullAutoSets(emptyResult);
         setFullAutoProposalResults(emptyResult);
         setLastSampleUpdateAt(Date.now());
-        if (source === 'auto') {
-          setAutoRunStatus('fresh');
-        }
+        setAutoRunStatus((prev) => transitionAutoRunLifecycle(prev, source, 'success'));
         return false;
       }
       
@@ -281,7 +293,6 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
               intervals: set.warp.intervals,
             } as TimeScaleData,
           });
-          // Note: Full-auto packages are warp-only, no interval boundaries
         });
 
         if (isStaleRequest()) {
@@ -289,9 +300,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
         }
 
         setLastSampleUpdateAt(Date.now());
-        if (source === 'auto') {
-          setAutoRunStatus('fresh');
-        }
+        setAutoRunStatus((prev) => transitionAutoRunLifecycle(prev, source, 'success'));
 
         return rankedResult.sets.length > 0;
       }
@@ -352,18 +361,14 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       }
 
       setLastSampleUpdateAt(Date.now());
-      if (source === 'auto') {
-        setAutoRunStatus('fresh');
-      }
+      setAutoRunStatus((prev) => transitionAutoRunLifecycle(prev, source, 'success'));
 
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setGenerationError(`Generation failed: ${message}`);
       console.error('Suggestion generation failed:', error);
-      if (source === 'auto') {
-        setAutoRunStatus('error');
-      }
+      setAutoRunStatus((prev) => transitionAutoRunLifecycle(prev, source, 'error'));
       return false;
     } finally {
       if (latestRequestIdRef.current === requestId) {

@@ -14,7 +14,7 @@ import { useSuggestionStore, type Suggestion, type TimeScaleData, type IntervalB
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { useTimeStore } from '@/store/useTimeStore';
-import type { AutoProposalSet } from '@/types/autoProposalSet';
+import { planFullAutoAcceptanceArtifacts } from './full-auto-acceptance';
 import { Toaster } from 'sonner';
 
 // Default to full date range if no real data loaded yet
@@ -277,7 +277,6 @@ export default function TimeslicingPage() {
   const fullAutoProposalSets = useSuggestionStore((state) => state.fullAutoProposalSets);
   const selectedFullAutoSetId = useSuggestionStore((state) => state.selectedFullAutoSetId);
   const fullAutoNoResultReason = useSuggestionStore((state) => state.fullAutoNoResultReason);
-  const acceptSuggestion = useSuggestionStore((state) => state.acceptSuggestion);
   const addToHistory = useSuggestionStore((state) => state.addToHistory);
 
   const hoveredSuggestion = useMemo(
@@ -432,27 +431,6 @@ export default function TimeslicingPage() {
     }
   }, [addSlice, rangeStart, rangeEnd]);
 
-  const findPackageSuggestionIds = useCallback(
-    (proposalSet: AutoProposalSet) => {
-      const expectedWarpName = `${proposalSet.warp.name} (Rank ${proposalSet.rank})${proposalSet.isRecommended ? ' - Recommended' : ''}`;
-
-      const warpSuggestion = suggestions.find(
-        (suggestion) =>
-          suggestion.status === 'pending' &&
-          suggestion.type === 'time-scale' &&
-          'name' in suggestion.data &&
-          suggestion.data.name === expectedWarpName
-      );
-
-      // No interval boundaries in warp-only packages
-      return {
-        warpSuggestionId: warpSuggestion?.id ?? null,
-        intervalSuggestionId: null,
-      };
-    },
-    [suggestions]
-  );
-
   const handleAcceptFullAutoPackage = useCallback(
     (proposalSetId?: string) => {
       if (fullAutoNoResultReason) {
@@ -477,8 +455,9 @@ export default function TimeslicingPage() {
         clearSlices();
         setActiveWarp(proposalSet.id);
 
-        // Create warp slices only - no boundaries
-        proposalSet.warp.intervals.forEach((interval, index) => {
+        const artifactPlan = planFullAutoAcceptanceArtifacts(proposalSet);
+
+        artifactPlan.warpIntervals.forEach((interval, index) => {
           addWarpSlice({
             label: `${proposalSet.warp.name} ${index + 1}`,
             range: [interval.startPercent, interval.endPercent],
@@ -493,12 +472,14 @@ export default function TimeslicingPage() {
         useTimeStore.getState().setTimeScaleMode('adaptive');
         setWarpFactor(1);
 
-        if (proposalSet.intervals?.boundaries && proposalSet.intervals.boundaries.length >= 2) {
+        if (artifactPlan.intervalBoundaries) {
           handleAcceptIntervalBoundary(
-            { boundaries: proposalSet.intervals.boundaries },
+            { boundaries: artifactPlan.intervalBoundaries },
             'suggestion',
             proposalSet.id
           );
+        } else if (isDev) {
+          console.warn(artifactPlan.warning);
         }
 
         const acceptedAt = Date.now();
@@ -535,6 +516,7 @@ export default function TimeslicingPage() {
       selectedFullAutoSetId,
       setActiveWarp,
       handleAcceptIntervalBoundary,
+      isDev,
       setWarpFactor,
     ]
   );
