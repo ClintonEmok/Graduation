@@ -3,16 +3,16 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 41
-**Status:** In progress
-**Next:** Execute 41-02-PLAN.md
+**Status:** Phase complete
+**Next:** Plan Phase 42 execution
 
 ## Current Position
 Phase: **41 of 42** (Full-Auto Optimization & Ranking)
-Plan: **1 of 2** in current phase
-Status: **In progress**
-Last activity: 2026-03-04 - Completed 41-01-PLAN.md (scoring weights, overlap penalty, whyRecommended)
+Plan: **2 of 2** in current phase
+Status: **Phase complete**
+Last activity: 2026-03-04 - Completed 41-02-PLAN.md (why-recommended UI, 4-dim score breakdown, ranked badge alignment)
 
-Progress: overall ███████████████████░ 99% (158/160 plans) | v1.3 ████████░░░░░░░░░░░ 80% phases (4/5)
+Progress: overall ████████████████████ 99% (159/160 plans) | v1.3 ████████░░░░░░░░░░░ 80% phases (4/5)
 
 ```
 v1.0 Complete:
@@ -38,7 +38,7 @@ v1.3 In Progress:
 [x] Phase 38: Context-Aware Timeslicing Based on Crime Type (3/3 plans complete)
 [x] Phase 39: Timeline UX Improvements (4/4 plans complete)
 [x] Phase 40: Fully Automated Timeslicing Orchestration (10/10 plans complete)
-[ ] Phase 41: Full-Auto Optimization & Ranking (1/2 plans complete)
+[x] Phase 41: Full-Auto Optimization & Ranking (2/2 plans complete)
 ```
 
 ## Performance Metrics
@@ -257,10 +257,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-03-04 17:24 UTC
-Stopped at: Completed 41-01-PLAN.md
+Last session: 2026-03-04 17:29 UTC
+Stopped at: Completed 41-02-PLAN.md
 Resume file: None
-Next: Execute 41-02-PLAN.md
+Next: Plan Phase 42 execution
 
 ## Accumulated Context
 
@@ -507,8 +507,13 @@ Next: Execute 41-02-PLAN.md
 - Added whyRecommended metadata generation using top two weighted score contributors
 - Removed contextFit from score types and aligned existing score consumers to the four-dimension contract
 
+**Delivered in 41-02 (Recommendation display and panel integration):**
+- Added `Why recommended` callout rendering to `AutoProposalSetCard` for recommended packages
+- Passed rationale metadata through `SuggestionPanel` and added top-ranked fallback for recommended badge assignment
+- Locked expanded score breakdown rendering to Coverage, Relevance, Overlap, and Continuity percentages
+
 **Next focus:**
-- Execute 41-02-PLAN.md (score display and recommendation UX refinement)
+- Phase 41 complete; prepare Phase 42 planning/execution
 
 ---
-*Last updated: 2026-03-04 - Completed 41-01 scoring optimization and ranking refinement (Phase 41 in progress)*
+*Last updated: 2026-03-04 - Completed 41-02 recommendation display and ranking UI refinement (Phase 41 complete)*
