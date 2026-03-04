@@ -1,4 +1,5 @@
 import { generateWarpProfiles } from '@/lib/warp-generation';
+import { detectBoundaries } from '@/lib/interval-detection';
 import type { CrimeRecord } from '@/types/crime';
 import type {
   AutoProposalContext,
@@ -71,7 +72,9 @@ export function generateRankedAutoProposalSets(options: {
     };
   }
 
-  // Rank warp-only packages
+  const sharedIntervalSet = buildSharedIntervalSet(crimes, context.timeRange, params.snapToUnit);
+
+  // Rank packages
   const ranked = warpCandidates
     .map((warp): AutoProposalSet => {
       const score = scoreWarpOnly(warp);
@@ -82,6 +85,10 @@ export function generateRankedAutoProposalSets(options: {
         confidence: Math.round((warp.confidence + score.total) / 2),
         score,
         warp,
+        intervals: {
+          ...sharedIntervalSet,
+          boundaries: [...sharedIntervalSet.boundaries],
+        },
       };
     })
     .sort((a, b) => {
@@ -131,6 +138,46 @@ export function generateRankedAutoProposalSets(options: {
       ? { lowConfidenceReason: 'Low confidence output. Consider expanding date range or reducing filters.' }
       : undefined,
   };
+}
+
+function buildSharedIntervalSet(
+  crimes: CrimeRecord[],
+  timeRange: AutoProposalContext['timeRange'],
+  snapToUnit: FullAutoGenerationParams['snapToUnit']
+): NonNullable<AutoProposalSet['intervals']> {
+  const detected = detectBoundaries(crimes, timeRange, {
+    method: 'peak',
+    sensitivity: 'medium',
+    snapToUnit,
+    boundaryCount: 5,
+  });
+
+  const boundaries = normalizeBoundaries(detected.boundaries, timeRange.start, timeRange.end);
+
+  return {
+    boundaries,
+    method: detected.method,
+    confidence: detected.confidence,
+  };
+}
+
+function normalizeBoundaries(boundaries: number[], start: number, end: number): number[] {
+  const min = Math.min(start, end);
+  const max = Math.max(start, end);
+  const uniqueSorted = Array.from(
+    new Set(
+      boundaries
+        .filter((boundary) => Number.isFinite(boundary))
+        .map((boundary) => Math.max(min, Math.min(max, boundary)))
+        .sort((a, b) => a - b)
+    )
+  );
+
+  if (uniqueSorted.length >= 2) {
+    return uniqueSorted;
+  }
+
+  return [min, max];
 }
 
 function scoreWarpOnly(warp: AutoProposalWarpProfile): AutoProposalScoreBreakdown {
