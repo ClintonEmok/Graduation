@@ -180,3 +180,63 @@ function scoreWarpContinuity(warp: AutoProposalWarpProfile): number {
 
   return Math.round(smoothness);
 }
+
+function hasOverlappingIntervals(intervals: { startPercent: number; endPercent: number }[]): boolean {
+  if (intervals.length <= 1) {
+    return false;
+  }
+
+  const sorted = intervals
+    .map((interval) => ({
+      startPercent: Math.min(interval.startPercent, interval.endPercent),
+      endPercent: Math.max(interval.startPercent, interval.endPercent),
+    }))
+    .sort((a, b) => a.startPercent - b.startPercent);
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    if (sorted[i].startPercent < sorted[i - 1].endPercent) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function scoreOverlapMinimization(intervals: { startPercent: number; endPercent: number }[]): number {
+  if (intervals.length <= 1) {
+    return 100;
+  }
+
+  const sorted = intervals
+    .map((interval) => ({
+      startPercent: Math.min(interval.startPercent, interval.endPercent),
+      endPercent: Math.max(interval.startPercent, interval.endPercent),
+    }))
+    .sort((a, b) => a.startPercent - b.startPercent);
+
+  let totalIntervalLength = 0;
+  let overlapLength = 0;
+  let activeEnd = sorted[0].endPercent;
+
+  for (let i = 0; i < sorted.length; i += 1) {
+    const interval = sorted[i];
+    totalIntervalLength += Math.max(0, interval.endPercent - interval.startPercent);
+
+    if (i === 0) {
+      continue;
+    }
+
+    if (interval.startPercent < activeEnd) {
+      overlapLength += Math.max(0, Math.min(activeEnd, interval.endPercent) - interval.startPercent);
+    }
+
+    activeEnd = Math.max(activeEnd, interval.endPercent);
+  }
+
+  if (totalIntervalLength <= 0) {
+    return 100;
+  }
+
+  const overlapRatio = Math.min(1, overlapLength / totalIntervalLength);
+  return Math.round(100 * (1 - overlapRatio));
+}
