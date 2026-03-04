@@ -18,7 +18,7 @@ function buildCrime(id: number, timestamp: number): CrimeRecord {
 }
 
 describe('generateRankedAutoProposalSets', () => {
-  test('returns top 3 ranked warp-only packages with recommendation marker', () => {
+  test('returns top 3 ranked package-complete sets with recommendation marker', () => {
     const start = 1704067200;
     const end = 1735689600;
     const crimes = Array.from({ length: 180 }, (_, index) => {
@@ -46,8 +46,16 @@ describe('generateRankedAutoProposalSets', () => {
     expect(result.sets[0].score.total).toBeGreaterThanOrEqual(result.sets[1].score.total);
     expect(result.sets[1].score.total).toBeGreaterThanOrEqual(result.sets[2].score.total);
     expect(result.sets[0].warp.intervals.length).toBeGreaterThan(0);
-    // No intervals/boundaries in warp-only packages
-    expect(result.sets[0].intervals).toBeUndefined();
+
+    result.sets.forEach((set) => {
+      expect(set.intervals).toBeDefined();
+      expect(set.intervals?.boundaries.length).toBeGreaterThanOrEqual(2);
+      expect(set.intervals?.boundaries).toEqual([...set.intervals!.boundaries].sort((a, b) => a - b));
+      expect(set.intervals?.boundaries[0]).toBeGreaterThanOrEqual(start);
+      expect(set.intervals?.boundaries[set.intervals!.boundaries.length - 1]).toBeLessThanOrEqual(end);
+    });
+
+    expect(result.sets[0].reasonMetadata?.whyRecommended).toBeTruthy();
   });
 
   test('keeps deterministic ordering for same input', () => {
@@ -87,6 +95,14 @@ describe('generateRankedAutoProposalSets', () => {
     const firstPairs = first.sets.map((set) => `${set.rank}:${set.id}:${set.score.total}`);
     const secondPairs = second.sets.map((set) => `${set.rank}:${set.id}:${set.score.total}`);
     expect(firstPairs).toEqual(secondPairs);
+    expect(first.recommendedId).toBe(first.sets[0].id);
+    expect(second.recommendedId).toBe(second.sets[0].id);
+    expect(first.sets[0].reasonMetadata?.whyRecommended).toBeTruthy();
+    expect(second.sets[0].reasonMetadata?.whyRecommended).toBeTruthy();
+
+    const firstBoundaryPairs = first.sets.map((set) => set.intervals?.boundaries.join(','));
+    const secondBoundaryPairs = second.sets.map((set) => set.intervals?.boundaries.join(','));
+    expect(firstBoundaryPairs).toEqual(secondBoundaryPairs);
   });
 
   test('returns no-result metadata when no data exists', () => {
@@ -129,5 +145,30 @@ describe('generateRankedAutoProposalSets', () => {
     expect(result.sets.length).toBeGreaterThan(0);
     expect(result.reasonMetadata?.lowConfidenceReason).toBeTruthy();
     expect(result.sets[0].reasonMetadata?.lowConfidenceReason).toBeTruthy();
+  });
+
+  test('normal generated sets never use legacy missing-interval contract', () => {
+    const start = 1704067200;
+    const end = 1735689600;
+    const crimes = Array.from({ length: 90 }, (_, index) => {
+      const t = start + (index % 30) * 86400;
+      return buildCrime(index + 1, t);
+    });
+
+    const result = generateRankedAutoProposalSets({
+      crimes,
+      context: {
+        crimeTypes: ['THEFT', 'BATTERY'],
+        timeRange: { start, end },
+        isFullDataset: false,
+      },
+      params: {
+        warpCount: 3,
+        snapToUnit: 'hour',
+      },
+    });
+
+    expect(result.sets.length).toBeGreaterThan(0);
+    expect(result.sets.every((set) => Boolean(set.intervals) && set.intervals!.boundaries.length >= 2)).toBe(true);
   });
 });
