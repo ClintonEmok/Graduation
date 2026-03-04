@@ -14,11 +14,18 @@ export interface FullAutoGenerationParams {
 }
 
 const SCORE_WEIGHTS = {
-  coverage: 0.3,
-  relevance: 0.25,
-  continuity: 0.25,
-  contextFit: 0.2,
+  relevance: 0.4,
+  continuity: 0.3,
+  overlapMin: 0.2,
+  coverage: 0.1,
 } as const;
+
+const OVERLAP_PENALTY_MULTIPLIER = 0.5;
+
+const WEIGHT_SUM = Object.values(SCORE_WEIGHTS).reduce((a, b) => a + b, 0);
+if (Math.abs(WEIGHT_SUM - 1.0) > 0.001) {
+  throw new Error(`Weights must sum to 1.0, got ${WEIGHT_SUM}`);
+}
 
 const MIN_CONFIDENCE_THRESHOLD = 45;
 const TOP_SET_LIMIT = 3;
@@ -124,21 +131,21 @@ function scoreWarpOnly(warp: AutoProposalWarpProfile, context: AutoProposalConte
   const coverage = scoreWarpCoverage(warp);
   const relevance = scoreWarpRelevance(warp);
   const continuity = scoreWarpContinuity(warp);
-  const contextFit = scoreContextFit(context);
+  const overlapMin = 100;
 
   const total = Math.round(
-    coverage * SCORE_WEIGHTS.coverage +
-      relevance * SCORE_WEIGHTS.relevance +
+    relevance * SCORE_WEIGHTS.relevance +
       continuity * SCORE_WEIGHTS.continuity +
-      contextFit * SCORE_WEIGHTS.contextFit
+      overlapMin * SCORE_WEIGHTS.overlapMin +
+      coverage * SCORE_WEIGHTS.coverage
   );
 
   return {
     coverage,
     relevance,
-    overlap: 0, // Removed - no boundaries to overlap with
+    overlap: overlapMin,
     continuity,
-    contextFit,
+    contextFit: 0,
     total,
   };
 }
@@ -172,20 +179,4 @@ function scoreWarpContinuity(warp: AutoProposalWarpProfile): number {
   const smoothness = Math.max(0, 100 - avgStep * 50);
 
   return Math.round(smoothness);
-}
-
-function scoreContextFit(context: AutoProposalContext): number {
-  const hasCrimeTypeFocus = context.crimeTypes.length > 0;
-  const range = Math.max(1, context.timeRange.end - context.timeRange.start);
-  const twoYearsInSeconds = 60 * 60 * 24 * 365 * 2;
-
-  let score = context.isFullDataset ? 70 : 80;
-  if (hasCrimeTypeFocus) {
-    score += 10;
-  }
-  if (range < twoYearsInSeconds) {
-    score += 5;
-  }
-
-  return Math.min(100, score);
 }
