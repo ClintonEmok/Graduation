@@ -3,7 +3,7 @@
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 **Current Phase:** 42
-**Status:** Phase complete
+**Status:** Milestone complete
 **Next:** Define v2.0 scope
 
 ## Current Position
