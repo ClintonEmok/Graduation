@@ -154,7 +154,7 @@ function scoreWarpOnly(warp: AutoProposalWarpProfile): AutoProposalScoreBreakdow
     overlap: overlapMin,
     continuity,
     total,
-  } as AutoProposalScoreBreakdown;
+  };
 }
 
 function scoreWarpCoverage(warp: AutoProposalWarpProfile): number {

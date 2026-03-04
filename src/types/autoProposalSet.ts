@@ -3,13 +3,13 @@ export interface AutoProposalScoreBreakdown {
   relevance: number
   overlap: number
   continuity: number
-  contextFit: number
   total: number
 }
 
 export interface AutoProposalReasonMetadata {
   lowConfidenceReason?: string
   noResultReason?: string
+  whyRecommended?: string
 }
 
 export interface AutoProposalWarpInterval {

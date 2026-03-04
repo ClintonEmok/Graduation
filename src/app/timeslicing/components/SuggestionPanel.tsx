@@ -196,7 +196,6 @@ export function SuggestionPanel() {
         relevance: 100,
         overlap: 100,
         continuity: 100,
-        contextFit: 100,
         total: 100,
       },
       warp: {

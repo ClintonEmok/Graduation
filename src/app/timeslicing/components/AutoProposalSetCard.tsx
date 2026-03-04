@@ -118,8 +118,6 @@ export function AutoProposalSetCard({
               <span className="text-right">{formatScore(proposalSet.score.overlap)}</span>
               <span>Continuity</span>
               <span className="text-right">{formatScore(proposalSet.score.continuity)}</span>
-              <span>Context fit</span>
-              <span className="text-right">{formatScore(proposalSet.score.contextFit)}</span>
             </div>
           </div>
 

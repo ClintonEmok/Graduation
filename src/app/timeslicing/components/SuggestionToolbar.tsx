@@ -340,7 +340,6 @@ export function SuggestionToolbar({ className }: SuggestionToolbarProps) {
       relevance: clampedConfidence,
       overlap: Math.max(0, clampedConfidence - 5),
       continuity: Math.min(100, clampedConfidence + 2),
-      contextFit: Math.min(100, clampedConfidence + 3),
       total: clampedConfidence,
     };
     const id = `debug-package-${Date.now()}`;
