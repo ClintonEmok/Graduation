@@ -151,6 +151,7 @@ export function SuggestionPanel() {
     : [startDate, endDate];
   const topRankedProposalSets = fullAutoProposalSets.slice(0, 3);
   const hasAutoProposalSetData = topRankedProposalSets.length > 0;
+  const effectiveRecommendedFullAutoSetId = recommendedFullAutoSetId ?? topRankedProposalSets[0]?.id ?? null;
   const selectedFullAutoSet =
     selectedFullAutoSetId === null
       ? null
@@ -497,7 +498,7 @@ export function SuggestionPanel() {
                 <div className="space-y-2 rounded-lg border border-slate-700/80 bg-slate-800/30 p-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">Full-auto packages</h3>
-                    {recommendedFullAutoSetId && (
+                    {effectiveRecommendedFullAutoSetId && (
                       <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
                         Ranked top 3
                       </span>
@@ -528,7 +529,8 @@ export function SuggestionPanel() {
                           key={proposalSet.id}
                           proposalSet={proposalSet}
                           isSelected={selectedFullAutoSetId === proposalSet.id}
-                          isRecommended={recommendedFullAutoSetId === proposalSet.id || proposalSet.isRecommended}
+                          isRecommended={effectiveRecommendedFullAutoSetId === proposalSet.id}
+                          whyRecommended={proposalSet.reasonMetadata?.whyRecommended}
                           onSelect={selectFullAutoProposalSet}
                           startEpoch={startDate}
                           endEpoch={endDate}
