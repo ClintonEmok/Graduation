@@ -10,6 +10,7 @@ interface AutoProposalSetCardProps {
   proposalSet: AutoProposalSet;
   isSelected: boolean;
   isRecommended: boolean;
+  whyRecommended?: string;
   onSelect: (id: string) => void;
   startEpoch?: number;
   endEpoch?: number;
@@ -34,12 +35,14 @@ export function AutoProposalSetCard({
   proposalSet,
   isSelected,
   isRecommended,
+  whyRecommended,
   onSelect,
   startEpoch,
   endEpoch,
 }: AutoProposalSetCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const lowConfidenceReason = proposalSet.reasonMetadata?.lowConfidenceReason ?? null;
+  const recommendedReason = whyRecommended ?? proposalSet.reasonMetadata?.whyRecommended ?? null;
 
   return (
     <div
@@ -90,6 +93,16 @@ export function AutoProposalSetCard({
                 Low confidence
               </div>
               <p className="mt-0.5 text-amber-200/90">{lowConfidenceReason}</p>
+            </div>
+          )}
+
+          {isRecommended && recommendedReason && (
+            <div className="mt-2 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
+              <div className="flex items-center gap-1 font-medium text-emerald-300">
+                <Sparkles className="size-3" />
+                Why recommended
+              </div>
+              <p className="mt-0.5 text-emerald-200/90">{recommendedReason}</p>
             </div>
           )}
         </div>
