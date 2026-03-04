@@ -111,15 +111,21 @@ export function generateRankedAutoProposalSets(options: {
 
   return {
     generatedAt,
-    sets: ranked.map((set) => ({
-      ...set,
-      reasonMetadata: {
+    sets: ranked.map((set) => {
+      const whyRecommended = generateWhyRecommended(set.score, SCORE_WEIGHTS);
+      const reasonMetadata = {
         ...set.reasonMetadata,
         ...(hasLowConfidence
           ? { lowConfidenceReason: 'Signal is weak for this context; review score breakdown before accepting.' }
           : {}),
-      },
-    })),
+        whyRecommended,
+      };
+
+      return {
+        ...set,
+        reasonMetadata: reasonMetadata as AutoProposalSet['reasonMetadata'],
+      };
+    }),
     recommendedId: ranked[0]?.id ?? null,
     reasonMetadata: hasLowConfidence
       ? { lowConfidenceReason: 'Low confidence output. Consider expanding date range or reducing filters.' }
@@ -240,4 +246,28 @@ function scoreOverlapMinimization(intervals: { startPercent: number; endPercent:
 
   const overlapRatio = Math.min(1, overlapLength / totalIntervalLength);
   return Math.round(100 * (1 - overlapRatio));
+}
+
+function generateWhyRecommended(
+  score: AutoProposalScoreBreakdown,
+  weights: typeof SCORE_WEIGHTS
+): string {
+  const contributions = [
+    { dimension: 'relevance', contribution: score.relevance * weights.relevance },
+    { dimension: 'continuity', contribution: score.continuity * weights.continuity },
+    { dimension: 'overlap', contribution: score.overlap * weights.overlapMin },
+    { dimension: 'coverage', contribution: score.coverage * weights.coverage },
+  ];
+
+  const topDimensions = contributions
+    .sort((a, b) => {
+      if (b.contribution !== a.contribution) {
+        return b.contribution - a.contribution;
+      }
+      return a.dimension.localeCompare(b.dimension);
+    })
+    .slice(0, 2)
+    .map((item) => item.dimension);
+
+  return `Best: ${topDimensions.join(' + ')}`;
 }
