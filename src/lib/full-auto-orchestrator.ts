@@ -74,7 +74,7 @@ export function generateRankedAutoProposalSets(options: {
   // Rank warp-only packages
   const ranked = warpCandidates
     .map((warp): AutoProposalSet => {
-      const score = scoreWarpOnly(warp, context);
+      const score = scoreWarpOnly(warp);
       return {
         id: warp.emphasis,
         rank: 0,
@@ -127,27 +127,28 @@ export function generateRankedAutoProposalSets(options: {
   };
 }
 
-function scoreWarpOnly(warp: AutoProposalWarpProfile, context: AutoProposalContext): AutoProposalScoreBreakdown {
+function scoreWarpOnly(warp: AutoProposalWarpProfile): AutoProposalScoreBreakdown {
   const coverage = scoreWarpCoverage(warp);
   const relevance = scoreWarpRelevance(warp);
   const continuity = scoreWarpContinuity(warp);
-  const overlapMin = 100;
+  const overlapMin = scoreOverlapMinimization(warp.intervals);
+  const hasOverlap = hasOverlappingIntervals(warp.intervals);
 
-  const total = Math.round(
+  const weightedSum =
     relevance * SCORE_WEIGHTS.relevance +
-      continuity * SCORE_WEIGHTS.continuity +
-      overlapMin * SCORE_WEIGHTS.overlapMin +
-      coverage * SCORE_WEIGHTS.coverage
-  );
+    continuity * SCORE_WEIGHTS.continuity +
+    overlapMin * SCORE_WEIGHTS.overlapMin +
+    coverage * SCORE_WEIGHTS.coverage;
+
+  const total = Math.round(weightedSum * (hasOverlap ? OVERLAP_PENALTY_MULTIPLIER : 1));
 
   return {
     coverage,
     relevance,
     overlap: overlapMin,
     continuity,
-    contextFit: 0,
     total,
-  };
+  } as AutoProposalScoreBreakdown;
 }
 
 function scoreWarpCoverage(warp: AutoProposalWarpProfile): number {
