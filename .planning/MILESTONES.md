@@ -1,21 +1,26 @@
 # Project Milestones: Adaptive Space-Time Cube
 
-## v1.1 Study Mode (Planned)
+## v1.3 Fully Automated Timeslicing Workflows (Shipped: 2026-03-04)
 
-**Planned:** 2026-Q1
-**Focus:** User study infrastructure and guided task mode
+**Delivered:** Fully automated timeslicing package generation and acceptance workflow with ranked recommendations and aligned package acceptance semantics.
 
-**Key Goals:**
-- Guided tutorial for first-time users
-- Task-based study mode with progress tracking
-- Time-on-task measurement
-- Results export and analysis tools
+**Phases completed:** 40-42 (14 plans total)
 
-**Requirements to Address:**
-- STUDY-01: Guided tutorial
-- STUDY-03: Specific exploration tasks
-- STUDY-04: Time-on-task metrics
-- STUDY-05: Session progress tracking
+**Key accomplishments:**
+
+- Full-auto generation pipeline produces ranked top-3 proposal sets from active context
+- Four-dimension scoring and recommendation rationale (`whyRecommended`) are deterministic and visible
+- Package acceptance applies reviewed warp and interval artifacts consistently in one flow
+- Manual rerun and safeguard behaviors (no-result and low-confidence) remain stable after contract alignment
+
+**Stats:**
+
+- 14 plans, 14 summaries, 32 planned tasks
+- 3 phases completed
+- 3 days from first phase-40 commit to phase-42 completion (2026-03-02 -> 2026-03-04)
+- Git range: `feat(40-01)` -> `docs(42-01)`
+
+**What's next:** v2.0 scope definition for spatially-constrained 3D timeslicing and cross-view diagnostics
 
 ---
 
@@ -47,4 +52,4 @@
 
 ---
 
-*For detailed phase information, see .planning/milestones/v1.0-ROADMAP.md*
+*For detailed phase information, see .planning/milestones/v1.3-ROADMAP.md and .planning/milestones/v1.0-ROADMAP.md*

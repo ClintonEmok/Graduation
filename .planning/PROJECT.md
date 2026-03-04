@@ -8,20 +8,22 @@ An interactive web prototype that redesigns the Space-Time Cube visualization to
 
 Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 
-## Current State (v1.1 In Progress)
+## Current State (v1.3 Shipped)
 
-**Shipped:** v1.0 Thesis Prototype (2026-02-07)
-**Active:** v1.1 Manual Timeslicing
-**Status:** 🚧 Planning Phase
+**Shipped milestones:**
+- v1.0 Thesis Prototype (2026-02-07)
+- v1.1 Manual Timeslicing (2026-02-22)
+- v1.2 Semi-Automated Timeslicing Workflows (2026-02-27)
+- v1.3 Fully Automated Timeslicing Workflows (2026-03-04)
 
-**v1.1 Goal:** Transform the timeline from a passive navigation tool into an active analysis instrument where users manually create, visualize, and adjust time regions based on event density patterns.
+**Current status:** Milestone complete, post-audit (non-blocking tech debt only)
+**Next focus:** Define v2.0 scope for spatially-constrained 3D timeslicing and cross-view diagnostics
 
-**Timeline-First Approach:**
-- Visual density regions on timeline
-- Manual slice creation (click/drag)
-- Boundary adjustment with handles
-- Multi-slice support with metadata
-- Timeline-only (2D/3D sync in v1.2+)
+**v1.3 delivered:**
+- Full-auto ranked proposal generation from active context
+- Four-dimension scoring and recommendation rationale
+- Package acceptance flow aligned to apply reviewed artifacts consistently
+- Safeguards and manual rerun behaviors preserved after contract alignment
 
 ## Requirements
 
@@ -39,26 +41,23 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - ✅ **Interaction logging** — v1.0
 - ✅ **Free exploration mode** — v1.0
 
-### Active (v1.1 - Manual Timeslicing)
+### Completed (v1.1-v1.3)
 
-- [ ] **DENS-01 to DENS-04**: Timeline density visualization
-- [ ] **SLICE-01 to SLICE-05**: Manual slice creation
-- [ ] **ADJUST-01 to ADJUST-06**: Boundary adjustment
-- [ ] **MULTI-01 to MULTI-06**: Multi-slice management
-- [ ] **META-01 to META-05**: Slice metadata
-- [ ] **INTEG-01 to INTEG-04**: Timeline integration
+- [x] **DENS-01 to DENS-04**: Timeline density visualization
+- [x] **SLICE-01 to SLICE-05**: Manual slice creation
+- [x] **ADJUST-01 to ADJUST-06**: Boundary adjustment
+- [x] **MULTI-01 to MULTI-06**: Multi-slice management
+- [x] **META-01 to META-05**: Slice metadata
+- [x] **INTEG-01 to INTEG-04**: Timeline integration
+- [x] **Semi-automated workflows**: Suggest/review/accept/modify/reject loop
+- [x] **Fully automated workflows**: Ranked package generation + acceptance
 
 ### Planned (Future Milestones)
 
-**v1.2 Semi-Automated:**
-- [ ] AI-assisted slice suggestions
-- [ ] User review/confirm/adjust workflow
-- [ ] Confidence scores
-
-**v1.3 Fully Automated:**
-- [ ] Optimal automatic generation
-- [ ] Multiple algorithm options
-- [ ] Complete user review
+**v2.0 Spatially constrained timeslicing:**
+- [ ] Spatially-aware warp and interval generation
+- [ ] Cross-view validation (timeline/map/cube)
+- [ ] Spatial diagnostics for review
 
 **v1.2+ Cross-View:**
 - [ ] 2D/3D slice visualization
@@ -113,14 +112,14 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 | Arrow IPC streaming | Binary columnar format | ✅ Efficient 1.2M record handling |
 | Phase 10 deferred | Prioritize core visualization | ✅ Thesis answerable without guided tasks |
 
-### For v1.1 (New)
+### For v1.1-v1.3 (Executed)
 
 | Decision | Rationale | Status |
 |----------|-----------|--------|
-| Timeline-first approach | Solid foundation before cross-view | 🚧 Decided |
-| Manual before automated | Learn user needs, then optimize | 🚧 Decided |
-| Three milestone approach | Clarity, incremental complexity | 🚧 Decided |
-| v1.1 = manual only | Focus, avoid scope creep | 🚧 Decided |
+| Timeline-first approach | Solid foundation before cross-view | ✅ Shipped |
+| Manual before automated | Learn user needs, then optimize | ✅ Shipped |
+| Three milestone approach | Clarity, incremental complexity | ✅ Shipped |
+| Package-complete acceptance alignment | Match reviewed artifacts to applied artifacts | ✅ Shipped (Phase 42) |
 
 ## Technical Debt
 
@@ -131,9 +130,10 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - LSP false positives
 - React 19 vs Visx peer deps
 
-**v1.1 Opportunities:**
+**Current opportunities:**
+- Clean up debug-only `Test Extreme Warp` contract drift in acceptance path
 - Clean up orphaned feature flags or implement gating
-- Consider removing unused /api/crime/facets endpoint
+- Consider removing unused `/api/crime/facets` endpoint
 
 ---
-*Last updated: 2026-02-16 - v1.1 Manual Timeslicing planning*
+*Last updated: 2026-03-04 - v1.3 milestone completed and archived for v2.0 planning*
