@@ -2,17 +2,17 @@
 
 **Project:** Adaptive Space-Time Cube
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
-**Current Phase:** 41
-**Status:** Milestone complete
+**Current Phase:** 42
+**Status:** Phase complete
 **Next:** Define v2.0 scope
 
 ## Current Position
-Phase: **41 of 41** (Full-Auto Optimization & Ranking)
-Plan: **2 of 2** in current phase
+Phase: **42 of 42** (Full-Auto Package Acceptance Alignment)
+Plan: **1 of 1** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-04 - Completed 41-02-PLAN.md (why-recommended UI, 4-dim score breakdown, ranked badge alignment)
+Last activity: 2026-03-04 - Completed 42-01-PLAN.md (package-complete full-auto generation + acceptance alignment)
 
-Progress: overall ████████████████████ 100% (159/159 plans) | v1.3 ████████████████████ 100% phases (4/4)
+Progress: overall ████████████████████ 100% (160/160 plans) | v1.3 ████████████████████ 100% phases (5/5)
 
 ```
 v1.0 Complete:
@@ -39,6 +39,7 @@ v1.3 Complete:
 [x] Phase 39: Timeline UX Improvements (4/4 plans complete)
 [x] Phase 40: Fully Automated Timeslicing Orchestration (10/10 plans complete)
 [x] Phase 41: Full-Auto Optimization & Ranking (2/2 plans complete)
+[x] Phase 42: Full-Auto Package Acceptance Alignment (1/1 plans complete)
 ```
 
 ## Performance Metrics
@@ -257,8 +258,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-16)
 
 ## Session Continuity
 
-Last session: 2026-03-04 17:29 UTC
-Stopped at: Completed 41-02-PLAN.md
+Last session: 2026-03-04 21:56 UTC
+Stopped at: Completed 42-01-PLAN.md
 Resume file: None
 Next: Define v2.0 scope
 
@@ -515,5 +516,18 @@ Next: Define v2.0 scope
 **Next focus:**
 - v1.3 complete; evaluate v2.0 scope and priorities
 
+### Phase 42 Progress (2026-03-04)
+**Prerequisites from Phase 41:**
+- ✅ Ranking/recommendation contract stabilized with whyRecommended metadata
+
+**Delivered in 42-01 (Package acceptance alignment gap closure):**
+- Updated full-auto orchestrator to produce package-complete ranked sets (warp + intervals) for normal generation.
+- Kept ranking/recommendation determinism intact (weights, sort order, recommendedId, whyRecommended).
+- Added acceptance artifact planner with legacy degraded warning path so missing/invalid intervals no longer crash acceptance.
+- Added regression tests for package completeness, deterministic ordering, whyRecommended invariants, and manual rerun status semantics.
+
+**Next focus:**
+- v1.3 audit gap closed; proceed with v2.0 scope definition and prioritization.
+
 ---
-*Last updated: 2026-03-04 - Completed 41-02 recommendation display and ranking UI refinement (Phase 41 complete)*
+*Last updated: 2026-03-04 - Completed 42-01 package acceptance alignment and audit gap closure (Phase 42 complete)*
