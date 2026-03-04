@@ -6,7 +6,7 @@
 - ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
 - 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
 - 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-39 (suggested warp profiles + suggested intervals + review)
-- 📋 **v1.3 Fully Automated Timeslicing Workflows** — Phase 40-42 (automatic warp + interval generation + review)
+- ✅ **v1.3 Fully Automated Timeslicing Workflows** — Phases 40-41 (shipped 2026-03-04)
 - 📋 **v2.0** — Additional datasets and advanced analytics (future)
 
 ---
@@ -298,7 +298,7 @@ Plans:
 - User reviews and fine-tunes generated outputs
 - Multiple algorithm options (density-based, event-based, etc.)
 
-**Phases:** 40-42 (planned)
+**Phases:** 40-41 (complete)
 
 ### v2.0 Spatially-Constrained 3D Timeslicing (future)
 
@@ -334,7 +334,6 @@ Plans:
 | 39 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-03-02 |
 | 40 | v1.3 Fully Automated Timeslicing | 9/9 | ✅ Complete | 2026-03-02 |
 | 41 | v1.3 Fully Automated Timeslicing | 2/2 | ✅ Complete | 2026-03-04 |
-| 42 | v1.3 Fully Automated Timeslicing | 0/0 | Pending | - |
 
 ### Phase 39: Timeline UX Improvements
 
@@ -401,17 +400,7 @@ Plans:
 
 ### Phase 42: Full-Auto Review & Finalization
 
-**Goal:** Finalize end-to-end full-auto workflow with robust review, acceptance, and rerun behavior.
-**Depends on:** Phase 41
-**Plans:** 0 plans (to be planned)
-
-**Details:**
-- Complete user review and acceptance loop for auto-generated sets
-- Add low-confidence/no-result handling and rerun pathways
-- Ensure final workflow consistency with existing suggestion UX
-
-**Plan Overview:**
-- [ ] TBD — create via /gsd/plan-phase 42
+**Status:** Not required for v1.3. Scope closed after Phase 41.
 
 ---
 
@@ -420,7 +409,6 @@ Plans:
 Plans:
 - [x] Phase 40 plans — Complete (10/10)
 - [x] Phase 41 plans — Complete (2/2)
-- [ ] Phase 42 plans — TBD
 
 ---
 
