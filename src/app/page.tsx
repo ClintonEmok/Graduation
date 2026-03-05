@@ -20,12 +20,18 @@ export default function Home() {
             Adaptive Time Scaling for Bursty Data
           </h1>
 
-          <div className="mt-11 flex w-full max-w-md flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          <div className="mt-11 flex w-full max-w-xl flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:justify-center">
             <Link
               href="/timeline-test"
               className="inline-flex min-w-[220px] items-center justify-center rounded-full bg-[#0071e3] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#0077ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] focus-visible:ring-offset-2"
             >
               Open timeline test
+            </Link>
+            <Link
+              href="/timeline-test-3d"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#3b82f6]/60 bg-[#0b1f34] px-7 py-3 text-sm font-semibold text-[#dbeafe] transition hover:border-[#60a5fa] hover:bg-[#102b45] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa] focus-visible:ring-offset-2"
+            >
+              Open timeline test 3D
             </Link>
             <span className="text-sm text-[#8e8e93]">Built for current QA cycle.</span>
           </div>

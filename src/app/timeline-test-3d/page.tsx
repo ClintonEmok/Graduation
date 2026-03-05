@@ -23,6 +23,7 @@ import {
   buildSliceAuthoredWarpMap,
   remapSelectionPercentToDomainPercent,
 } from "./lib/route-orchestration";
+import { TimelineTest3DScene } from "./components/TimelineTest3DScene";
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -371,25 +372,28 @@ export default function TimelineTest3DPage() {
           </div>
         </section>
 
-        <section className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
-          {isLoading ? (
-            <div className="flex h-40 items-center justify-center text-slate-400">
-              Loading crime data...
-            </div>
-          ) : error ? (
-            <div className="flex h-40 items-center justify-center text-red-400">
-              Error loading data: {error.message}
-            </div>
-          ) : (
-            <DualTimeline
-              adaptiveWarpMapOverride={
-                warpSource === "slice-authored" ? authoredWarpMap : undefined
-              }
-              adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
-              detailRangeOverride={[selectionStart, selectionEnd]}
-              disableAutoBurstSlices={true}
-            />
-          )}
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
+            {isLoading ? (
+              <div className="flex h-40 items-center justify-center text-slate-400">
+                Loading crime data...
+              </div>
+            ) : error ? (
+              <div className="flex h-40 items-center justify-center text-red-400">
+                Error loading data: {error.message}
+              </div>
+            ) : (
+              <DualTimeline
+                adaptiveWarpMapOverride={
+                  warpSource === "slice-authored" ? authoredWarpMap : undefined
+                }
+                adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
+                detailRangeOverride={[selectionStart, selectionEnd]}
+                disableAutoBurstSlices={true}
+              />
+            )}
+          </div>
+          <TimelineTest3DScene />
         </section>
       </div>
     </main>
