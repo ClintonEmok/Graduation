@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { FilterOverlay } from '@/components/viz/FilterOverlay';
+import { IntervalProposalPanel } from './IntervalProposalPanel';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useTimeStore } from '@/store/useTimeStore';
 
 type SandboxContextPanelProps = {
@@ -13,6 +15,14 @@ type SandboxContextPanelProps = {
 };
 
 const formatBounds = (value: number) => value.toFixed(2);
+
+const formatGenerationLabel = (value: number | null) => {
+  if (value === null) {
+    return 'Not generated';
+  }
+
+  return new Date(value).toLocaleTimeString();
+};
 
 export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPanelProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -31,6 +41,11 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
+  const intervalProposals = useIntervalProposalStore((state) => state.proposals);
+  const selectedIntervalProposalId = useIntervalProposalStore((state) => state.selectedProposalId);
+  const intervalGeneration = useIntervalProposalStore((state) => state.generation);
+
+  const selectedIntervalProposal = intervalProposals.find((proposal) => proposal.id === selectedIntervalProposalId) ?? null;
 
   const activeFilterCount = getActiveFilterCount();
   const datasetLabel = isLoading
@@ -174,6 +189,25 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
           <dd className="break-all text-slate-100">{spatialLabel}</dd>
         </div>
       </dl>
+
+      <dl className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-slate-400">Interval proposals</dt>
+          <dd className="text-right text-slate-100">{intervalProposals.length}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-slate-400">Selected interval</dt>
+          <dd className="text-right text-slate-100">
+            {selectedIntervalProposal ? selectedIntervalProposal.label : 'None'}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-slate-400">Interval generated</dt>
+          <dd className="text-right text-slate-100">{formatGenerationLabel(intervalGeneration.generatedAt)}</dd>
+        </div>
+      </dl>
+
+      <IntervalProposalPanel />
 
       <button
         type="button"
