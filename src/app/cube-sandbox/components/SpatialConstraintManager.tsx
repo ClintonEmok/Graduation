@@ -2,38 +2,25 @@
 
 import { useMemo, useState } from 'react';
 import {
-  type AxisAlignedCubeBounds,
   useCubeSpatialConstraintsStore,
 } from '@/store/useCubeSpatialConstraintsStore';
+import { useDataStore } from '@/store/useDataStore';
+import { getDistrictName } from '@/lib/category-maps';
 
-type BoundsKey = keyof AxisAlignedCubeBounds;
+const DEFAULT_TEMPORAL_BOUNDS = { minY: 0, maxY: 10 };
 
-const DEFAULT_BOUNDS: AxisAlignedCubeBounds = {
-  minX: 0,
-  maxX: 10,
-  minY: 0,
-  maxY: 10,
-  minZ: 0,
-  maxZ: 10,
-};
-
-const BOUNDS_FIELDS: Array<{ key: BoundsKey; label: string }> = [
-  { key: 'minX', label: 'Min X' },
-  { key: 'maxX', label: 'Max X' },
-  { key: 'minY', label: 'Min Y' },
-  { key: 'maxY', label: 'Max Y' },
-  { key: 'minZ', label: 'Min Z' },
-  { key: 'maxZ', label: 'Max Z' },
-];
-
-const formatNumber = (value: number) => Number.isFinite(value) ? value.toString() : '0';
-
-const toNumber = (value: string, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+type DistrictConstraintSeed = {
+  districtId: number;
+  districtCode: string;
+  count: number;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
 };
 
 export function SpatialConstraintManager() {
+  const columns = useDataStore((state) => state.columns);
   const constraints = useCubeSpatialConstraintsStore((state) => state.constraints);
   const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
   const createConstraint = useCubeSpatialConstraintsStore((state) => state.createConstraint);
@@ -42,72 +29,120 @@ export function SpatialConstraintManager() {
   const toggleConstraintEnabled = useCubeSpatialConstraintsStore((state) => state.toggleConstraintEnabled);
   const setActiveConstraint = useCubeSpatialConstraintsStore((state) => state.setActiveConstraint);
 
-  const [draftLabel, setDraftLabel] = useState('');
-  const [draftColorToken, setDraftColorToken] = useState('');
-  const [draftBounds, setDraftBounds] = useState<Record<BoundsKey, string>>({
-    minX: formatNumber(DEFAULT_BOUNDS.minX),
-    maxX: formatNumber(DEFAULT_BOUNDS.maxX),
-    minY: formatNumber(DEFAULT_BOUNDS.minY),
-    maxY: formatNumber(DEFAULT_BOUNDS.maxY),
-    minZ: formatNumber(DEFAULT_BOUNDS.minZ),
-    maxZ: formatNumber(DEFAULT_BOUNDS.maxZ),
-  });
+  const [draftDistrictId, setDraftDistrictId] = useState('');
 
   const sortedConstraints = useMemo(
     () => [...constraints].sort((a, b) => b.updatedAt - a.updatedAt),
     [constraints]
   );
 
-  const resetDraft = () => {
-    setDraftLabel('');
-    setDraftColorToken('');
-    setDraftBounds({
-      minX: formatNumber(DEFAULT_BOUNDS.minX),
-      maxX: formatNumber(DEFAULT_BOUNDS.maxX),
-      minY: formatNumber(DEFAULT_BOUNDS.minY),
-      maxY: formatNumber(DEFAULT_BOUNDS.maxY),
-      minZ: formatNumber(DEFAULT_BOUNDS.minZ),
-      maxZ: formatNumber(DEFAULT_BOUNDS.maxZ),
-    });
-  };
+  const districtSeeds = useMemo<DistrictConstraintSeed[]>(() => {
+    if (!columns || columns.length === 0) {
+      return [];
+    }
 
-  const handleCreateConstraint = () => {
-    const normalizedLabel = draftLabel.trim();
-    if (!normalizedLabel) {
+    const buckets = new Map<number, DistrictConstraintSeed>();
+    const { district, x, z, length } = columns;
+
+    for (let index = 0; index < length; index += 1) {
+      const districtId = district[index] ?? 0;
+      if (districtId <= 0) {
+        continue;
+      }
+
+      const pointX = x[index];
+      const pointZ = z[index];
+
+      if (!Number.isFinite(pointX) || !Number.isFinite(pointZ)) {
+        continue;
+      }
+
+      const existing = buckets.get(districtId);
+      if (existing) {
+        existing.count += 1;
+        existing.minX = Math.min(existing.minX, pointX);
+        existing.maxX = Math.max(existing.maxX, pointX);
+        existing.minZ = Math.min(existing.minZ, pointZ);
+        existing.maxZ = Math.max(existing.maxZ, pointZ);
+        continue;
+      }
+
+      buckets.set(districtId, {
+        districtId,
+        districtCode: getDistrictName(districtId),
+        count: 1,
+        minX: pointX,
+        maxX: pointX,
+        minZ: pointZ,
+        maxZ: pointZ,
+      });
+    }
+
+    return [...buckets.values()].sort((left, right) => left.districtId - right.districtId);
+  }, [columns]);
+
+  const temporalBounds = useMemo(() => {
+    if (!columns || columns.length === 0) {
+      return DEFAULT_TEMPORAL_BOUNDS;
+    }
+
+    let minY = Number.POSITIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (let index = 0; index < columns.length; index += 1) {
+      const value = columns.timestamp[index];
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+      minY = Math.min(minY, value);
+      maxY = Math.max(maxY, value);
+    }
+
+    if (!Number.isFinite(minY) || !Number.isFinite(maxY)) {
+      return DEFAULT_TEMPORAL_BOUNDS;
+    }
+
+    return { minY, maxY };
+  }, [columns]);
+
+  const availableDistrictIds = useMemo(() => {
+    return new Set(
+      constraints
+        .map((constraint) => {
+          const match = constraint.label.match(/^District\s+(\d{3})$/i);
+          return match?.[1] ? Number(match[1]) : null;
+        })
+        .filter((value): value is number => value !== null)
+    );
+  }, [constraints]);
+
+  const handleCreateFromDistrict = () => {
+    const districtId = Number(draftDistrictId);
+    if (!Number.isFinite(districtId) || districtId <= 0) {
       return;
     }
 
-    const bounds: AxisAlignedCubeBounds = {
-      minX: toNumber(draftBounds.minX, DEFAULT_BOUNDS.minX),
-      maxX: toNumber(draftBounds.maxX, DEFAULT_BOUNDS.maxX),
-      minY: toNumber(draftBounds.minY, DEFAULT_BOUNDS.minY),
-      maxY: toNumber(draftBounds.maxY, DEFAULT_BOUNDS.maxY),
-      minZ: toNumber(draftBounds.minZ, DEFAULT_BOUNDS.minZ),
-      maxZ: toNumber(draftBounds.maxZ, DEFAULT_BOUNDS.maxZ),
-    };
+    const seed = districtSeeds.find((item) => item.districtId === districtId);
+    if (!seed) {
+      return;
+    }
 
     createConstraint({
-      label: normalizedLabel,
-      geometry: {
-        shape: 'axis-aligned-cube',
-        bounds,
-      },
-      colorToken: draftColorToken.trim() || undefined,
-    });
-
-    resetDraft();
-  };
-
-  const handleUpdateBounds = (constraintId: string, bounds: AxisAlignedCubeBounds, key: BoundsKey, value: string) => {
-    updateConstraint(constraintId, {
+      label: `District ${seed.districtCode}`,
       geometry: {
         shape: 'axis-aligned-cube',
         bounds: {
-          ...bounds,
-          [key]: toNumber(value, bounds[key]),
+          minX: seed.minX,
+          maxX: seed.maxX,
+          minY: temporalBounds.minY,
+          maxY: temporalBounds.maxY,
+          minZ: seed.minZ,
+          maxZ: seed.maxZ,
         },
       },
     });
+
+    setDraftDistrictId('');
   };
 
   return (
@@ -118,47 +153,39 @@ export function SpatialConstraintManager() {
       </header>
 
       <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-        <input
-          type="text"
-          value={draftLabel}
-          onChange={(event) => setDraftLabel(event.target.value)}
-          placeholder="Constraint label"
-          className="h-8 w-full rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100 placeholder:text-slate-500"
-        />
-        <input
-          type="text"
-          value={draftColorToken}
-          onChange={(event) => setDraftColorToken(event.target.value)}
-          placeholder="Color token (optional)"
-          className="h-8 w-full rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100 placeholder:text-slate-500"
-        />
+        <div className="space-y-1 rounded-md border border-slate-700/70 bg-slate-950/70 p-2">
+          <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Quick add by district</p>
+          <p className="text-[11px] text-slate-500">
+            Pick a Chicago district to create a spatial constraint automatically.
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              value={draftDistrictId}
+              onChange={(event) => setDraftDistrictId(event.target.value)}
+              className="h-8 flex-1 rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100"
+            >
+              <option value="">Select district</option>
+              {districtSeeds.map((seed) => {
+                const alreadyAdded = availableDistrictIds.has(seed.districtId);
+                return (
+                  <option key={seed.districtId} value={seed.districtId} disabled={alreadyAdded}>
+                    District {seed.districtCode} ({seed.count.toLocaleString()} events)
+                    {alreadyAdded ? ' - already added' : ''}
+                  </option>
+                );
+              })}
+            </select>
 
-        <div className="grid grid-cols-2 gap-2">
-          {BOUNDS_FIELDS.map((field) => (
-            <label key={field.key} className="space-y-1 text-[10px] text-slate-400">
-              <span>{field.label}</span>
-              <input
-                type="number"
-                value={draftBounds[field.key]}
-                onChange={(event) =>
-                  setDraftBounds((current) => ({
-                    ...current,
-                    [field.key]: event.target.value,
-                  }))
-                }
-                className="h-8 w-full rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100"
-              />
-            </label>
-          ))}
+            <button
+              type="button"
+              onClick={handleCreateFromDistrict}
+              disabled={!draftDistrictId}
+              className="inline-flex h-8 items-center justify-center rounded-md border border-cyan-400/70 bg-cyan-500/10 px-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add
+            </button>
+          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={handleCreateConstraint}
-          className="inline-flex h-8 w-full items-center justify-center rounded-md border border-cyan-400/70 bg-cyan-500/10 text-xs font-medium text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/20"
-        >
-          Add constraint
-        </button>
       </div>
 
       <div className="space-y-2">
@@ -170,7 +197,6 @@ export function SpatialConstraintManager() {
 
         {sortedConstraints.map((constraint) => {
           const isActive = activeConstraintId === constraint.id;
-          const bounds = constraint.geometry.bounds;
 
           return (
             <article key={constraint.id} className="space-y-2 rounded-lg border border-slate-800 bg-slate-900/80 p-2">
@@ -192,20 +218,6 @@ export function SpatialConstraintManager() {
                 >
                   {isActive ? 'Active' : 'Set active'}
                 </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {BOUNDS_FIELDS.map((field) => (
-                  <label key={`${constraint.id}-${field.key}`} className="space-y-1 text-[10px] text-slate-400">
-                    <span>{field.label}</span>
-                    <input
-                      type="number"
-                      value={formatNumber(bounds[field.key])}
-                      onChange={(event) => handleUpdateBounds(constraint.id, bounds, field.key, event.target.value)}
-                      className="h-8 w-full rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100"
-                    />
-                  </label>
-                ))}
               </div>
 
               <div className="flex items-center justify-between gap-2">

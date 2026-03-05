@@ -12,6 +12,8 @@ import { Html } from '@react-three/drei';
 import { useFilterStore } from '@/store/useFilterStore';
 import { normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useTimeStore } from '@/store/useTimeStore';
 
 // Full date range constants from the dataset (2001-2026)
 const DATA_MIN_TIMESTAMP = 978307200;  // 2001-01-01
@@ -33,6 +35,10 @@ export function SimpleCrimePoints() {
 
   const theme = useThemeStore((state) => state.theme);
   const palette = PALETTES[theme];
+  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const warpMap = useAdaptiveStore((state) => state.warpMap);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   // Use unified useCrimeData hook with viewport bounds
   const { data: crimeRecords, isLoading } = useCrimeData({
@@ -114,10 +120,27 @@ export function SimpleCrimePoints() {
 
     console.log('[SimpleCrimePoints] data range: minXData:', minXData, 'maxXData:', maxXData, 'xRange:', xRange, 'data.length:', data.length);
 
-    // Normalize time to 0-100
-    const normalizeTime = (timestamp: number) => {
-      return ((timestamp - minYData) / yRange) * 100 - 50;
+    const sampleWarp = (inputT: number) => {
+      if (!warpMap || warpMap.length === 0) return inputT;
+      const [domainMin, domainMax] = mapDomain;
+      const domainSpan = domainMax - domainMin || 1;
+      const normalized = (inputT - domainMin) / domainSpan;
+      const clamped = Math.max(0, Math.min(1, normalized));
+      const idx = clamped * (warpMap.length - 1);
+      const low = Math.floor(idx);
+      const high = Math.min(low + 1, warpMap.length - 1);
+      const frac = idx - low;
+      return warpMap[low] * (1 - frac) + warpMap[high] * frac;
     };
+
+    const toDisplayY = (value: number, assumeNormalizedDomain: boolean) => {
+      if (assumeNormalizedDomain) {
+        return value - 50;
+      }
+      return ((value - minYData) / yRange) * 100 - 50;
+    };
+
+    const usesNormalizedDomain = mapDomain[0] >= 0 && mapDomain[1] <= 100;
 
     for (let i = 0; i < data.length; i += 1) {
       const record = data[i];
@@ -152,7 +175,18 @@ export function SimpleCrimePoints() {
 
       // Use normalized x, z from record directly
       const x = ((record.x - minXData) / xRange) * 100 - 50;
-      const y = ((yRaw - minYData) / yRange) * 100 - 50;
+      const linearY = ((yRaw - minYData) / yRange) * 100 - 50;
+
+      let adaptiveInput = yRaw;
+      if (usesNormalizedDomain) {
+        adaptiveInput = ((yRaw - minYData) / yRange) * 100;
+      }
+      const adaptiveSample = sampleWarp(adaptiveInput);
+      const adaptiveY = toDisplayY(adaptiveSample, usesNormalizedDomain);
+      const y =
+        timeScaleMode === 'adaptive'
+          ? linearY * (1 - warpFactor) + adaptiveY * warpFactor
+          : linearY;
       const z = ((record.z - minZData) / zRange) * 100 - 50;
 
       const color = resolveColor(record.type);
@@ -174,10 +208,14 @@ export function SimpleCrimePoints() {
     maxTimestampSec,
     minTimestampSec,
     palette,
+    mapDomain,
     selectedDistricts,
     selectedSpatialBounds,
     selectedTimeRange,
-    selectedTypes
+    selectedTypes,
+    timeScaleMode,
+    warpFactor,
+    warpMap
   ]);
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);

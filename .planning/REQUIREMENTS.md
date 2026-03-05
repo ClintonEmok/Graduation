@@ -1,98 +1,103 @@
-# Requirements: v1.1 Manual Timeslicing
+# Requirements: v2.0 Cube-First Space-Time Slicing Sandbox
 
-**Milestone:** v1.1  
-**Defined:** 2026-02-16  
-**Core Value:** Users can manually segment the timeline into meaningful time regions by visually identifying density patterns and precisely adjusting region boundaries through direct manipulation.
+**Milestone:** v2.0  
+**Defined:** 2026-03-05  
+**Core Value:** Users can create, test, and validate space-time slicing directly in a dedicated 3D sandbox route, with timeline/map integration deferred unless needed for cube outcomes.
 
-## v1.1 Requirements
+## v2.0 Requirements
 
-### Timeline Density Visualization
+### Sandbox Route Foundation
 
-- [x] **DENS-01**: Timeline renders event density as clear visual regions (bars, gradient, or heat)
-- [x] **DENS-02**: High-density areas are visually distinct from low-density areas
-- [x] **DENS-03**: Density visualization updates when filters change
-- [x] **DENS-04**: Density scale is consistent and readable
+- [ ] **ROUTE-01**: A dedicated route exists for 3D timeslicing sandbox workflows (separate from production analysis routes)
+- [ ] **ROUTE-02**: Sandbox route can load with thesis-scale default dataset and initial cube state without full-app dependency coupling
+- [ ] **ROUTE-03**: Sandbox route exposes active context (dataset, filters, spatial bounds, warp mode) in a compact debug panel
+- [ ] **ROUTE-04**: Sandbox state resets/reloads safely for rapid experimentation in one session
 
-### Manual Slice Creation
+### Cube Spatial Context Setup
 
-- [x] **SLICE-01**: User can create a time slice by clicking on timeline
-- [x] **SLICE-02**: User can create a time slice by dragging to define range
-- [x] **SLICE-03**: New slices have default duration (e.g., 1 hour) or match drag extent
-- [x] **SLICE-04**: Visual feedback during creation (preview region)
-- [x] **SLICE-05**: Slice appears immediately upon creation
+- [ ] **CSPAT-01**: User can define one or more spatial constraint regions for the cube workflow (selection, polygon, or named zone)
+- [ ] **CSPAT-02**: Spatial constraints can be enabled or disabled without losing definitions
+- [ ] **CSPAT-03**: Constraint definitions are visible as first-class indicators inside cube interactions
+- [ ] **CSPAT-04**: Constraint configuration persists during sandbox session interactions
 
-### Slice Boundary Adjustment
+### Cube-Constrained Warp Proposals
 
-- [x] **ADJUST-01**: Each slice has draggable start handle
-- [x] **ADJUST-02**: Each slice has draggable end handle
-- [x] **ADJUST-03**: Handles are visually distinct and easy to target
-- [x] **ADJUST-04**: Dragging updates slice boundary in real-time
-- [x] **ADJUST-05**: Minimum slice duration enforced (e.g., 5 minutes)
-- [x] **ADJUST-06**: Snap-to-neighboring-slice option
+- [ ] **CWARP-01**: System can generate adaptive warp proposals that prioritize selected cube spatial constraints
+- [ ] **CWARP-02**: Warp proposal details include rationale indicators (for example: density concentration, hotspot coverage)
+- [ ] **CWARP-03**: User can apply a proposal and immediately see updated temporal deformation on cube axes
 
-### Multi-Slice Management
+### Cube-Aware Interval Proposals
 
-- [ ] **MULTI-01**: Multiple slices can exist simultaneously
-- [ ] **MULTI-02**: Overlapping slices are visually indicated
-- [ ] **MULTI-03**: Adjacent slices can be merged
-- [ ] **MULTI-04**: User can select active slice (for editing)
-- [ ] **MULTI-05**: User can delete individual slices
-- [ ] **MULTI-06**: User can clear all slices
+- [ ] **CINTV-01**: System proposes slice intervals that account for temporal bursts within selected cube spatial context
+- [ ] **CINTV-02**: Proposed intervals include confidence or quality signals
+- [ ] **CINTV-03**: User can edit proposal boundaries while preserving constraint-awareness feedback
 
-### Slice Metadata
+### Cube-First Validation Loop
 
-- [ ] **META-01**: Each slice has editable name
-- [ ] **META-02**: Each slice has selectable color
-- [ ] **META-03**: Each slice has optional notes field
-- [ ] **META-04**: Metadata is editable via inline panel or modal
-- [ ] **META-05**: Metadata persists during session
+- [ ] **CVAL-01**: Selecting a proposed or accepted slice highlights relevant events consistently in cube views/panels
+- [ ] **CVAL-02**: Changing slice state (accepted/rejected/edited) updates cube visual state within one interaction cycle
+- [ ] **CVAL-03**: User can compare uniform vs adaptive cube representations with overlays kept aligned
 
-### Timeline Integration
+### Review Workflow
 
-- [ ] **INTEG-01**: Slices render above or below density visualization
-- [ ] **INTEG-02**: Slices don't obstruct timeline navigation (brush, zoom)
-- [ ] **INTEG-03**: Selected slice is visually highlighted
-- [ ] **INTEG-04**: Hover shows slice metadata tooltip
+- [ ] **REVIEW-01**: User can accept, modify, or reject each proposed warp/interval item
+- [ ] **REVIEW-02**: Review state is visible as a list with status markers and quick navigation
+- [ ] **REVIEW-03**: User can revert the latest review action without losing proposal provenance
 
-### Performance
+### Cube Diagnostics and Analytics
 
-- [ ] **PERF-01**: Creating slice < 100ms
-- [ ] **PERF-02**: Adjusting boundary < 50ms (real-time)
-- [ ] **PERF-03**: 50+ slices without UI lag
+- [ ] **DIAG-01**: User can view per-slice spatial diagnostics (coverage by area/cluster)
+- [ ] **DIAG-02**: User can inspect how accepted slices differ from baseline uniform slicing metrics
+- [ ] **DIAG-03**: Diagnostics can be filtered by active data context (for example crime category)
 
-## Out of Scope (v1.1)
+### Quality and Responsiveness
 
-**Terminology note:**
-- Timeslicing = adaptive time warping
-- Slice workflows = interval suggestion/acceptance/rejection layered on timeslicing
-- v1.1 already includes automated (density-driven) and manual (user-authored) timeslicing modes
+- [ ] **QUAL-01**: Proposal generation and first render complete quickly enough for interactive use (< 2s target under thesis dataset scale)
+- [ ] **QUAL-02**: Slice edits and cube highlight updates feel real-time (< 100ms target for direct manipulation)
+- [ ] **QUAL-03**: Workflow remains usable with at least 100 proposal/slice items without blocking UI interactions
+
+## Out of Scope (v2.0)
 
 | Feature | Reason |
 |---------|--------|
-| 2D/3D slice visualization | Timeline-only focus for v1.1 |
-| Slice statistics/analytics | Keep scope minimal |
-| Semi-automated suggestions | v1.2 feature |
-| Fully automated generation | v1.3 feature |
-| Cross-view synchronization | v1.2+ feature |
-| Slice persistence (save/load) | Session-only for v1.1 |
-| Export functionality | Analytics milestone |
+| Full timeline-map-cube parity by default | v2.0 is cube-first; broad parity can be added later if needed |
+| Multi-dataset switching UX | Defer until cube sandbox behavior stabilizes |
+| Real-time streaming ingestion | Thesis workflow uses static prepared datasets |
+| Multi-user collaboration | Single-user analysis workflow is sufficient |
+| Cloud persistence/account system | Session-first local workflow remains adequate |
+| Mobile optimization | Desktop research tool remains priority |
 
-## Future Milestone Mapping
+## Traceability
 
-| Requirement | v1.1 | v1.2 | v1.3 |
-|-------------|------|------|------|
-| Manual creation | ✅ | ✅ | ✅ |
-| Automated timeslicing (density-driven warp) | ✅ | ✅ | ✅ |
-| Manual timeslicing (user-authored warp) | ✅ | ✅ | ✅ |
-| Context-aware timeslicing (by data facets, e.g. crime type) | ❌ | ✅ | ✅ |
-| Visual density | ✅ | ✅ | ✅ |
-| Boundary adjust | ✅ | ✅ | ✅ |
-| Semi-automated | ❌ | ✅ | ✅ |
-| Auto-suggestions | ❌ | ✅ | ✅ |
-| Fully automated | ❌ | ❌ | ✅ |
-| 2D/3D sync | ❌ | ✅ | ✅ |
-| Persistence | ❌ | ✅ | ✅ |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ROUTE-01 | Phase 43 | Pending |
+| ROUTE-02 | Phase 43 | Pending |
+| ROUTE-03 | Phase 43 | Pending |
+| ROUTE-04 | Phase 43 | Pending |
+| CSPAT-01 | Phase 44 | Pending |
+| CSPAT-02 | Phase 44 | Pending |
+| CSPAT-03 | Phase 44 | Pending |
+| CSPAT-04 | Phase 44 | Pending |
+| CWARP-01 | Phase 45 | Pending |
+| CWARP-02 | Phase 45 | Pending |
+| CWARP-03 | Phase 45 | Pending |
+| CINTV-01 | Phase 46 | Pending |
+| CINTV-02 | Phase 46 | Pending |
+| CINTV-03 | Phase 46 | Pending |
+| CVAL-01 | Phase 47 | Pending |
+| CVAL-02 | Phase 47 | Pending |
+| CVAL-03 | Phase 47 | Pending |
+| REVIEW-01 | Phase 48 | Pending |
+| REVIEW-02 | Phase 48 | Pending |
+| REVIEW-03 | Phase 48 | Pending |
+| DIAG-01 | Phase 49 | Pending |
+| DIAG-02 | Phase 49 | Pending |
+| DIAG-03 | Phase 49 | Pending |
+| QUAL-01 | Phase 50 | Pending |
+| QUAL-02 | Phase 50 | Pending |
+| QUAL-03 | Phase 50 | Pending |
 
 ---
 
-*Requirements for v1.1 Manual Timeslicing milestone*
+*Requirements for v2.0 Cube-First Space-Time Slicing Sandbox milestone*
