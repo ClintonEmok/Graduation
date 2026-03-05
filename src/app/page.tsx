@@ -31,9 +31,9 @@ export default function Home() {
               href="/cube-sandbox"
               className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#3a3a3c] bg-black/40 px-7 py-3 text-sm font-semibold text-[#f5f5f7] transition hover:border-[#5f5f63] hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8e8e93] focus-visible:ring-offset-2"
             >
-              Open cube sandbox (v2.0)
+              Open cube sandbox experiment (v2.0)
             </Link>
-            <span className="text-sm text-[#8e8e93]">Timeline QA and cube-first experimentation routes.</span>
+            <span className="text-sm text-[#8e8e93]">Timeline QA and cube-first prototype routes.</span>
           </div>
         </div>
       </section>
