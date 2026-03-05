@@ -9,9 +9,9 @@
 ## Current Position
 
 **Current phase:** Phase 44 - Cube Spatial Context Setup (in progress)  
-**Current plan:** 44-01 complete  
+**Current plan:** 44-02 complete  
 **Status:** In progress  
-**Progress:** overall ███████████████████░ 98% (126/129 plans with summaries complete)
+**Progress:** overall ███████████████████░ 98% (127/129 plans with summaries complete)
 
 ## Performance Metrics
 
@@ -37,13 +37,13 @@
 - Dataset scale and interactivity targets remain non-negotiable for usability.
 
 **Open execution items:**
-- Execute 44-02 and 44-03 to complete cube spatial context setup phase.
+- Execute 44-03 to complete cube spatial context setup phase.
 
 ## Session Continuity
 
-**Last activity:** 2026-03-05 - Completed 44-01 cube spatial constraints store/reset persistence/test baseline.  
+**Last activity:** 2026-03-05 - Completed 44-02 sandbox spatial constraint manager/context rail integration.  
 **Next command:** `/gsd/execute-phase 44`  
-**If resuming later:** Validate commits `8462d23`, `105d09c`, `a28f9f1`, then continue with 44-02.
+**If resuming later:** Validate commits `a4299dd`, `c53ea30`, then continue with 44-03.
 
 ## Recent Decisions
 
@@ -56,6 +56,9 @@
 - Model cube spatial constraints as typed store records before UI wiring for deterministic downstream consumption.
 - Preserve saved spatial constraint definitions across hard reset; clear only active selection.
 - Keep constraint regression tests at store/reset orchestration level for fast deterministic feedback.
+- Keep cube spatial constraint authoring inline in the sandbox right rail for low-friction experimentation.
+- Surface total/enabled/active constraint cues in always-on diagnostics for quick context visibility.
+- Preserve sandbox shell structure by wiring new manager through existing context panel composition.
 
 ---
-*Last updated: 2026-03-05 - completed 44-01 execution*
+*Last updated: 2026-03-05 - completed 44-02 execution*
