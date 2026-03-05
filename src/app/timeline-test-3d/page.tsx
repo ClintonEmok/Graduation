@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { SliceToolbar } from "@/app/timeline-test/components/SliceToolbar";
+import { WarpSliceEditor } from "@/app/timeline-test/components/WarpSliceEditor";
+import { planFullAutoAcceptanceArtifacts } from "@/app/timeslicing/full-auto-acceptance";
+import { SuggestionToolbar } from "@/app/timeslicing/components/SuggestionToolbar";
 import { DualTimeline } from "@/components/timeline/DualTimeline";
 import { useCrimeData } from "@/hooks/useCrimeData";
 import { useViewportStore } from "@/lib/stores/viewportStore";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
 import { useDataStore } from "@/store/useDataStore";
 import { useFilterStore } from "@/store/useFilterStore";
+import { useSliceStore } from "@/store/useSliceStore";
+import {
+  type IntervalBoundaryData,
+  type TimeScaleData,
+  useSuggestionStore,
+} from "@/store/useSuggestionStore";
 import { useTimeStore } from "@/store/useTimeStore";
 import { useWarpSliceStore } from "@/store/useWarpSliceStore";
 import {
@@ -29,6 +39,19 @@ export default function TimelineTest3DPage() {
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
+  const addSlice = useSliceStore((state) => state.addSlice);
+  const clearSlices = useSliceStore((state) => state.clearSlices);
+  const addWarpSlice = useWarpSliceStore((state) => state.addSlice);
+  const clearWarpSlices = useWarpSliceStore((state) => state.clearSlices);
+  const setActiveWarp = useWarpSliceStore((state) => state.setActiveWarp);
+  const fullAutoProposalSets = useSuggestionStore((state) => state.fullAutoProposalSets);
+  const selectedFullAutoSetId = useSuggestionStore(
+    (state) => state.selectedFullAutoSetId
+  );
+  const fullAutoNoResultReason = useSuggestionStore(
+    (state) => state.fullAutoNoResultReason
+  );
+  const addToHistory = useSuggestionStore((state) => state.addToHistory);
 
   const hasValidAdaptiveDomain =
     mapDomain[1] > mapDomain[0] && mapDomain[0] >= MIN_VALID_DATA_EPOCH;
@@ -157,6 +180,167 @@ export default function TimelineTest3DPage() {
     warpSource,
   ]);
 
+  const handleAcceptWarpProfile = useCallback(
+    (suggestionId: string, data: TimeScaleData) => {
+      clearWarpSlices();
+      setActiveWarp(suggestionId);
+
+      data.intervals.forEach((interval, index) => {
+        addWarpSlice({
+          label: `${data.name} ${index + 1}`,
+          range: [interval.startPercent, interval.endPercent],
+          weight: interval.strength,
+          enabled: true,
+          source: "suggestion",
+          warpProfileId: suggestionId,
+        });
+      });
+
+      useTimeStore.getState().setTimeScaleMode("adaptive");
+      useAdaptiveStore.getState().setWarpFactor(1);
+    },
+    [addWarpSlice, clearWarpSlices, setActiveWarp]
+  );
+
+  const handleAcceptIntervalBoundary = useCallback(
+    (data: IntervalBoundaryData) => {
+      if (data.boundaries.length < 2 || selectionEnd <= selectionStart) return;
+
+      const sorted = [...data.boundaries].sort((a, b) => a - b);
+      for (let i = 0; i < sorted.length - 1; i += 1) {
+        const startEpoch = sorted[i];
+        const endEpoch = sorted[i + 1];
+        const startPercent =
+          ((startEpoch - selectionStart) / (selectionEnd - selectionStart)) * 100;
+        const endPercent =
+          ((endEpoch - selectionStart) / (selectionEnd - selectionStart)) * 100;
+
+        addSlice({
+          name: `Interval ${i + 1}`,
+          type: "range",
+          range: [
+            Math.max(0, Math.min(100, startPercent)),
+            Math.max(0, Math.min(100, endPercent)),
+          ],
+          isLocked: false,
+          isVisible: true,
+        });
+      }
+    },
+    [addSlice, selectionEnd, selectionStart]
+  );
+
+  const handleAcceptFullAutoPackage = useCallback(
+    (proposalSetId?: string) => {
+      if (fullAutoNoResultReason) return;
+
+      const targetId = proposalSetId ?? selectedFullAutoSetId;
+      if (!targetId) return;
+
+      const proposalSet = fullAutoProposalSets.find((entry) => entry.id === targetId);
+      if (!proposalSet || proposalSet.warp.intervals.length === 0) return;
+
+      const previousWarpState = useWarpSliceStore.getState();
+      const previousSliceState = useSliceStore.getState();
+
+      try {
+        clearWarpSlices();
+        clearSlices();
+        setActiveWarp(proposalSet.id);
+
+        const artifactPlan = planFullAutoAcceptanceArtifacts(proposalSet);
+
+        artifactPlan.warpIntervals.forEach((interval, index) => {
+          addWarpSlice({
+            label: `${proposalSet.warp.name} ${index + 1}`,
+            range: [interval.startPercent, interval.endPercent],
+            weight: interval.strength,
+            enabled: true,
+            source: "suggestion",
+            warpProfileId: proposalSet.id,
+          });
+        });
+
+        useTimeStore.getState().setTimeScaleMode("adaptive");
+        useAdaptiveStore.getState().setWarpFactor(1);
+
+        if (artifactPlan.intervalBoundaries) {
+          handleAcceptIntervalBoundary({
+            boundaries: artifactPlan.intervalBoundaries,
+          });
+        }
+
+        const acceptedAt = Date.now();
+        addToHistory({
+          id: `full-auto-package-${proposalSet.id}-warp-${acceptedAt}`,
+          type: "time-scale",
+          confidence: proposalSet.confidence,
+          data: {
+            name: `${proposalSet.warp.name} (Package Rank ${proposalSet.rank})`,
+            intervals: proposalSet.warp.intervals,
+          },
+          createdAt: acceptedAt,
+          status: "accepted",
+        });
+      } catch {
+        useWarpSliceStore.setState({
+          slices: previousWarpState.slices,
+          activeWarpId: previousWarpState.activeWarpId,
+        });
+        useSliceStore.setState({
+          slices: previousSliceState.slices,
+          activeSliceId: previousSliceState.activeSliceId,
+          activeSliceUpdatedAt: previousSliceState.activeSliceUpdatedAt,
+        });
+      }
+    },
+    [
+      addToHistory,
+      addWarpSlice,
+      clearSlices,
+      clearWarpSlices,
+      fullAutoNoResultReason,
+      fullAutoProposalSets,
+      handleAcceptIntervalBoundary,
+      selectedFullAutoSetId,
+      setActiveWarp,
+    ]
+  );
+
+  useEffect(() => {
+    const handleWarpEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string; data: TimeScaleData }>;
+      handleAcceptWarpProfile(customEvent.detail.id, customEvent.detail.data);
+    };
+
+    const handleIntervalEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ data: IntervalBoundaryData }>;
+      handleAcceptIntervalBoundary(customEvent.detail.data);
+    };
+
+    const handleFullAutoPackageEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ proposalSetId?: string }>;
+      handleAcceptFullAutoPackage(customEvent.detail?.proposalSetId);
+    };
+
+    window.addEventListener("accept-time-scale", handleWarpEvent);
+    window.addEventListener("accept-interval-boundary", handleIntervalEvent);
+    window.addEventListener("accept-full-auto-package", handleFullAutoPackageEvent);
+
+    return () => {
+      window.removeEventListener("accept-time-scale", handleWarpEvent);
+      window.removeEventListener("accept-interval-boundary", handleIntervalEvent);
+      window.removeEventListener(
+        "accept-full-auto-package",
+        handleFullAutoPackageEvent
+      );
+    };
+  }, [
+    handleAcceptFullAutoPackage,
+    handleAcceptIntervalBoundary,
+    handleAcceptWarpProfile,
+  ]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -179,6 +363,11 @@ export default function TimelineTest3DPage() {
                 {new Date(domainEndSec * 1000).toLocaleDateString()}
               </strong>
             </span>
+          </div>
+          <div className="mt-4 space-y-3">
+            <SuggestionToolbar />
+            <SliceToolbar />
+            <WarpSliceEditor />
           </div>
         </section>
 
