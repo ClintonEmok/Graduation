@@ -21,7 +21,6 @@ import { useTimeStore } from "@/store/useTimeStore";
 import { useWarpSliceStore } from "@/store/useWarpSliceStore";
 import {
   buildSliceAuthoredWarpMap,
-  remapSelectionPercentToDomainPercent,
 } from "./lib/route-orchestration";
 import { TimelineTest3DScene } from "./components/TimelineTest3DScene";
 
@@ -149,24 +148,8 @@ export default function TimelineTest3DPage() {
       return null;
     }
 
-    const remappedSlices = warpSlices.map((slice) => ({
-      ...slice,
-      range: [
-        remapSelectionPercentToDomainPercent(
-          slice.range[0],
-          [selectionStart, selectionEnd],
-          [domainStartSec, domainEndSec]
-        ),
-        remapSelectionPercentToDomainPercent(
-          slice.range[1],
-          [selectionStart, selectionEnd],
-          [domainStartSec, domainEndSec]
-        ),
-      ] as [number, number],
-    }));
-
     return buildSliceAuthoredWarpMap(
-      remappedSlices,
+      warpSlices,
       [domainStartSec, domainEndSec],
       Math.max(96, densityMap?.length || 0)
     );
@@ -174,8 +157,6 @@ export default function TimelineTest3DPage() {
     densityMap?.length,
     domainEndSec,
     domainStartSec,
-    selectionEnd,
-    selectionStart,
     timeScaleMode,
     warpSlices,
     warpSource,
