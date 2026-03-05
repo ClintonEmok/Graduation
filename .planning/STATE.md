@@ -8,10 +8,10 @@
 
 ## Current Position
 
-**Current phase:** Phase 44 - Cube Spatial Context Setup (complete)  
-**Current plan:** 44-03 complete  
-**Status:** Phase complete, ready for next phase execution  
-**Progress:** overall ███████████████████░ 99% (128/129 plans with summaries complete)
+**Current phase:** Phase 45 - Cube-Constrained Warp Proposals (in progress)  
+**Current plan:** 45-02 pending  
+**Status:** In progress  
+**Progress:** overall ███████████████████░ 98% (129/132 plans with summaries complete)
 
 ## Performance Metrics
 
@@ -37,13 +37,16 @@
 - Dataset scale and interactivity targets remain non-negotiable for usability.
 
 **Open execution items:**
-- Execute next planned phase (Phase 45) on top of completed cube spatial context setup.
+- Execute remaining Phase 45 plans in order (45-02 -> 45-03).
 
 ## Session Continuity
 
-**Last activity:** 2026-03-05 - Completed 44-03 in-cube spatial constraint overlay rendering and geometry tests.  
+**Last activity:** 2026-03-05 - Completed `45-01-PLAN.md` (proposal engine + store + deterministic tests).  
+**Last session:** 2026-03-05 12:13 UTC  
+**Stopped at:** Completed `45-01-PLAN.md`  
+**Resume file:** None  
 **Next command:** `/gsd/execute-phase 45`  
-**If resuming later:** Validate commits `da3b5e4`, `8be56a4`, then continue from the next phase plan.
+**If resuming later:** Resume at `45-02-PLAN.md` and continue sequentially through 45-03.
 
 ## Recent Decisions
 
@@ -62,6 +65,12 @@
 - Map constraint bounds through a pure geometry adapter before scene rendering for deterministic overlays.
 - Render only enabled constraints in-scene and emphasize active selection to reduce visual noise.
 - Show enabled and active constraint cues directly inside cube view during interaction.
+- Keep Phase 45 proposal generation deterministic for identical constraint inputs to support reliable review.
+- Keep proposal rationale visible in the sandbox rail before apply actions.
+- Ensure proposal apply updates adaptive cube mapping immediately in-session.
+- Keep proposal IDs deterministic as `proposal-{constraintId}` so selection state remains stable across regenerations.
+- Track proposal generation metadata (`generatedAt`, sorted source constraint IDs) for diagnostics traceability.
+- Keep proposal payload apply-ready (`warpFactor` + temporal `range`) for direct adaptive wiring in follow-up plans.
 
 ---
-*Last updated: 2026-03-05 - completed 44-03 execution*
+*Last updated: 2026-03-05 - completed 45-01 execution and advanced to 45-02*
