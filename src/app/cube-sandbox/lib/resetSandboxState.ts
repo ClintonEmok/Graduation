@@ -1,5 +1,6 @@
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
@@ -25,6 +26,7 @@ export async function resetSandboxState(): Promise<void> {
 
   useTimeStore.getState().setTimeScaleMode('linear');
   useAdaptiveStore.getState().resetSandboxDefaults();
+  useCubeSpatialConstraintsStore.getState().clearActiveConstraint();
 
   await useDataStore.getState().loadRealData();
 }

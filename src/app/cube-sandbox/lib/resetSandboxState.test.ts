@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { resetSandboxState } from './resetSandboxState';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
@@ -55,6 +56,49 @@ describe('resetSandboxState', () => {
         },
       ],
     });
+    useCubeSpatialConstraintsStore.setState({
+      constraints: [
+        {
+          id: 'constraint-a',
+          label: 'Downtown cube',
+          geometry: {
+            shape: 'axis-aligned-cube',
+            bounds: {
+              minX: 0,
+              maxX: 10,
+              minY: 1,
+              maxY: 6,
+              minZ: 2,
+              maxZ: 9,
+            },
+          },
+          enabled: true,
+          createdAt: 10,
+          updatedAt: 10,
+          colorToken: 'amber',
+        },
+        {
+          id: 'constraint-b',
+          label: 'Northwest cube',
+          geometry: {
+            shape: 'axis-aligned-cube',
+            bounds: {
+              minX: 12,
+              maxX: 18,
+              minY: 0,
+              maxY: 4,
+              minZ: 11,
+              maxZ: 16,
+            },
+          },
+          enabled: false,
+          createdAt: 20,
+          updatedAt: 20,
+          colorToken: 'emerald',
+        },
+      ],
+      activeConstraintId: 'constraint-a',
+    });
   });
 
   test('restores uniform mode, clears filters, and empties slice state', async () => {
@@ -76,6 +120,20 @@ describe('resetSandboxState', () => {
     expect(useSliceStore.getState().slices).toEqual([]);
     expect(useSliceStore.getState().activeSliceId).toBeNull();
     expect(useWarpSliceStore.getState().slices).toEqual([]);
+
+    const constraintState = useCubeSpatialConstraintsStore.getState();
+    expect(constraintState.constraints).toHaveLength(2);
+    expect(constraintState.constraints.map((constraint) => constraint.id)).toEqual([
+      'constraint-a',
+      'constraint-b',
+    ]);
+    expect(constraintState.constraints[0].enabled).toBe(true);
+    expect(constraintState.constraints[1].enabled).toBe(false);
+    expect(constraintState.activeConstraintId).toBeNull();
+
+    constraintState.setActiveConstraint('constraint-b');
+    expect(useCubeSpatialConstraintsStore.getState().activeConstraintId).toBe('constraint-b');
+
     expect(loadRealData).toHaveBeenCalledTimes(1);
   });
 });
