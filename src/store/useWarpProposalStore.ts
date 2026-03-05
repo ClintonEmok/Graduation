@@ -5,6 +5,7 @@ import {
   type WarpProposal,
   type WarpProposalTemporalContext,
 } from '@/app/cube-sandbox/lib/warpProposalEngine';
+import { applyWarpProposal } from '@/app/cube-sandbox/lib/applyWarpProposal';
 
 export interface WarpProposalGenerationMeta {
   generatedAt: number | null;
@@ -25,6 +26,7 @@ interface WarpProposalState {
   clear: () => void;
   select: (proposalId: string | null) => void;
   markApplied: (proposalId: string | null) => void;
+  applySelected: () => WarpProposal | null;
 }
 
 const emptyGenerationMeta: WarpProposalGenerationMeta = {
@@ -103,5 +105,22 @@ export const useWarpProposalStore = create<WarpProposalState>((set, get) => ({
     }
 
     set({ appliedProposalId: proposalId });
+  },
+
+  applySelected: () => {
+    const state = get();
+    if (state.selectedProposalId === null) {
+      return null;
+    }
+
+    const selected = state.proposals.find((proposal) => proposal.id === state.selectedProposalId);
+    if (!selected) {
+      return null;
+    }
+
+    applyWarpProposal(selected);
+    set({ appliedProposalId: selected.id });
+
+    return selected;
   },
 }));
