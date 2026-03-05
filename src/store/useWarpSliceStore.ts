@@ -10,6 +10,8 @@ export interface WarpSlice {
 
 interface WarpSliceState {
   slices: WarpSlice[];
+  selectedSliceId: string | null;
+  setSelectedSliceId: (id: string | null) => void;
   addSlice: () => string;
   updateSlice: (id: string, updates: Partial<Pick<WarpSlice, 'label' | 'range' | 'weight' | 'enabled'>>) => void;
   removeSlice: (id: string) => void;
@@ -19,14 +21,12 @@ interface WarpSliceState {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const normalizeRange = (range: [number, number]): [number, number] => {
-  const rawStart = clamp(Number.isFinite(range[0]) ? range[0] : 0, 0, 100);
-  const rawEnd = clamp(Number.isFinite(range[1]) ? range[1] : 100, 0, 100);
+  const rawStart = Number.isFinite(range[0]) ? range[0] : 0;
+  const rawEnd = Number.isFinite(range[1]) ? range[1] : 100;
   const start = Math.min(rawStart, rawEnd);
   const end = Math.max(rawStart, rawEnd);
   if (end - start < 0.5) {
-    const adjustedEnd = clamp(start + 0.5, 0, 100);
-    const adjustedStart = adjustedEnd === 100 ? 99.5 : start;
-    return [adjustedStart, adjustedEnd];
+    return [start, start + 0.5];
   }
   return [start, end];
 };
@@ -47,9 +47,13 @@ const createDefaultSlice = (index: number): WarpSlice => {
 
 export const useWarpSliceStore = create<WarpSliceState>((set) => ({
   slices: [],
+  selectedSliceId: null,
+  setSelectedSliceId: (id) => {
+    set({ selectedSliceId: id });
+  },
   addSlice: () => {
     const nextSlice = createDefaultSlice(useWarpSliceStore.getState().slices.length);
-    set((state) => ({ slices: [...state.slices, nextSlice] }));
+    set((state) => ({ slices: [...state.slices, nextSlice], selectedSliceId: nextSlice.id }));
     return nextSlice.id;
   },
   updateSlice: (id, updates) => {
@@ -71,9 +75,12 @@ export const useWarpSliceStore = create<WarpSliceState>((set) => ({
     }));
   },
   removeSlice: (id) => {
-    set((state) => ({ slices: state.slices.filter((slice) => slice.id !== id) }));
+    set((state) => ({
+      slices: state.slices.filter((slice) => slice.id !== id),
+      selectedSliceId: state.selectedSliceId === id ? null : state.selectedSliceId,
+    }));
   },
   clearSlices: () => {
-    set({ slices: [] });
+    set({ slices: [], selectedSliceId: null });
   },
 }));

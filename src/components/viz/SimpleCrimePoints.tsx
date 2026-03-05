@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import { useCrimeData } from '@/hooks/useCrimeData';
-import { CrimeRecord } from '@/types/crime';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useThemeStore } from '@/store/useThemeStore';
 import { PALETTES } from '@/lib/palettes';
-import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
+import { getCrimeTypeId } from '@/lib/category-maps';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useFilterStore } from '@/store/useFilterStore';
@@ -14,10 +13,63 @@ import { normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 
 // Full date range constants from the dataset (2001-2026)
 const DATA_MIN_TIMESTAMP = 978307200;  // 2001-01-01
 const DATA_MAX_TIMESTAMP = 1767571200;   // 2026-01-01
+
+const buildSliceAuthoredWarpMap = (
+  slices: Array<{ enabled: boolean; range: [number, number]; weight: number }>,
+  domain: [number, number],
+  sampleCount: number
+): Float32Array | null => {
+  const enabledSlices = slices.filter((slice) => slice.enabled);
+  if (enabledSlices.length === 0 || sampleCount < 2) return null;
+
+  const [domainStart, domainEnd] = domain;
+  const domainSpan = Math.max(1e-9, domainEnd - domainStart);
+  const density = new Float32Array(sampleCount);
+
+  for (let i = 0; i < sampleCount; i += 1) {
+    const ratio = sampleCount === 1 ? 0 : i / (sampleCount - 1);
+    const percent = ratio * 100;
+    let boost = 0;
+
+    for (const slice of enabledSlices) {
+      const start = Math.min(slice.range[0], slice.range[1]);
+      const end = Math.max(slice.range[0], slice.range[1]);
+      if (percent < start || percent > end) continue;
+
+      const center = (start + end) / 2;
+      const halfWidth = Math.max(0.5, (end - start) / 2);
+      const normalizedDistance = Math.abs((percent - center) / halfWidth);
+      const falloff = Math.max(0, 1 - normalizedDistance);
+      boost += Math.max(0, slice.weight) * (0.35 + 0.65 * falloff);
+    }
+
+    density[i] = 1 + boost;
+  }
+
+  const cumulative = new Float32Array(sampleCount);
+  cumulative[0] = 0;
+  for (let i = 1; i < sampleCount; i += 1) {
+    const prev = density[i - 1] ?? 1;
+    const curr = density[i] ?? 1;
+    cumulative[i] = cumulative[i - 1] + (prev + curr) * 0.5;
+  }
+
+  const total = cumulative[sampleCount - 1] ?? 0;
+  if (!Number.isFinite(total) || total <= 0) return null;
+
+  const authoredMap = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i += 1) {
+    const progress = (cumulative[i] ?? 0) / total;
+    authoredMap[i] = domainStart + progress * domainSpan;
+  }
+
+  return authoredMap;
+};
 
 export function SimpleCrimePoints() {
   // Get viewport bounds from store
@@ -37,8 +89,16 @@ export function SimpleCrimePoints() {
   const palette = PALETTES[theme];
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const warpSource = useAdaptiveStore((state) => state.warpSource);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const warpSlices = useWarpSliceStore((state) => state.slices);
+
+  const authoredWarpMap = useMemo(
+    () => buildSliceAuthoredWarpMap(warpSlices, mapDomain, Math.max(96, warpMap?.length || 0)),
+    [mapDomain, warpMap?.length, warpSlices]
+  );
+  const effectiveWarpMap = warpSource === 'slice-authored' ? authoredWarpMap : warpMap;
 
   // Use unified useCrimeData hook with viewport bounds
   const { data: crimeRecords, isLoading } = useCrimeData({
@@ -96,8 +156,7 @@ export function SimpleCrimePoints() {
 
     for (const record of data) {
       const x = record.x;
-      const timestampValue = record.timestamp;
-      const y = timestampValue; // Already in epoch seconds
+      const y = record.timestamp;
       const z = record.z;
 
       if (Number.isFinite(x)) {
@@ -121,16 +180,16 @@ export function SimpleCrimePoints() {
     console.log('[SimpleCrimePoints] data range: minXData:', minXData, 'maxXData:', maxXData, 'xRange:', xRange, 'data.length:', data.length);
 
     const sampleWarp = (inputT: number) => {
-      if (!warpMap || warpMap.length === 0) return inputT;
+      if (!effectiveWarpMap || effectiveWarpMap.length === 0) return inputT;
       const [domainMin, domainMax] = mapDomain;
       const domainSpan = domainMax - domainMin || 1;
       const normalized = (inputT - domainMin) / domainSpan;
       const clamped = Math.max(0, Math.min(1, normalized));
-      const idx = clamped * (warpMap.length - 1);
+      const idx = clamped * (effectiveWarpMap.length - 1);
       const low = Math.floor(idx);
-      const high = Math.min(low + 1, warpMap.length - 1);
+      const high = Math.min(low + 1, effectiveWarpMap.length - 1);
       const frac = idx - low;
-      return warpMap[low] * (1 - frac) + warpMap[high] * frac;
+      return effectiveWarpMap[low] * (1 - frac) + effectiveWarpMap[high] * frac;
     };
 
     const toDisplayY = (value: number, assumeNormalizedDomain: boolean) => {
@@ -205,8 +264,6 @@ export function SimpleCrimePoints() {
     };
   }, [
     data,
-    maxTimestampSec,
-    minTimestampSec,
     palette,
     mapDomain,
     selectedDistricts,
@@ -215,7 +272,7 @@ export function SimpleCrimePoints() {
     selectedTypes,
     timeScaleMode,
     warpFactor,
-    warpMap
+    effectiveWarpMap
   ]);
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);

@@ -11,6 +11,7 @@ import { useSelectionSync } from '@/hooks/useSelectionSync';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
 import { SpatialConstraintOverlay } from './SpatialConstraintOverlay';
+import { SelectedWarpSliceOverlay } from './SelectedWarpSliceOverlay';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   // Initialize the selection sync conductor - ties all views together
@@ -153,6 +154,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
           <Scene transparent={mode === 'map'}>
             <SimpleCrimePoints />
             <SpatialConstraintOverlay />
+            <SelectedWarpSliceOverlay />
 
             
             <CameraControls

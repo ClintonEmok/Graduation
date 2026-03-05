@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FilterOverlay } from '@/components/viz/FilterOverlay';
-import { IntervalProposalPanel } from './IntervalProposalPanel';
+import { WarpSliceEditor } from '@/app/timeline-test/components/WarpSliceEditor';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
-import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 
 type SandboxContextPanelProps = {
   onReset: () => void;
@@ -15,14 +15,6 @@ type SandboxContextPanelProps = {
 };
 
 const formatBounds = (value: number) => value.toFixed(2);
-
-const formatGenerationLabel = (value: number | null) => {
-  if (value === null) {
-    return 'Not generated';
-  }
-
-  return new Date(value).toLocaleTimeString();
-};
 
 export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPanelProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -41,13 +33,25 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
-  const intervalProposals = useIntervalProposalStore((state) => state.proposals);
-  const selectedIntervalProposalId = useIntervalProposalStore((state) => state.selectedProposalId);
-  const intervalGeneration = useIntervalProposalStore((state) => state.generation);
-
-  const selectedIntervalProposal = intervalProposals.find((proposal) => proposal.id === selectedIntervalProposalId) ?? null;
+  const warpSlices = useWarpSliceStore((state) => state.slices);
+  const enabledWarpSliceCount = warpSlices.filter((slice) => slice.enabled).length;
 
   const activeFilterCount = getActiveFilterCount();
+
+  const setWarpSource = useAdaptiveStore((state) => state.setWarpSource);
+
+  useEffect(() => {
+    if (timeScaleMode !== 'adaptive') {
+      return;
+    }
+    if (warpFactor <= 0) {
+      setWarpFactor(1);
+    }
+    if (warpSource === 'slice-authored' && enabledWarpSliceCount === 0) {
+      setWarpSource('density');
+    }
+  }, [enabledWarpSliceCount, setWarpFactor, setWarpSource, timeScaleMode, warpFactor, warpSource]);
+
   const datasetLabel = isLoading
     ? 'Loading dataset'
     : columns
@@ -84,10 +88,82 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
           <dd className="text-right text-slate-100">{warpSource}</dd>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-slate-400">Warp factor</dt>
+          <dt className="text-slate-400">Warp intensity</dt>
           <dd className="text-right text-slate-100">{warpFactor.toFixed(2)}</dd>
         </div>
       </dl>
+
+      <section className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+        <header className="flex items-center justify-between gap-2">
+          <p className="text-slate-400">Scale mode</p>
+          <p className="text-[11px] text-slate-300">Adaptive uses density or user-authored slices</p>
+        </header>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setTimeScaleMode('linear')}
+            className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
+              timeScaleMode === 'linear'
+                ? 'border-emerald-300 bg-emerald-500/20 text-emerald-100'
+                : 'border-slate-600 text-slate-200 hover:border-slate-400'
+            }`}
+          >
+            Linear
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTimeScaleMode('adaptive');
+              if (warpFactor <= 0) {
+                setWarpFactor(1);
+              }
+              if (enabledWarpSliceCount > 0) {
+                setWarpSource('slice-authored');
+              } else {
+                setWarpSource('density');
+              }
+            }}
+            className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
+              timeScaleMode === 'adaptive'
+                ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100'
+                : 'border-slate-600 text-slate-200 hover:border-slate-400'
+            }`}
+          >
+            Adaptive
+          </button>
+        </div>
+
+        {timeScaleMode === 'adaptive' ? (
+          <div className="space-y-1">
+            <p className="text-[11px] text-slate-400">Warp source</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setWarpSource('density')}
+                className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
+                  warpSource === 'density'
+                    ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100'
+                    : 'border-slate-600 text-slate-200 hover:border-slate-400'
+                }`}
+              >
+                Density-driven
+              </button>
+              <button
+                type="button"
+                onClick={() => setWarpSource('slice-authored')}
+                disabled={enabledWarpSliceCount === 0}
+                className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  warpSource === 'slice-authored'
+                    ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100'
+                    : 'border-slate-600 text-slate-200 hover:border-slate-400'
+                }`}
+              >
+                User-authored
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       <dl className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
         <div className="flex items-center justify-between gap-2">
@@ -124,65 +200,6 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
         </div>
       </dl>
 
-      <section className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <header className="flex items-center justify-between gap-2">
-          <p className="text-slate-400">Warp toolbar</p>
-          <p className="text-[11px] text-slate-100">{Math.round(warpFactor * 100)}%</p>
-        </header>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setTimeScaleMode('linear');
-              setWarpFactor(0);
-            }}
-            className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
-              timeScaleMode === 'linear'
-                ? 'border-emerald-300 bg-emerald-500/20 text-emerald-100'
-                : 'border-slate-600 text-slate-200 hover:border-slate-400'
-            }`}
-          >
-            Linear
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setTimeScaleMode('adaptive');
-              if (warpFactor <= 0) {
-                setWarpFactor(1);
-              }
-            }}
-            className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
-              timeScaleMode === 'adaptive'
-                ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100'
-                : 'border-slate-600 text-slate-200 hover:border-slate-400'
-            }`}
-          >
-            Adaptive
-          </button>
-        </div>
-
-        <label className="space-y-1 text-[11px] text-slate-400">
-          <span>Warp intensity</span>
-          <input
-            type="range"
-            min={0}
-            max={5}
-            step={0.05}
-            value={warpFactor}
-            onChange={(event) => {
-              const nextFactor = Number(event.target.value);
-              setWarpFactor(nextFactor);
-              if (nextFactor > 0 && timeScaleMode !== 'adaptive') {
-                setTimeScaleMode('adaptive');
-              }
-            }}
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-700"
-          />
-        </label>
-      </section>
-
       <dl className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
         <div className="space-y-1">
           <dt className="text-slate-400">Spatial bounds</dt>
@@ -192,22 +209,20 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
 
       <dl className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-slate-400">Interval proposals</dt>
-          <dd className="text-right text-slate-100">{intervalProposals.length}</dd>
+          <dt className="text-slate-400">Manual warp slices</dt>
+          <dd className="text-right text-slate-100">{warpSlices.length}</dd>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-slate-400">Selected interval</dt>
-          <dd className="text-right text-slate-100">
-            {selectedIntervalProposal ? selectedIntervalProposal.label : 'None'}
-          </dd>
+          <dt className="text-slate-400">Enabled slices</dt>
+          <dd className="text-right text-slate-100">{enabledWarpSliceCount}</dd>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-slate-400">Interval generated</dt>
-          <dd className="text-right text-slate-100">{formatGenerationLabel(intervalGeneration.generatedAt)}</dd>
+          <dt className="text-slate-400">Manual mode</dt>
+          <dd className="text-right text-slate-100">User-authored</dd>
         </div>
       </dl>
 
-      <IntervalProposalPanel />
+      <WarpSliceEditor />
 
       <button
         type="button"
