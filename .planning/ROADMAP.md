@@ -309,6 +309,12 @@ Plans:
 **Goal:** Users can generate and apply warp proposals informed by selected cube spatial constraints.
 **Depends on:** Phase 44
 **Requirements:** CWARP-01, CWARP-02, CWARP-03
+**Plans:** 3 plans
+
+Plans:
+- [ ] 45-01-PLAN.md — Constraint-aware warp proposal pipeline and scoring model
+- [ ] 45-02-PLAN.md — Proposal list + rationale inspector in sandbox context rail
+- [ ] 45-03-PLAN.md — Apply proposal flow with immediate cube adaptive mapping update
 
 **Success Criteria:**
 1. System generates warp proposals tied to active spatial constraints.
@@ -320,6 +326,12 @@ Plans:
 **Goal:** Users can work with interval proposals that reflect both temporal bursts and cube spatial context.
 **Depends on:** Phase 45
 **Requirements:** CINTV-01, CINTV-02, CINTV-03
+**Plans:** 3 plans (46-01, 46-02, 46-03)
+
+Plans:
+- [ ] 46-01-PLAN.md — Interval proposal engine + store foundation with deterministic scoring
+- [ ] 46-02-PLAN.md — Sandbox rail interval proposal review UI + lifecycle/reset wiring
+- [ ] 46-03-PLAN.md — Editable interval boundaries with live quality feedback and apply/undo flow
 
 **Success Criteria:**
 1. System suggests interval boundaries for constrained spatial context.
