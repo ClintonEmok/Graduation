@@ -7,6 +7,7 @@ import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useWarpProposalStore } from '@/store/useWarpProposalStore';
 import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
@@ -25,6 +26,10 @@ export default function CubeVisualization() {
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const appliedProposalId = useWarpProposalStore((state) => state.appliedProposalId);
   const proposals = useWarpProposalStore((state) => state.proposals);
+  const intervalProposals = useIntervalProposalStore((state) => state.proposals);
+  const selectedIntervalProposalId = useIntervalProposalStore((state) => state.selectedProposalId);
+  const previewIntervalProposalId = useIntervalProposalStore((state) => state.previewProposalId);
+  const appliedIntervalProposalId = useIntervalProposalStore((state) => state.appliedProposalId);
   const { log } = useLogger();
 
   const enabledConstraints = constraints.filter((constraint) => constraint.enabled);
@@ -32,6 +37,14 @@ export default function CubeVisualization() {
     constraints.find((constraint) => constraint.id === activeConstraintId)?.label ?? 'None';
   const appliedProposalLabel =
     proposals.find((proposal) => proposal.id === appliedProposalId)?.label ?? appliedProposalId ?? 'None';
+  const selectedInterval =
+    intervalProposals.find((proposal) => proposal.id === selectedIntervalProposalId) ?? null;
+  const previewIntervalLabel =
+    intervalProposals.find((proposal) => proposal.id === previewIntervalProposalId)?.label ??
+    previewIntervalProposalId ??
+    'None';
+  const appliedInterval = intervalProposals.find((proposal) => proposal.id === appliedIntervalProposalId) ?? null;
+  const appliedIntervalLabel = appliedInterval?.label ?? appliedIntervalProposalId ?? 'None';
 
   useEffect(() => {
     if (!columns && !isLoading) {
@@ -66,6 +79,17 @@ export default function CubeVisualization() {
           <p>Constraints: {enabledConstraints.length} enabled · Active: {activeConstraintLabel}</p>
           <p>Adaptive: {warpSource} · Warp {warpFactor.toFixed(2)}</p>
           <p>Applied proposal: {appliedProposalLabel}</p>
+          <p>Selected interval: {selectedInterval?.label ?? 'None'}</p>
+          <p>Preview interval: {previewIntervalLabel}</p>
+          <p>Applied interval: {appliedIntervalLabel}</p>
+          <p>
+            Interval confidence:{' '}
+            {(appliedInterval ?? selectedInterval)?.confidence.band ?? 'None'}
+            {' · '}
+            {(appliedInterval ?? selectedInterval)?.qualityState ?? 'none'}
+            {' · '}
+            {(appliedInterval ?? selectedInterval)?.isEdited ? 'Edited' : 'Original'}
+          </p>
         </div>
 
         <div className="absolute bottom-4 left-4 z-10">

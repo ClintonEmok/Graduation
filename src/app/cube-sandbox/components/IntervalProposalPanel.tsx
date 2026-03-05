@@ -28,9 +28,18 @@ export function IntervalProposalPanel() {
   const proposals = useIntervalProposalStore((state) => state.proposals);
   const selectedProposalId = useIntervalProposalStore((state) => state.selectedProposalId);
   const generation = useIntervalProposalStore((state) => state.generation);
+  const previewProposalId = useIntervalProposalStore((state) => state.previewProposalId);
+  const appliedProposalId = useIntervalProposalStore((state) => state.appliedProposalId);
+  const lastApplied = useIntervalProposalStore((state) => state.lastApplied);
   const generate = useIntervalProposalStore((state) => state.generate);
   const clear = useIntervalProposalStore((state) => state.clear);
   const select = useIntervalProposalStore((state) => state.select);
+  const updateProposalRange = useIntervalProposalStore((state) => state.updateProposalRange);
+  const resetProposalRange = useIntervalProposalStore((state) => state.resetProposalRange);
+  const previewSelected = useIntervalProposalStore((state) => state.previewSelected);
+  const clearPreview = useIntervalProposalStore((state) => state.clearPreview);
+  const applySelected = useIntervalProposalStore((state) => state.applySelected);
+  const undoLastApply = useIntervalProposalStore((state) => state.undoLastApply);
 
   const enabledConstraints = useMemo(
     () => constraints.filter((constraint) => constraint.enabled),
@@ -73,6 +82,7 @@ export function IntervalProposalPanel() {
   );
 
   const visibleProposals = showAll ? proposals : proposals.slice(0, DEFAULT_VISIBLE_CANDIDATES);
+  const selectedRange = selectedProposal?.editedRange ?? selectedProposal?.range ?? null;
 
   const handleGenerate = () => {
     generate({
@@ -177,6 +187,10 @@ export function IntervalProposalPanel() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">{proposal.rationale.summary}</p>
+              <p className="text-[10px] text-slate-400">
+                Review state: {proposal.qualityState === 'downgraded' ? 'Downgraded' : 'Valid'}
+                {proposal.isEdited ? ' · Edited range' : ' · Original range'}
+              </p>
               <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-300">
                 <span>Density: {proposal.quality.densityConcentration}</span>
                 <span>Hotspot: {proposal.quality.hotspotCoverage}</span>
@@ -214,8 +228,92 @@ export function IntervalProposalPanel() {
             <p className="text-[11px] text-slate-400">Quality: density {selectedProposal.quality.densityConcentration}, hotspot {selectedProposal.quality.hotspotCoverage}</p>
             <p className="text-[11px] text-slate-400">Proposal range: {formatRange(selectedProposal.range)}</p>
             <p className="text-[11px] text-slate-400">
+              Source range: {formatRange(selectedProposal.sourceRange)}
+              {selectedProposal.isEdited ? ' (edited)' : ''}
+            </p>
+            <p className="text-[11px] text-slate-400">Quality state: {selectedProposal.qualityState}</p>
+            <p className="text-[11px] text-slate-400">
               Source constraints: {generation.sourceConstraintIds.length ? generation.sourceConstraintIds.join(', ') : 'None'}
             </p>
+
+            {selectedRange ? (
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <label className="space-y-1 text-slate-400">
+                  <span>Start</span>
+                  <input
+                    type="number"
+                    value={selectedRange[0]}
+                    step={0.1}
+                    onChange={(event) => {
+                      const nextStart = Number(event.target.value);
+                      if (!Number.isFinite(nextStart)) {
+                        return;
+                      }
+
+                      updateProposalRange(selectedProposal.id, [nextStart, selectedRange[1]]);
+                    }}
+                    className="h-8 w-full rounded border border-slate-700 bg-slate-950 px-2 text-slate-100"
+                  />
+                </label>
+                <label className="space-y-1 text-slate-400">
+                  <span>End</span>
+                  <input
+                    type="number"
+                    value={selectedRange[1]}
+                    step={0.1}
+                    onChange={(event) => {
+                      const nextEnd = Number(event.target.value);
+                      if (!Number.isFinite(nextEnd)) {
+                        return;
+                      }
+
+                      updateProposalRange(selectedProposal.id, [selectedRange[0], nextEnd]);
+                    }}
+                    className="h-8 w-full rounded border border-slate-700 bg-slate-950 px-2 text-slate-100"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => previewSelected()}
+                className="inline-flex h-8 items-center justify-center rounded-md border border-cyan-400/70 bg-cyan-500/10 px-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/20"
+              >
+                {previewProposalId === selectedProposal.id ? 'Previewing' : 'Preview selected'}
+              </button>
+              <button
+                type="button"
+                onClick={() => applySelected()}
+                className="inline-flex h-8 items-center justify-center rounded-md border border-emerald-400/70 bg-emerald-500/10 px-2 text-xs font-medium text-emerald-100 transition hover:border-emerald-300 hover:bg-emerald-500/20"
+              >
+                {appliedProposalId === selectedProposal.id ? 'Re-apply selected' : 'Apply selected'}
+              </button>
+              <button
+                type="button"
+                onClick={() => resetProposalRange(selectedProposal.id)}
+                className="inline-flex h-8 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2 text-xs font-medium text-slate-200 transition hover:border-slate-500"
+              >
+                Reset boundaries
+              </button>
+              <button
+                type="button"
+                onClick={() => undoLastApply()}
+                disabled={lastApplied === null}
+                className="inline-flex h-8 items-center justify-center rounded-md border border-amber-400/70 bg-amber-500/10 px-2 text-xs font-medium text-amber-100 transition hover:border-amber-300 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Undo last apply
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={clearPreview}
+              className="inline-flex h-8 w-full items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2 text-xs font-medium text-slate-200 transition hover:border-slate-500"
+            >
+              Clear preview
+            </button>
           </>
         ) : (
           <p className="text-[11px] text-slate-500">Select a proposal to inspect confidence and linked cube context details.</p>
