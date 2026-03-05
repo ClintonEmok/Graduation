@@ -8,10 +8,10 @@
 
 ## Current Position
 
-**Current phase:** Phase 43 - 3D Sandbox Route Foundation (complete)  
-**Current plan:** 43-02 complete  
-**Status:** Phase complete, ready for next phase execution  
-**Progress:** overall ███████████████████░ 99% (125/126 plans with summaries complete)
+**Current phase:** Phase 44 - Cube Spatial Context Setup (in progress)  
+**Current plan:** 44-01 complete  
+**Status:** In progress  
+**Progress:** overall ███████████████████░ 98% (126/129 plans with summaries complete)
 
 ## Performance Metrics
 
@@ -37,13 +37,13 @@
 - Dataset scale and interactivity targets remain non-negotiable for usability.
 
 **Open execution items:**
-- Execute next planned phase (Phase 44) on top of completed sandbox foundation.
+- Execute 44-02 and 44-03 to complete cube spatial context setup phase.
 
 ## Session Continuity
 
-**Last activity:** 2026-03-05 - Completed 43-02 sandbox defaults/context/reset implementation and tests.  
+**Last activity:** 2026-03-05 - Completed 44-01 cube spatial constraints store/reset persistence/test baseline.  
 **Next command:** `/gsd/execute-phase 44`  
-**If resuming later:** Validate commits `2ce6343`, `9359ddd`, `2c56c08`, then continue from the next phase plan.
+**If resuming later:** Validate commits `8462d23`, `105d09c`, `a28f9f1`, then continue with 44-02.
 
 ## Recent Decisions
 
@@ -53,6 +53,9 @@
 - Use one reset orchestrator for both sandbox bootstrap and manual hard reset.
 - Keep sandbox context diagnostics always visible in a compact right-side panel.
 - Add `resetSandboxDefaults` in adaptive store to avoid brittle direct store mutation during reset.
+- Model cube spatial constraints as typed store records before UI wiring for deterministic downstream consumption.
+- Preserve saved spatial constraint definitions across hard reset; clear only active selection.
+- Keep constraint regression tests at store/reset orchestration level for fast deterministic feedback.
 
 ---
-*Last updated: 2026-03-05 - completed 43-02 execution*
+*Last updated: 2026-03-05 - completed 44-01 execution*
