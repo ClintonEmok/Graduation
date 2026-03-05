@@ -32,7 +32,10 @@ Implementation policy for v2.0: favor 3D-specific logic copies for parity-critic
   2. Core controls (time scale mode, warp source/mode, generation triggers) are available and connected.
   3. Data and timeline context stay synchronized between 3D visualization and timeline panel.
   4. Parity-critical behavior can be implemented with 3D-specific logic copies without requiring cross-surface consolidation in v2.0.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 43-01-PLAN.md — Stand up `/timeline-test-3d` runtime context and core control wiring
+- [ ] 43-02-PLAN.md — Add store-backed 3D scene synchronization and QA verification checkpoint
 
 ### Phase 44: 3D Interaction Parity
 **Goal**: Enable core manual timeslicing and warp interactions in 3D with timeline-test-equivalent behavior.
@@ -62,7 +65,7 @@ Implementation policy for v2.0: favor 3D-specific logic copies for parity-critic
 | 26-33 | v1.1 | 36/36 | Complete | 2026-02-22 |
 | 34-39 | v1.2 | 25/25 | Complete | 2026-03-02 |
 | 40-42 | v1.3 | 13/13 | Complete | 2026-03-04 |
-| 43 | v2.0 | 0/TBD | Not started | - |
+| 43 | v2.0 | 0/2 | Not started | - |
 | 44 | v2.0 | 0/TBD | Not started | - |
 | 45 | v2.0 | 0/TBD | Not started | - |
 
