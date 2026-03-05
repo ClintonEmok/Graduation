@@ -1,431 +1,71 @@
 # Roadmap: Adaptive Space-Time Cube
 
+## Overview
+
+v2.0 is narrowed to one outcome: a **3D version of timeline-test functionality**.
+The milestone focuses on bringing timeline-test interaction parity (timeslicing controls, warp behavior, suggestions/review loop, and acceptance flows) into a dedicated 3D test experience.
+
+Implementation policy for v2.0: favor 3D-specific logic copies for parity-critical flows; consolidation of duplicated 2D/3D logic is intentionally deferred to a potential v2.1 cleanup milestone.
+
 ## Milestones
 
-- ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
-- ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
-- 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
-- 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-39 (suggested warp profiles + suggested intervals + review)
-- ✅ **v1.3 Fully Automated Timeslicing Workflows** — Phases 40-42 (shipped 2026-03-04)
-- 📋 **v2.0** — Additional datasets and advanced analytics (future)
-
----
-
-## Completed Milestone
-
-<details>
-<summary>✅ v1.0 Thesis Prototype (Phases 01-25) — SHIPPED 2026-02-07</summary>
-
-Full details: `.planning/milestones/v1.0-ROADMAP.md`
-
-**Summary:**
-- 25 phases, 82 plans
-- 3D Space-Time Cube with React Three Fiber
-- GPU-accelerated adaptive time scaling
-- Coordinated Map-Cube-Timeline views
-- Advanced filtering with presets
-- Feature flags system
-- Interaction logging
-- Performance: 1.2M records at 60fps
-
-</details>
-
----
-
-## Active Milestone: v1.1 Manual Timeslicing
-
-**Goal:** Transform timeline into active analysis tool for manual region selection.
-
-**Core Principle:** "Timeline is the engine" — all logic timeline-centric, no 2D/3D yet.
-
-### Phase 26: Timeline Density Visualization
-
-**Goal:** Render clear density regions on the timeline.
-**Depends on:** Phase 25 (adaptive store with density data)
-**Plans:** 5 plans (26-01, 26-02, 26-03, 26-04, 26-05)
-
-**Requirements:** DENS-01 through DENS-04
-
-**Details:**
-- Leverage existing KDE density data from Phase 25
-- Visual representation: area chart + heat strip
-- Must work with both overview and detail timeline views
-- Update when filters change
-
-**Plan Overview:**
-- **26-01:** Test route & area chart setup
-- **26-02:** Heat strip & timeline integration
-- **26-03:** Filter sync & polish
-- **26-04:** Production debounced density wiring
-- **26-05:** Density gap closure for detail pane + stable scale legend
-
-### Phase 27: Manual Slice Creation
-
-**Goal:** Enable users to create time slices via click or drag.
-**Depends on:** Phase 26
-**Plans:** 6 plans (27-01, 27-02, 27-03, 27-04, 27-05, 27-06)
-
-**Requirements:** SLICE-01 through SLICE-05
-
-**Details:**
-- Click-to-create (default duration)
-- Drag-to-create (custom duration)
-- Visual preview during creation
-- Immediate visual feedback
-
-**Plan Overview:**
-- **27-01:** Foundation — Mode toggle, transient store, slice list
-- **27-02:** Interaction — Drag handling, ghost preview, click/drag discrimination
-- **27-03:** Polish — Snap behavior, duration constraints, edge cases
-- **27-04:** Gap Closure — Fix click-to-create range persistence (stores as point instead of range)
-- **27-05:** Gap Closure — Fix mock data date realism (0-100 normalized → real Date objects)
-- **27-06:** Gap Closure — Render committed slices on timeline + sync active highlight with list selection
-
-### Phase 28: Slice Boundary Adjustment
-
-**Goal:** Allow precise adjustment of slice boundaries.
-**Depends on:** Phase 27
-**Plans:** 4 plans (28-01, 28-02, 28-03, 28-04)
-
-**Requirements:** ADJUST-01 through ADJUST-06
-
-**Details:**
-- Draggable start/end handles
-- Real-time boundary updates
-- Minimum duration constraints
-- Optional snap behavior
-
-Plans:
-- [x] 28-01-PLAN.md — Boundary adjustment math + transient interaction store
-- [x] 28-02-PLAN.md — Handle layer and real-time drag wiring
-- [x] 28-03-PLAN.md — Snap controls, bypass behavior, and edge-case hardening
-- [x] 28-04-PLAN.md — Gap closure: eliminate fast-drag handle trailing and re-verify precision UX
-
-### Phase 29: Remake burstlist as first-class slices
-
-**Goal:** Transform burst windows into first-class timeline slices with full UX parity.
-**Depends on:** Phase 28
-**Plans:** 7 plans (29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07)
-
-Plans:
-- [x] 29-01-PLAN.md — Burst-to-slice mapping foundation (range matching, creation/reuse)
-- [x] 29-02-PLAN.md — Unified slice list with burst chip indicator
-- [x] 29-03-PLAN.md — Burst interaction wiring (create/select slices on click)
-- [x] 29-04-PLAN.md — Full lifecycle parity (edit, delete, recreate, sync)
-- [x] 29-05-PLAN.md — Gap closure: Slice rename UI/UX
-- [x] 29-06-PLAN.md — Gap closure: Timeline burst click SVG layering fix
-- [x] 29-07-PLAN.md — Gap closure: Automatic burst-to-slice conversion (no interaction required)
-
-**Details:**
-- Burst windows automatically appear as slices without user interaction
-- Unified slice list with subtle "Burst" chip for burst-derived slices
-- Clicking burst selects existing slice (creates automatically when computed)
-- Full editability: boundaries, rename, lock/visibility
-- Deletion and recreation work seamlessly
-
-### Phase 30: Timeline Adaptive Time Scaling
-
-**Goal:** Add adaptive (non-uniform) time scaling to timeline-test for visual comparison with uniform time.
-**Depends on:** Phase 29
-**Plans:** 3 plans (30-01, 30-02, 30-03)
-
-**Details:**
-- Add time scale mode toggle (linear/adaptive) to timeline-test
-- Make DualTimeline respond to timeScaleMode from time store
-- Integrate warp factor control
-- Show density-based time warping on timeline axis
-- Add user-authored warp slices (date-based intervals) as a separate adaptive warp source
-- Enable A/B comparison between uniform and adaptive views
-
-Plans:
-- [x] 30-01-PLAN.md — Add toggle and warp factor slider to SliceToolbar
-- [x] 30-02-PLAN.md — Make DualTimeline respond to timeScaleMode with adaptive scaling
-- [x] 30-03-PLAN.md — Polish: visual indicators, verify slice functionality in both modes
-
-### Phase 31: Multi-Slice Management
-
-**Goal:** Support multiple simultaneous slices with management tools.
-**Depends on:** Phase 30
-**Plans:** 3 plans (31-01, 31-02, 31-03)
-
-**Requirements:** MULTI-01 through MULTI-06
-
-**Details:**
-- Overlap visualization
-- Merge adjacent slices
-- Selection mechanism
-- Individual and bulk delete
-
-Plans:
-- [x] 31-01-PLAN.md — Gap closure: Adaptive DensityHeatStrip
-- [x] 31-02-PLAN.md — Multi-select foundation (store + UI)
-- [x] 31-03-PLAN.md — Merge and bulk delete functionality
-
-### Phase 32: Slice Metadata & UI
-
-**Goal:** Enable naming, coloring, and annotating slices.
-**Depends on:** Phase 31
-**Plans:** 3 plans (32-01, 32-02, 32-03)
-
-**Requirements:** META-01 through META-05, INTEG-01 through INTEG-04
-
-**Details:**
-- Inline editing panel
-- Color picker
-- Notes/annotation field
-- Hover tooltips
-- Session persistence
-
-Plans:
-- [x] 32-01-PLAN.md — Data model extension (add color and notes fields to TimeSlice)
-- [x] 32-02-PLAN.md — Color palette UI (color selector + rendering)
-- [x] 32-03-PLAN.md — Notes/annotation UI (tooltip + inline expand)
-
-### Phase 33: Data Integration
-
-**Goal:** Combine CSV data sources into DuckDB and wire timeline to real data.
-**Depends on:** Phase 32
-**Plans:** 3 plans (33-01, 33-02, 33-03)
-
-**Details:**
-- Query full 8.5M row CSV directly with DuckDB (no preprocessing)
-- Handle date parsing for "MM/DD/YYYY HH:MM:SS A" format
-- Filter null coordinates at query level (~1.1%)
-- Add error handling with mock fallback
-- Wire timeline to real 2001-2026 date range
-
-Plans:
-- [ ] 33-01-PLAN.md — DuckDB setup and CSV querying
-- [ ] 33-02-PLAN.md — API refactor with error handling
-- [ ] 33-03-PLAN.md — Timeline integration with real dates
-
----
-
-## Planned Milestones
-
-### Phase 34: Performance Optimization
-
-**Goal:** Optimize data loading and rendering for 8.4M record dataset.
-**Depends on:** Phase 33 (Data Integration)
-**Plans:** 5 plans (34-01 through 34-05)
-
-**Details:**
-- **The Issue:** Loading 8.4 million crime records makes the application slow
-- **Areas to Optimize:**
-  - Data streaming and pagination
-  - Point rendering performance (THREE.Points, level-of-detail)
-  - Query performance (DuckDB zone maps, sorted tables)
-  - Caching strategies (TanStack Query with select)
-
-**Success Criteria:**
-1. Initial load time < 3 seconds for 8.4M records
-2. Maintain 30+ fps during timeline interactions with full dataset
-3. Filter changes respond within 500ms
-4. Memory usage stays under 2GB during normal operation
-
-**Plans:**
-- [x] 34-01-PLAN.md — Zustand viewport store + TanStack Query setup
-- [x] 34-02-PLAN.md — DuckDB query optimization (sorted tables)
-- [x] 34-03-PLAN.md — Viewport API endpoint (/api/crimes/range)
-- [x] 34-04-PLAN.md — THREE.Points rendering with LOD
-- [ ] 34-05-PLAN.md — Integration & performance verification
-
-**Gap Closure Plans:**
-- [x] 34-06-PLAN.md — Canonical CrimeRecord type and unified useCrimeData hook
-- [ ] 34-07-PLAN.md — Gap closure: Update visualizations to use useCrimeData
-- [ ] 34-08-PLAN.md — Gap closure: Update data store to use unified hook
-- [ ] 34-09-PLAN.md — Gap closure: Remove legacy DataStore usage
-
----
-
-### v1.2 Semi-Automated Timeslicing Workflows
-
-**Goal:** AI-assisted timeslicing where the system proposes warp profiles and interval candidates for user confirmation.
-
-**Terminology note:** In this project, timeslicing refers to adaptive time warping (already supports density-driven and user-authored warp sources). Slice workflows are built on top of timeslicing and manage interval suggestions/review.
-
-**Key Features:**
-- System suggests warp profiles (candidate non-uniform warp slices/weights)
-- System suggests interval boundaries based on density peaks/events under the current warp
-- Context-aware suggestions scoped by active data context (e.g., crime type/category, filters, selected cohorts)
-- User reviews and adjusts both warp proposals and interval proposals
-- "Accept/Modify/Reject" workflow
-- Confidence scores for suggestions and profile quality
-
-**Phases:** 35-37
-
-**Phase 36: Suggestion Generation Algorithms**
-Plans:
-- [x] 36-01-PLAN.md — Confidence scoring module
-- [x] 36-02-PLAN.md — Warp profile generation algorithms
-- [x] 36-03-PLAN.md — Interval boundary detection algorithms
-- [x] 36-04-PLAN.md — Integration with useSuggestionGenerator
-
-### Phase 37: Algorithm Integration
-
-**Goal:** Connect the suggestion algorithms (Phase 36) to the UI (Phase 35) for complete review/approval workflow.
-
-**Key Features:**
-- Generation triggers: Manual Generate button + auto-regeneration on filter changes (500ms debounce)
-- User-configurable suggestion counts (default: 3 warp profiles, 3 interval boundaries)
-- Accept workflow: Creates actual warp slices and time slices on timeline
-- Modify workflow: Inline editing for suggestion parameters
-- Visual distinction: Colors and badges for warp profiles vs interval boundaries
-
-**Plans:** 2 plans
-- [x] 37-01-PLAN.md — Generation triggers & auto-regeneration
-- [x] 37-02-PLAN.md — Accept/modify workflow integration
-
-**Gap Closure Plans:**
-- [ ] 37-03-PLAN.md — UX quick fixes (dates, preview, animations)
-- [ ] 37-04-PLAN.md — Interaction improvements (undo, keyboard, collapse)
-- [ ] 37-05-PLAN.md — Bulk actions & presets
-- [ ] 37-06-PLAN.md — Comparison, tooltips & history
-- [ ] 37-07-PLAN.md — Collapsible suggestion cards
-- [ ] 37-08-PLAN.md — Single warp constraint & active indicator
-- [ ] 37-09-PLAN.md — Toasts, confidence filter, error handling
-
-**Phase 37: Review/Approval Workflows** (planned)
-
-### v1.3 Fully Automated Timeslicing Workflows
-
-**Goal:** Optimal automatic timeslicing with full warp + interval generation and user review.
-
-**Key Features:**
-- System creates complete warp profile and interval set automatically
-- Optimization for coverage, relevance, minimal overlap, and temporal continuity
-- Context-aware optimization per active investigation context (e.g., burglary-only, violent-crime-only, mixed comparisons)
-- User reviews and fine-tunes generated outputs
-- Multiple algorithm options (density-based, event-based, etc.)
-
-**Phases:** 40-42 (complete)
-
-### v2.0 Spatially-Constrained 3D Timeslicing (future)
-
-**Goal:** Extend timeslicing to account for spatial constraints in the 3D space-time cube.
-
-**Key Features:**
-- Warp proposals constrained by spatial regions and movement patterns
-- Cross-view validation between timeline, 2D map, and 3D cube
-- Spatially-aware interval generation (not timeline-only)
-- Context-aware spatial constraints (crime-type-conditioned hot zones, patrol regions, neighborhood boundaries)
-- User review with spatial diagnostics (coverage by area/cluster)
-
----
+- ✅ **v1.0 Thesis Prototype** - Phases 01-25 (shipped 2026-02-07)
+- ✅ **v1.1 Manual Timeslicing** - Phases 26-33 (shipped 2026-02-22)
+- ✅ **v1.2 Semi-Automated Timeslicing Workflows** - Phases 34-39 (shipped 2026-03-02)
+- ✅ **v1.3 Fully Automated Timeslicing Workflows** - Phases 40-42 (shipped 2026-03-04)
+- 🚧 **v2.0 3D Timeline-Test Parity** - Phases 43-45 (planned)
+
+## Phases
+
+- [ ] **Phase 43: 3D Timeline-Test Foundation** - Stand up a dedicated 3D test route that reuses timeline-test state, controls, and data plumbing.
+- [ ] **Phase 44: 3D Interaction Parity** - Bring manual timeslicing and warp interactions to 3D with behavior matching timeline-test.
+- [ ] **Phase 45: 3D Suggestion and Acceptance Parity** - Bring suggestion generation, review, and acceptance workflows to the 3D test experience.
+
+## Phase Details
+
+### Phase 43: 3D Timeline-Test Foundation
+**Goal**: Create a 3D test surface with the same core runtime context as timeline-test.
+**Depends on**: Phase 42
+**Requirements**: CUBE-01, CUBE-02, CUBE-09
+**Success Criteria** (what must be TRUE):
+  1. A dedicated 3D test route loads with the same timeline domain and store-backed state model used by timeline-test.
+  2. Core controls (time scale mode, warp source/mode, generation triggers) are available and connected.
+  3. Data and timeline context stay synchronized between 3D visualization and timeline panel.
+  4. Parity-critical behavior can be implemented with 3D-specific logic copies without requiring cross-surface consolidation in v2.0.
+**Plans**: TBD
+
+### Phase 44: 3D Interaction Parity
+**Goal**: Enable core manual timeslicing and warp interactions in 3D with timeline-test-equivalent behavior.
+**Depends on**: Phase 43
+**Requirements**: CUBE-03, CUBE-04, CUBE-05
+**Success Criteria** (what must be TRUE):
+  1. Users can create/select/edit slices and warp slices from the 3D test experience.
+  2. Acceptance of warp artifacts updates adaptive behavior consistently, matching timeline-test semantics.
+  3. Interaction feedback (selection, active state, overlap/preview cues) is visible and stable in 3D.
+**Plans**: TBD
+
+### Phase 45: 3D Suggestion and Acceptance Parity
+**Goal**: Provide full suggestion workflow parity in 3D test, including full-auto package review and acceptance.
+**Depends on**: Phase 44
+**Requirements**: CUBE-06, CUBE-07, CUBE-08
+**Success Criteria** (what must be TRUE):
+  1. Suggestion panel flows (generate/review/compare/history) are usable in 3D test.
+  2. Full-auto ranked package review and whyRecommended rationale are visible and actionable.
+  3. Accepting a package applies reviewed artifacts consistently and preserves safeguards/rerun behavior.
+**Plans**: TBD
 
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1-25 | v1.0 | 82/82 | ✅ Complete | 2026-02-07 |
-| 26 | v1.1 | 5/5 | ✅ Complete | 2026-02-18 |
-| 27 | v1.1 | 6/6 | ✅ Complete | 2026-02-18 |
-| 28 | v1.1 | 4/4 | ✅ Complete | 2026-02-19 |
-| 29 | v1.1 | 7/7 | ✅ Complete | 2026-02-19 |
-| 30 | v1.1 | 3/3 | ✅ Complete | 2026-02-20 |
-| 31 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
-| 32 | v1.1 | 3/3 | ✅ Complete | 2026-02-21 |
-| 33 | v1.1 | 5/5 | ✅ Complete | 2026-02-22 |
-| 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
-| 35 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-25 |
-| 36 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-02-25 |
-| 37 | v1.2 Timeslicing Workflows | 2/2 | ✅ Complete | 2026-02-27 |
-| 38 | v1.2 Timeslicing Workflows | 3/3 | ✅ Complete | 2026-02-28 |
-| 39 | v1.2 Timeslicing Workflows | 4/4 | ✅ Complete | 2026-03-02 |
-| 40 | v1.3 Fully Automated Timeslicing | 9/9 | ✅ Complete | 2026-03-02 |
-| 41 | v1.3 Fully Automated Timeslicing | 2/2 | ✅ Complete | 2026-03-04 |
-| 42 | v1.3 Fully Automated Timeslicing | 1/1 | ✅ Complete | 2026-03-04 |
-
-### Phase 39: Timeline UX Improvements
-
-**Goal:** Enhance timeline UX with visual overlays, indicators, and feedback mechanisms.
-**Depends on:** Phase 38 (context-aware timeslicing)
-**Plans:** 4 plans (39-01, 39-02, 39-03, 39-04)
-
-**Details:**
-- User warp overlay showing affected time periods
-- Mode indicator (Linear/Adaptive badge)
-- Density legend explaining color scale
-- Brush range date display
-- Warp factor real-time preview
-- Enhanced time cursor visibility
-- Loading indicator during data fetch
-- Empty state for no data
-- Multi-slice overlap visualization
-- Selection highlight enhancement
-
-**Plan Overview:**
-- [x] 39-01-PLAN.md — Warp overlay + mode indicator + density legend
-- [x] 39-02-PLAN.md — Brush range display
-- [x] 39-03-PLAN.md — Warp preview + time cursor enhancement
-- [x] 39-04-PLAN.md — Loading/empty states + slice polish
+| 01-25 | v1.0 | 82/82 | Complete | 2026-02-07 |
+| 26-33 | v1.1 | 36/36 | Complete | 2026-02-22 |
+| 34-39 | v1.2 | 25/25 | Complete | 2026-03-02 |
+| 40-42 | v1.3 | 13/13 | Complete | 2026-03-04 |
+| 43 | v2.0 | 0/TBD | Not started | - |
+| 44 | v2.0 | 0/TBD | Not started | - |
+| 45 | v2.0 | 0/TBD | Not started | - |
 
 ---
 
-### Phase 40: Fully Automated Timeslicing Orchestration
-
-**Goal:** Generate complete warp + interval proposal sets automatically from the active context and present them for review.
-**Depends on:** Phase 39 (Timeline UX Improvements)
-**Plans:** 3 plans (40-01, 40-02, 40-03)
-
-**Details:**
-- Trigger full auto generation from current context profile and filters
-- Produce review-ready outputs without manual preconfiguration
-- Keep user-in-the-loop review and fine-tune workflow
-
-**Plan Overview:**
-- [x] 40-01-PLAN.md — Full-auto orchestration core (proposal sets + ranking)
-- [x] 40-02-PLAN.md — Ranked package review UI integration
-- [x] 40-03-PLAN.md — Auto-run policy, package accept, and safeguards
-- [x] 40-04-PLAN.md — Gap closure: Simplify to warp-only packages
-- [x] 40-05-PLAN.md — Gap closure: Display warp intervals and weights
-- [x] 40-06-PLAN.md — Gap closure: Show dates instead of percentages
-- [x] 40-07-PLAN.md — Gap closure: Disable auto burst slices on timeslicing
-- [x] 40-08-PLAN.md — Gap closure: Clear existing burst slices on page load
-- [x] 40-09-PLAN.md — Gap closure: Fix warp overlay to show suggestion-sourced slices
-
-### Phase 41: Full-Auto Optimization & Ranking
-
-**Goal:** Optimize and rank full-auto candidates for coverage, relevance, overlap minimization, and temporal continuity.
-**Depends on:** Phase 40
-**Plans:** 2 plans (41-01, 41-02)
-
-**Details:**
-- Score candidate sets across quality dimensions
-- Rank alternatives and expose best default recommendation
-- Preserve context-aware behavior across investigation modes
-
-**Plan Overview:**
-- [x] 41-01-PLAN.md — Scoring logic & types (weights, overlap detection, whyRecommended)
-- [x] 41-02-PLAN.md — UI display (AutoProposalSetCard whyRecommended, SuggestionPanel integration)
-
-### Phase 42: Full-Auto Package Acceptance Alignment (Gap Closure)
-
-**Goal:** Align full-auto package generation and acceptance semantics so end-to-end package acceptance applies the intended artifacts consistently.
-**Depends on:** Phase 41
-**Plans:** 1 plan (42-01)
-
-**Gap Closure:** Closes v1.3 milestone audit integration and flow gaps
-
-**Details:**
-- Resolve contract mismatch between generated package contents and acceptance handler expectations
-- Ensure package acceptance behavior is consistent with milestone UX definition
-- Keep ranking, recommendation rationale, and manual rerun behavior intact
-
-**Plan Overview:**
-- [x] 42-01-PLAN.md — Close acceptance semantics gap (generation contract + acceptance wiring + verification)
-
----
-
-## v1.3 Phase Checklist
-
-Plans:
-- [x] Phase 40 plans — Complete (10/10)
-- [x] Phase 41 plans — Complete (2/2)
-- [x] Phase 42 plans — Complete (1/1)
-
----
-
-*For current project status, see .planning/PROJECT.md*  
-*For milestone history, see .planning/MILESTONES.md*  
-*For v1.1 scope details, see .planning/milestones/v1.1-manual-timeslicing-SCOPE.md*
+*For milestone history, see `.planning/MILESTONES.md`*

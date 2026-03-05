@@ -1,98 +1,53 @@
-# Requirements: v1.1 Manual Timeslicing
+# Requirements: v2.0 3D Timeline-Test Parity
 
-**Milestone:** v1.1  
-**Defined:** 2026-02-16  
-**Core Value:** Users can manually segment the timeline into meaningful time regions by visually identifying density patterns and precisely adjusting region boundaries through direct manipulation.
+**Milestone:** v2.0  
+**Defined:** 2026-03-05  
+**Core Value:** Users can perform timeline-test workflows in a dedicated 3D experience with equivalent behavior and outcomes.
 
-## v1.1 Requirements
+## v2.0 Requirements
 
-### Timeline Density Visualization
+### 3D Foundation
 
-- [x] **DENS-01**: Timeline renders event density as clear visual regions (bars, gradient, or heat)
-- [x] **DENS-02**: High-density areas are visually distinct from low-density areas
-- [x] **DENS-03**: Density visualization updates when filters change
-- [x] **DENS-04**: Density scale is consistent and readable
+- [ ] **CUBE-01**: A dedicated 3D test route exists and loads with the same time domain/state context as timeline-test.
+- [ ] **CUBE-02**: Core controls (time scale mode, warp source, generation triggers) are available and connected in 3D test.
+- [ ] **CUBE-09**: v2.0 uses 3D-specific logic copies for parity-critical flows (no shared refactor required during this milestone).
 
-### Manual Slice Creation
+### 3D Interaction Parity
 
-- [x] **SLICE-01**: User can create a time slice by clicking on timeline
-- [x] **SLICE-02**: User can create a time slice by dragging to define range
-- [x] **SLICE-03**: New slices have default duration (e.g., 1 hour) or match drag extent
-- [x] **SLICE-04**: Visual feedback during creation (preview region)
-- [x] **SLICE-05**: Slice appears immediately upon creation
+- [ ] **CUBE-03**: Users can create/select/edit time slices and warp slices from the 3D test workflow.
+- [ ] **CUBE-04**: Slice and warp changes in 3D stay synchronized with timeline state and adaptive rendering behavior.
+- [ ] **CUBE-05**: Interaction feedback parity exists (active selection, preview cues, overlap/selection clarity).
 
-### Slice Boundary Adjustment
+### Suggestion + Acceptance Parity
 
-- [x] **ADJUST-01**: Each slice has draggable start handle
-- [x] **ADJUST-02**: Each slice has draggable end handle
-- [x] **ADJUST-03**: Handles are visually distinct and easy to target
-- [x] **ADJUST-04**: Dragging updates slice boundary in real-time
-- [x] **ADJUST-05**: Minimum slice duration enforced (e.g., 5 minutes)
-- [x] **ADJUST-06**: Snap-to-neighboring-slice option
+- [ ] **CUBE-06**: Suggestion generation and review (manual and auto) are usable in 3D test.
+- [ ] **CUBE-07**: Ranked package rationale (`whyRecommended`) and score breakdown are visible in 3D test review flow.
+- [ ] **CUBE-08**: Accepting reviewed packages in 3D applies artifacts consistently and preserves safeguards/rerun behavior.
 
-### Multi-Slice Management
-
-- [ ] **MULTI-01**: Multiple slices can exist simultaneously
-- [ ] **MULTI-02**: Overlapping slices are visually indicated
-- [ ] **MULTI-03**: Adjacent slices can be merged
-- [ ] **MULTI-04**: User can select active slice (for editing)
-- [ ] **MULTI-05**: User can delete individual slices
-- [ ] **MULTI-06**: User can clear all slices
-
-### Slice Metadata
-
-- [ ] **META-01**: Each slice has editable name
-- [ ] **META-02**: Each slice has selectable color
-- [ ] **META-03**: Each slice has optional notes field
-- [ ] **META-04**: Metadata is editable via inline panel or modal
-- [ ] **META-05**: Metadata persists during session
-
-### Timeline Integration
-
-- [ ] **INTEG-01**: Slices render above or below density visualization
-- [ ] **INTEG-02**: Slices don't obstruct timeline navigation (brush, zoom)
-- [ ] **INTEG-03**: Selected slice is visually highlighted
-- [ ] **INTEG-04**: Hover shows slice metadata tooltip
-
-### Performance
-
-- [ ] **PERF-01**: Creating slice < 100ms
-- [ ] **PERF-02**: Adjusting boundary < 50ms (real-time)
-- [ ] **PERF-03**: 50+ slices without UI lag
-
-## Out of Scope (v1.1)
-
-**Terminology note:**
-- Timeslicing = adaptive time warping
-- Slice workflows = interval suggestion/acceptance/rejection layered on timeslicing
-- v1.1 already includes automated (density-driven) and manual (user-authored) timeslicing modes
+## Out of Scope (v2.0)
 
 | Feature | Reason |
 |---------|--------|
-| 2D/3D slice visualization | Timeline-only focus for v1.1 |
-| Slice statistics/analytics | Keep scope minimal |
-| Semi-automated suggestions | v1.2 feature |
-| Fully automated generation | v1.3 feature |
-| Cross-view synchronization | v1.2+ feature |
-| Slice persistence (save/load) | Session-only for v1.1 |
-| Export functionality | Analytics milestone |
+| New spatial constraint algorithms | Milestone is parity-focused, not new generation science |
+| Consolidating duplicated 2D/3D logic | Explicitly deferred to potential v2.1 cleanup/consolidation milestone |
+| Multi-dataset support | Keep scope aligned to existing thesis dataset |
+| Collaboration and multi-user review | Single-user analysis workflow remains primary |
+| Mobile-first UX | Analysis workflows remain desktop-oriented |
 
-## Future Milestone Mapping
+## Traceability
 
-| Requirement | v1.1 | v1.2 | v1.3 |
-|-------------|------|------|------|
-| Manual creation | ✅ | ✅ | ✅ |
-| Automated timeslicing (density-driven warp) | ✅ | ✅ | ✅ |
-| Manual timeslicing (user-authored warp) | ✅ | ✅ | ✅ |
-| Context-aware timeslicing (by data facets, e.g. crime type) | ❌ | ✅ | ✅ |
-| Visual density | ✅ | ✅ | ✅ |
-| Boundary adjust | ✅ | ✅ | ✅ |
-| Semi-automated | ❌ | ✅ | ✅ |
-| Auto-suggestions | ❌ | ✅ | ✅ |
-| Fully automated | ❌ | ❌ | ✅ |
-| 2D/3D sync | ❌ | ✅ | ✅ |
-| Persistence | ❌ | ✅ | ✅ |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CUBE-01 | Phase 43 | Pending |
+| CUBE-02 | Phase 43 | Pending |
+| CUBE-09 | Phase 43 | Pending |
+| CUBE-03 | Phase 44 | Pending |
+| CUBE-04 | Phase 44 | Pending |
+| CUBE-05 | Phase 44 | Pending |
+| CUBE-06 | Phase 45 | Pending |
+| CUBE-07 | Phase 45 | Pending |
+| CUBE-08 | Phase 45 | Pending |
 
 ---
 
-*Requirements for v1.1 Manual Timeslicing milestone*
+*Requirements for v2.0 3D Timeline-Test Parity milestone*
