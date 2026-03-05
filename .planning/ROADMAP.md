@@ -4,10 +4,10 @@
 
 - ✅ **v1.0 Thesis Prototype** — Phases 01-25 (shipped 2026-02-07)
 - ✅ **v1.1 Manual Timeslicing** — Phases 26-33 (shipped 2026-02-22)
-- 📋 **Performance Optimization** — Phase 34 (8.4M record optimization)
+- ✅ **Performance Optimization** — Phase 34 (shipped 2026-02-22)
 - 📋 **v1.2 Semi-Automated Timeslicing Workflows** — Phase 35-37 (suggested warp profiles + suggested intervals + review)
 - 📋 **v1.3 Fully Automated Timeslicing Workflows** — Phase 38-42 (automatic warp + interval generation + review)
-- 📋 **v2.0** — Additional datasets and advanced analytics (future)
+- 🚧 **v2.0 Cube-First Space-Time Slicing Sandbox** — Phases 43-50 (planning)
 
 ---
 
@@ -267,16 +267,108 @@ Plans:
 
 **Phases:** 38-42 (planned)
 
-### v2.0 Spatially-Constrained 3D Timeslicing (future)
+### v2.0 Cube-First Space-Time Slicing Sandbox (planning)
 
-**Goal:** Extend timeslicing to account for spatial constraints in the 3D space-time cube.
+**Overview:** v2.0 focuses on a dedicated 3D timeslicing sandbox route where space-time slicing can be created, tested, and validated quickly. Timeline/map parity is deferred unless needed for cube outcomes.
 
-**Key Features:**
-- Warp proposals constrained by spatial regions and movement patterns
-- Cross-view validation between timeline, 2D map, and 3D cube
-- Spatially-aware interval generation (not timeline-only)
-- Context-aware spatial constraints (crime-type-conditioned hot zones, patrol regions, neighborhood boundaries)
-- User review with spatial diagnostics (coverage by area/cluster)
+#### Phase 43: 3D Sandbox Route Foundation
+
+**Goal:** Users can run 3D timeslicing experiments in a dedicated sandbox route with fast reset and clear context.
+**Depends on:** Phase 42 (v1.3 completion)
+**Requirements:** ROUTE-01, ROUTE-02, ROUTE-03, ROUTE-04
+**Plans:** 2 plans
+
+Plans:
+- [ ] 43-01-PLAN.md — Create isolated `/cube-sandbox` route scaffold and entry navigation
+- [ ] 43-02-PLAN.md — Add sandbox defaults, compact context panel, and hard reset orchestration
+
+**Success Criteria:**
+1. Dedicated 3D timeslicing sandbox route is available and isolated from production workflows.
+2. Sandbox route loads thesis-scale defaults with cube state and tooling.
+3. User can reset sandbox state rapidly without app reload.
+
+#### Phase 44: Cube Spatial Context Setup
+
+**Goal:** Users can define and control cube spatial constraints used by timeslicing proposals.
+**Depends on:** Phase 43
+**Requirements:** CSPAT-01, CSPAT-02, CSPAT-03, CSPAT-04
+**Plans:** 3 plans
+
+Plans:
+- [ ] 44-01-PLAN.md — Spatial constraint store foundation + reset persistence + tests
+- [ ] 44-02-PLAN.md — Sandbox constraint manager UI and context rail integration
+- [ ] 44-03-PLAN.md — Cube overlay indicators for enabled/active constraints
+
+**Success Criteria:**
+1. User can create one or more spatial constraint regions.
+2. Constraints can be toggled on/off while preserving definitions.
+3. Constraints appear consistently in cube context cues.
+
+#### Phase 45: Cube-Constrained Warp Proposals
+
+**Goal:** Users can generate and apply warp proposals informed by selected cube spatial constraints.
+**Depends on:** Phase 44
+**Requirements:** CWARP-01, CWARP-02, CWARP-03
+
+**Success Criteria:**
+1. System generates warp proposals tied to active spatial constraints.
+2. Each proposal shows rationale indicators users can inspect.
+3. Applying a proposal immediately changes adaptive mapping in cube axes.
+
+#### Phase 46: Cube-Aware Interval Proposals
+
+**Goal:** Users can work with interval proposals that reflect both temporal bursts and cube spatial context.
+**Depends on:** Phase 45
+**Requirements:** CINTV-01, CINTV-02, CINTV-03
+
+**Success Criteria:**
+1. System suggests interval boundaries for constrained spatial context.
+2. Intervals expose quality/confidence indicators.
+3. User can adjust interval boundaries and still receive constraint-aware feedback.
+
+#### Phase 47: Cube-First Validation
+
+**Goal:** Users can validate proposal outcomes consistently within cube views and panels.
+**Depends on:** Phase 46
+**Requirements:** CVAL-01, CVAL-02, CVAL-03
+
+**Success Criteria:**
+1. Selecting a slice highlights matching events across cube representations.
+2. Accept/reject/edit states propagate in one interaction cycle.
+3. Uniform vs adaptive comparison keeps cube overlays aligned.
+
+#### Phase 48: Review Workflow
+
+**Goal:** Users can complete proposal review decisions with reversible actions and clear provenance.
+**Depends on:** Phase 47
+**Requirements:** REVIEW-01, REVIEW-02, REVIEW-03
+
+**Success Criteria:**
+1. User can accept, modify, or reject each proposal.
+2. Review list shows clear status and supports quick navigation.
+3. User can undo the latest review action without losing provenance.
+
+#### Phase 49: Cube Diagnostics and Analytics
+
+**Goal:** Users can evaluate spatial quality of accepted slices before finalizing analysis.
+**Depends on:** Phase 48
+**Requirements:** DIAG-01, DIAG-02, DIAG-03
+
+**Success Criteria:**
+1. User can inspect per-slice spatial coverage diagnostics.
+2. User can compare accepted slicing against uniform baseline metrics.
+3. Diagnostics can be filtered by active data context.
+
+#### Phase 50: Quality and Responsiveness
+
+**Goal:** Users can run the full cube-first v2.0 workflow at interactive speed under thesis-scale data.
+**Depends on:** Phase 49
+**Requirements:** QUAL-01, QUAL-02, QUAL-03
+
+**Success Criteria:**
+1. Proposal generation plus first render completes within interactive threshold.
+2. Slice edits and cross-view highlight updates feel real-time.
+3. Workflow remains stable with high proposal/slice counts.
 
 ---
 
@@ -296,6 +388,7 @@ Plans:
 | 34 | v1.2 Perf | 9/9 | ✅ Complete | 2026-02-22 |
 | 35-37 | v1.2 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
 | 38-42 | v1.3 Timeslicing Workflows | 0/TBD | 📋 Planned | - |
+| 43-50 | v2.0 Cube-First Space-Time Slicing Sandbox | 0/TBD | 🚧 Planning | - |
 
 ---
 
