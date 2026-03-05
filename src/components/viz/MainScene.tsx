@@ -10,6 +10,7 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
+import { SpatialConstraintOverlay } from './SpatialConstraintOverlay';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   // Initialize the selection sync conductor - ties all views together
@@ -151,6 +152,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         <div className="h-full w-full pointer-events-auto">
           <Scene transparent={mode === 'map'}>
             <SimpleCrimePoints />
+            <SpatialConstraintOverlay />
 
             
             <CameraControls

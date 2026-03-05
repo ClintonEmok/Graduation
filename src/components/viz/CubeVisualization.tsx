@@ -5,6 +5,7 @@ import { RefreshCcw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
 import { useLogger } from '@/hooks/useLogger';
@@ -16,7 +17,15 @@ export default function CubeVisualization() {
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const { constraints, activeConstraintId } = useCubeSpatialConstraintsStore((state) => ({
+    constraints: state.constraints,
+    activeConstraintId: state.activeConstraintId,
+  }));
   const { log } = useLogger();
+
+  const enabledConstraints = constraints.filter((constraint) => constraint.enabled);
+  const activeConstraintLabel =
+    constraints.find((constraint) => constraint.id === activeConstraintId)?.label ?? 'None';
 
   useEffect(() => {
     if (!columns && !isLoading) {
@@ -46,6 +55,11 @@ export default function CubeVisualization() {
 
       <div className="flex-1 w-full relative bg-muted/20 flex items-center justify-center overflow-hidden">
         <MainScene showMapBackground={false} />
+
+        <div className="absolute top-4 left-4 z-10 rounded-md border border-slate-500/50 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-100 shadow-sm backdrop-blur">
+          Constraints: {enabledConstraints.length} enabled · Active: {activeConstraintLabel}
+        </div>
+
         <div className="absolute bottom-4 left-4 z-10">
           <SimpleCrimeLegend />
         </div>
