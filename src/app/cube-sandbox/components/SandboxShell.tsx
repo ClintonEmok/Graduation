@@ -14,8 +14,8 @@ export function SandboxShell() {
         <aside className="w-full rounded-2xl border border-slate-800 bg-slate-900/75 p-4 lg:max-w-sm">
           <div className="space-y-4 text-sm">
             <header className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Cube Sandbox</p>
-              <h1 className="text-lg font-semibold text-slate-100">v2.0 experimentation rail</h1>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Cube Sandbox Route</p>
+              <h1 className="text-lg font-semibold text-slate-100">v2.0 cube-first experimentation</h1>
             </header>
 
             <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
@@ -28,6 +28,15 @@ export function SandboxShell() {
                 <dt className="text-slate-500">Warp state</dt>
                 <dd>Ready</dd>
               </dl>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+              <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Reserved rail slots</p>
+              <ul className="space-y-1 text-xs text-slate-300">
+                <li>Proposal review summary</li>
+                <li>Debug telemetry snapshot</li>
+                <li>One-click sandbox reset</li>
+              </ul>
             </div>
 
             <p className="text-xs leading-relaxed text-slate-400">
