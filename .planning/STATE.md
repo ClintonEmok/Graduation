@@ -8,10 +8,10 @@
 
 ## Current Position
 
-**Current phase:** Phase 45 - Cube-Constrained Warp Proposals (complete)  
-**Current plan:** None (phase complete)  
-**Status:** Phase complete  
-**Progress:** overall ████████████████████ 99% (131/132 plans with summaries complete)
+**Current phase:** Phase 46 - Cube-Aware Interval Proposals (in progress)  
+**Current plan:** 46-01 completed (2 plans remaining in phase)  
+**Status:** In progress  
+**Progress:** overall ███████████████████░ 98% (132/135 plans with summaries complete)
 
 ## Performance Metrics
 
@@ -37,16 +37,16 @@
 - Dataset scale and interactivity targets remain non-negotiable for usability.
 
 **Open execution items:**
-- Continue next planned phase execution after Phase 45 completion.
+- Continue Phase 46 execution with plans 46-02 and 46-03.
 
 ## Session Continuity
 
-**Last activity:** 2026-03-05 - Completed `45-03-PLAN.md` (proposal apply adapter + live cube feedback).  
-**Last session:** 2026-03-05T13:21:31.979Z
-**Stopped at:** Phase 46 context gathered
-**Resume file:** .planning/phases/46-cube-aware-interval-proposals/46-CONTEXT.md
-**Next command:** `/gsd/execute-phase 45`  
-**If resuming later:** Start from the next phase plan scaffold.
+**Last activity:** 2026-03-05 - Completed `46-01-PLAN.md` (deterministic interval proposal engine + store + regressions).  
+**Last session:** 2026-03-05T13:39:47Z
+**Stopped at:** Phase 46 Plan 01 complete
+**Resume file:** .planning/phases/46-cube-aware-interval-proposals/46-02-PLAN.md
+**Next command:** `/gsd/execute-phase 46`  
+**If resuming later:** Continue from Phase 46 Plan 02.
 
 ## Recent Decisions
 
@@ -76,6 +76,9 @@
 - Use a deterministic apply adapter to map proposal payload into adaptive runtime state in one action.
 - Tag adaptive source as `proposal-applied` and persist applied proposal id for diagnostics traceability.
 - Keep apply action directly in selected proposal details and mirror applied cue in cube overlay.
+- Model interval proposal IDs as `interval-{constraintId}-{burstId}` to keep selection deterministic across regenerations.
+- Include confidence and quality blocks in interval proposal payloads so review UI can render diagnostics without recomputing scores.
+- Apply overlap suppression per constraint to remove redundant interval candidates while preserving cube-context grouping semantics.
 
 ---
-*Last updated: 2026-03-05 - completed 45-03 and closed Phase 45*
+*Last updated: 2026-03-05 - completed 46-01 and advanced Phase 46*
