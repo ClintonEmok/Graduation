@@ -9,9 +9,9 @@
 ## Current Position
 
 **Current phase:** Phase 46 - Cube-Aware Interval Proposals (in progress)  
-**Current plan:** 46-01 completed (2 plans remaining in phase)  
+**Current plan:** 46-02 completed (1 plan remaining in phase)  
 **Status:** In progress  
-**Progress:** overall ███████████████████░ 98% (132/135 plans with summaries complete)
+**Progress:** overall ███████████████████░ 99% (133/135 plans with summaries complete)
 
 ## Performance Metrics
 
@@ -37,16 +37,16 @@
 - Dataset scale and interactivity targets remain non-negotiable for usability.
 
 **Open execution items:**
-- Continue Phase 46 execution with plans 46-02 and 46-03.
+- Continue Phase 46 execution with plan 46-03.
 
 ## Session Continuity
 
-**Last activity:** 2026-03-05 - Completed `46-01-PLAN.md` (deterministic interval proposal engine + store + regressions).  
-**Last session:** 2026-03-05T13:39:47Z
-**Stopped at:** Phase 46 Plan 01 complete
-**Resume file:** .planning/phases/46-cube-aware-interval-proposals/46-02-PLAN.md
+**Last activity:** 2026-03-05 - Completed `46-02-PLAN.md` (interval proposal rail UI integration + lifecycle reset coverage).  
+**Last session:** 2026-03-05T13:48:30Z
+**Stopped at:** Phase 46 Plan 02 complete
+**Resume file:** .planning/phases/46-cube-aware-interval-proposals/46-03-PLAN.md
 **Next command:** `/gsd/execute-phase 46`  
-**If resuming later:** Continue from Phase 46 Plan 02.
+**If resuming later:** Continue from Phase 46 Plan 03.
 
 ## Recent Decisions
 
@@ -79,6 +79,9 @@
 - Model interval proposal IDs as `interval-{constraintId}-{burstId}` to keep selection deterministic across regenerations.
 - Include confidence and quality blocks in interval proposal payloads so review UI can render diagnostics without recomputing scores.
 - Apply overlap suppression per constraint to remove redundant interval candidates while preserving cube-context grouping semantics.
+- Keep interval proposal review inline in sandbox diagnostics rail with confidence-first rationale cards.
+- Keep interval rail list concise by default (top candidates) with explicit expand action for full candidate set.
+- Clear interval proposal state in both hard reset orchestration and `/cube-sandbox` unmount cleanup.
 
 ---
-*Last updated: 2026-03-05 - completed 46-01 and advanced Phase 46*
+*Last updated: 2026-03-05 - completed 46-02 and advanced Phase 46*
