@@ -27,9 +27,9 @@ export default function CubeSandboxPage() {
     void handleReset();
   }, [handleReset]);
 
-  return (
-    <SandboxShell
-      contextPanel={<SandboxContextPanel onReset={() => void handleReset()} isResetting={isResetting} />}
-    />
+  const contextPanel = (
+    <SandboxContextPanel onReset={() => void handleReset()} isResetting={isResetting} />
   );
+
+  return <SandboxShell contextPanel={contextPanel} />;
 }

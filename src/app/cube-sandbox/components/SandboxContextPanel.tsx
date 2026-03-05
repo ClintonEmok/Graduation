@@ -1,9 +1,11 @@
 "use client";
 
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { SpatialConstraintManager } from './SpatialConstraintManager';
 
 type SandboxContextPanelProps = {
   onReset: () => void;
@@ -32,6 +34,10 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
     warpSource: state.warpSource,
     warpFactor: state.warpFactor,
   }));
+  const { constraints, activeConstraintId } = useCubeSpatialConstraintsStore((state) => ({
+    constraints: state.constraints,
+    activeConstraintId: state.activeConstraintId,
+  }));
 
   const activeFilterCount = getActiveFilterCount();
   const datasetLabel = isLoading
@@ -44,6 +50,9 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
   const spatialLabel = selectedSpatialBounds
     ? `${formatBounds(selectedSpatialBounds.minX)}..${formatBounds(selectedSpatialBounds.maxX)} x ${formatBounds(selectedSpatialBounds.minZ)}..${formatBounds(selectedSpatialBounds.maxZ)} z`
     : 'Not constrained';
+  const enabledConstraintCount = constraints.filter((constraint) => constraint.enabled).length;
+  const activeConstraintLabel =
+    constraints.find((constraint) => constraint.id === activeConstraintId)?.label ?? 'None selected';
 
   return (
     <section className="space-y-3 text-xs text-slate-200" aria-label="Sandbox context panel">
@@ -100,6 +109,23 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
           <dd className="break-all text-slate-100">{spatialLabel}</dd>
         </div>
       </dl>
+
+      <dl className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-slate-400">Constraints</dt>
+          <dd className="text-right text-slate-100">{constraints.length}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-slate-400">Enabled</dt>
+          <dd className="text-right text-slate-100">{enabledConstraintCount}</dd>
+        </div>
+        <div className="space-y-1">
+          <dt className="text-slate-400">Active constraint</dt>
+          <dd className="break-all text-slate-100">{activeConstraintLabel}</dd>
+        </div>
+      </dl>
+
+      <SpatialConstraintManager />
 
       <button
         type="button"
