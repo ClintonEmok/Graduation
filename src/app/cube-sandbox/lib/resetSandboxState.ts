@@ -8,6 +8,7 @@ import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useWarpProposalStore } from '@/store/useWarpProposalStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 
 export async function resetSandboxState(): Promise<void> {
@@ -15,6 +16,7 @@ export async function resetSandboxState(): Promise<void> {
 
   useSliceStore.getState().clearSlices();
   useWarpSliceStore.getState().clearSlices();
+  useWarpProposalStore.getState().clear();
   useSliceSelectionStore.getState().clearSelection();
   useSliceCreationStore.getState().cancelCreation();
   useSliceAdjustmentStore.getState().endDrag();

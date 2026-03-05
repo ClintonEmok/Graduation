@@ -8,6 +8,7 @@ import { useSliceStore } from '@/store/useSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useDataStore } from '@/store/useDataStore';
+import { useWarpProposalStore } from '@/store/useWarpProposalStore';
 
 describe('resetSandboxState', () => {
   beforeEach(() => {
@@ -55,6 +56,33 @@ describe('resetSandboxState', () => {
           enabled: true,
         },
       ],
+    });
+    useWarpProposalStore.setState({
+      proposals: [
+        {
+          id: 'proposal-constraint-a',
+          label: 'Downtown candidate',
+          constraintId: 'constraint-a',
+          payload: {
+            warpFactor: 0.62,
+            range: [20, 45],
+          },
+          rationale: {
+            summary: 'Candidate summary',
+            densityConcentration: 81,
+            hotspotCoverage: 67,
+            confidenceBand: 'High',
+            confidenceScore: 84,
+          },
+          score: 75,
+        },
+      ],
+      selectedProposalId: 'proposal-constraint-a',
+      appliedProposalId: 'proposal-constraint-a',
+      generation: {
+        generatedAt: 123,
+        sourceConstraintIds: ['constraint-a'],
+      },
     });
     useCubeSpatialConstraintsStore.setState({
       constraints: [
@@ -120,6 +148,13 @@ describe('resetSandboxState', () => {
     expect(useSliceStore.getState().slices).toEqual([]);
     expect(useSliceStore.getState().activeSliceId).toBeNull();
     expect(useWarpSliceStore.getState().slices).toEqual([]);
+
+    const warpProposalState = useWarpProposalStore.getState();
+    expect(warpProposalState.proposals).toEqual([]);
+    expect(warpProposalState.selectedProposalId).toBeNull();
+    expect(warpProposalState.appliedProposalId).toBeNull();
+    expect(warpProposalState.generation.generatedAt).toBeNull();
+    expect(warpProposalState.generation.sourceConstraintIds).toEqual([]);
 
     const constraintState = useCubeSpatialConstraintsStore.getState();
     expect(constraintState.constraints).toHaveLength(2);

@@ -5,7 +5,9 @@ import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraint
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useWarpProposalStore } from '@/store/useWarpProposalStore';
 import { SpatialConstraintManager } from './SpatialConstraintManager';
+import { WarpProposalPanel } from './WarpProposalPanel';
 
 type SandboxContextPanelProps = {
   onReset: () => void;
@@ -15,29 +17,22 @@ type SandboxContextPanelProps = {
 const formatBounds = (value: number) => value.toFixed(2);
 
 export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPanelProps) {
-  const { columns, isLoading, isMock, dataCount } = useDataStore((state) => ({
-    columns: state.columns,
-    isLoading: state.isLoading,
-    isMock: state.isMock,
-    dataCount: state.dataCount,
-  }));
-  const { selectedTypes, selectedDistricts, selectedTimeRange, selectedSpatialBounds, getActiveFilterCount } =
-    useFilterStore((state) => ({
-      selectedTypes: state.selectedTypes,
-      selectedDistricts: state.selectedDistricts,
-      selectedTimeRange: state.selectedTimeRange,
-      selectedSpatialBounds: state.selectedSpatialBounds,
-      getActiveFilterCount: state.getActiveFilterCount,
-    }));
+  const columns = useDataStore((state) => state.columns);
+  const isLoading = useDataStore((state) => state.isLoading);
+  const isMock = useDataStore((state) => state.isMock);
+  const dataCount = useDataStore((state) => state.dataCount);
+  const selectedTypes = useFilterStore((state) => state.selectedTypes);
+  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const getActiveFilterCount = useFilterStore((state) => state.getActiveFilterCount);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
-  const { warpSource, warpFactor } = useAdaptiveStore((state) => ({
-    warpSource: state.warpSource,
-    warpFactor: state.warpFactor,
-  }));
-  const { constraints, activeConstraintId } = useCubeSpatialConstraintsStore((state) => ({
-    constraints: state.constraints,
-    activeConstraintId: state.activeConstraintId,
-  }));
+  const warpSource = useAdaptiveStore((state) => state.warpSource);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const constraints = useCubeSpatialConstraintsStore((state) => state.constraints);
+  const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
+  const proposals = useWarpProposalStore((state) => state.proposals);
+  const selectedProposalId = useWarpProposalStore((state) => state.selectedProposalId);
 
   const activeFilterCount = getActiveFilterCount();
   const datasetLabel = isLoading
@@ -53,6 +48,8 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
   const enabledConstraintCount = constraints.filter((constraint) => constraint.enabled).length;
   const activeConstraintLabel =
     constraints.find((constraint) => constraint.id === activeConstraintId)?.label ?? 'None selected';
+  const selectedProposalLabel =
+    proposals.find((proposal) => proposal.id === selectedProposalId)?.label ?? 'None selected';
 
   return (
     <section className="space-y-3 text-xs text-slate-200" aria-label="Sandbox context panel">
@@ -123,9 +120,19 @@ export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPane
           <dt className="text-slate-400">Active constraint</dt>
           <dd className="break-all text-slate-100">{activeConstraintLabel}</dd>
         </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-slate-400">Proposals</dt>
+          <dd className="text-right text-slate-100">{proposals.length}</dd>
+        </div>
+        <div className="space-y-1">
+          <dt className="text-slate-400">Selected proposal</dt>
+          <dd className="break-all text-slate-100">{selectedProposalLabel}</dd>
+        </div>
       </dl>
 
       <SpatialConstraintManager />
+
+      <WarpProposalPanel />
 
       <button
         type="button"
