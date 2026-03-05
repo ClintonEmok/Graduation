@@ -3,6 +3,7 @@ import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
 import { useSliceCreationStore } from '@/store/useSliceCreationStore';
 import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
@@ -16,6 +17,7 @@ export async function resetSandboxState(): Promise<void> {
 
   useSliceStore.getState().clearSlices();
   useWarpSliceStore.getState().clearSlices();
+  useIntervalProposalStore.getState().clear();
   useWarpProposalStore.getState().clear();
   useSliceSelectionStore.getState().clearSelection();
   useSliceCreationStore.getState().cancelCreation();

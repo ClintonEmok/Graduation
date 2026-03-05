@@ -4,6 +4,7 @@ import { resetSandboxState } from './resetSandboxState';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
@@ -84,6 +85,38 @@ describe('resetSandboxState', () => {
         sourceConstraintIds: ['constraint-a'],
       },
     });
+    useIntervalProposalStore.setState({
+      proposals: [
+        {
+          id: 'interval-constraint-a-burst-1',
+          label: 'Downtown interval 20-45',
+          constraintId: 'constraint-a',
+          constraintLabel: 'Downtown cube',
+          range: [20, 45],
+          rationale: {
+            summary: 'Interval summary',
+            densityConcentration: 78,
+            hotspotCoverage: 69,
+            confidenceBand: 'High',
+            confidenceScore: 83,
+          },
+          confidence: {
+            band: 'High',
+            score: 83,
+          },
+          quality: {
+            densityConcentration: 78,
+            hotspotCoverage: 69,
+          },
+          score: 80,
+        },
+      ],
+      selectedProposalId: 'interval-constraint-a-burst-1',
+      generation: {
+        generatedAt: 456,
+        sourceConstraintIds: ['constraint-a'],
+      },
+    });
     useCubeSpatialConstraintsStore.setState({
       constraints: [
         {
@@ -155,6 +188,12 @@ describe('resetSandboxState', () => {
     expect(warpProposalState.appliedProposalId).toBeNull();
     expect(warpProposalState.generation.generatedAt).toBeNull();
     expect(warpProposalState.generation.sourceConstraintIds).toEqual([]);
+
+    const intervalProposalState = useIntervalProposalStore.getState();
+    expect(intervalProposalState.proposals).toEqual([]);
+    expect(intervalProposalState.selectedProposalId).toBeNull();
+    expect(intervalProposalState.generation.generatedAt).toBeNull();
+    expect(intervalProposalState.generation.sourceConstraintIds).toEqual([]);
 
     const constraintState = useCubeSpatialConstraintsStore.getState();
     expect(constraintState.constraints).toHaveLength(2);
