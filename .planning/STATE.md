@@ -9,9 +9,9 @@
 ## Current Position
 
 **Current phase:** Phase 45 - Cube-Constrained Warp Proposals (in progress)  
-**Current plan:** 45-02 pending  
+**Current plan:** 45-03 pending  
 **Status:** In progress  
-**Progress:** overall ███████████████████░ 98% (129/132 plans with summaries complete)
+**Progress:** overall ███████████████████░ 98% (130/132 plans with summaries complete)
 
 ## Performance Metrics
 
@@ -37,16 +37,16 @@
 - Dataset scale and interactivity targets remain non-negotiable for usability.
 
 **Open execution items:**
-- Execute remaining Phase 45 plans in order (45-02 -> 45-03).
+- Execute remaining Phase 45 plans in order (45-03).
 
 ## Session Continuity
 
-**Last activity:** 2026-03-05 - Completed `45-01-PLAN.md` (proposal engine + store + deterministic tests).  
-**Last session:** 2026-03-05 12:13 UTC  
-**Stopped at:** Completed `45-01-PLAN.md`  
+**Last activity:** 2026-03-05 - Completed `45-02-PLAN.md` (proposal panel + rail integration).  
+**Last session:** 2026-03-05 12:18 UTC  
+**Stopped at:** Completed `45-02-PLAN.md`  
 **Resume file:** None  
 **Next command:** `/gsd/execute-phase 45`  
-**If resuming later:** Resume at `45-02-PLAN.md` and continue sequentially through 45-03.
+**If resuming later:** Resume at `45-03-PLAN.md`.
 
 ## Recent Decisions
 
@@ -71,6 +71,8 @@
 - Keep proposal IDs deterministic as `proposal-{constraintId}` so selection state remains stable across regenerations.
 - Track proposal generation metadata (`generatedAt`, sorted source constraint IDs) for diagnostics traceability.
 - Keep proposal payload apply-ready (`warpFactor` + temporal `range`) for direct adaptive wiring in follow-up plans.
+- Keep proposal review inline in the sandbox diagnostics rail (no modal dependency) to preserve low-friction evaluation flow.
+- Clear warp proposal state on hard reset and on `/cube-sandbox` unmount to avoid stale cross-session selection artifacts.
 
 ---
-*Last updated: 2026-03-05 - completed 45-01 execution and advanced to 45-02*
+*Last updated: 2026-03-05 - completed 45-02 execution and advanced to 45-03*
