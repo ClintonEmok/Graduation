@@ -20,14 +20,20 @@ export default function Home() {
             Adaptive Time Scaling for Bursty Data
           </h1>
 
-          <div className="mt-11 flex w-full max-w-md flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          <div className="mt-11 flex w-full max-w-2xl flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:justify-center">
             <Link
               href="/timeline-test"
               className="inline-flex min-w-[220px] items-center justify-center rounded-full bg-[#0071e3] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#0077ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071e3] focus-visible:ring-offset-2"
             >
               Open timeline test
             </Link>
-            <span className="text-sm text-[#8e8e93]">Built for current QA cycle.</span>
+            <Link
+              href="/cube-sandbox"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#3a3a3c] bg-black/40 px-7 py-3 text-sm font-semibold text-[#f5f5f7] transition hover:border-[#5f5f63] hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8e8e93] focus-visible:ring-offset-2"
+            >
+              Open cube sandbox (v2.0)
+            </Link>
+            <span className="text-sm text-[#8e8e93]">Timeline QA and cube-first experimentation routes.</span>
           </div>
         </div>
       </section>
