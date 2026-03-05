@@ -30,6 +30,7 @@ export function WarpProposalPanel() {
   const generate = useWarpProposalStore((state) => state.generate);
   const clear = useWarpProposalStore((state) => state.clear);
   const select = useWarpProposalStore((state) => state.select);
+  const applySelected = useWarpProposalStore((state) => state.applySelected);
 
   const enabledConstraintCount = useMemo(
     () => constraints.filter((constraint) => constraint.enabled).length,
@@ -165,6 +166,13 @@ export function WarpProposalPanel() {
             <p className="text-[11px] text-slate-400">
               Applied marker: {appliedProposalId === selectedProposal.id ? 'Applied' : 'Not applied'}
             </p>
+            <button
+              type="button"
+              onClick={() => applySelected()}
+              className="inline-flex h-8 w-full items-center justify-center rounded-md border border-emerald-400/70 bg-emerald-500/10 px-2 text-xs font-medium text-emerald-100 transition hover:border-emerald-300 hover:bg-emerald-500/20"
+            >
+              Apply selected proposal
+            </button>
           </>
         ) : (
           <p className="text-[11px] text-slate-500">Select a proposal to inspect linked constraints and rationale details.</p>

@@ -3,7 +3,7 @@ import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils'
 
 interface AdaptiveState {
   warpFactor: number; // 0 = Linear, 1 = Fully Adaptive
-  warpSource: 'density' | 'slice-authored';
+  warpSource: 'density' | 'slice-authored' | 'proposal-applied';
   densityScope: 'viewport' | 'global';
   densityMap: Float32Array | null;
   burstinessMap: Float32Array | null;

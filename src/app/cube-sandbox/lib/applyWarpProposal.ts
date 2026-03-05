@@ -76,7 +76,7 @@ export const applyWarpProposal = (proposal: WarpProposal): void => {
     nextBinCount
   );
 
-  adaptiveState.setWarpSource('slice-authored');
+  adaptiveState.setWarpSource('proposal-applied');
   adaptiveState.setWarpFactor(proposal.payload.warpFactor);
   adaptiveState.setPrecomputedMaps(densityMap, burstinessMap, warpMap, nextDomain);
 };
