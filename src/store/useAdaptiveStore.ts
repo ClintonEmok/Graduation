@@ -19,6 +19,7 @@ interface AdaptiveState {
   setDensityScope: (scope: AdaptiveState['densityScope']) => void;
   setBurstMetric: (metric: AdaptiveState['burstMetric']) => void;
   setBurstThreshold: (v: number) => void;
+  resetSandboxDefaults: () => void;
   setPrecomputedMaps: (
     densityMap: Float32Array,
     burstinessMap: Float32Array,
@@ -108,6 +109,19 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           burstThreshold: v,
           burstCutoff: resolveBurstMap(state) ? computePercentile(resolveBurstMap(state) as Float32Array, v) : state.burstCutoff
         })),
+      resetSandboxDefaults: () =>
+        set((state) => {
+          const nextThreshold = 0.7;
+          const map = resolveBurstMap(state);
+          return {
+            warpFactor: 0,
+            warpSource: 'density',
+            densityScope: 'viewport',
+            burstMetric: 'density',
+            burstThreshold: nextThreshold,
+            burstCutoff: map ? computePercentile(map, nextThreshold) : 1,
+          };
+        }),
 
       setPrecomputedMaps: (densityMap, burstinessMap, warpMap, domain) =>
         {

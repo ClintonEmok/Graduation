@@ -1,10 +1,35 @@
-import { SandboxShell } from "./components/SandboxShell";
+"use client";
 
-export const metadata = {
-  title: "Cube Sandbox",
-  description: "Isolated cube-first experimentation route for v2.0",
-};
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SandboxContextPanel } from "./components/SandboxContextPanel";
+import { SandboxShell } from "./components/SandboxShell";
+import { resetSandboxState } from "./lib/resetSandboxState";
 
 export default function CubeSandboxPage() {
-  return <SandboxShell />;
+  const hasBootstrapped = useRef(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = useCallback(async () => {
+    setIsResetting(true);
+    try {
+      await resetSandboxState();
+    } finally {
+      setIsResetting(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hasBootstrapped.current) {
+      return;
+    }
+
+    hasBootstrapped.current = true;
+    void handleReset();
+  }, [handleReset]);
+
+  return (
+    <SandboxShell
+      contextPanel={<SandboxContextPanel onReset={() => void handleReset()} isResetting={isResetting} />}
+    />
+  );
 }
