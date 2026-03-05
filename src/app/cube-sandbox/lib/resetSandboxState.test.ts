@@ -93,6 +93,11 @@ describe('resetSandboxState', () => {
           constraintId: 'constraint-a',
           constraintLabel: 'Downtown cube',
           range: [20, 45],
+          sourceProposalId: 'interval-constraint-a-burst-1',
+          sourceRange: [20, 45],
+          editedRange: null,
+          isEdited: false,
+          qualityState: 'valid',
           rationale: {
             summary: 'Interval summary',
             densityConcentration: 78,
