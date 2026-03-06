@@ -32,6 +32,24 @@ const MAX_LAT = 42.1;
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
 
+export const parseCsvFilterParam = (value: string | null): string[] | undefined => {
+  if (!value) return undefined;
+  const parsed = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? parsed : undefined;
+};
+
+export const buildBufferedRange = (startEpoch: number, endEpoch: number, bufferDays: number) => {
+  const bufferSeconds = bufferDays * 86400;
+  return {
+    bufferSeconds,
+    bufferedStart: startEpoch - bufferSeconds,
+    bufferedEnd: endEpoch + bufferSeconds,
+  };
+};
+
 const generateMockCrimes = (
   count: number,
   startEpoch: number,
@@ -107,18 +125,11 @@ export async function GET(request: Request) {
     const districtsParam = searchParams.get('districts');
     
     // Apply buffer zone (convert days to seconds)
-    const bufferSeconds = bufferDays * 86400;
-    const bufferedStart = start - bufferSeconds;
-    const bufferedEnd = end + bufferSeconds;
+    const { bufferedStart, bufferedEnd } = buildBufferedRange(start, end, bufferDays);
     
     // Parse optional filters
-    const crimeTypes = crimeTypesParam 
-      ? crimeTypesParam.split(',').map(t => t.trim()).filter(Boolean)
-      : undefined;
-    
-    const districts = districtsParam
-      ? districtsParam.split(',').map(d => d.trim()).filter(Boolean)
-      : undefined;
+    const crimeTypes = parseCsvFilterParam(crimeTypesParam);
+    const districts = parseCsvFilterParam(districtsParam);
 
     if (isMockDataEnabled()) {
       const mockCount = Math.min(limit, 2000);
