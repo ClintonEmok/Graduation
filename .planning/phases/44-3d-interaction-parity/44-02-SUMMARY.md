@@ -38,7 +38,7 @@ patterns-established:
   - "Hover-first slice diagnostics: in-scene Html labels and overlap cue outlines for both annotation and warp layers."
 
 # Metrics
-duration: 19 min
+duration: 6 min
 completed: 2026-03-06
 ---
 
@@ -48,9 +48,9 @@ completed: 2026-03-06
 
 ## Performance
 
-- **Duration:** 19 min
-- **Started:** 2026-03-06T00:30:00Z
-- **Completed:** 2026-03-06T00:49:00Z
+- **Duration:** 6 min
+- **Started:** 2026-03-06T00:23:40Z
+- **Completed:** 2026-03-06T00:29:55Z
 - **Tasks:** 4
 - **Files modified:** 3
 
