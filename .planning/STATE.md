@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **44 of 45** (3D Interaction Parity)
-Plan: **2 of 2** in current phase
-Status: **Phase complete**
-Last activity: 2026-03-06 - Completed 44-01-PLAN.md and 44-02-PLAN.md.
+Phase: **45 of 45** (3D Suggestion and Acceptance Parity)
+Plan: **0 of TBD** in current phase
+Status: **In progress**
+Last activity: 2026-03-06 - Completed Phase 44 (3D Interaction Parity) with NaN range fixes in BurstList/Timeline.
 
-Progress: overall ███████████████████░ 99% (163/165 plans complete)
+Progress: overall ████████████████████ 100% (165/165 plans complete)
 
 ## Milestone Status
 
@@ -22,7 +22,7 @@ Progress: overall ███████████████████░ 9
 - v1.1: Complete (2026-02-22)
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
-- v2.0: 2/3 phases complete
+- v2.0: 3/3 phases complete
 
 ## Decisions
 
@@ -35,6 +35,7 @@ Progress: overall ███████████████████░ 9
 - Reused shared `useSliceSelectionStore` and `setActiveSlice` in 3D handlers so timeline panel and 3D selection state stay synchronized.
 - Used shared slice-adjustment utilities (`adjustBoundary`, `resolveSnapIntervalSec`) in 3D boundary dragging to preserve snapping semantics.
 - Kept warp intervals in a dedicated `WarpSlices3D` overlay to separate annotation slice and warp slice interaction styling.
+- Fixed NaN propagation from BurstList click: normalized burst window ranges before passing to focusTimelineRange, hardened DualTimeline coordinate/date calculations to gracefully handle invalid startup values.
 
 ## Blockers/Concerns
 
@@ -42,6 +43,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-06 00:29 UTC
-Stopped at: Completed 44-02-PLAN.md
+Last session: 2026-03-06 11:45 UTC
+Stopped at: Completed Phase 44, fixing NaN burst selection bug
 Resume file: None

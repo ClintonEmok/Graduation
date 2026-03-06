@@ -18,7 +18,7 @@ Implementation policy for v2.0: favor 3D-specific logic copies for parity-critic
 ## Phases
 
 - [x] **Phase 43: 3D Timeline-Test Foundation** - Stand up a dedicated 3D test route that reuses timeline-test state, controls, and data plumbing.
-- [ ] **Phase 44: 3D Interaction Parity** - Bring manual timeslicing and warp interactions to 3D with behavior matching timeline-test.
+- [x] **Phase 44: 3D Interaction Parity** - Bring manual timeslicing and warp interactions to 3D with behavior matching timeline-test.
 - [ ] **Phase 45: 3D Suggestion and Acceptance Parity** - Bring suggestion generation, review, and acceptance workflows to the 3D test experience.
 
 ## Phase Details
@@ -47,8 +47,8 @@ Plans:
   3. Interaction feedback (selection, active state, overlap/preview cues) is visible and stable in 3D.
 **Plans**: 2 plans
 Plans:
-- [ ] 44-01-PLAN.md — Add 3D slice visualization and create/select interactions
-- [ ] 44-02-PLAN.md — Add slice editing, warp visualization, and interaction feedback
+- [x] 44-01-PLAN.md — Add 3D slice visualization and create/select interactions
+- [x] 44-02-PLAN.md — Add slice editing, warp visualization, and interaction feedback
 
 ### Phase 45: 3D Suggestion and Acceptance Parity
 **Goal**: Provide full suggestion workflow parity in 3D test, including full-auto package review and acceptance.
@@ -69,7 +69,7 @@ Plans:
 | 34-39 | v1.2 | 25/25 | Complete | 2026-03-02 |
 | 40-42 | v1.3 | 13/13 | Complete | 2026-03-04 |
 | 43 | v2.0 | 2/2 | Complete | 2026-03-05 |
-| 44 | v2.0 | 0/2 | Not started | - |
+| 44 | v2.0 | 2/2 | Complete | 2026-03-06 |
 | 45 | v2.0 | 0/TBD | Not started | - |
 
 ---
