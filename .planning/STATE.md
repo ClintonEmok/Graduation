@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **46 of 51** (Guardrails and Baselines)
-Plan: **1 of 3** in current phase
+Plan: **2 of 3** in current phase
 Status: **In progress**
-Last activity: 2026-03-06 - Completed 46-01-PLAN.md baseline and guardrail setup.
+Last activity: 2026-03-06 - Completed 46-02-PLAN.md hook/API regression contract tests.
 
-Progress: **███████████████████░** 165/169 plans complete (97.6%)
+Progress: **███████████████████░** 166/169 plans complete (98.2%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: **███████████████████░** 165/1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 1/6 phases started (Phase 46 underway)
+- v2.1: 2/6 phases started (Phase 46 underway)
 
 ## Decisions
 
@@ -42,6 +42,9 @@ Progress: **███████████████████░** 165/1
 - Adopted refactoring sequencing from `.planning/REFACTORING-PLAN.md`: guardrails -> dead code cleanup -> API stabilization -> timeline/query/store decomposition.
 - Added a deterministic baseline capture workflow (`node scripts/capture-refactor-baseline.mjs --write`) to persist line/size and hot-path timing metrics before refactors.
 - Added `Refactor Guardrails` PR checklist requirements to enforce behavior parity, baseline comparison, regression coverage, and debug-log cleanup in phases 47-51.
+- Locked useCrimeData buffering expectations with provider-backed regression tests to catch contract drift before API/query refactors.
+- Added `/api/crimes/range` contract tests for validation paths, buffer metadata semantics, sampled flags, and coordinate normalization parity.
+- Standardized Vitest config loading via `vitest.config.mts` after resolving an ESM startup blocker.
 
 ## Blockers/Concerns
 
@@ -49,6 +52,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-06 23:40 UTC
-Stopped at: Completed 46-01-PLAN.md
+Last session: 2026-03-06 23:49 UTC
+Stopped at: Completed 46-02-PLAN.md
 Resume file: None
