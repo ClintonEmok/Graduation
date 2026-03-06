@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **45 of 51** (3D Suggestion and Acceptance Parity complete; preparing refactor phases)
-Plan: **1 of 1** in last completed phase
-Status: **Ready to plan Phase 46**
-Last activity: 2026-03-06 - Added phases 46-51 to roadmap from refactoring plan.
+Phase: **46 of 51** (Guardrails and Baselines)
+Plan: **1 of 3** in current phase
+Status: **In progress**
+Last activity: 2026-03-06 - Completed 46-01-PLAN.md baseline and guardrail setup.
 
-Progress: 166 plans completed through Phase 45; v2.1 phases are added and pending plan creation.
+Progress: **███████████████████░** 165/169 plans complete (97.6%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: 166 plans completed through Phase 45; v2.1 phases are added and pendin
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 0/6 phases planned
+- v2.1: 1/6 phases started (Phase 46 underway)
 
 ## Decisions
 
@@ -40,6 +40,8 @@ Progress: 166 plans completed through Phase 45; v2.1 phases are added and pendin
 - Mirrored suggestion UI components into `src/app/timeline-test-3d/components` to keep 3D suggestion parity route-local instead of cross-importing from timeslicing.
 - Kept `accept-full-auto-package` event contract unchanged in 3D so package acceptance behavior remains aligned with existing orchestration.
 - Adopted refactoring sequencing from `.planning/REFACTORING-PLAN.md`: guardrails -> dead code cleanup -> API stabilization -> timeline/query/store decomposition.
+- Added a deterministic baseline capture workflow (`node scripts/capture-refactor-baseline.mjs --write`) to persist line/size and hot-path timing metrics before refactors.
+- Added `Refactor Guardrails` PR checklist requirements to enforce behavior parity, baseline comparison, regression coverage, and debug-log cleanup in phases 47-51.
 
 ## Blockers/Concerns
 
@@ -47,6 +49,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-06 13:28 UTC
-Stopped at: Completed 45-01-PLAN.md
+Last session: 2026-03-06 23:40 UTC
+Stopped at: Completed 46-01-PLAN.md
 Resume file: None
