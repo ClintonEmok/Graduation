@@ -58,7 +58,9 @@ Plans:
   1. Suggestion panel flows (generate/review/compare/history) are usable in 3D test.
   2. Full-auto ranked package review and whyRecommended rationale are visible and actionable.
   3. Accepting a package applies reviewed artifacts consistently and preserves safeguards/rerun behavior.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 45-01-PLAN.md — Add SuggestionPanel component to timeline-test-3d route
 
 ## Progress
 
