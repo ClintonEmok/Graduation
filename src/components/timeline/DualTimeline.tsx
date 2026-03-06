@@ -23,6 +23,14 @@ import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import {
+  buildZoomTransformFromBrush,
+  brushSelectionToEpochRange,
+  clampToRange,
+  computeRangeUpdate,
+  resolveSelectionX,
+  zoomDomainToEpochRange,
+} from './lib/interaction-guards';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -49,7 +57,7 @@ const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 const DEBUG_PREVIEW_WARP_PROFILE_ID = '__debug-full-auto-preview__';
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const clamp = clampToRange;
 type StrictTimelineScale = ScaleTime<number, number>;
 
 interface TimelineSliceGeometry {
@@ -172,7 +180,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const activeSliceUpdatedAt = useSliceStore((state) => state.activeSliceUpdatedAt);
   const getSliceOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
   const warpSlices = useWarpSliceStore((state) => state.slices);
-  const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
 
@@ -515,22 +522,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       if (!interactive) {
         return;
       }
-      const safeStart = clamp(startSec, domainStart, domainEnd);
-      const safeEnd = clamp(endSec, domainStart, domainEnd);
-      const normalizedStart = clamp(
-        epochSecondsToNormalized(safeStart, domainStart, domainEnd),
-        0,
-        100
-      );
-      const normalizedEnd = clamp(
-        epochSecondsToNormalized(safeEnd, domainStart, domainEnd),
-        0,
-        100
-      );
-      const nextRange: [number, number] =
-        normalizedStart <= normalizedEnd
-          ? [normalizedStart, normalizedEnd]
-          : [normalizedEnd, normalizedStart];
+      const {
+        safeStartSec: safeStart,
+        safeEndSec: safeEnd,
+        normalizedRange: nextRange,
+      } = computeRangeUpdate(startSec, endSec, domainStart, domainEnd);
 
       setTimeRange([safeStart, safeEnd]);
       setRange(nextRange);
@@ -612,12 +608,13 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           return;
         }
         const [x0, x1] = event.selection as [number, number];
-        const startSec = overviewInteractionScale.invert(x0).getTime() / 1000;
-        const endSec = overviewInteractionScale.invert(x1).getTime() / 1000;
+        const { startSec, endSec } = brushSelectionToEpochRange(
+          [x0, x1],
+          (value) => overviewInteractionScale.invert(value)
+        );
         applyRangeToStores(startSec, endSec);
 
-        const scale = overviewInnerWidth / Math.max(1, x1 - x0);
-        const translateX = -x0;
+        const { scale, translateX } = buildZoomTransformFromBrush(x0, x1, overviewInnerWidth);
         isSyncingRef.current = true;
         select(zoomNode as SVGRectElement).call(
           zoomBehavior.transform,
@@ -634,8 +631,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
         if (isSyncingRef.current) return;
         const rescaled = event.transform.rescaleX(overviewInteractionScale);
         const newDomain = rescaled.domain();
-        const startSec = newDomain[0].getTime() / 1000;
-        const endSec = newDomain[1].getTime() / 1000;
+        const { startSec, endSec } = zoomDomainToEpochRange(newDomain as [Date, Date]);
         applyRangeToStores(startSec, endSec);
 
         isSyncingRef.current = true;
@@ -742,33 +738,24 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [currentTime, domainStart, domainEnd]);
 
   const cursorX = useMemo(() => {
-    if (cursorEpochSeconds === null || !Number.isFinite(cursorEpochSeconds)) {
-      return null;
-    }
-    const x = detailScale(new Date(cursorEpochSeconds * 1000));
-    return Number.isFinite(x) ? x : null;
-  }, [cursorEpochSeconds, detailScale]);
+    return resolveSelectionX(cursorEpochSeconds, (date) => detailScale(date), detailInnerWidth);
+  }, [cursorEpochSeconds, detailInnerWidth, detailScale]);
 
   const selectionPoint = useMemo(() => {
     if (selectedIndex === null) return null;
     return resolvePointByIndex(selectedIndex);
-  }, [selectedIndex, dataCount]);
+  }, [selectedIndex]);
 
   const selectionX = useMemo(() => {
-    if (!selectionPoint || selectionPoint.timestampSec === null || !Number.isFinite(selectionPoint.timestampSec)) {
-      return null;
-    }
-    const x = detailScale(new Date(selectionPoint.timestampSec * 1000));
-    return Number.isFinite(x) ? x : null;
-  }, [detailScale, selectionPoint]);
+    return resolveSelectionX(selectionPoint?.timestampSec, (date) => detailScale(date), detailInnerWidth);
+  }, [detailInnerWidth, detailScale, selectionPoint]);
 
   const burstWindows = useBurstWindows();
-  
+  const burstWindowsForAutoSlices = disableAutoBurstSlices ? [] : burstWindows;
+
   // Auto-create burst slices when burst data becomes available (unless disabled)
-  if (!disableAutoBurstSlices) {
-    useAutoBurstSlices(burstWindows);
-  }
-  
+  useAutoBurstSlices(burstWindowsForAutoSlices);
+
 
   const handleSelectFromEvent = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
