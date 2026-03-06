@@ -3,6 +3,7 @@
 import { CameraControls } from "@react-three/drei";
 import { Scene } from "@/components/viz/Scene";
 import { TimelineTest3DPoints } from "./TimelineTest3DPoints";
+import { TimeSlices3D } from "./TimeSlices3D";
 
 export function TimelineTest3DScene() {
   return (
@@ -16,6 +17,7 @@ export function TimelineTest3DScene() {
           <ambientLight intensity={0.45} />
           <directionalLight position={[40, 60, 30]} intensity={0.85} />
           <TimelineTest3DPoints />
+          <TimeSlices3D />
           <CameraControls
             makeDefault
             smoothTime={0.22}
