@@ -5,16 +5,16 @@
 See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Replanned v2.0 to deliver a 3D version of timeline-test functionality.
+**Current focus:** v2.1 refactoring and decomposition planning based on `.planning/REFACTORING-PLAN.md`.
 
 ## Current Position
 
-Phase: **45 of 45** (3D Suggestion and Acceptance Parity)
-Plan: **1 of 1** in current phase
-Status: **Phase complete**
-Last activity: 2026-03-06 - Completed Phase 45 Plan 01 by adding SuggestionPanel and acceptance parity to `/timeline-test-3d`.
+Phase: **45 of 51** (3D Suggestion and Acceptance Parity complete; preparing refactor phases)
+Plan: **1 of 1** in last completed phase
+Status: **Ready to plan Phase 46**
+Last activity: 2026-03-06 - Added phases 46-51 to roadmap from refactoring plan.
 
-Progress: overall ████████████████████ 100% (166/166 plans complete)
+Progress: 166 plans completed through Phase 45; v2.1 phases are added and pending plan creation.
 
 ## Milestone Status
 
@@ -23,6 +23,7 @@ Progress: overall ████████████████████ 1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
+- v2.1: 0/6 phases planned
 
 ## Decisions
 
@@ -38,6 +39,7 @@ Progress: overall ████████████████████ 1
 - Fixed NaN propagation from BurstList click: normalized burst window ranges before passing to focusTimelineRange, hardened DualTimeline coordinate/date calculations to gracefully handle invalid startup values.
 - Mirrored suggestion UI components into `src/app/timeline-test-3d/components` to keep 3D suggestion parity route-local instead of cross-importing from timeslicing.
 - Kept `accept-full-auto-package` event contract unchanged in 3D so package acceptance behavior remains aligned with existing orchestration.
+- Adopted refactoring sequencing from `.planning/REFACTORING-PLAN.md`: guardrails -> dead code cleanup -> API stabilization -> timeline/query/store decomposition.
 
 ## Blockers/Concerns
 

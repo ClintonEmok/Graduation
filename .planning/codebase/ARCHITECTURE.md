@@ -1,6 +1,6 @@
 # Architecture
 
-**Analysis Date:** 2026-02-26
+**Analysis Date:** 2026-03-06
 
 ## Pattern Overview
 
@@ -10,6 +10,8 @@
 - Data is fetched through React Query hooks (`src/hooks/useCrimeData.ts`) and mirrored into Zustand stores for visualization compatibility (`src/app/timeslicing/page.tsx`, `src/store/useDataStore.ts`).
 - Timeline behavior is centered in a large orchestrator component (`src/components/timeline/DualTimeline.tsx`) that coordinates brush/zoom, viewport range, density maps, and selection stores.
 - Adaptive time maps are computed in a Web Worker (`src/workers/adaptiveTime.worker.ts`) and consumed by timeline + scene components via `useAdaptiveStore`.
+- New: Full-auto proposal orchestration in `src/lib/full-auto-orchestrator.ts` for ranked warp + interval packages.
+- New: Dedicated 3D timeline test route at `src/app/timeline-test-3d/page.tsx` with route-local orchestration helpers.
 
 ## Layers
 
@@ -23,14 +25,14 @@
 **Hook/Orchestration Layer:**
 - Purpose: Fetch, debounce, derive, and synchronize state transitions.
 - Location: `src/hooks/**`
-- Contains: `useCrimeData`, `useViewportCrimeData`, `useSuggestionGenerator`, `useDebouncedDensity`.
+- Contains: `useCrimeData`, `useViewportCrimeData`, `useSuggestionGenerator`, `useDebouncedDensity`, `useSmartProfiles`, `useContextExtractor`.
 - Depends on: React Query + Zustand stores + API endpoints.
 - Used by: route pages and UI components.
 
 **State Layer (Zustand):**
 - Purpose: Cross-component state for data, filters, adaptive maps, slices, and suggestions.
 - Location: `src/store/**`, `src/lib/stores/viewportStore.ts`
-- Contains: domain stores (`useDataStore`, `useAdaptiveStore`, `useFilterStore`, `useSliceStore`, `useSuggestionStore`, `useWarpSliceStore`).
+- Contains: domain stores (`useDataStore`, `useAdaptiveStore`, `useFilterStore`, `useSliceStore`, `useSuggestionStore`, `useWarpSliceStore`, `useSliceCreationStore`, `useSliceAdjustmentStore`, `useSliceSelectionStore`).
 - Depends on: local utility functions and worker output.
 - Used by: timeline components, viz components, route pages, hooks.
 
@@ -40,6 +42,13 @@
 - Contains: DuckDB initialization, SQL query composition, mock fallback generators.
 - Depends on: local filesystem data files and DuckDB binding.
 - Used by: API handlers and indirectly by client hooks.
+
+**Algorithm Layer (New):**
+- Purpose: Generate warp profiles, detect boundaries, score proposals.
+- Location: `src/lib/full-auto-orchestrator.ts`, `src/lib/warp-generation.ts`, `src/lib/interval-detection.ts`, `src/lib/confidence-scoring.ts`
+- Contains: `generateRankedAutoProposalSets`, `generateWarpProfiles`, `detectBoundaries`, scoring functions.
+- Depends on: crime data and context.
+- Used by: suggestion hooks and stores.
 
 ## Data Flow
 
@@ -51,11 +60,25 @@
 5. The page triggers `useAdaptiveStore.computeMaps(timestamps, domain)`; worker computes `densityMap`, `burstinessMap`, `warpMap`.
 6. `DualTimeline` reads `useDataStore` + `useAdaptiveStore` for rendering and interactions.
 
+**`/timeline-test-3d` flow (New):**
+1. `src/app/timeline-test-3d/page.tsx` is a dedicated 3D route with route-local orchestration.
+2. Uses `useCrimeData` with domain from adaptive store or data store defaults.
+3. Mirrors into `useDataStore` and triggers `useAdaptiveStore.computeMaps`.
+4. Includes full-auto acceptance handlers for proposal sets.
+5. Renders `DualTimeline` alongside `TimelineTest3DScene`.
+
 **`/timeline-test` flow:**
 1. `src/app/timeline-test/page.tsx` defaults to generated mock timestamps/density and pushes them into `useDataStore` + `useAdaptiveStore` when `useMockData` is true.
 2. User interactions update `useFilterStore` and trigger recompute via `useDebouncedDensity`.
 3. `DualTimeline` renders with optional `adaptiveWarpMapOverride` from authored warp slices.
 4. Slice overlays (`CommittedSliceLayer`, `SliceBoundaryHandlesLayer`, `SliceCreationLayer`) consume timeline scales and slice stores for create/adjust flows.
+
+**Full-auto proposal flow (New):**
+1. User triggers suggestion generation via toolbar.
+2. `useSuggestionGenerator` fetches crimes and calls `generateRankedAutoProposalSets`.
+3. Results stored in `useSuggestionStore.fullAutoProposalSets`.
+4. UI displays ranked proposal cards with accept handlers.
+5. Accept triggers: clear existing slices/warps, add new warp slices, optionally add interval boundaries.
 
 **`useCrimeData` + `/api/crimes/range` pipeline:**
 1. `useCrimeData` (`src/hooks/useCrimeData.ts`) computes buffered epochs and query key.
@@ -82,6 +105,11 @@
 - Examples: `src/store/useAdaptiveStore.ts`, `src/workers/adaptiveTime.worker.ts`
 - Pattern: Store dispatches timestamp arrays to worker; worker returns typed arrays keyed by `requestId`.
 
+**Full-auto proposal orchestration (New):**
+- Purpose: Generate and rank complete warp + interval proposal packages.
+- Examples: `src/lib/full-auto-orchestrator.ts`, `src/types/autoProposalSet.ts`
+- Pattern: Single function `generateRankedAutoProposalSets` returns ranked `AutoProposalSet[]` with confidence, scores, and metadata.
+
 **Suggestion workflow (phase 35/36 path):**
 - Purpose: Generate and manage warp profile + interval boundary suggestions.
 - Examples: `src/hooks/useSuggestionGenerator.ts`, `src/store/useSuggestionStore.ts`, `src/lib/warp-generation.ts`, `src/lib/interval-detection.ts`, `src/app/timeslicing/components/*.tsx`
@@ -103,6 +131,11 @@
 - Location: `src/app/timeline-test/page.tsx`
 - Triggers: user navigation to `/timeline-test`
 - Responsibilities: evaluate timeline rendering, density visuals, slice creation/adjustment interactions, authored warp slices.
+
+**Timeline Test 3D Route (New):**
+- Location: `src/app/timeline-test-3d/page.tsx`
+- Triggers: user navigation to `/timeline-test-3d`
+- Responsibilities: dedicated 3D route with full-auto proposal acceptance, route-local orchestration helpers in `src/app/timeline-test-3d/lib/route-orchestration.ts`.
 
 **Crime Range API:**
 - Location: `src/app/api/crimes/range/route.ts`
@@ -126,4 +159,4 @@
 
 ---
 
-*Architecture analysis: 2026-02-26*
+*Architecture analysis: 2026-03-06*

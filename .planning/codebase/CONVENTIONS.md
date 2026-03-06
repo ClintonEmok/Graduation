@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-02-26
+**Analysis Date:** 2026-03-06
 
 ## Naming Patterns
 
@@ -9,16 +9,19 @@
 - Use `useXxx.ts` for hooks and stores in `src/hooks/**` and `src/store/**`.
 - Use `route.ts` for API handlers under `src/app/api/**`.
 - Use `*.test.ts` for unit tests colocated with source.
+- Use descriptive algorithm names: `*-orchestrator.ts`, `*-generation.ts`, `*-detection.ts`, `*-scoring.ts`.
 
 **Functions:**
 - Use `camelCase` for functions and local helpers (e.g., `detectBoundaries` in `src/lib/interval-detection.ts`, `computeMaps` in `src/store/useAdaptiveStore.ts`).
+- Use descriptive verb prefixes: `generate*`, `detect*`, `build*`, `score*`, `plan*`.
 
 **Variables:**
 - Use `camelCase` for mutable/local variables.
 - Use `UPPER_SNAKE_CASE` for constants (e.g., `MOCK_START_SEC` in `src/lib/constants.ts`, `DEFAULT_DELAY_MS` in `src/hooks/useDebouncedDensity.ts`).
 
 **Types:**
-- Use `PascalCase` interfaces/types (`CrimeRecord`, `UseCrimeDataOptions`, `BoundarySuggestion`).
+- Use `PascalCase` interfaces/types (`CrimeRecord`, `UseCrimeDataOptions`, `BoundarySuggestion`, `AutoProposalSet`).
+- Group related types in `src/types/` directory (e.g., `autoProposalSet.ts`).
 
 ## Code Style
 
@@ -34,7 +37,7 @@
 
 **Order:**
 1. External packages (`react`, `next/server`, `d3-*`, etc.)
-2. `@/*` alias imports (`@/store/...`, `@/lib/...`)
+2. `@/*` alias imports (`@/store/...`, `@/lib/...`, `@/types/...`)
 3. Relative imports (`./...`, `../...`)
 
 **Path Aliases:**
@@ -58,23 +61,26 @@
 ## Comments
 
 **When to Comment:**
-- Comment only when behavior is non-obvious (adaptive mapping math, store synchronization, fallback logic).
+- Comment only when behavior is non-obvious (adaptive mapping math, store synchronization, fallback logic, algorithm scoring weights).
 - Prefer short, purpose-focused comments over narrative blocks.
 
 **JSDoc/TSDoc:**
 - Use block comments for exported hooks/types/modules when they define contracts (`src/hooks/useCrimeData.ts`, `src/types/crime.ts`).
+- Document algorithm weights and thresholds in `full-auto-orchestrator.ts`.
 
 ## Function Design
 
 **Size:**
 - Small/medium pure helpers in `src/lib/**`.
 - UI orchestrators can be large but should isolate pure helpers where possible (current exception: `src/components/timeline/DualTimeline.tsx`).
+- Algorithm modules should be focused and testable (e.g., `full-auto-orchestrator.ts`).
 
 **Parameters:**
-- Prefer typed options objects for extensible APIs (`UseCrimeDataOptions`, `BoundaryOptions`).
+- Prefer typed options objects for extensible APIs (`UseCrimeDataOptions`, `BoundaryOptions`, `FullAutoGenerationParams`).
 
 **Return Values:**
 - Hooks return structured object results, not tuples (`UseCrimeDataResult`, `UseViewportCrimeDataResult`).
+- Algorithm functions return typed result interfaces (`RankedAutoProposalSets`).
 
 ## Module Design
 
@@ -84,7 +90,8 @@
 
 **Barrel Files:**
 - Not used broadly; import directly from module paths.
+- Exception: `src/types/index.ts` for re-exporting common types.
 
 ---
 
-*Convention analysis: 2026-02-26*
+*Convention analysis: 2026-03-06*

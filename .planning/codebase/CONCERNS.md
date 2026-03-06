@@ -1,6 +1,6 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-26
+**Analysis Date:** 2026-03-06
 
 ## Tech Debt
 
@@ -67,7 +67,7 @@
 - Test coverage: No integration tests validate end-to-end data-file contract.
 
 **Timeslicing parity bridge relies on manual store mirroring:**
-- Files: `src/app/timeslicing/page.tsx`
+- Files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test-3d/page.tsx`
 - Why fragile: Page-level effect writes into `useDataStore` and triggers adaptive compute solely for `DualTimeline` compatibility.
 - Safe modification: Introduce shared adapter hook for timeline input instead of route-local state mutation.
 - Test coverage: No tests on this mirroring effect.
@@ -112,18 +112,12 @@
 - Risk: Silent drift between client assumptions and server response behavior.
 - Priority: High
 
-**Suggestion algorithms and store integration:**
-- What's not tested: Confidence scoring behavior, boundary detection quality, suggestion status lifecycle.
-- Files: `src/lib/confidence-scoring.ts`, `src/lib/interval-detection.ts`, `src/lib/warp-generation.ts`, `src/hooks/useSuggestionGenerator.ts`, `src/store/useSuggestionStore.ts`
-- Risk: Unreliable suggestions during upcoming phase work.
-- Priority: High
-
 **Timeline interaction regressions:**
 - What's not tested: Brush/zoom sync, adaptive axis inversion, selection behavior under warped scales.
-- Files: `src/components/timeline/DualTimeline.tsx`, `src/app/timeline-test/page.tsx`
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/page.tsx`
 - Risk: Breaks are only discovered manually.
 - Priority: High
 
 ---
 
-*Concerns audit: 2026-02-26*
+*Concerns audit: 2026-03-06*

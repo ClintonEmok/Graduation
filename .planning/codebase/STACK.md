@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** 2026-02-26
+**Analysis Date:** 2026-03-06
 
 ## Languages
 
@@ -59,6 +59,8 @@
 - `apache-arrow` - Streamed columnar transport (`src/app/api/crime/stream/route.ts`)
 - `d3-*` packages - Brush/zoom and adaptive scales (`src/components/timeline/DualTimeline.tsx`)
 - `@react-three/fiber` + `three` - 3D rendering in viz scene (`src/components/viz/MainScene.tsx`)
+- `maplibre-gl` + `react-map-gl` - 2D map rendering (`src/components/map/**`)
+- `lucide-react` - Icon library
 
 ## Configuration
 
@@ -88,4 +90,4 @@
 
 ---
 
-*Stack analysis: 2026-02-26*
+*Stack analysis: 2026-03-06*
