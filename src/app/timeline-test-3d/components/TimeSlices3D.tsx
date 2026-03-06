@@ -1,9 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
-import { ThreeEvent } from "@react-three/fiber";
+import { useThree, type ThreeEvent } from "@react-three/fiber";
+import { useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
+import {
+  adjustBoundary,
+  resolveNeighborCandidates,
+  resolveSnapIntervalSec,
+  type AdjustmentHandle,
+} from "@/app/timeline-test/lib/slice-adjustment";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
 import { useDataStore } from "@/store/useDataStore";
+import { useSliceAdjustmentStore } from "@/store/useSliceAdjustmentStore";
 import { useSliceSelectionStore } from "@/store/useSliceSelectionStore";
 import { useSliceStore } from "@/store/useSliceStore";
 import { useTimeStore } from "@/store/useTimeStore";
@@ -29,14 +37,31 @@ const sampleWarpSeconds = (
   return lowVal * (1 - frac) + highVal * frac;
 };
 
+type DragState = {
+  sliceId: string;
+  handle: AdjustmentHandle;
+  pointerId: number;
+};
+
 export function TimeSlices3D() {
   const slices = useSliceStore((state) => state.slices);
   const addSlice = useSliceStore((state) => state.addSlice);
+  const updateSlice = useSliceStore((state) => state.updateSlice);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
   const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
   const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
   const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
   const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
+
+  const beginDrag = useSliceAdjustmentStore((state) => state.beginDrag);
+  const updateDrag = useSliceAdjustmentStore((state) => state.updateDrag);
+  const endDrag = useSliceAdjustmentStore((state) => state.endDrag);
+  const snapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
+  const snapMode = useSliceAdjustmentStore((state) => state.snapMode);
+  const fixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
+  const draggingSliceId = useSliceAdjustmentStore((state) => state.draggingSliceId);
+  const draggingHandle = useSliceAdjustmentStore((state) => state.draggingHandle);
+  const liveBoundarySec = useSliceAdjustmentStore((state) => state.liveBoundarySec);
 
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
@@ -44,6 +69,11 @@ export function TimeSlices3D() {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+
+  const { camera, gl } = useThree();
+
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [hoverHandle, setHoverHandle] = useState<string | null>(null);
 
   const domain = useMemo<[number, number]>(() => {
     const domainStart = minTimestampSec ?? mapDomain[0];
@@ -57,12 +87,20 @@ export function TimeSlices3D() {
   const useAdaptiveMapping =
     timeScaleMode === "adaptive" && warpFactor > 0 && warpMap && warpMap.length > 1;
 
+  const [domainStartSec, domainEndSec] = domain;
+  const domainSpanSec = Math.max(1e-9, domainEndSec - domainStartSec);
+
+  const percentToSec = (percent: number) =>
+    domainStartSec + (clamp(percent, 0, 100) / 100) * domainSpanSec;
+
+  const secToPercent = (sec: number) =>
+    clamp(((sec - domainStartSec) / domainSpanSec) * 100, 0, 100);
+
   const { percentToY, yToPercent } = useMemo(() => {
-    const [domainStart, domainEnd] = domain;
-    const span = Math.max(1e-9, domainEnd - domainStart);
+    const span = Math.max(1e-9, domainEndSec - domainStartSec);
 
     const toDisplayTime = (percent: number) => {
-      const linearSec = domainStart + (clamp(percent, 0, 100) / 100) * span;
+      const linearSec = domainStartSec + (clamp(percent, 0, 100) / 100) * span;
       if (!useAdaptiveMapping) {
         return linearSec;
       }
@@ -107,7 +145,165 @@ export function TimeSlices3D() {
     };
 
     return { percentToY, yToPercent };
-  }, [domain, mapDomain, useAdaptiveMapping, warpFactor, warpMap]);
+  }, [
+    domainEndSec,
+    domainStartSec,
+    mapDomain,
+    useAdaptiveMapping,
+    warpFactor,
+    warpMap,
+  ]);
+
+  useEffect(() => {
+    if (dragState || hoverHandle) {
+      document.body.style.cursor = "ns-resize";
+      return () => {
+        document.body.style.cursor = "";
+      };
+    }
+
+    return undefined;
+  }, [dragState, hoverHandle]);
+
+  useEffect(() => {
+    if (!dragState) {
+      return;
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      const activeSlice = slices.find((slice) => slice.id === dragState.sliceId);
+      if (!activeSlice || activeSlice.type !== "range" || !activeSlice.range) {
+        return;
+      }
+
+      const rect = gl.domElement.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const yNdc = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(x, yNdc), camera);
+
+      const cameraDir = new THREE.Vector3();
+      camera.getWorldDirection(cameraDir);
+      cameraDir.y = 0;
+      cameraDir.normalize();
+
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        cameraDir.clone().negate(),
+        new THREE.Vector3(0, 0, 0)
+      );
+
+      const intersection = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+      if (!intersection) {
+        return;
+      }
+
+      const rawPercent = yToPercent(intersection.y);
+      const [sliceStart, sliceEnd] = [
+        Math.min(activeSlice.range[0], activeSlice.range[1]),
+        Math.max(activeSlice.range[0], activeSlice.range[1]),
+      ];
+      const fixedPercent = dragState.handle === "start" ? sliceEnd : sliceStart;
+
+      const snapIntervalSec = resolveSnapIntervalSec({
+        mode: snapMode,
+        fixedPresetSec: fixedSnapPresetSec,
+        domainStartSec,
+        domainEndSec,
+      });
+
+      const [domainMin, domainMax] = [
+        Math.min(domainStartSec, domainEndSec),
+        Math.max(domainStartSec, domainEndSec),
+      ];
+      const gridCandidatesSec: number[] = [];
+      const maxSteps = Math.ceil((domainMax - domainMin) / snapIntervalSec);
+      for (let step = 0; step <= maxSteps; step += 1) {
+        gridCandidatesSec.push(domainMin + step * snapIntervalSec);
+      }
+
+      const boundaries = slices
+        .filter((slice) => slice.type === "range" && slice.range)
+        .map((slice) => ({
+          id: slice.id,
+          startSec: percentToSec(Math.min(slice.range![0], slice.range![1])),
+          endSec: percentToSec(Math.max(slice.range![0], slice.range![1])),
+          isVisible: slice.isVisible,
+        }));
+
+      const adjusted = adjustBoundary({
+        handle: dragState.handle,
+        rawPointerSec: percentToSec(rawPercent),
+        fixedBoundarySec: percentToSec(fixedPercent),
+        domainStartSec,
+        domainEndSec,
+        minDurationSec: Math.max(60, snapIntervalSec * 0.25),
+        snap: {
+          enabled: snapEnabled,
+          bypass: event.shiftKey,
+          mode: snapMode,
+          toleranceSec: snapIntervalSec * 0.35,
+          gridCandidatesSec,
+          neighborCandidatesSec: resolveNeighborCandidates({
+            boundaries,
+            activeSliceId: dragState.sliceId,
+            handle: dragState.handle,
+            domainStartSec,
+            domainEndSec,
+            fixedBoundarySec: percentToSec(fixedPercent),
+          }),
+        },
+      });
+
+      updateSlice(dragState.sliceId, {
+        range: [adjusted.startNorm, adjusted.endNorm],
+        time: (adjusted.startNorm + adjusted.endNorm) / 2,
+      });
+
+      updateDrag({
+        limitCue: adjusted.limitCue,
+        modifierBypass: event.shiftKey,
+        liveBoundarySec: adjusted.appliedSec,
+      });
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.pointerId !== dragState.pointerId) {
+        return;
+      }
+
+      setDragState(null);
+      endDrag();
+      try {
+        gl.domElement.releasePointerCapture(dragState.pointerId);
+      } catch {
+        // no-op: pointer can already be released by browser
+      }
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [
+    camera,
+    domainEndSec,
+    domainStartSec,
+    dragState,
+    endDrag,
+    fixedSnapPresetSec,
+    gl.domElement,
+    percentToSec,
+    slices,
+    snapEnabled,
+    snapMode,
+    updateDrag,
+    updateSlice,
+    yToPercent,
+  ]);
 
   const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation();
@@ -124,6 +320,23 @@ export function TimeSlices3D() {
     }
     selectSlice(sliceId);
     setActiveSlice(sliceId);
+  };
+
+  const handleBoundaryDragStart = (
+    event: ThreeEvent<PointerEvent>,
+    sliceId: string,
+    handle: AdjustmentHandle
+  ) => {
+    event.stopPropagation();
+    selectSlice(sliceId);
+    setActiveSlice(sliceId);
+    beginDrag({ sliceId, handle });
+    setDragState({ sliceId, handle, pointerId: event.pointerId });
+    try {
+      gl.domElement.setPointerCapture(event.pointerId);
+    } catch {
+      // no-op: pointer capture can fail in some browsers when not available
+    }
   };
 
   return (
@@ -143,6 +356,8 @@ export function TimeSlices3D() {
       {slices
         .filter((slice) => slice.isVisible)
         .map((slice) => {
+          const isSelected = selectedIds.has(slice.id);
+
           if (slice.type === "range" && slice.range) {
             const start = Math.min(slice.range[0], slice.range[1]);
             const end = Math.max(slice.range[0], slice.range[1]);
@@ -150,26 +365,74 @@ export function TimeSlices3D() {
             const endY = percentToY(end);
             const height = Math.max(0.5, Math.abs(endY - startY));
             const centerY = (startY + endY) / 2;
-            const isSelected = selectedIds.has(slice.id);
+
+            const previewHandleMatch =
+              draggingSliceId === slice.id && draggingHandle && liveBoundarySec !== null;
+            const previewY = previewHandleMatch ? percentToY(secToPercent(liveBoundarySec)) : null;
 
             return (
-              <mesh
-                key={slice.id}
-                position={[0, centerY, 0]}
-                onClick={(event) => handleSliceClick(event, slice.id)}
-              >
-                <boxGeometry args={[100, height, 100]} />
-                <meshBasicMaterial
-                  color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
-                  transparent
-                  opacity={isSelected ? 0.35 : slice.isBurst ? 0.2 : 0.12}
-                  depthWrite={false}
-                />
-              </mesh>
+              <group key={slice.id} position={[0, centerY, 0]}>
+                <mesh onClick={(event) => handleSliceClick(event, slice.id)}>
+                  <boxGeometry args={[100, height, 100]} />
+                  <meshBasicMaterial
+                    color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
+                    transparent
+                    opacity={isSelected ? 0.35 : slice.isBurst ? 0.2 : 0.12}
+                    depthWrite={false}
+                  />
+                </mesh>
+
+                <mesh
+                  position={[48, -height / 2, 48]}
+                  onPointerDown={(event) =>
+                    handleBoundaryDragStart(event, slice.id, "start")
+                  }
+                  onPointerOver={(event) => {
+                    event.stopPropagation();
+                    setHoverHandle(`${slice.id}:start`);
+                  }}
+                  onPointerOut={() => setHoverHandle(null)}
+                >
+                  <sphereGeometry args={[1.5, 12, 12]} />
+                  <meshBasicMaterial
+                    color={
+                      draggingSliceId === slice.id && draggingHandle === "start"
+                        ? "#f8fafc"
+                        : "#38bdf8"
+                    }
+                  />
+                </mesh>
+
+                <mesh
+                  position={[48, height / 2, 48]}
+                  onPointerDown={(event) =>
+                    handleBoundaryDragStart(event, slice.id, "end")
+                  }
+                  onPointerOver={(event) => {
+                    event.stopPropagation();
+                    setHoverHandle(`${slice.id}:end`);
+                  }}
+                  onPointerOut={() => setHoverHandle(null)}
+                >
+                  <sphereGeometry args={[1.5, 12, 12]} />
+                  <meshBasicMaterial
+                    color={
+                      draggingSliceId === slice.id && draggingHandle === "end"
+                        ? "#f8fafc"
+                        : "#38bdf8"
+                    }
+                  />
+                </mesh>
+
+                {previewY !== null ? (
+                  <mesh position={[0, previewY - centerY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[1.2, 50, 48]} />
+                    <meshBasicMaterial color="#f8fafc" transparent opacity={0.35} depthWrite={false} />
+                  </mesh>
+                ) : null}
+              </group>
             );
           }
-
-          const isSelected = selectedIds.has(slice.id);
 
           return (
             <group key={slice.id} position={[0, percentToY(slice.time), 0]}>
