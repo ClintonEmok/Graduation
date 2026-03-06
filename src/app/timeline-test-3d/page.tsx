@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { SliceToolbar } from "@/app/timeline-test/components/SliceToolbar";
 import { WarpSliceEditor } from "@/app/timeline-test/components/WarpSliceEditor";
 import { planFullAutoAcceptanceArtifacts } from "@/app/timeslicing/full-auto-acceptance";
+import { SuggestionPanel } from "./components/SuggestionPanel";
 import { SuggestionToolbar } from "@/app/timeslicing/components/SuggestionToolbar";
 import { DualTimeline } from "@/components/timeline/DualTimeline";
 import { BurstList } from "@/components/viz/BurstList";
@@ -349,6 +350,7 @@ export default function TimelineTest3DPage() {
           </div>
           <div className="mt-4 space-y-3">
             <SuggestionToolbar />
+            <SuggestionPanel />
             <SliceToolbar />
             <WarpSliceEditor />
           </div>
