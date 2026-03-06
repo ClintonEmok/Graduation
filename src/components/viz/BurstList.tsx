@@ -84,8 +84,6 @@ export function BurstList() {
 
   const burstWindows = useBurstWindows();
 
-  if (burstWindows.length === 0) return null;
-
   // Check if mapDomain is normalized (0-100) or actual epoch timestamps
   // Epoch timestamps are large numbers (billions for seconds, trillions for ms)
   const isNormalizedDomain = mapDomain[1] < 1000;
@@ -198,6 +196,8 @@ export function BurstList() {
       setTime,
     });
   };
+
+  if (burstWindows.length === 0) return null;
 
   return (
     <div className="p-4 border-t">
