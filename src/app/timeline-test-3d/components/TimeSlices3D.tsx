@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ThreeEvent } from "@react-three/fiber";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
 import { useDataStore } from "@/store/useDataStore";
+import { useSliceSelectionStore } from "@/store/useSliceSelectionStore";
 import { useSliceStore } from "@/store/useSliceStore";
 import { useTimeStore } from "@/store/useTimeStore";
 
@@ -31,6 +32,11 @@ const sampleWarpSeconds = (
 export function TimeSlices3D() {
   const slices = useSliceStore((state) => state.slices);
   const addSlice = useSliceStore((state) => state.addSlice);
+  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
+  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
+  const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
+  const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
+  const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
 
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
@@ -109,9 +115,27 @@ export function TimeSlices3D() {
     addSlice({ type: "point", time: percent });
   };
 
+  const handleSliceClick = (event: ThreeEvent<MouseEvent>, sliceId: string) => {
+    event.stopPropagation();
+    if (event.ctrlKey || event.metaKey) {
+      toggleSlice(sliceId);
+      setActiveSlice(sliceId);
+      return;
+    }
+    selectSlice(sliceId);
+    setActiveSlice(sliceId);
+  };
+
   return (
     <group>
-      <mesh onDoubleClick={handleDoubleClick}>
+      <mesh
+        onDoubleClick={handleDoubleClick}
+        onClick={(event) => {
+          event.stopPropagation();
+          clearSelection();
+          setActiveSlice(null);
+        }}
+      >
         <boxGeometry args={[100, 100, 100]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
@@ -126,33 +150,47 @@ export function TimeSlices3D() {
             const endY = percentToY(end);
             const height = Math.max(0.5, Math.abs(endY - startY));
             const centerY = (startY + endY) / 2;
+            const isSelected = selectedIds.has(slice.id);
 
             return (
-              <mesh key={slice.id} position={[0, centerY, 0]}>
+              <mesh
+                key={slice.id}
+                position={[0, centerY, 0]}
+                onClick={(event) => handleSliceClick(event, slice.id)}
+              >
                 <boxGeometry args={[100, height, 100]} />
                 <meshBasicMaterial
-                  color={slice.isBurst ? "#f97316" : "#22d3ee"}
+                  color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
                   transparent
-                  opacity={slice.isBurst ? 0.2 : 0.12}
+                  opacity={isSelected ? 0.35 : slice.isBurst ? 0.2 : 0.12}
                   depthWrite={false}
                 />
               </mesh>
             );
           }
 
+          const isSelected = selectedIds.has(slice.id);
+
           return (
             <group key={slice.id} position={[0, percentToY(slice.time), 0]}>
-              <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                onClick={(event) => handleSliceClick(event, slice.id)}
+              >
                 <planeGeometry args={[100, 100]} />
                 <meshBasicMaterial
-                  color={slice.isBurst ? "#f97316" : "#22d3ee"}
+                  color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
                   transparent
-                  opacity={slice.isBurst ? 0.4 : 0.28}
+                  opacity={isSelected ? 0.6 : slice.isBurst ? 0.4 : 0.28}
                   depthWrite={false}
                 />
               </mesh>
               <gridHelper args={[100, 10]} position={[0, 0.05, 0]}>
-                <meshBasicMaterial color={slice.isBurst ? "#f97316" : "#22d3ee"} transparent opacity={0.2} />
+                <meshBasicMaterial
+                  color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
+                  transparent
+                  opacity={isSelected ? 0.45 : 0.2}
+                />
               </gridHelper>
             </group>
           );
