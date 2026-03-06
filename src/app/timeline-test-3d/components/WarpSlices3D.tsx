@@ -30,6 +30,7 @@ const sampleWarpSeconds = (
 
 export function WarpSlices3D() {
   const slices = useWarpSliceStore((state) => state.slices);
+  const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
@@ -86,6 +87,15 @@ export function WarpSlices3D() {
         const height = Math.max(0.5, Math.abs(endY - startY));
         const centerY = (startY + endY) / 2;
         const isHovered = hoveredId === slice.id;
+        const isActive = !!activeWarpId && slice.warpProfileId === activeWarpId;
+        const overlaps = slices.filter((candidate) => {
+          if (candidate.id === slice.id || !candidate.enabled) return false;
+          const [candidateStart, candidateEnd] = [
+            Math.min(candidate.range[0], candidate.range[1]),
+            Math.max(candidate.range[0], candidate.range[1]),
+          ];
+          return start < candidateEnd && candidateStart < end;
+        }).length;
         const baseColor = slice.enabled ? "#22d3ee" : "#64748b";
 
         return (
@@ -99,12 +109,25 @@ export function WarpSlices3D() {
             >
               <boxGeometry args={[98, height, 98]} />
               <meshBasicMaterial
-                color={baseColor}
+                color={isActive ? "#f59e0b" : baseColor}
                 transparent
                 opacity={isHovered ? 0.3 : 0.18}
                 depthWrite={false}
               />
             </mesh>
+
+            {(isHovered || isActive || overlaps > 0) && (
+              <mesh>
+                <boxGeometry args={[98.2, height + 0.2, 98.2]} />
+                <meshBasicMaterial
+                  color={isActive ? "#f59e0b" : overlaps > 0 ? "#fbbf24" : "#67e8f9"}
+                  wireframe
+                  transparent
+                  opacity={0.65}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
 
             {isHovered ? (
               <Html position={[0, height / 2 + 3, 0]} center>
@@ -113,6 +136,9 @@ export function WarpSlices3D() {
                   <div className="text-[10px] text-slate-300">
                     {start.toFixed(1)}% - {end.toFixed(1)}%
                   </div>
+                  {overlaps > 0 ? (
+                    <div className="text-[10px] text-amber-300">Overlaps {overlaps} warp slices</div>
+                  ) : null}
                 </div>
               </Html>
             ) : null}

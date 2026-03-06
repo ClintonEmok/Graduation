@@ -2,6 +2,7 @@
 
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   adjustBoundary,
@@ -48,6 +49,8 @@ export function TimeSlices3D() {
   const addSlice = useSliceStore((state) => state.addSlice);
   const updateSlice = useSliceStore((state) => state.updateSlice);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
+  const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const getOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
   const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
   const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
   const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
@@ -74,6 +77,9 @@ export function TimeSlices3D() {
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [hoverHandle, setHoverHandle] = useState<string | null>(null);
+  const [hoveredSliceId, setHoveredSliceId] = useState<string | null>(null);
+
+  const overlapCounts = getOverlapCounts();
 
   const domain = useMemo<[number, number]>(() => {
     const domainStart = minTimestampSec ?? mapDomain[0];
@@ -369,18 +375,60 @@ export function TimeSlices3D() {
             const previewHandleMatch =
               draggingSliceId === slice.id && draggingHandle && liveBoundarySec !== null;
             const previewY = previewHandleMatch ? percentToY(secToPercent(liveBoundarySec)) : null;
+            const isActive = activeSliceId === slice.id;
+            const isHovered = hoveredSliceId === slice.id;
+            const overlapCount = overlapCounts[slice.id] ?? 1;
 
             return (
               <group key={slice.id} position={[0, centerY, 0]}>
-                <mesh onClick={(event) => handleSliceClick(event, slice.id)}>
+                <mesh
+                  onClick={(event) => handleSliceClick(event, slice.id)}
+                  onPointerOver={(event) => {
+                    event.stopPropagation();
+                    setHoveredSliceId(slice.id);
+                  }}
+                  onPointerOut={() => {
+                    setHoveredSliceId((current) =>
+                      current === slice.id ? null : current
+                    );
+                  }}
+                >
                   <boxGeometry args={[100, height, 100]} />
                   <meshBasicMaterial
-                    color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
+                    color={
+                      isActive
+                        ? "#f59e0b"
+                        : isSelected
+                          ? "#60a5fa"
+                          : slice.isBurst
+                            ? "#f97316"
+                            : "#22d3ee"
+                    }
                     transparent
-                    opacity={isSelected ? 0.35 : slice.isBurst ? 0.2 : 0.12}
+                    opacity={
+                      isHovered
+                        ? 0.42
+                        : isSelected
+                          ? 0.35
+                          : slice.isBurst
+                            ? 0.2
+                            : 0.12
+                    }
                     depthWrite={false}
                   />
                 </mesh>
+                {(isActive || isSelected || overlapCount > 1) && (
+                  <mesh>
+                    <boxGeometry args={[100.2, height + 0.2, 100.2]} />
+                    <meshBasicMaterial
+                      color={isActive ? "#f59e0b" : overlapCount > 1 ? "#c084fc" : "#60a5fa"}
+                      wireframe
+                      transparent
+                      opacity={isHovered ? 0.8 : 0.58}
+                      depthWrite={false}
+                    />
+                  </mesh>
+                )}
 
                 <mesh
                   position={[48, -height / 2, 48]}
@@ -430,24 +478,79 @@ export function TimeSlices3D() {
                     <meshBasicMaterial color="#f8fafc" transparent opacity={0.35} depthWrite={false} />
                   </mesh>
                 ) : null}
+
+                {isHovered ? (
+                  <Html position={[0, height / 2 + 3, 0]} center>
+                    <div className="rounded-md border border-slate-700 bg-slate-950/90 px-2 py-1 text-[11px] text-slate-100 shadow">
+                      <div className="font-medium">{slice.name ?? "Slice"}</div>
+                      <div className="text-[10px] text-slate-300">
+                        {start.toFixed(1)}% - {end.toFixed(1)}%
+                      </div>
+                      {overlapCount > 1 ? (
+                        <div className="text-[10px] text-violet-300">
+                          {overlapCount} overlap zones
+                        </div>
+                      ) : null}
+                    </div>
+                  </Html>
+                ) : null}
               </group>
             );
           }
+
+          const isActive = activeSliceId === slice.id;
+          const isHovered = hoveredSliceId === slice.id;
 
           return (
             <group key={slice.id} position={[0, percentToY(slice.time), 0]}>
               <mesh
                 rotation={[-Math.PI / 2, 0, 0]}
                 onClick={(event) => handleSliceClick(event, slice.id)}
+                onPointerOver={(event) => {
+                  event.stopPropagation();
+                  setHoveredSliceId(slice.id);
+                }}
+                onPointerOut={() => {
+                  setHoveredSliceId((current) =>
+                    current === slice.id ? null : current
+                  );
+                }}
               >
                 <planeGeometry args={[100, 100]} />
                 <meshBasicMaterial
-                  color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
+                  color={
+                    isActive
+                      ? "#f59e0b"
+                      : isSelected
+                        ? "#60a5fa"
+                        : slice.isBurst
+                          ? "#f97316"
+                          : "#22d3ee"
+                  }
                   transparent
-                  opacity={isSelected ? 0.6 : slice.isBurst ? 0.4 : 0.28}
+                  opacity={
+                    isHovered
+                      ? 0.75
+                      : isSelected
+                        ? 0.6
+                        : slice.isBurst
+                          ? 0.4
+                          : 0.28
+                  }
                   depthWrite={false}
                 />
               </mesh>
+              {(isActive || isSelected) && (
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+                  <ringGeometry args={[49.2, 50, 64]} />
+                  <meshBasicMaterial
+                    color={isActive ? "#f59e0b" : "#60a5fa"}
+                    transparent
+                    opacity={0.75}
+                    depthWrite={false}
+                  />
+                </mesh>
+              )}
               <gridHelper args={[100, 10]} position={[0, 0.05, 0]}>
                 <meshBasicMaterial
                   color={isSelected ? "#60a5fa" : slice.isBurst ? "#f97316" : "#22d3ee"}
@@ -455,6 +558,14 @@ export function TimeSlices3D() {
                   opacity={isSelected ? 0.45 : 0.2}
                 />
               </gridHelper>
+              {isHovered ? (
+                <Html position={[0, 3, 0]} center>
+                  <div className="rounded-md border border-slate-700 bg-slate-950/90 px-2 py-1 text-[11px] text-slate-100 shadow">
+                    <div className="font-medium">{slice.name ?? "Slice"}</div>
+                    <div className="text-[10px] text-slate-300">{slice.time.toFixed(1)}%</div>
+                  </div>
+                </Html>
+              ) : null}
             </group>
           );
         })}
