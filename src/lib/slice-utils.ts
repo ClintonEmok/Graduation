@@ -1,4 +1,4 @@
-import { epochSecondsToNormalized, normalizedToEpochSeconds } from './time-domain';
+import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from './time-domain';
 
 const DEFAULT_TOLERANCE_PERCENT = 0.005;
 
@@ -59,14 +59,35 @@ export function focusTimelineRange({
   setTime,
 }: TimelineFocusRangeOptions): void {
   const [rangeStart, rangeEnd] = normalizeRange([start, end]);
+  if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) {
+    return;
+  }
 
-  if (minTimestampSec !== null && maxTimestampSec !== null) {
-    const startEpoch = normalizedToEpochSeconds(rangeStart, minTimestampSec, maxTimestampSec);
-    const endEpoch = normalizedToEpochSeconds(rangeEnd, minTimestampSec, maxTimestampSec);
+  if (
+    minTimestampSec !== null &&
+    maxTimestampSec !== null &&
+    Number.isFinite(minTimestampSec) &&
+    Number.isFinite(maxTimestampSec) &&
+    maxTimestampSec > minTimestampSec
+  ) {
+    const looksNormalized = rangeStart >= 0 && rangeEnd <= 100;
+    const startEpoch = looksNormalized
+      ? normalizedToEpochSeconds(rangeStart, minTimestampSec, maxTimestampSec)
+      : toEpochSeconds(rangeStart);
+    const endEpoch = looksNormalized
+      ? normalizedToEpochSeconds(rangeEnd, minTimestampSec, maxTimestampSec)
+      : toEpochSeconds(rangeEnd);
+    if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch)) {
+      return;
+    }
+
     setTimeRange([startEpoch, endEpoch]);
 
     const normalizedStart = epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec);
     const normalizedEnd = epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec);
+    if (!Number.isFinite(normalizedStart) || !Number.isFinite(normalizedEnd)) {
+      return;
+    }
     const normalizedRange: [number, number] = normalizeRange([normalizedStart, normalizedEnd]);
 
     setRange(normalizedRange);
@@ -76,6 +97,9 @@ export function focusTimelineRange({
   }
 
   const fallbackRange: [number, number] = [rangeStart, rangeEnd];
+  if (!Number.isFinite(fallbackRange[0]) || !Number.isFinite(fallbackRange[1])) {
+    return;
+  }
   setTimeRange(fallbackRange);
   setRange(fallbackRange);
   setBrushRange(fallbackRange);

@@ -6,6 +6,7 @@ import { WarpSliceEditor } from "@/app/timeline-test/components/WarpSliceEditor"
 import { planFullAutoAcceptanceArtifacts } from "@/app/timeslicing/full-auto-acceptance";
 import { SuggestionToolbar } from "@/app/timeslicing/components/SuggestionToolbar";
 import { DualTimeline } from "@/components/timeline/DualTimeline";
+import { BurstList } from "@/components/viz/BurstList";
 import { useCrimeData } from "@/hooks/useCrimeData";
 import { useViewportStore } from "@/lib/stores/viewportStore";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
@@ -364,14 +365,17 @@ export default function TimelineTest3DPage() {
                 Error loading data: {error.message}
               </div>
             ) : (
-              <DualTimeline
-                adaptiveWarpMapOverride={
-                  warpSource === "slice-authored" ? authoredWarpMap : undefined
-                }
-                adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
-                detailRangeOverride={[selectionStart, selectionEnd]}
-                disableAutoBurstSlices={true}
-              />
+              <>
+                <DualTimeline
+                  adaptiveWarpMapOverride={
+                    warpSource === "slice-authored" ? authoredWarpMap : undefined
+                  }
+                  adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
+                  detailRangeOverride={[selectionStart, selectionEnd]}
+                  disableAutoBurstSlices={true}
+                />
+                <BurstList />
+              </>
             )}
           </div>
           <TimelineTest3DScene />

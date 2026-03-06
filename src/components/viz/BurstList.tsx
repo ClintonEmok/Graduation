@@ -5,7 +5,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useSliceStore } from '@/store/useSliceStore';
-import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
 import { focusTimelineRange } from '@/lib/slice-utils';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,10 @@ export const useBurstWindows = () => {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   return useMemo(() => {
+    if (!Number.isFinite(mapDomain[0]) || !Number.isFinite(mapDomain[1]) || mapDomain[1] <= mapDomain[0]) {
+      return [] as BurstWindow[];
+    }
+
     const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
     if (!selectedMap || selectedMap.length === 0) return [] as BurstWindow[];
 
@@ -36,7 +40,7 @@ export const useBurstWindows = () => {
     let peak = 0;
 
     for (let i = 0; i < selectedMap.length; i += 1) {
-      const value = selectedMap[i];
+      const value = Number.isFinite(selectedMap[i]) ? selectedMap[i] : 0;
       if (value >= burstCutoff) {
         if (startIdx === null) startIdx = i;
         peak = Math.max(peak, value);
@@ -79,14 +83,6 @@ export function BurstList() {
   const setBurstMetric = useAdaptiveStore((state) => state.setBurstMetric);
 
   const burstWindows = useBurstWindows();
-  const burstMatches = useMemo(() => {
-    const lookup = new Map<string, string | null>();
-    for (const window of burstWindows) {
-      const match = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
-      lookup.set(window.id, match?.id ?? null);
-    }
-    return lookup;
-  }, [burstWindows, findMatchingSlice]);
 
   if (burstWindows.length === 0) return null;
 
@@ -94,6 +90,54 @@ export function BurstList() {
   // Epoch timestamps are large numbers (billions for seconds, trillions for ms)
   const isNormalizedDomain = mapDomain[1] < 1000;
   const isEpochMilliseconds = mapDomain[1] > 1e11;
+
+  const toNormalizedRange = (start: number, end: number): [number, number] | null => {
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return null;
+    }
+
+    if (isNormalizedDomain) {
+      return [
+        Math.max(0, Math.min(100, Math.min(start, end))),
+        Math.max(0, Math.min(100, Math.max(start, end))),
+      ];
+    }
+
+    if (minTimestampSec === null || maxTimestampSec === null || maxTimestampSec <= minTimestampSec) {
+      return null;
+    }
+
+    const startSec = isEpochMilliseconds ? start / 1000 : toEpochSeconds(start);
+    const endSec = isEpochMilliseconds ? end / 1000 : toEpochSeconds(end);
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) {
+      return null;
+    }
+
+    const normalizedStart = epochSecondsToNormalized(startSec, minTimestampSec, maxTimestampSec);
+    const normalizedEnd = epochSecondsToNormalized(endSec, minTimestampSec, maxTimestampSec);
+    if (!Number.isFinite(normalizedStart) || !Number.isFinite(normalizedEnd)) {
+      return null;
+    }
+
+    return [
+      Math.max(0, Math.min(100, Math.min(normalizedStart, normalizedEnd))),
+      Math.max(0, Math.min(100, Math.max(normalizedStart, normalizedEnd))),
+    ];
+  };
+
+  const burstMatches = useMemo(() => {
+    const lookup = new Map<string, string | null>();
+    for (const window of burstWindows) {
+      const normalizedRange = toNormalizedRange(window.start, window.end);
+      if (!normalizedRange) {
+        lookup.set(window.id, null);
+        continue;
+      }
+      const match = findMatchingSlice(normalizedRange[0], normalizedRange[1], undefined, { burstOnly: true });
+      lookup.set(window.id, match?.id ?? null);
+    }
+    return lookup;
+  }, [burstWindows, findMatchingSlice, isEpochMilliseconds, isNormalizedDomain, maxTimestampSec, minTimestampSec]);
 
   const formatWindow = (start: number, end: number) => {
     let startEpoch: number;
@@ -113,14 +157,29 @@ export function BurstList() {
       endEpoch = isEpochMilliseconds ? end / 1000 : end;
     }
 
-    const startLabel = new Date(startEpoch * 1000).toLocaleString();
-    const endLabel = new Date(endEpoch * 1000).toLocaleString();
+    if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch)) {
+      return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+    }
+
+    const startDate = new Date(startEpoch * 1000);
+    const endDate = new Date(endEpoch * 1000);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return `t=${start.toFixed(2)} → ${end.toFixed(2)}`;
+    }
+
+    const startLabel = startDate.toLocaleString();
+    const endLabel = endDate.toLocaleString();
     return `${startLabel} → ${endLabel}`;
   };
 
   const handleSelectWindow = (window: BurstWindow) => {
+    const normalizedRange = toNormalizedRange(window.start, window.end);
+    if (!normalizedRange) {
+      return;
+    }
+
     // Find matching existing burst slice (auto-created by useAutoBurstSlices effect)
-    const matchingSlice = findMatchingSlice(window.start, window.end, undefined, { burstOnly: true });
+    const matchingSlice = findMatchingSlice(normalizedRange[0], normalizedRange[1], undefined, { burstOnly: true });
 
     if (matchingSlice) {
       setActiveSlice(matchingSlice.id);
@@ -129,8 +188,8 @@ export function BurstList() {
 
     // Always focus timeline to the burst range
     focusTimelineRange({
-      start: window.start,
-      end: window.end,
+      start: normalizedRange[0],
+      end: normalizedRange[1],
       minTimestampSec,
       maxTimestampSec,
       setTimeRange,

@@ -735,10 +735,19 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, []);
 
   const cursorEpochSeconds = useMemo(() => {
-    return normalizedToEpochSeconds(currentTime, domainStart, domainEnd);
+    if (!Number.isFinite(currentTime) || !Number.isFinite(domainStart) || !Number.isFinite(domainEnd)) {
+      return null;
+    }
+    return normalizedToEpochSeconds(clamp(currentTime, 0, 100), domainStart, domainEnd);
   }, [currentTime, domainStart, domainEnd]);
 
-  const cursorX = detailScale(new Date(cursorEpochSeconds * 1000));
+  const cursorX = useMemo(() => {
+    if (cursorEpochSeconds === null || !Number.isFinite(cursorEpochSeconds)) {
+      return null;
+    }
+    const x = detailScale(new Date(cursorEpochSeconds * 1000));
+    return Number.isFinite(x) ? x : null;
+  }, [cursorEpochSeconds, detailScale]);
 
   const selectionPoint = useMemo(() => {
     if (selectedIndex === null) return null;
@@ -746,8 +755,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [selectedIndex, dataCount]);
 
   const selectionX = useMemo(() => {
-    if (!selectionPoint || selectionPoint.timestampSec === null) return null;
-    return detailScale(new Date(selectionPoint.timestampSec * 1000));
+    if (!selectionPoint || selectionPoint.timestampSec === null || !Number.isFinite(selectionPoint.timestampSec)) {
+      return null;
+    }
+    const x = detailScale(new Date(selectionPoint.timestampSec * 1000));
+    return Number.isFinite(x) ? x : null;
   }, [detailScale, selectionPoint]);
 
   const burstWindows = useBurstWindows();
@@ -856,10 +868,19 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const stripSelection = useMemo(() => {
     if (!overviewInnerWidth) return null;
+    if (!Number.isFinite(detailRangeSec[0]) || !Number.isFinite(detailRangeSec[1])) {
+      return null;
+    }
     const x0 = overviewScale(new Date(detailRangeSec[0] * 1000));
     const x1 = overviewScale(new Date(detailRangeSec[1] * 1000));
+    if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
+      return null;
+    }
     const left = Math.min(x0, x1);
     const widthSpan = Math.max(2, Math.abs(x1 - x0));
+    if (!Number.isFinite(left) || !Number.isFinite(widthSpan)) {
+      return null;
+    }
     return { left, width: widthSpan };
   }, [detailRangeSec, overviewInnerWidth, overviewScale]);
 
@@ -891,18 +912,31 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     }
 
     const spanSec = Math.max(1, domainEnd - domainStart);
-    const toX = (normalized: number) => {
+    const toX = (normalized: number): number | null => {
+      if (!Number.isFinite(normalized)) {
+        return null;
+      }
       const clampedNorm = clamp(normalized, 0, 100);
       const sec = domainStart + (clampedNorm / 100) * spanSec;
-      return detailScale(new Date(sec * 1000));
+      if (!Number.isFinite(sec)) {
+        return null;
+      }
+      const x = detailScale(new Date(sec * 1000));
+      return Number.isFinite(x) ? x : null;
     };
 
     const geometries = slices
       .filter((slice) => slice.isVisible)
       .map((slice) => {
         if (slice.type === 'range' && slice.range) {
+          if (!Number.isFinite(slice.range[0]) || !Number.isFinite(slice.range[1])) {
+            return null;
+          }
           const startX = toX(Math.min(slice.range[0], slice.range[1]));
           const endX = toX(Math.max(slice.range[0], slice.range[1]));
+          if (startX === null || endX === null) {
+            return null;
+          }
           const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
           const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
           if (right <= 0 || left >= detailInnerWidth) {
@@ -922,8 +956,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           };
         }
 
+        if (!Number.isFinite(slice.time)) {
+          return null;
+        }
         const x = toX(slice.time);
-        if (x < 0 || x > detailInnerWidth) {
+        if (x === null || x < 0 || x > detailInnerWidth) {
           return null;
         }
 
@@ -987,12 +1024,25 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     }
 
     const [startNorm, endNorm] = brushRange;
-    const startSec = normalizedToEpochSeconds(Math.min(startNorm, endNorm), domainStart, domainEnd);
-    const endSec = normalizedToEpochSeconds(Math.max(startNorm, endNorm), domainStart, domainEnd);
+    if (!Number.isFinite(startNorm) || !Number.isFinite(endNorm)) {
+      return 'No selection';
+    }
 
-    return `${brushDateFormatter.format(new Date(startSec * 1000))} - ${brushDateFormatter.format(
-      new Date(endSec * 1000)
-    )}`;
+    const clampedStartNorm = clamp(Math.min(startNorm, endNorm), 0, 100);
+    const clampedEndNorm = clamp(Math.max(startNorm, endNorm), 0, 100);
+    const startSec = normalizedToEpochSeconds(clampedStartNorm, domainStart, domainEnd);
+    const endSec = normalizedToEpochSeconds(clampedEndNorm, domainStart, domainEnd);
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) {
+      return 'No selection';
+    }
+
+    const startDate = new Date(startSec * 1000);
+    const endDate = new Date(endSec * 1000);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return 'No selection';
+    }
+
+    return `${brushDateFormatter.format(startDate)} - ${brushDateFormatter.format(endDate)}`;
   }, [brushDateFormatter, brushRange, domainEnd, domainStart]);
 
 
@@ -1187,10 +1237,19 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                   );
                 })}
             {userWarpOverlayBands.map((slice) => {
+              if (!Number.isFinite(slice.startSec) || !Number.isFinite(slice.endSec)) {
+                return null;
+              }
               const x0 = detailScale(new Date(slice.startSec * 1000));
               const x1 = detailScale(new Date(slice.endSec * 1000));
+              if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
+                return null;
+              }
               const left = Math.min(x0, x1);
               const widthSpan = Math.max(1, Math.abs(x1 - x0));
+              if (!Number.isFinite(left) || !Number.isFinite(widthSpan)) {
+                return null;
+              }
               return (
                 <rect
                   key={`detail-user-warp-${slice.id}`}
@@ -1274,33 +1333,37 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               </g>
             )}
 
-            <line
-              x1={cursorX}
-              x2={cursorX}
-              y1={0}
-              y2={DETAIL_HEIGHT}
-              stroke={TIME_CURSOR_COLOR}
-              strokeWidth={2}
-              filter="url(#timeCursorGlow)"
-            />
-            <circle
-              cx={cursorX}
-              cy={0}
-              r={8}
-              fill="rgba(16,185,129,0.2)"
-              stroke="rgba(16,185,129,0.45)"
-              strokeWidth={1}
-              pointerEvents="none"
-            />
-            <circle
-              cx={cursorX}
-              cy={0}
-              r={5.5}
-              fill={TIME_CURSOR_COLOR}
-              stroke="rgba(255,255,255,0.95)"
-              strokeWidth={2}
-              filter="url(#timeCursorGlow)"
-            />
+            {cursorX !== null && (
+              <>
+                <line
+                  x1={cursorX}
+                  x2={cursorX}
+                  y1={0}
+                  y2={DETAIL_HEIGHT}
+                  stroke={TIME_CURSOR_COLOR}
+                  strokeWidth={2}
+                  filter="url(#timeCursorGlow)"
+                />
+                <circle
+                  cx={cursorX}
+                  cy={0}
+                  r={8}
+                  fill="rgba(16,185,129,0.2)"
+                  stroke="rgba(16,185,129,0.45)"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                />
+                <circle
+                  cx={cursorX}
+                  cy={0}
+                  r={5.5}
+                  fill={TIME_CURSOR_COLOR}
+                  stroke="rgba(255,255,255,0.95)"
+                  strokeWidth={2}
+                  filter="url(#timeCursorGlow)"
+                />
+              </>
+            )}
             {selectionX !== null && (
               <g>
                 <line
