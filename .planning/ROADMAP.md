@@ -20,7 +20,7 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - [x] **Phase 43: 3D Timeline-Test Foundation** - Stand up a dedicated 3D test route that reuses timeline-test state, controls, and data plumbing.
 - [x] **Phase 44: 3D Interaction Parity** - Bring manual timeslicing and warp interactions to 3D with behavior matching timeline-test.
 - [x] **Phase 45: 3D Suggestion and Acceptance Parity** - Bring suggestion generation, review, and acceptance workflows to the 3D test experience.
-- [ ] **Phase 46: Guardrails and Baselines** - Add regression safety checks and baseline metrics before structural refactors.
+- [x] **Phase 46: Guardrails and Baselines** - Add regression safety checks and baseline metrics before structural refactors.
 - [ ] **Phase 47: Dead Code Removal** - Remove legacy hooks and stale paths no longer used by active workflows.
 - [ ] **Phase 48: API Layer Stabilization** - Normalize coordinate handling and eliminate double-buffering drift.
 - [ ] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity.
@@ -78,9 +78,9 @@ Plans:
   3. Refactor checklist and quality gates are in place for subsequent phases.
 **Plans**: 3 plans
 Plans:
-- [ ] 46-01-PLAN.md — Add measurable refactor baselines and PR quality gates
-- [ ] 46-02-PLAN.md — Add buffering and coordinate parity regression contracts for useCrimeData and range API
-- [ ] 46-03-PLAN.md — Extract and test DualTimeline interaction guard logic for brush/zoom and selection sync
+- [x] 46-01-PLAN.md — Add measurable refactor baselines and PR quality gates
+- [x] 46-02-PLAN.md — Add buffering and coordinate parity regression contracts for useCrimeData and range API
+- [x] 46-03-PLAN.md — Extract and test DualTimeline interaction guard logic for brush/zoom and selection sync
 
 ### Phase 47: Dead Code Removal
 **Goal**: Remove obsolete code paths with zero behavior change.
