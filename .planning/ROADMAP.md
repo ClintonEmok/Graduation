@@ -2,10 +2,9 @@
 
 ## Overview
 
-v2.0 is narrowed to one outcome: a **3D version of timeline-test functionality**.
-The milestone focuses on bringing timeline-test interaction parity (timeslicing controls, warp behavior, suggestions/review loop, and acceptance flows) into a dedicated 3D test experience.
+v2.0 delivered a **3D version of timeline-test functionality** with interaction, suggestion, and acceptance parity.
 
-Implementation policy for v2.0: favor 3D-specific logic copies for parity-critical flows; consolidation of duplicated 2D/3D logic is intentionally deferred to a potential v2.1 cleanup milestone.
+Next focus is v2.1: a **refactoring and decomposition milestone** that reduces structural complexity, removes dead code, and hardens critical behavior before major internal cleanup.
 
 ## Milestones
 
@@ -13,13 +12,20 @@ Implementation policy for v2.0: favor 3D-specific logic copies for parity-critic
 - ✅ **v1.1 Manual Timeslicing** - Phases 26-33 (shipped 2026-02-22)
 - ✅ **v1.2 Semi-Automated Timeslicing Workflows** - Phases 34-39 (shipped 2026-03-02)
 - ✅ **v1.3 Fully Automated Timeslicing Workflows** - Phases 40-42 (shipped 2026-03-04)
-- 🚧 **v2.0 3D Timeline-Test Parity** - Phases 43-45 (planned)
+- ✅ **v2.0 3D Timeline-Test Parity** - Phases 43-45 (shipped 2026-03-06)
+- 📋 **v2.1 Refactoring and Decomposition** - Phases 46-51 (planned)
 
 ## Phases
 
 - [x] **Phase 43: 3D Timeline-Test Foundation** - Stand up a dedicated 3D test route that reuses timeline-test state, controls, and data plumbing.
 - [x] **Phase 44: 3D Interaction Parity** - Bring manual timeslicing and warp interactions to 3D with behavior matching timeline-test.
 - [x] **Phase 45: 3D Suggestion and Acceptance Parity** - Bring suggestion generation, review, and acceptance workflows to the 3D test experience.
+- [ ] **Phase 46: Guardrails and Baselines** - Add regression safety checks and baseline metrics before structural refactors.
+- [ ] **Phase 47: Dead Code Removal** - Remove legacy hooks and stale paths no longer used by active workflows.
+- [ ] **Phase 48: API Layer Stabilization** - Normalize coordinate handling and eliminate double-buffering drift.
+- [ ] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity.
+- [ ] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization.
+- [ ] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths.
 
 ## Phase Details
 
@@ -62,6 +68,80 @@ Plans:
 Plans:
 - [x] 45-01-PLAN.md — Add SuggestionPanel component to timeline-test-3d route
 
+### Phase 46: Guardrails and Baselines
+**Goal**: Lock down behavior with regression coverage and measurable baselines before refactoring.
+**Depends on**: Phase 45
+**Requirements**: REFACTOR-01, REFACTOR-02
+**Success Criteria** (what must be TRUE):
+  1. Baseline metrics exist for key timeline interaction paths and can be compared after refactors.
+  2. Regression tests cover buffering semantics, coordinate scale parity, and brush/zoom selection sync.
+  3. Refactor checklist and quality gates are in place for subsequent phases.
+**Plans**: 3 plans
+Plans:
+- [ ] 46-01-PLAN.md — Add measurable refactor baselines and PR quality gates
+- [ ] 46-02-PLAN.md — Add buffering and coordinate parity regression contracts for useCrimeData and range API
+- [ ] 46-03-PLAN.md — Extract and test DualTimeline interaction guard logic for brush/zoom and selection sync
+
+### Phase 47: Dead Code Removal
+**Goal**: Remove obsolete code paths with zero behavior change.
+**Depends on**: Phase 46
+**Requirements**: REFACTOR-03
+**Success Criteria** (what must be TRUE):
+  1. Legacy `useSuggestionTrigger.ts` is removed.
+  2. No runtime imports reference removed files.
+  3. Build and regression suites pass after deletion.
+**Plans**: (created by /gsd/plan-phase)
+Plans:
+- [ ] TBD — created by /gsd/plan-phase
+
+### Phase 48: API Layer Stabilization
+**Goal**: Stabilize timeline data plumbing by unifying coordinate normalization and buffering ownership.
+**Depends on**: Phase 47
+**Requirements**: REFACTOR-04, REFACTOR-05
+**Success Criteria** (what must be TRUE):
+  1. A shared coordinate normalization adapter is used by all relevant consumers.
+  2. Buffering logic has a single authoritative layer with no double-buffer drift.
+  3. Range/stream endpoint coordinate behavior remains consistent with existing contracts.
+**Plans**: (created by /gsd/plan-phase)
+Plans:
+- [ ] TBD — created by /gsd/plan-phase
+
+### Phase 49: DualTimeline Decomposition
+**Goal**: Decompose `DualTimeline.tsx` into dedicated hooks to improve maintainability and testability.
+**Depends on**: Phase 48
+**Requirements**: REFACTOR-06, REFACTOR-07
+**Success Criteria** (what must be TRUE):
+  1. Scale transforms, brush/zoom sync, point selection, and density derivation are extracted into focused hooks.
+  2. `DualTimeline.tsx` is reduced to orchestration-focused logic.
+  3. Extracted hook behavior is covered by tests and preserves existing interactions.
+**Plans**: (created by /gsd/plan-phase)
+Plans:
+- [ ] TBD — created by /gsd/plan-phase
+
+### Phase 50: Query Layer Decomposition
+**Goal**: Break `lib/queries.ts` into modular query builders with safer SQL construction.
+**Depends on**: Phase 49
+**Requirements**: REFACTOR-08, REFACTOR-09
+**Success Criteria** (what must be TRUE):
+  1. Query filters, aggregations, sanitization, and builders live in dedicated modules.
+  2. Parameterized query construction replaces ad-hoc interpolation in hot paths.
+  3. Query behavior remains backward-compatible for API consumers.
+**Plans**: (created by /gsd/plan-phase)
+Plans:
+- [ ] TBD — created by /gsd/plan-phase
+
+### Phase 51: Store Consolidation
+**Goal**: Consolidate slice-domain state into coherent stores and retire deprecated data store paths.
+**Depends on**: Phase 50
+**Requirements**: REFACTOR-10, REFACTOR-11
+**Success Criteria** (what must be TRUE):
+  1. Slice-related stores are consolidated under a clear domain boundary.
+  2. Deprecated `useDataStore.ts` is removed after consumer migration verification.
+  3. No duplicate slice state sources remain in active workflows.
+**Plans**: (created by /gsd/plan-phase)
+Plans:
+- [ ] TBD — created by /gsd/plan-phase
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -73,6 +153,12 @@ Plans:
 | 43 | v2.0 | 2/2 | Complete | 2026-03-05 |
 | 44 | v2.0 | 2/2 | Complete | 2026-03-06 |
 | 45 | v2.0 | 1/1 | Complete | 2026-03-06 |
+| 46 | v2.1 | 0/3 | Planned | - |
+| 47 | v2.1 | 0/0 | Planned | - |
+| 48 | v2.1 | 0/0 | Planned | - |
+| 49 | v2.1 | 0/0 | Planned | - |
+| 50 | v2.1 | 0/0 | Planned | - |
+| 51 | v2.1 | 0/0 | Planned | - |
 
 ---
 
