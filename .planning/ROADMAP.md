@@ -90,9 +90,9 @@ Plans:
   1. Legacy `useSuggestionTrigger.ts` is removed.
   2. No runtime imports reference removed files.
   3. Build and regression suites pass after deletion.
-**Plans**: (created by /gsd/plan-phase)
+**Plans**: 1 plan
 Plans:
-- [ ] TBD — created by /gsd/plan-phase
+- [x] 47-01-PLAN.md — Remove legacy useSuggestionTrigger.ts hook
 
 ### Phase 48: API Layer Stabilization
 **Goal**: Stabilize timeline data plumbing by unifying coordinate normalization and buffering ownership.
@@ -153,8 +153,8 @@ Plans:
 | 43 | v2.0 | 2/2 | Complete | 2026-03-05 |
 | 44 | v2.0 | 2/2 | Complete | 2026-03-06 |
 | 45 | v2.0 | 1/1 | Complete | 2026-03-06 |
-| 46 | v2.1 | 0/3 | Planned | - |
-| 47 | v2.1 | 0/0 | Planned | - |
+| 46 | v2.1 | 3/3 | Complete | 2026-03-06 |
+| 47 | v2.1 | 1/1 | Planned | - |
 | 48 | v2.1 | 0/0 | Planned | - |
 | 49 | v2.1 | 0/0 | Planned | - |
 | 50 | v2.1 | 0/0 | Planned | - |
