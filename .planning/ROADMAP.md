@@ -116,11 +116,12 @@ Plans:
   1. Scale transforms, brush/zoom sync, point selection, and density derivation are extracted into focused hooks.
   2. `DualTimeline.tsx` is reduced to orchestration-focused logic.
   3. Extracted hook behavior is covered by tests and preserves existing interactions.
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
 - [ ] 49-01-PLAN.md — Extract scale transforms and density derivation into dedicated hooks with deterministic tests
 - [ ] 49-02-PLAN.md — Extract brush/zoom synchronization into a focused hook with parity-safe D3 wiring tests
 - [ ] 49-03-PLAN.md — Extract point selection and finalize DualTimeline as an orchestration-focused hook composer
+- [ ] 49-04-PLAN.md — Close verification gap with deterministic brush/zoom range-update parity regression coverage
 
 ### Phase 50: Query Layer Decomposition
 **Goal**: Break `lib/queries.ts` into modular query builders with safer SQL construction.
