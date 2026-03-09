@@ -45,6 +45,44 @@ export const withSyncGuard = (
   return true;
 };
 
+export const applyBrushSelectionToRange = ({
+  selection,
+  invert,
+  overviewInnerWidth,
+  setBrushRange,
+  applyRangeToStores,
+}: {
+  selection: [number, number] | null;
+  invert: (value: number) => Date;
+  overviewInnerWidth: number;
+  setBrushRange: (range: [number, number] | null) => void;
+  applyRangeToStores: (startSec: number, endSec: number) => void;
+}): { scale: number; translateX: number } | null => {
+  if (!selection) {
+    setBrushRange(null);
+    return null;
+  }
+
+  const { startSec, endSec } = brushSelectionToEpochRange(selection, invert);
+  applyRangeToStores(startSec, endSec);
+
+  return buildZoomTransformFromBrush(selection[0], selection[1], overviewInnerWidth);
+};
+
+export const applyZoomDomainToRange = ({
+  domain,
+  overviewScale,
+  applyRangeToStores,
+}: {
+  domain: [Date, Date];
+  overviewScale: (value: Date) => number;
+  applyRangeToStores: (startSec: number, endSec: number) => void;
+}): [number, number] => {
+  const { startSec, endSec } = zoomDomainToEpochRange(domain);
+  applyRangeToStores(startSec, endSec);
+  return [overviewScale(domain[0]), overviewScale(domain[1])];
+};
+
 export const useBrushZoomSync = ({
   interactive,
   detailInnerWidth,
@@ -76,23 +114,21 @@ export const useBrushZoomSync = ({
       .extent([[0, 0], [overviewInnerWidth, OVERVIEW_HEIGHT]])
       .on('brush end', (event) => {
         if (isSyncingRef.current) return;
-        if (!event.selection) {
-          setBrushRange(null);
+        const transform = applyBrushSelectionToRange({
+          selection: (event.selection as [number, number] | null) ?? null,
+          invert: (value) => overviewInteractionScale.invert(value),
+          overviewInnerWidth,
+          setBrushRange,
+          applyRangeToStores,
+        });
+        if (!transform) {
           return;
         }
 
-        const [x0, x1] = event.selection as [number, number];
-        const { startSec, endSec } = brushSelectionToEpochRange(
-          [x0, x1],
-          (value) => overviewInteractionScale.invert(value)
-        );
-        applyRangeToStores(startSec, endSec);
-
-        const { scale, translateX } = buildZoomTransformFromBrush(x0, x1, overviewInnerWidth);
         withSyncGuard(isSyncingRef, () => {
           select(zoomNode).call(
             zoomBehavior.transform,
-            zoomIdentity.scale(scale).translate(translateX, 0)
+            zoomIdentity.scale(transform.scale).translate(transform.translateX, 0)
           );
         });
       });
@@ -104,15 +140,15 @@ export const useBrushZoomSync = ({
       .on('zoom', (event) => {
         if (isSyncingRef.current) return;
         const rescaled = event.transform.rescaleX(overviewInteractionScale);
-        const newDomain = rescaled.domain();
-        const { startSec, endSec } = zoomDomainToEpochRange(newDomain as [Date, Date]);
-        applyRangeToStores(startSec, endSec);
+        const newDomain = rescaled.domain() as [Date, Date];
+        const brushSelectionNext = applyZoomDomainToRange({
+          domain: newDomain,
+          overviewScale: (value) => overviewInteractionScale(value),
+          applyRangeToStores,
+        });
 
         withSyncGuard(isSyncingRef, () => {
-          select(brushNode).call(
-            brushBehavior.move,
-            [overviewInteractionScale(newDomain[0]), overviewInteractionScale(newDomain[1])]
-          );
+          select(brushNode).call(brushBehavior.move, brushSelectionNext);
         });
       });
 

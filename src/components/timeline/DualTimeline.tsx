@@ -54,6 +54,54 @@ const DEBUG_PREVIEW_WARP_PROFILE_ID = '__debug-full-auto-preview__';
 
 const clamp = clampToRange;
 
+interface ApplyRangeToStoresContractParams {
+  interactive: boolean;
+  startSec: number;
+  endSec: number;
+  domainStart: number;
+  domainEnd: number;
+  currentTime: number;
+  setTimeRange: (range: [number, number]) => void;
+  setRange: (range: [number, number]) => void;
+  setBrushRange: (range: [number, number] | null) => void;
+  setViewport: (startDate: number, endDate: number) => void;
+  setTime: (time: number) => void;
+}
+
+export const applyRangeToStoresContract = ({
+  interactive,
+  startSec,
+  endSec,
+  domainStart,
+  domainEnd,
+  currentTime,
+  setTimeRange,
+  setRange,
+  setBrushRange,
+  setViewport,
+  setTime,
+}: ApplyRangeToStoresContractParams): void => {
+  if (!interactive) {
+    return;
+  }
+
+  const {
+    safeStartSec: safeStart,
+    safeEndSec: safeEnd,
+    normalizedRange: nextRange,
+  } = computeRangeUpdate(startSec, endSec, domainStart, domainEnd);
+
+  setTimeRange([safeStart, safeEnd]);
+  setRange(nextRange);
+  setBrushRange(nextRange);
+  setViewport(safeStart, safeEnd);
+
+  const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
+  if (clampedTime !== currentTime) {
+    setTime(clampedTime);
+  }
+};
+
 interface TimelineSliceGeometry {
   id: string;
   left: number;
@@ -290,26 +338,19 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const applyRangeToStores = useCallback(
     (startSec: number, endSec: number) => {
-      if (!interactive) {
-        return;
-      }
-      const {
-        safeStartSec: safeStart,
-        safeEndSec: safeEnd,
-        normalizedRange: nextRange,
-      } = computeRangeUpdate(startSec, endSec, domainStart, domainEnd);
-
-      setTimeRange([safeStart, safeEnd]);
-      setRange(nextRange);
-      setBrushRange(nextRange);
-      
-      // Sync viewport store for viewport-based data loading
-      setViewport(safeStart, safeEnd);
-
-      const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
-      if (clampedTime !== currentTime) {
-        setTime(clampedTime);
-      }
+      applyRangeToStoresContract({
+        interactive,
+        startSec,
+        endSec,
+        domainStart,
+        domainEnd,
+        currentTime,
+        setTimeRange,
+        setRange,
+        setBrushRange,
+        setViewport,
+        setTime,
+      });
     },
     [currentTime, domainEnd, domainStart, interactive, setRange, setTime, setTimeRange, setBrushRange, setViewport]
   );
