@@ -8,6 +8,7 @@
 
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import { getDataPath, parseDate, epochSeconds } from './db';
+import { lonLatToNormalized } from './coordinate-normalization';
 import { getAggregatedBins } from './duckdb-aggregator';
 
 // Mock the duckdb module
@@ -41,14 +42,15 @@ describe('Crime API - Mock Data Generation', () => {
       const timestamp = startTimestamp + Math.floor(Math.random() * (endTimestamp - startTimestamp));
       const lat = 41.8 + Math.random() * 0.2;
       const lon = -87.7 + Math.random() * 0.2;
+      const { x, z } = lonLatToNormalized(lon, lat);
       
       mockData.push({
         timestamp,
         type: crimeTypes[Math.floor(Math.random() * crimeTypes.length)],
         lat,
         lon,
-        x: ((lon + 87.5) / (87.7 - 87.5)),
-        z: ((lat - 37) / (42 - 37)),
+        x,
+        z,
         iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
         district: String(Math.floor(Math.random() * 30) + 1),
         year: 2024
@@ -129,21 +131,17 @@ describe('Crime API - Mock Data Generation', () => {
   });
 
   test('mock x coordinate calculation is correct', () => {
-    // x = ((lon + 87.5) / (87.7 - 87.5))
-    // For lon = -87.7: x = (-87.7 + 87.5) / 0.2 = -0.2 / 0.2 = -1
-    // For lon = -87.5: x = (-87.5 + 87.5) / 0.2 = 0
+    // x = ((lon - minLon) / (maxLon - minLon) * 100) - 50
     const lon = -87.6;
-    const expectedX = ((lon + 87.5) / (87.7 - 87.5));
-    expect(expectedX).toBeCloseTo(-0.5);
+    const { x } = lonLatToNormalized(lon, 41.9);
+    expect(x).toBeCloseTo(25);
   });
 
   test('mock z coordinate calculation is correct', () => {
-    // z = ((lat - 37) / (42 - 37))
-    // For lat = 41.8: z = 0.96
-    // For lat = 42.0: z = 1.0
+    // z = ((lat - minLat) / (maxLat - minLat) * 100) - 50
     const lat = 41.9;
-    const expectedZ = ((lat - 37) / (42 - 37)); // 0.98
-    expect(expectedZ).toBeCloseTo(0.98);
+    const { z } = lonLatToNormalized(-87.6, lat);
+    expect(z).toBeCloseTo(10);
   });
 });
 
