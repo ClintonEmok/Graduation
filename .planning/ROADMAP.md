@@ -24,7 +24,7 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - [ ] **Phase 47: Dead Code Removal** - Remove legacy hooks and stale paths no longer used by active workflows.
 - [x] **Phase 48: API Layer Stabilization** - Normalize coordinate handling and eliminate double-buffering drift.
 - [x] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity. (completed 2026-03-09)
-- [ ] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization.
+- [x] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization. (completed 2026-03-09)
 - [ ] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths.
 
 ## Phase Details
@@ -164,7 +164,7 @@ Plans:
 | 47 | v2.1 | 1/1 | Complete | 2026-03-07 |
 | 48 | v2.1 | 3/3 | Complete | 2026-03-09 |
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
-| 50 | v2.1 | 0/3 | Planned | - |
+| 50 | v2.1 | Complete    | 2026-03-09 | - |
 | 51 | v2.1 | 0/0 | Planned | - |
 
 ---
