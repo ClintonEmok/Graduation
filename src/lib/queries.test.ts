@@ -17,7 +17,8 @@ vi.mock('./db', () => ({
 }));
 
 import { buildNormalizedSqlExpression, CHICAGO_BOUNDS, lonLatToNormalized } from './coordinate-normalization';
-import { queryCrimesInRange } from './queries';
+import { buildCrimeCountQuery, buildCrimesInRangeQuery } from './queries/index';
+import { queryCrimeCount, queryCrimesInRange } from './queries';
 
 describe('queries normalization parity', () => {
   beforeEach(() => {
@@ -53,9 +54,12 @@ describe('queries normalization parity', () => {
     ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
 
     let capturedQuery = '';
+    let capturedArgs: unknown[] = [];
     getDbMock.mockResolvedValue({
-      all: vi.fn((query: string, callback: (err: Error | null, rows: unknown[]) => void) => {
+      all: vi.fn((query: string, ...args: unknown[]) => {
         capturedQuery = query;
+        capturedArgs = args;
+        const callback = args.at(-1) as (err: Error | null, rows: unknown[]) => void;
         callback(null, []);
       }),
     });
@@ -66,5 +70,59 @@ describe('queries normalization parity', () => {
     expect(capturedQuery).toContain(buildNormalizedSqlExpression('"Latitude"', 'lat'));
     expect(capturedQuery).toContain(String(CHICAGO_BOUNDS.minLon));
     expect(capturedQuery).toContain(String(CHICAGO_BOUNDS.minLat));
+    expect(capturedArgs.slice(0, -1)).toEqual([1000, 2000, 10]);
+  });
+});
+
+describe('hot-path query parameterization', () => {
+  it('builds crimes-in-range SQL with placeholder-aligned params for combined filters', () => {
+    const built = buildCrimesInRangeQuery('crimes_sorted', 1000, 2000, {
+      limit: 25,
+      sampleStride: 3,
+      crimeTypes: ['THEFT', 'BATTERY'],
+      districts: ['1', '2'],
+    });
+
+    expect(built.sql).toContain('EXTRACT(EPOCH FROM "Date") >= ? AND EXTRACT(EPOCH FROM "Date") <= ?');
+    expect(built.sql).toContain('"Primary Type" IN (?, ?)');
+    expect(built.sql).toContain('"District" IN (?, ?)');
+    expect(built.sql).toContain('WHERE ((rn - 1) % ?) = 0');
+    expect(built.sql).toContain('LIMIT ?');
+    expect(built.params).toEqual([1000, 2000, 'THEFT', 'BATTERY', '1', '2', 3, 25]);
+  });
+
+  it('builds crime-count SQL with ordered params when optional filters are combined', () => {
+    const built = buildCrimeCountQuery('crimes_sorted', 3000, 4000, {
+      crimeTypes: ['ROBBERY'],
+      districts: ['7', '8'],
+    });
+
+    expect(built.sql).toContain('COUNT(*) as count');
+    expect(built.sql).toContain('"Primary Type" IN (?)');
+    expect(built.sql).toContain('"District" IN (?, ?)');
+    expect(built.params).toEqual([3000, 4000, 'ROBBERY', '7', '8']);
+  });
+
+  it('executes count queries with builder-provided params', async () => {
+    isMockDataEnabledMock.mockReturnValue(false);
+    ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
+
+    let capturedArgs: unknown[] = [];
+    getDbMock.mockResolvedValue({
+      all: vi.fn((_query: string, ...args: unknown[]) => {
+        capturedArgs = args;
+        const callback = args.at(-1) as (err: Error | null, rows: unknown[]) => void;
+        callback(null, [{ count: 42 }]);
+      }),
+    });
+
+    await expect(
+      queryCrimeCount(5000, 6000, {
+        crimeTypes: ['THEFT'],
+        districts: ['12'],
+      })
+    ).resolves.toBe(42);
+
+    expect(capturedArgs.slice(0, -1)).toEqual([5000, 6000, 'THEFT', '12']);
   });
 });

@@ -120,6 +120,30 @@ describe('/api/crimes/range GET', () => {
     );
   });
 
+  it('keeps buffer and sampling metadata contract for sampled responses', async () => {
+    queryCrimeCountMock.mockResolvedValue(10);
+    queryCrimesInRangeMock.mockResolvedValue([]);
+
+    const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000&limit=3'));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.meta).toMatchObject({
+      viewport: { start: 1000, end: 2000 },
+      buffer: {
+        days: 30,
+        applied: {
+          start: 1000 - 30 * 86400,
+          end: 2000 + 30 * 86400,
+        },
+      },
+      sampled: true,
+      sampleStride: 4,
+      totalMatches: 10,
+      limit: 3,
+    });
+  });
+
   it('returns mock response with coordinate parity and mock metadata', async () => {
     isMockDataEnabledMock.mockReturnValue(true);
 
