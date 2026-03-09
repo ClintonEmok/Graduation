@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **50 of 51** (Query Layer Decomposition)
-Plan: **2 of 3** in current phase
-Status: **In progress**
-Last activity: 2026-03-09 - Completed 50-02 hot-path range/count parameterization with metadata parity regression coverage
+Plan: **3 of 3** in current phase
+Status: **Phase complete**
+Last activity: 2026-03-09 - Completed 50-03 aggregation/cache decomposition with sanitization boundary hardening
 
-Progress: **███████████████████░** 177/180 plans complete (98.3%)
+Progress: **███████████████████░** 178/180 plans complete (98.9%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: **███████████████████░** 177/1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 4/6 phases complete (Phases 46-49 complete)
+- v2.1: 5/6 phases complete (Phases 46-50 complete)
 
 ## Decisions
 
@@ -65,6 +65,9 @@ Progress: **███████████████████░** 177/1
 - [Phase 50]: Extract filter/aggregation/builder scaffolds before hot-path parameterization. — This keeps 50-01 focused on boundaries and parity, leaving semantic hardening to 50-02/50-03.
 - [Phase 50]: Parameterize hot-path range/count values (`startEpoch`, `endEpoch`, filter lists, stride/limit) through builder-managed `{ sql, params }` outputs. — This removes ad-hoc interpolation from highest-traffic queries while preserving query signatures.
 - [Phase 50]: Preserve `/api/crimes/range` consumer contract by pinning `sampled`, `sampleStride`, and buffer metadata parity in route-level regression tests. — This keeps observable API behavior stable while query internals evolve.
+- [Phase 50]: Keep `src/lib/queries.ts` as a compatibility facade while moving density-bin and adaptive-cache SQL assembly into `src/lib/queries/aggregations.ts`. — This completes decomposition without requiring route import churn.
+- [Phase 50]: Enforce adaptive aggregation scalar sanitization through centralized clamps (`clampAdaptiveBinCount`, `clampKernelWidth`, `clampDensityResolution`) and bind builder runtime values through params. — This tightens structural SQL safety with one auditable policy surface.
+- [Phase 50]: Lock decomposition compatibility with regressions that assert callable facade exports and parameterized aggregation/cache query assembly contracts. — This guards API-facing behavior while internals continue to evolve.
 
 ## Blockers/Concerns
 
@@ -72,6 +75,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 20:27 UTC
-Stopped at: Completed 50-02-PLAN.md
+Last session: 2026-03-09 20:35 UTC
+Stopped at: Completed 50-03-PLAN.md
 Resume file: None
