@@ -131,9 +131,11 @@ Plans:
   1. Query filters, aggregations, sanitization, and builders live in dedicated modules.
   2. Parameterized query construction replaces ad-hoc interpolation in hot paths.
   3. Query behavior remains backward-compatible for API consumers.
-**Plans**: (created by /gsd/plan-phase)
+**Plans**: 3 plans
 Plans:
-- [ ] TBD — created by /gsd/plan-phase
+- [ ] 50-01-PLAN.md — Create modular query-layer foundation and compatibility facade
+- [ ] 50-02-PLAN.md — Parameterize hot-path range/count queries with parity regression coverage
+- [ ] 50-03-PLAN.md — Complete aggregation/cache decomposition with sanitization boundary hardening
 
 ### Phase 51: Store Consolidation
 **Goal**: Consolidate slice-domain state into coherent stores and retire deprecated data store paths.
@@ -162,7 +164,7 @@ Plans:
 | 47 | v2.1 | 1/1 | Complete | 2026-03-07 |
 | 48 | v2.1 | 3/3 | Complete | 2026-03-09 |
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
-| 50 | v2.1 | 0/0 | Planned | - |
+| 50 | v2.1 | 0/3 | Planned | - |
 | 51 | v2.1 | 0/0 | Planned | - |
 
 ---
