@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **49 of 51** (DualTimeline Decomposition)
-Plan: **3 of 3** in current phase
+Plan: **4 of 4** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-09 - Completed 49-03 point-selection extraction and orchestration cleanup
+Last activity: 2026-03-09 - Completed 49-04 brush/zoom range-update parity regression closure
 
-Progress: **███████████████████░** 174/176 plans complete (98.9%)
+Progress: **███████████████████░** 175/176 plans complete (99.4%)
 
 ## Milestone Status
 
@@ -59,6 +59,7 @@ Progress: **███████████████████░** 174/1
 - [Phase 49]: Keep brush/zoom conversion math routed through `interaction-guards` and make `isSyncingRef` guard boundaries explicitly testable via `withSyncGuard`. — This prevents feedback-loop drift during decomposition.
 - [Phase 49]: Keep point-selection threshold semantics exactly `max(rangeSpan * 0.01, 60)` inside `usePointSelection` helper exports. — This preserves nearest-point parity while extracting pointer interaction ownership.
 - [Phase 49]: Keep DualTimeline orchestration-focused by composing `usePointSelection` instead of owning pointer math inline. — This completes the four-hook decomposition boundary for the timeline component.
+- [Phase 49]: Expose deterministic brush/zoom callback helper boundaries and validate both paths against the shared `applyRangeToStores` contract, including `setViewport`. — This closes the verification gap on multi-store parity evidence without changing runtime behavior.
 
 ## Blockers/Concerns
 
@@ -66,6 +67,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 16:42 UTC
-Stopped at: Completed 49-03-PLAN.md
+Last session: 2026-03-09 17:02 UTC
+Stopped at: Completed 49-04-PLAN.md
 Resume file: None
