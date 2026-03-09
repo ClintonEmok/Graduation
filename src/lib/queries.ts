@@ -6,7 +6,7 @@ import {
   buildAdaptiveDomainQuery,
   buildCrimeCoordinateSelectColumns,
   buildCrimeCountQuery,
-  buildCrimesRangeQuery,
+  buildCrimesInRangeQuery,
   buildDensityBinsQuery,
   clampPositiveInt,
   computeWarpMap,
@@ -176,6 +176,21 @@ const mockCrimeCount = (startEpoch: number, endEpoch: number, filters?: QueryFil
   return Math.max(1000, Math.floor(basePerYear * yearScale * typeFactor * districtFactor));
 };
 
+const executeAll = <T>(
+  db: { all: (...args: unknown[]) => void },
+  sql: string,
+  params: unknown[]
+): Promise<T[]> =>
+  new Promise((resolve, reject) => {
+    db.all(sql, ...params, (err: Error | null, rows: unknown[]) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows as T[]);
+    });
+  });
+
 export const queryCrimesInRange = async (
   startEpoch: number,
   endEpoch: number,
@@ -187,31 +202,25 @@ export const queryCrimesInRange = async (
 
   const db = await getDb();
   const tableName = await ensureSortedCrimesTable();
-  const built = buildCrimesRangeQuery(tableName, startEpoch, endEpoch, options);
+  const built = buildCrimesInRangeQuery(tableName, startEpoch, endEpoch, options);
 
-  return new Promise((resolve, reject) => {
-    db.all(built.sql, (err: Error | null, rows: unknown[]) => {
-      if (err) {
-        console.error('Error querying crimes in range:', err);
-        reject(err);
-        return;
-      }
-
-      const records = (rows as Record<string, unknown>[]).map((row) => ({
-        timestamp: typeof row.timestamp === 'bigint' ? Number(row.timestamp) : row.timestamp,
-        type: row.type as string,
-        lat: typeof row.lat === 'bigint' ? Number(row.lat) : row.lat,
-        lon: typeof row.lon === 'bigint' ? Number(row.lon) : row.lon,
-        x: typeof row.x === 'bigint' ? Number(row.x) : row.x,
-        z: typeof row.z === 'bigint' ? Number(row.z) : row.z,
-        iucr: row.iucr as string,
-        district: row.district as string,
-        year: typeof row.year === 'bigint' ? Number(row.year) : row.year,
-      }));
-
-      resolve(records as CrimeRecord[]);
-    });
-  });
+  try {
+    const rows = await executeAll<Record<string, unknown>>(db, built.sql, built.params);
+    return rows.map((row) => ({
+      timestamp: typeof row.timestamp === 'bigint' ? Number(row.timestamp) : row.timestamp,
+      type: row.type as string,
+      lat: typeof row.lat === 'bigint' ? Number(row.lat) : row.lat,
+      lon: typeof row.lon === 'bigint' ? Number(row.lon) : row.lon,
+      x: typeof row.x === 'bigint' ? Number(row.x) : row.x,
+      z: typeof row.z === 'bigint' ? Number(row.z) : row.z,
+      iucr: row.iucr as string,
+      district: row.district as string,
+      year: typeof row.year === 'bigint' ? Number(row.year) : row.year,
+    })) as CrimeRecord[];
+  } catch (error) {
+    console.error('Error querying crimes in range:', error);
+    throw error;
+  }
 };
 
 export const queryCrimeCount = async (
@@ -227,25 +236,18 @@ export const queryCrimeCount = async (
   const tableName = await ensureSortedCrimesTable();
   const built = buildCrimeCountQuery(tableName, startEpoch, endEpoch, filters);
 
-  return new Promise((resolve, reject) => {
-    db.all(built.sql, (err: Error | null, rows: unknown[]) => {
-      if (err) {
-        console.error('Error querying crime count:', err);
-        reject(err);
-        return;
-      }
-
-      const row = rows[0] as { count: number | string | bigint };
-      const count =
-        typeof row.count === 'bigint'
-          ? Number(row.count)
-          : typeof row.count === 'string'
-            ? parseInt(row.count, 10)
-            : row.count;
-
-      resolve(count);
-    });
-  });
+  try {
+    const rows = await executeAll<{ count: number | string | bigint }>(db, built.sql, built.params);
+    const row = rows[0] as { count: number | string | bigint };
+    return typeof row.count === 'bigint'
+      ? Number(row.count)
+      : typeof row.count === 'string'
+        ? parseInt(row.count, 10)
+        : row.count;
+  } catch (error) {
+    console.error('Error querying crime count:', error);
+    throw error;
+  }
 };
 
 export const getOrCreateGlobalAdaptiveMaps = async (
