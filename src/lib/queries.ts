@@ -4,12 +4,12 @@ import {
   buildAdaptiveBurstQuery,
   buildAdaptiveDensityQuery,
   buildAdaptiveDomainQuery,
-  buildCrimeCoordinateSelectColumns,
   buildCrimeCountQuery,
   buildCrimesInRangeQuery,
   buildDensityBinsQuery,
   buildGlobalAdaptiveCacheQueries,
-  clampPositiveInt,
+  clampAdaptiveBinCount,
+  clampKernelWidth,
   computeWarpMap,
   sanitizeTableName,
   smoothSeries,
@@ -274,8 +274,8 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const db = await getDb();
   const tableName = sanitizeTableName(await ensureSortedCrimesTable());
   const cacheTableName = sanitizeTableName('adaptive_global_cache');
-  const safeBinCount = clampPositiveInt(binCount, 1, 5000);
-  const safeKernelWidth = clampPositiveInt(kernelWidth, 0, 200);
+  const safeBinCount = clampAdaptiveBinCount(binCount);
+  const safeKernelWidth = clampKernelWidth(kernelWidth);
   const cacheKey = `global:${safeBinCount}:${safeKernelWidth}`;
 
   const cacheQueries = buildGlobalAdaptiveCacheQueries(cacheTableName, {
@@ -318,11 +318,8 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const rowCount = toNumber(domainRows[0]?.row_count);
   const domain: [number, number] = [minTs, maxTs > minTs ? maxTs : minTs + 1];
 
-  const densityRows = await executeAll<{ idx: number | bigint; count: number | bigint }>(
-    db,
-    buildAdaptiveDensityQuery(tableName, domain, safeBinCount),
-    []
-  );
+  const densityQuery = buildAdaptiveDensityQuery(tableName, domain, safeBinCount);
+  const densityRows = await executeAll<{ idx: number | bigint; count: number | bigint }>(db, densityQuery.sql, densityQuery.params);
 
   const rawDensity = new Float32Array(safeBinCount);
   for (const row of densityRows) {
@@ -342,10 +339,11 @@ export const getOrCreateGlobalAdaptiveMaps = async (
     normalizedDensity[i] = smoothedDensity[i] / maxDensity;
   }
 
+  const burstQuery = buildAdaptiveBurstQuery(tableName, domain, safeBinCount);
   const burstRows = await executeAll<{ idx: number | bigint; c: number | bigint; s: number | bigint; ss: number | bigint }>(
     db,
-    buildAdaptiveBurstQuery(tableName, domain, safeBinCount),
-    []
+    burstQuery.sql,
+    burstQuery.params
   );
 
   const burstinessMap = new Float32Array(safeBinCount);
@@ -407,26 +405,19 @@ export const queryDensityBins = async (
   resZ: number
 ): Promise<DensityBin[]> => {
   const db = await getDb();
-  const tableName = await ensureSortedCrimesTable();
+  const tableName = sanitizeTableName(await ensureSortedCrimesTable());
   const query = buildDensityBinsQuery(tableName, startEpoch, endEpoch, resX, resY, resZ);
 
-  return new Promise((resolve, reject) => {
-    db.all(query, (err: Error | null, rows: unknown[]) => {
-      if (err) {
-        console.error('Error querying density bins:', err);
-        reject(err);
-        return;
-      }
-
-      const bins = (rows as Record<string, unknown>[]).map((row) => ({
-        x: typeof row.x === 'bigint' ? Number(row.x) : row.x,
-        y: typeof row.y === 'bigint' ? Number(row.y) : row.y,
-        z: typeof row.z === 'bigint' ? Number(row.z) : row.z,
-        count: typeof row.count === 'bigint' ? Number(row.count) : row.count,
-        dominantType: row.dominantType as string,
-      }));
-
-      resolve(bins as DensityBin[]);
-    });
+  const rows = await executeAll<Record<string, unknown>>(db, query.sql, query.params).catch((err) => {
+    console.error('Error querying density bins:', err);
+    throw err;
   });
+
+  return rows.map((row) => ({
+    x: typeof row.x === 'bigint' ? Number(row.x) : row.x,
+    y: typeof row.y === 'bigint' ? Number(row.y) : row.y,
+    z: typeof row.z === 'bigint' ? Number(row.z) : row.z,
+    count: typeof row.count === 'bigint' ? Number(row.count) : row.count,
+    dominantType: row.dominantType as string,
+  })) as DensityBin[];
 };

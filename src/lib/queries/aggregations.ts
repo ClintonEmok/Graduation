@@ -1,5 +1,6 @@
 import type { QueryFragment } from './types';
 import { buildNormalizedSqlExpression, NORMALIZED_COORDINATE_RANGE } from '../coordinate-normalization';
+import { clampDensityResolution } from './sanitization';
 
 type AdaptiveCacheInsertPayload = {
   cacheKey: string;
@@ -132,41 +133,47 @@ export const buildGlobalAdaptiveCacheQueries = (
   },
 });
 
-export const buildAdaptiveDensityQuery = (tableName: string, domain: [number, number], binCount: number): string => {
+export const buildAdaptiveDensityQuery = (tableName: string, domain: [number, number], binCount: number): QueryFragment => {
   const span = Math.max(1, domain[1] - domain[0]);
-  return `
-    SELECT idx, COUNT(*) as count
-    FROM (
-      SELECT LEAST(CAST(FLOOR(((EXTRACT(EPOCH FROM "Date") - ${domain[0]}) / ${span}) * ${binCount}) AS INTEGER), ${binCount - 1}) AS idx
-      FROM ${tableName}
-      WHERE "Date" IS NOT NULL
-    ) binned
-    WHERE idx >= 0 AND idx < ${binCount}
-    GROUP BY idx
-  `;
+  return {
+    sql: `
+      SELECT idx, COUNT(*) as count
+      FROM (
+        SELECT LEAST(CAST(FLOOR(((EXTRACT(EPOCH FROM "Date") - ?) / ?) * ?) AS INTEGER), ?) AS idx
+        FROM ${tableName}
+        WHERE "Date" IS NOT NULL
+      ) binned
+      WHERE idx >= 0 AND idx < ?
+      GROUP BY idx
+    `,
+    params: [domain[0], span, binCount, binCount - 1, binCount],
+  };
 };
 
-export const buildAdaptiveBurstQuery = (tableName: string, domain: [number, number], binCount: number): string => {
+export const buildAdaptiveBurstQuery = (tableName: string, domain: [number, number], binCount: number): QueryFragment => {
   const span = Math.max(1, domain[1] - domain[0]);
-  return `
-    WITH ordered AS (
-      SELECT
-        EXTRACT(EPOCH FROM "Date") as ts,
-        EXTRACT(EPOCH FROM "Date") - LAG(EXTRACT(EPOCH FROM "Date")) OVER (ORDER BY "Date") as delta
-      FROM ${tableName}
-      WHERE "Date" IS NOT NULL
-    ), binned AS (
-      SELECT
-        LEAST(CAST(FLOOR(((ts - ${domain[0]}) / ${span}) * ${binCount}) AS INTEGER), ${binCount - 1}) AS idx,
-        delta
-      FROM ordered
-      WHERE ts >= ${domain[0]} AND ts <= ${domain[1]} AND delta IS NOT NULL AND delta >= 0
-    )
-    SELECT idx, COUNT(*) as c, SUM(delta) as s, SUM(delta * delta) as ss
-    FROM binned
-    WHERE idx >= 0 AND idx < ${binCount}
-    GROUP BY idx
-  `;
+  return {
+    sql: `
+      WITH ordered AS (
+        SELECT
+          EXTRACT(EPOCH FROM "Date") as ts,
+          EXTRACT(EPOCH FROM "Date") - LAG(EXTRACT(EPOCH FROM "Date")) OVER (ORDER BY "Date") as delta
+        FROM ${tableName}
+        WHERE "Date" IS NOT NULL
+      ), binned AS (
+        SELECT
+          LEAST(CAST(FLOOR(((ts - ?) / ?) * ?) AS INTEGER), ?) AS idx,
+          delta
+        FROM ordered
+        WHERE ts >= ? AND ts <= ? AND delta IS NOT NULL AND delta >= 0
+      )
+      SELECT idx, COUNT(*) as c, SUM(delta) as s, SUM(delta * delta) as ss
+      FROM binned
+      WHERE idx >= 0 AND idx < ?
+      GROUP BY idx
+    `,
+    params: [domain[0], span, binCount, binCount - 1, domain[0], domain[1], binCount],
+  };
 };
 
 export const withWhereClause = (fragment: QueryFragment): string => `WHERE ${fragment.sql}`;
@@ -178,36 +185,57 @@ export const buildDensityBinsQuery = (
   resX: number,
   resY: number,
   resZ: number
-): string => {
+): QueryFragment => {
   const minEpoch = 978307200;
   const maxEpoch = 1767225600;
-  const lonBinSql = `floor(((${buildNormalizedSqlExpression('"Longitude"', 'lon')} - ${NORMALIZED_COORDINATE_RANGE.min}) / ${NORMALIZED_COORDINATE_RANGE.span}) * ${resX})`;
-  const latBinSql = `floor(((${buildNormalizedSqlExpression('"Latitude"', 'lat')} - ${NORMALIZED_COORDINATE_RANGE.min}) / ${NORMALIZED_COORDINATE_RANGE.span}) * ${resZ})`;
+  const safeResX = clampDensityResolution(resX);
+  const safeResY = clampDensityResolution(resY);
+  const safeResZ = clampDensityResolution(resZ);
+  const lonBinSql = `floor(((${buildNormalizedSqlExpression('"Longitude"', 'lon')} - ${NORMALIZED_COORDINATE_RANGE.min}) / ${NORMALIZED_COORDINATE_RANGE.span}) * ?)`;
+  const latBinSql = `floor(((${buildNormalizedSqlExpression('"Latitude"', 'lat')} - ${NORMALIZED_COORDINATE_RANGE.min}) / ${NORMALIZED_COORDINATE_RANGE.span}) * ?)`;
 
-  return `
-    WITH binned AS (
+  return {
+    sql: `
+      WITH binned AS (
+        SELECT
+          ${lonBinSql} as ix,
+          floor(((EXTRACT(EPOCH FROM "Date") - ?) / (? - ?) * ?)) as iy,
+          ${latBinSql} as iz,
+          "Primary Type" as type
+        FROM ${tableName}
+        WHERE "Date" IS NOT NULL
+          AND "Latitude" IS NOT NULL
+          AND "Longitude" IS NOT NULL
+          AND EXTRACT(EPOCH FROM "Date") >= ?
+          AND EXTRACT(EPOCH FROM "Date") <= ?
+      )
       SELECT
-        ${lonBinSql} as ix,
-        floor(((EXTRACT(EPOCH FROM "Date") - ${minEpoch}) / (${maxEpoch} - ${minEpoch}) * ${resY})) as iy,
-        ${latBinSql} as iz,
-        "Primary Type" as type
-      FROM ${tableName}
-      WHERE "Date" IS NOT NULL
-        AND "Latitude" IS NOT NULL
-        AND "Longitude" IS NOT NULL
-        AND EXTRACT(EPOCH FROM "Date") >= ${startEpoch}
-        AND EXTRACT(EPOCH FROM "Date") <= ${endEpoch}
-    )
-    SELECT
-      ((ix + 0.5) / ${resX} * 100.0) - 50.0 as x,
-      ((iy + 0.5) / ${resY} * 100.0) as y,
-      ((iz + 0.5) / ${resZ} * 100.0) - 50.0 as z,
-      CAST(count(*) AS INTEGER) as count,
-      mode(type) as dominantType
-    FROM binned
-    WHERE ix >= 0 AND ix < ${resX}
-      AND iy >= 0 AND iy < ${resY}
-      AND iz >= 0 AND iz < ${resZ}
-    GROUP BY ix, iy, iz
-  `;
+        ((ix + 0.5) / ? * 100.0) - 50.0 as x,
+        ((iy + 0.5) / ? * 100.0) as y,
+        ((iz + 0.5) / ? * 100.0) - 50.0 as z,
+        CAST(count(*) AS INTEGER) as count,
+        mode(type) as dominantType
+      FROM binned
+      WHERE ix >= 0 AND ix < ?
+        AND iy >= 0 AND iy < ?
+        AND iz >= 0 AND iz < ?
+      GROUP BY ix, iy, iz
+    `,
+    params: [
+      safeResX,
+      minEpoch,
+      maxEpoch,
+      minEpoch,
+      safeResY,
+      safeResZ,
+      startEpoch,
+      endEpoch,
+      safeResX,
+      safeResY,
+      safeResZ,
+      safeResX,
+      safeResY,
+      safeResZ,
+    ],
+  };
 };
