@@ -143,8 +143,9 @@ describe('useCrimeData', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toContain('startEpoch=975715200');
-    expect(String(fetchMock.mock.calls[0][0])).toContain('endEpoch=980985600');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('startEpoch=978307200');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('endEpoch=978393600');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('bufferDays=30');
     expect(result.bufferedRange).toEqual({ start: 975715200, end: 980985600 });
     expect(result.meta?.buffer?.days).toBe(30);
     expect(result.meta?.returned).toBe(1);
@@ -157,7 +158,15 @@ describe('useCrimeData', () => {
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ data: [], meta: { returned: 0, limit: 10 } }),
+      json: async () => ({
+        data: [],
+        meta: {
+          viewport: { start: 2000, end: 3000 },
+          buffer: { days: 2, applied: { start: -170800, end: 175800 } },
+          returned: 0,
+          limit: 10,
+        },
+      }),
     });
 
     vi.stubGlobal('fetch', fetchMock);
@@ -172,8 +181,9 @@ describe('useCrimeData', () => {
     });
 
     const calledUrl = String(fetchMock.mock.calls[0][0]);
-    expect(calledUrl).toContain('startEpoch=-170800');
-    expect(calledUrl).toContain('endEpoch=175800');
+    expect(calledUrl).toContain('startEpoch=2000');
+    expect(calledUrl).toContain('endEpoch=3000');
+    expect(calledUrl).toContain('bufferDays=2');
     expect(calledUrl).toContain('crimeTypes=THEFT%2CBATTERY');
     expect(calledUrl).toContain('districts=1%2C2');
     expect(calledUrl).toContain('limit=10');
