@@ -102,10 +102,11 @@ Plans:
   1. A shared coordinate normalization adapter is used by all relevant consumers.
   2. Buffering logic has a single authoritative layer with no double-buffer drift.
   3. Range/stream endpoint coordinate behavior remains consistent with existing contracts.
-**Plans**: 2 plans
+**Plans**: 3 plans
 Plans:
 - [x] 48-01-PLAN.md — Create coordinate normalization adapter and fix stream route
 - [x] 48-02-PLAN.md — Fix double-buffering in useCrimeData, update tests
+- [x] 48-03-PLAN.md — Close the verification gap by wiring shared normalization through range and query consumers
 
 ### Phase 49: DualTimeline Decomposition
 **Goal**: Decompose `DualTimeline.tsx` into dedicated hooks to improve maintainability and testability.
@@ -156,7 +157,7 @@ Plans:
 | 45 | v2.0 | 1/1 | Complete | 2026-03-06 |
 | 46 | v2.1 | 3/3 | Complete | 2026-03-06 |
 | 47 | v2.1 | 1/1 | Complete | 2026-03-07 |
-| 48 | v2.1 | 2/2 | Complete | 2026-03-09 |
+| 48 | v2.1 | 3/3 | Complete | 2026-03-09 |
 | 49 | v2.1 | 0/0 | Planned | - |
 | 50 | v2.1 | 0/0 | Planned | - |
 | 51 | v2.1 | 0/0 | Planned | - |

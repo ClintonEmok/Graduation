@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **48 of 51** (API Layer Stabilization)
-Plan: **2 of 2** in current phase
+Plan: **3 of 3** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-09 - Completed 48-02-PLAN.md - removed client/API double-buffering drift
+Last activity: 2026-03-09 - Completed 48-03-PLAN.md - unified range and query normalization ownership
 
-Progress: **███████████████████░** 170/172 plans complete (98.8%)
+Progress: **███████████████████░** 171/173 plans complete (98.8%)
 
 ## Milestone Status
 
@@ -51,6 +51,8 @@ Progress: **███████████████████░** 170/1
 - [Phase 48]: Normalize stream CSV rows after parsing with the shared helper — Mock and database-backed stream responses now follow the same conversion path.
 - [Phase 48]: Kept /api/crimes/range as the only buffering authority so hooks forward visible epochs and consume server-reported buffer metadata. — This removes double-buffer drift and keeps fetched-range reporting aligned with the API response.
 - [Phase 48]: Included bufferDays in the useCrimeData query key. — Visible start/end epochs alone no longer distinguish cache entries once buffering moved fully server-side.
+- [Phase 48]: Let src/lib/coordinate-normalization.ts own both JS helpers and SQL-safe normalization expressions. — Range routes and query builders now share one Chicago normalization contract instead of duplicating bounds and formulas.
+- [Phase 48]: Preserve the 48-02 buffering behavior while refactoring only normalization ownership. — The gap closure needed coordinate unification without reintroducing any buffering drift.
 
 ## Blockers/Concerns
 
@@ -58,6 +60,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 00:31 UTC
-Stopped at: Completed 48-02-PLAN.md
+Last session: 2026-03-09 04:49 UTC
+Stopped at: Completed 48-03-PLAN.md
 Resume file: None
