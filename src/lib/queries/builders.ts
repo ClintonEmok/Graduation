@@ -18,7 +18,7 @@ export const buildCrimeCoordinateSelectColumns = () => `
 export const buildSpatialBinIndexSql = (column: string, axis: 'lon' | 'lat', resolution: number): string =>
   `floor(((${buildNormalizedSqlExpression(column, axis)} - ${NORMALIZED_COORDINATE_RANGE.min}) / ${NORMALIZED_COORDINATE_RANGE.span}) * ${resolution})`;
 
-export const buildCrimesRangeQuery = (
+export const buildCrimesInRangeQuery = (
   tableName: string,
   startEpoch: number,
   endEpoch: number,
@@ -43,10 +43,10 @@ export const buildCrimesRangeQuery = (
         )
         SELECT timestamp, type, lat, lon, x, z, iucr, district, year
         FROM numbered
-        WHERE ((rn - 1) % ${sampleStride}) = 0
-        LIMIT ${limit}
+        WHERE ((rn - 1) % ?) = 0
+        LIMIT ?
       `,
-      params: filters.params,
+      params: [...filters.params, sampleStride, limit],
     };
   }
 
@@ -55,11 +55,13 @@ export const buildCrimesRangeQuery = (
       SELECT ${selectColumns}
       FROM ${safeTableName}
       WHERE ${filters.sql}
-      LIMIT ${limit}
+      LIMIT ?
     `,
-    params: filters.params,
+    params: [...filters.params, limit],
   };
 };
+
+export const buildCrimesRangeQuery = buildCrimesInRangeQuery;
 
 export const buildCrimeCountQuery = (
   tableName: string,

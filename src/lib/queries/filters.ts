@@ -2,10 +2,10 @@ import type { QueryFilters, QueryFragment } from './types';
 
 const buildInListFilter = (columnSql: string, values?: string[]): QueryFragment | null => {
   if (!values?.length) return null;
-  const escaped = values.map((value) => `'${value.replace(/'/g, "''")}'`).join(', ');
+  const placeholders = values.map(() => '?').join(', ');
   return {
-    sql: `${columnSql} IN (${escaped})`,
-    params: [],
+    sql: `${columnSql} IN (${placeholders})`,
+    params: values,
   };
 };
 
@@ -27,8 +27,8 @@ export const buildCrimeRangeFilters = (
   }
 
   fragments.push({
-    sql: `EXTRACT(EPOCH FROM "Date") >= ${startEpoch} AND EXTRACT(EPOCH FROM "Date") <= ${endEpoch}`,
-    params: [],
+    sql: 'EXTRACT(EPOCH FROM "Date") >= ? AND EXTRACT(EPOCH FROM "Date") <= ?',
+    params: [startEpoch, endEpoch],
   });
 
   const crimeTypeFilter = buildInListFilter('"Primary Type"', filters?.crimeTypes);
