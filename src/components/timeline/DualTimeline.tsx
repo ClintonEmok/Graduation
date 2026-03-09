@@ -2,10 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { bin, max } from 'd3-array';
-import { brushX } from 'd3-brush';
-import { select } from 'd3-selection';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
-import { zoom, zoomIdentity } from 'd3-zoom';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
@@ -23,13 +20,11 @@ import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useDensityStripDerivation, DETAIL_DENSITY_RECOMPUTE_MAX_DAYS } from './hooks/useDensityStripDerivation';
 import { useScaleTransforms } from './hooks/useScaleTransforms';
+import { useBrushZoomSync } from './hooks/useBrushZoomSync';
 import {
-  buildZoomTransformFromBrush,
-  brushSelectionToEpochRange,
   clampToRange,
   computeRangeUpdate,
   resolveSelectionX,
-  zoomDomainToEpochRange,
 } from './lib/interaction-guards';
 
 const OVERVIEW_HEIGHT = 42;
@@ -362,80 +357,20 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     isSyncingRef.current = false;
   }, [applyRangeToStores, currentTime, domainEnd, domainStart, interactive, timeResolution]);
 
-  useEffect(() => {
-    if (!interactive) return;
-    if (!overviewInnerWidth || !detailInnerWidth) return;
-    if (!brushRef.current || !overviewSvgRef.current || !detailSvgRef.current || !zoomRef.current) return;
-
-    const brushNode = brushRef.current;
-    const zoomNode = zoomRef.current;
-
-    const brushSelection: [number, number] = [
-      overviewInteractionScale(new Date(detailRangeSec[0] * 1000)),
-      overviewInteractionScale(new Date(detailRangeSec[1] * 1000))
-    ];
-
-    const brushBehavior = brushX()
-      .extent([[0, 0], [overviewInnerWidth, OVERVIEW_HEIGHT]])
-      .on('brush end', (event) => {
-        if (isSyncingRef.current) return;
-        if (!event.selection) {
-          setBrushRange(null);
-          return;
-        }
-        const [x0, x1] = event.selection as [number, number];
-        const { startSec, endSec } = brushSelectionToEpochRange(
-          [x0, x1],
-          (value) => overviewInteractionScale.invert(value)
-        );
-        applyRangeToStores(startSec, endSec);
-
-        const { scale, translateX } = buildZoomTransformFromBrush(x0, x1, overviewInnerWidth);
-        isSyncingRef.current = true;
-        select(zoomNode as SVGRectElement).call(
-          zoomBehavior.transform,
-          zoomIdentity.scale(scale).translate(translateX, 0)
-        );
-        isSyncingRef.current = false;
-      });
-
-    const zoomBehavior = zoom<SVGRectElement, unknown>()
-      .scaleExtent([1, 50])
-      .translateExtent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
-      .extent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
-      .on('zoom', (event) => {
-        if (isSyncingRef.current) return;
-        const rescaled = event.transform.rescaleX(overviewInteractionScale);
-        const newDomain = rescaled.domain();
-        const { startSec, endSec } = zoomDomainToEpochRange(newDomain as [Date, Date]);
-        applyRangeToStores(startSec, endSec);
-
-        isSyncingRef.current = true;
-        select(brushNode as SVGGElement).call(
-          brushBehavior.move,
-          [overviewInteractionScale(newDomain[0]), overviewInteractionScale(newDomain[1])]
-        );
-        isSyncingRef.current = false;
-      });
-
-    select(brushNode as SVGGElement)
-      .call(brushBehavior)
-      .call(brushBehavior.move, brushSelection as [number, number]);
-    select(zoomNode as SVGRectElement).call(zoomBehavior);
-
-    return () => {
-      select(brushNode as SVGGElement).on('.brush', null);
-      select(zoomNode as SVGRectElement).on('.zoom', null);
-    };
-  }, [
-    applyRangeToStores,
+  useBrushZoomSync({
+    interactive,
     detailInnerWidth,
     detailRangeSec,
-    interactive,
     overviewInnerWidth,
     overviewInteractionScale,
-    setBrushRange
-  ]);
+    isSyncingRef,
+    brushRef,
+    overviewSvgRef,
+    detailSvgRef,
+    zoomRef,
+    setBrushRange,
+    applyRangeToStores,
+  });
 
   const scrubFromEvent = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
