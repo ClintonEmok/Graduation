@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
 import type { CrimeRecord } from '@/lib/queries';
 import { isMockDataEnabled } from '@/lib/db';
+import { CHICAGO_BOUNDS, lonLatToNormalized } from '@/lib/coordinate-normalization';
 
 /**
  * Viewport-based crime data API endpoint.
@@ -25,10 +26,6 @@ export const dynamic = 'force-dynamic';
 
 const MOCK_CRIME_TYPES = ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'];
 const MOCK_DISTRICTS = Array.from({ length: 25 }, (_, idx) => String(idx + 1));
-const MIN_LON = -87.9;
-const MAX_LON = -87.5;
-const MIN_LAT = 41.6;
-const MAX_LAT = 42.1;
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
 
@@ -64,18 +61,19 @@ const generateMockCrimes = (
   const results: CrimeRecord[] = [];
 
   for (let i = 0; i < count; i++) {
-    const lon = randomBetween(MIN_LON, MAX_LON);
-    const lat = randomBetween(MIN_LAT, MAX_LAT);
+    const lon = randomBetween(CHICAGO_BOUNDS.minLon, CHICAGO_BOUNDS.maxLon);
+    const lat = randomBetween(CHICAGO_BOUNDS.minLat, CHICAGO_BOUNDS.maxLat);
     const timestamp = Math.floor(randomBetween(start, end));
     const year = new Date(timestamp * 1000).getUTCFullYear();
+    const { x, z } = lonLatToNormalized(lon, lat);
 
     results.push({
       timestamp,
       type: typePool[Math.floor(Math.random() * typePool.length)],
       lat,
       lon,
-      x: ((lon - MIN_LON) / (MAX_LON - MIN_LON) * 100.0) - 50.0,
-      z: ((lat - MIN_LAT) / (MAX_LAT - MIN_LAT) * 100.0) - 50.0,
+      x,
+      z,
       iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
       district: districtPool[Math.floor(Math.random() * districtPool.length)],
       year,

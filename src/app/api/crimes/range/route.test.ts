@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { lonLatToNormalized } from '@/lib/coordinate-normalization';
 
 const {
   queryCrimesInRangeMock,
@@ -137,10 +138,9 @@ describe('/api/crimes/range GET', () => {
     for (const record of body.data) {
       expect(typeof record.x).toBe('number');
       expect(typeof record.z).toBe('number');
-      const expectedX = ((record.lon + 87.9) / 0.4) * 100 - 50;
-      const expectedZ = ((record.lat - 41.6) / 0.5) * 100 - 50;
-      expect(record.x).toBeCloseTo(expectedX, 6);
-      expect(record.z).toBeCloseTo(expectedZ, 6);
+      const expected = lonLatToNormalized(record.lon, record.lat);
+      expect(record.x).toBeCloseTo(expected.x, 6);
+      expect(record.z).toBeCloseTo(expected.z, 6);
     }
   });
 
