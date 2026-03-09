@@ -145,12 +145,15 @@ Plans:
   1. Slice-related stores are consolidated under a clear domain boundary.
   2. Deprecated `useDataStore.ts` is removed after consumer migration verification.
   3. No duplicate slice state sources remain in active workflows.
-**Plans**: 4 plans
+**Plans**: 7 plans
 Plans:
 - [ ] 51-01-PLAN.md — Audit store coupling and introduce bounded `useSliceDomainStore` foundation
-- [ ] 51-02-PLAN.md — Migrate active slice workflows to bounded domain selectors and adapters
+- [ ] 51-02-PLAN.md — Convert legacy slice stores into bounded-domain compatibility adapters
 - [ ] 51-03-PLAN.md — Extract shared data contracts/selectors and introduce `useTimelineDataStore`
-- [ ] 51-04-PLAN.md — Migrate all `useDataStore` consumers and delete deprecated store path
+- [ ] 51-04-PLAN.md — Rewire active timeline-test and 3D slice consumers to bounded selectors/actions
+- [ ] 51-05-PLAN.md — Migrate core timeline/map/hook data consumers off `useDataStore`
+- [ ] 51-06-PLAN.md — Migrate visualization component data consumers off `useDataStore`
+- [ ] 51-07-PLAN.md — Enforce zero-import gate and delete `src/store/useDataStore.ts`
 
 ## Progress
 
@@ -168,7 +171,7 @@ Plans:
 | 48 | v2.1 | 3/3 | Complete | 2026-03-09 |
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
 | 50 | v2.1 | Complete    | 2026-03-09 | - |
-| 51 | v2.1 | 0/4 | Planned | - |
+| 51 | v2.1 | 0/7 | Planned | - |
 
 ---
 
