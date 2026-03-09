@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { bin, max } from 'd3-array';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useSliceStore } from '@/store/useSliceStore';
-import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
+import { resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
@@ -21,6 +21,7 @@ import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useDensityStripDerivation, DETAIL_DENSITY_RECOMPUTE_MAX_DAYS } from './hooks/useDensityStripDerivation';
 import { useScaleTransforms } from './hooks/useScaleTransforms';
 import { useBrushZoomSync } from './hooks/useBrushZoomSync';
+import { usePointSelection } from './hooks/usePointSelection';
 import {
   clampToRange,
   computeRangeUpdate,
@@ -145,7 +146,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const zoomRef = useRef<SVGRectElement | null>(null);
   const isSyncingRef = useRef(false);
   const isScrubbingRef = useRef(false);
-  const [hoveredDetail, setHoveredDetail] = useState<{ x: number; label: string } | null>(null);
 
   const width = Math.max(0, bounds.width ?? 0);
   const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
@@ -275,7 +275,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     [detailBins]
   );
 
-  const { overviewInteractionScale, detailInteractionScale, overviewScale, detailScale } =
+  const { overviewInteractionScale, overviewScale, detailScale } =
     useScaleTransforms({
       domainStart,
       domainEnd,
@@ -372,74 +372,27 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     applyRangeToStores,
   });
 
-  const scrubFromEvent = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!interactive) return;
-      if (!detailInnerWidth) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
-      const epochSeconds = detailScale.invert(x).getTime() / 1000;
-      const normalized = clamp(
-        epochSecondsToNormalized(epochSeconds, domainStart, domainEnd),
-        0,
-        100
-      );
-      setTime(normalized);
-    },
-    [detailInnerWidth, detailScale, domainEnd, domainStart, interactive, setTime]
-  );
-
-  const handlePointerDown = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!interactive) return;
-      isScrubbingRef.current = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
-      scrubFromEvent(event);
-    },
-    [interactive, scrubFromEvent]
-  );
-
-  const handlePointerMove = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!interactive) return;
-      if (!detailInnerWidth) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
-      const epochSeconds = detailScale.invert(x).getTime() / 1000;
-
-      if (resolvedDetailRenderMode === 'points') {
-        const nearest = findNearestIndexByTime(epochSeconds);
-        if (nearest) {
-          const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
-          const maxDistance = Math.max(rangeSpan * 0.01, 60);
-          if (nearest.distance <= maxDistance) {
-            const ts = nearest.point.timestampSec ?? epochSeconds;
-            const label =
-              minTimestampSec !== null && maxTimestampSec !== null
-                ? new Date(ts * 1000).toLocaleString()
-                : `t=${ts.toFixed(2)}`;
-            setHoveredDetail({ x, label });
-          } else {
-            setHoveredDetail(null);
-          }
-        } else {
-          setHoveredDetail(null);
-        }
-      } else {
-        setHoveredDetail(null);
-      }
-
-      if (!isScrubbingRef.current) return;
-      scrubFromEvent(event);
-    },
-    [detailInnerWidth, detailScale, detailRangeSec, interactive, minTimestampSec, maxTimestampSec, resolvedDetailRenderMode, scrubFromEvent]
-  );
-
-  const handlePointerCancel = useCallback((event: React.PointerEvent<SVGRectElement>) => {
-    isScrubbingRef.current = false;
-    setHoveredDetail(null);
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }, []);
+  const {
+    hoveredDetail,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUpWithSelection,
+    handlePointerCancel,
+  } = usePointSelection({
+    interactive,
+    detailInnerWidth,
+    detailScale,
+    detailRangeSec,
+    domainStart,
+    domainEnd,
+    minTimestampSec,
+    maxTimestampSec,
+    resolvedDetailRenderMode,
+    isScrubbingRef,
+    setTime,
+    setSelectedIndex,
+    clearSelection,
+  });
 
   const cursorEpochSeconds = useMemo(() => {
     if (!Number.isFinite(currentTime) || !Number.isFinite(domainStart) || !Number.isFinite(domainEnd)) {
@@ -466,39 +419,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   // Auto-create burst slices when burst data becomes available (unless disabled)
   useAutoBurstSlices(burstWindowsForAutoSlices);
-
-
-  const handleSelectFromEvent = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!detailInnerWidth) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
-      const epochSeconds = detailScale.invert(x).getTime() / 1000;
-      const nearest = findNearestIndexByTime(epochSeconds);
-      if (!nearest) {
-        clearSelection();
-        return;
-      }
-      const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
-      const maxDistance = Math.max(rangeSpan * 0.01, 60);
-      if (nearest.distance <= maxDistance) {
-        setSelectedIndex(nearest.index, 'timeline');
-      } else {
-        clearSelection();
-      }
-    },
-    [clearSelection, detailInnerWidth, detailRangeSec, detailScale, setSelectedIndex]
-  );
-
-  const handlePointerUpWithSelection = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      isScrubbingRef.current = false;
-      event.currentTarget.releasePointerCapture(event.pointerId);
-      handleSelectFromEvent(event);
-    },
-    [handleSelectFromEvent]
-  );
-
   const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
   const detailTicks = useMemo(() => {
     const spanSeconds = Math.max(1, detailRangeSec[1] - detailRangeSec[0]);
