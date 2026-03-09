@@ -11,10 +11,10 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 Phase: **49 of 51** (DualTimeline Decomposition)
 Plan: **3 of 3** in current phase
-Status: **In progress**
-Last activity: 2026-03-09 - Completed 49-02 DualTimeline brush/zoom synchronization extraction
+Status: **Phase complete**
+Last activity: 2026-03-09 - Completed 49-03 point-selection extraction and orchestration cleanup
 
-Progress: **███████████████████░** 173/176 plans complete (98.3%)
+Progress: **███████████████████░** 174/176 plans complete (98.9%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: **███████████████████░** 173/1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 3/6 phases complete (Phases 46-48 complete)
+- v2.1: 4/6 phases complete (Phases 46-49 complete)
 
 ## Decisions
 
@@ -57,6 +57,8 @@ Progress: **███████████████████░** 173/1
 - [Phase 49]: Keep detail density-strip recompute/fallback decisions in `useDensityStripDerivation`, with `DualTimeline` reusing the shared threshold constant. — This prevents render-mode drift while decomposition continues.
 - [Phase 49]: Preserve range store synchronization ownership in `DualTimeline` and inject it into `useBrushZoomSync`. — This keeps time/filter/coordination/viewport writes on the same parity-safe path while extracting D3 side effects.
 - [Phase 49]: Keep brush/zoom conversion math routed through `interaction-guards` and make `isSyncingRef` guard boundaries explicitly testable via `withSyncGuard`. — This prevents feedback-loop drift during decomposition.
+- [Phase 49]: Keep point-selection threshold semantics exactly `max(rangeSpan * 0.01, 60)` inside `usePointSelection` helper exports. — This preserves nearest-point parity while extracting pointer interaction ownership.
+- [Phase 49]: Keep DualTimeline orchestration-focused by composing `usePointSelection` instead of owning pointer math inline. — This completes the four-hook decomposition boundary for the timeline component.
 
 ## Blockers/Concerns
 
@@ -64,6 +66,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 16:36 UTC
-Stopped at: Completed 49-02-PLAN.md
+Last session: 2026-03-09 16:42 UTC
+Stopped at: Completed 49-03-PLAN.md
 Resume file: None
