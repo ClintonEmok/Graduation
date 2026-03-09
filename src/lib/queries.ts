@@ -1,4 +1,10 @@
 import { getDb, ensureSortedCrimesTable, isMockDataEnabled } from './db';
+import {
+  buildNormalizedSqlExpression,
+  CHICAGO_BOUNDS,
+  lonLatToNormalized,
+  NORMALIZED_COORDINATE_RANGE,
+} from './coordinate-normalization';
 
 /**
  * Crime record type returned by queries
@@ -41,10 +47,21 @@ export interface QueryFilters {
 
 const MOCK_CRIME_TYPES = ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'];
 const MOCK_DISTRICTS = Array.from({ length: 25 }, (_, idx) => String(idx + 1));
-const MIN_LON = -87.9;
-const MAX_LON = -87.5;
-const MIN_LAT = 41.6;
-const MAX_LAT = 42.1;
+
+export const buildCrimeCoordinateSelectColumns = () => `
+    EXTRACT(EPOCH FROM "Date") as timestamp,
+    "Primary Type" as type,
+    "Latitude" as lat,
+    "Longitude" as lon,
+    ${buildNormalizedSqlExpression('"Longitude"', 'lon')} as x,
+    ${buildNormalizedSqlExpression('"Latitude"', 'lat')} as z,
+    "IUCR" as iucr,
+    "District" as district,
+    EXTRACT(YEAR FROM "Date") as year
+  `;
+
+const buildSpatialBinIndexSql = (column: string, axis: 'lon' | 'lat', resolution: number) =>
+  `floor(((${buildNormalizedSqlExpression(column, axis)} - ${NORMALIZED_COORDINATE_RANGE.min}) / ${NORMALIZED_COORDINATE_RANGE.span}) * ${resolution})`;
 
 type MockHotspot = {
   district: string;
@@ -117,8 +134,8 @@ const generateMockCrimeRecords = (
     ? activeHotspots
     : districts.map((district) => ({
         district,
-        centerLon: MIN_LON + rng() * (MAX_LON - MIN_LON),
-        centerLat: MIN_LAT + rng() * (MAX_LAT - MIN_LAT),
+        centerLon: CHICAGO_BOUNDS.minLon + rng() * (CHICAGO_BOUNDS.maxLon - CHICAGO_BOUNDS.minLon),
+        centerLat: CHICAGO_BOUNDS.minLat + rng() * (CHICAGO_BOUNDS.maxLat - CHICAGO_BOUNDS.minLat),
         typeWeights: {} as Partial<Record<string, number>>,
       }));
 
@@ -140,8 +157,8 @@ const generateMockCrimeRecords = (
       : Math.floor(start + rng() * span);
 
     const spatialSpread = 0.015 + rng() * 0.02;
-    const lon = clamp(hotspot.centerLon + gaussianish(rng) * spatialSpread, MIN_LON, MAX_LON);
-    const lat = clamp(hotspot.centerLat + gaussianish(rng) * spatialSpread, MIN_LAT, MAX_LAT);
+    const lon = clamp(hotspot.centerLon + gaussianish(rng) * spatialSpread, CHICAGO_BOUNDS.minLon, CHICAGO_BOUNDS.maxLon);
+    const lat = clamp(hotspot.centerLat + gaussianish(rng) * spatialSpread, CHICAGO_BOUNDS.minLat, CHICAGO_BOUNDS.maxLat);
 
     const candidateTypes = crimeTypes;
     const typeWeights = candidateTypes.map((type) => hotspot.typeWeights[type] ?? 1);
@@ -149,14 +166,15 @@ const generateMockCrimeRecords = (
 
     const iucrBase = String(Math.floor(100 + rng() * 900));
     const year = new Date(timestamp * 1000).getUTCFullYear();
+    const { x, z } = lonLatToNormalized(lon, lat);
 
     records.push({
       timestamp,
       type,
       lat,
       lon,
-      x: ((lon - MIN_LON) / (MAX_LON - MIN_LON) * 100.0) - 50.0,
-      z: ((lat - MIN_LAT) / (MAX_LAT - MIN_LAT) * 100.0) - 50.0,
+      x,
+      z,
       iucr: iucrBase,
       district: hotspot.district,
       year,
@@ -217,23 +235,7 @@ export const queryCrimesInRange = async (
     whereClause += ` AND "District" IN (${escaped})`;
   }
 
-  // Chicago coordinate bounds for normalization
-  const minLon = -87.9;
-  const maxLon = -87.5;
-  const minLat = 41.6;
-  const maxLat = 42.1;
-
-  const selectColumns = `
-    EXTRACT(EPOCH FROM "Date") as timestamp,
-    "Primary Type" as type,
-    "Latitude" as lat,
-    "Longitude" as lon,
-    (("Longitude" - ${minLon}) / (${maxLon} - ${minLon}) * 100.0) - 50.0 as x,
-    (("Latitude" - ${minLat}) / (${maxLat} - ${minLat}) * 100.0) - 50.0 as z,
-    "IUCR" as iucr,
-    "District" as district,
-    EXTRACT(YEAR FROM "Date") as year
-  `;
+  const selectColumns = buildCrimeCoordinateSelectColumns();
 
   const query = sampleStride > 1
     ? `
@@ -632,20 +634,15 @@ export const queryDensityBins = async (
   const db = await getDb();
   const tableName = await ensureSortedCrimesTable();
   
-  // Chicago coordinate bounds
-  const minLon = -87.9;
-  const maxLon = -87.5;
-  const minLat = 41.6;
-  const maxLat = 42.1;
   const minEpoch = 978307200;   // 2001-01-01
   const maxEpoch = 1767225600;  // 2026-01-01
 
   const query = `
     WITH binned AS (
       SELECT
-        floor(((("Longitude" - ${minLon}) / (${maxLon} - ${minLon})) * ${resX})) as ix,
+        ${buildSpatialBinIndexSql('"Longitude"', 'lon', resX)} as ix,
         floor(((EXTRACT(EPOCH FROM "Date") - ${minEpoch}) / (${maxEpoch} - ${minEpoch}) * ${resY})) as iy,
-        floor(((("Latitude" - ${minLat}) / (${maxLat} - ${minLat})) * ${resZ})) as iz,
+        ${buildSpatialBinIndexSql('"Latitude"', 'lat', resZ)} as iz,
         "Primary Type" as type
       FROM ${tableName}
       WHERE "Date" IS NOT NULL 
