@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **49 of 51** (DualTimeline Decomposition)
-Plan: **4 of 4** in current phase
-Status: **Phase complete**
-Last activity: 2026-03-09 - Completed 49-04 brush/zoom range-update parity regression closure
+Phase: **50 of 51** (Query Layer Decomposition)
+Plan: **1 of 3** in current phase
+Status: **In progress**
+Last activity: 2026-03-09 - Completed 50-01 modular query-layer foundation and compatibility facade
 
-Progress: **███████████████████░** 175/176 plans complete (99.4%)
+Progress: **███████████████████░** 176/180 plans complete (97.8%)
 
 ## Milestone Status
 
@@ -60,6 +60,9 @@ Progress: **███████████████████░** 175/1
 - [Phase 49]: Keep point-selection threshold semantics exactly `max(rangeSpan * 0.01, 60)` inside `usePointSelection` helper exports. — This preserves nearest-point parity while extracting pointer interaction ownership.
 - [Phase 49]: Keep DualTimeline orchestration-focused by composing `usePointSelection` instead of owning pointer math inline. — This completes the four-hook decomposition boundary for the timeline component.
 - [Phase 49]: Expose deterministic brush/zoom callback helper boundaries and validate both paths against the shared `applyRangeToStores` contract, including `setViewport`. — This closes the verification gap on multi-store parity evidence without changing runtime behavior.
+- [Phase 50]: Keep `src/lib/queries.ts` as an import-compatible facade while internalizing query construction into `src/lib/queries/*`. — This allows decomposition without route churn.
+- [Phase 50]: Centralize non-bindable SQL sanitization in `src/lib/queries/sanitization.ts` with explicit allow-list/clamp helpers. — This creates one auditable boundary for structural SQL values.
+- [Phase 50]: Extract filter/aggregation/builder scaffolds before hot-path parameterization. — This keeps 50-01 focused on boundaries and parity, leaving semantic hardening to 50-02/50-03.
 
 ## Blockers/Concerns
 
@@ -67,6 +70,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 17:02 UTC
-Stopped at: Completed 49-04-PLAN.md
+Last session: 2026-03-09 20:20 UTC
+Stopped at: Completed 50-01-PLAN.md
 Resume file: None
