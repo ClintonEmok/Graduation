@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **49 of 51** (DualTimeline Decomposition)
-Plan: **2 of 3** in current phase
+Plan: **3 of 3** in current phase
 Status: **In progress**
-Last activity: 2026-03-09 - Completed 49-01 DualTimeline transform and density hook extraction
+Last activity: 2026-03-09 - Completed 49-02 DualTimeline brush/zoom synchronization extraction
 
-Progress: **███████████████████░** 172/173 plans complete (99.4%)
+Progress: **███████████████████░** 173/176 plans complete (98.3%)
 
 ## Milestone Status
 
@@ -55,6 +55,8 @@ Progress: **███████████████████░** 172/1
 - [Phase 48]: Preserve the 48-02 buffering behavior while refactoring only normalization ownership. — The gap closure needed coordinate unification without reintroducing any buffering drift.
 - [Phase 49]: Keep adaptive/linear timeline transform-domain math in `useScaleTransforms` and consume it from `DualTimeline` orchestration. — This isolates pure scale conversion behavior ahead of interaction extraction work.
 - [Phase 49]: Keep detail density-strip recompute/fallback decisions in `useDensityStripDerivation`, with `DualTimeline` reusing the shared threshold constant. — This prevents render-mode drift while decomposition continues.
+- [Phase 49]: Preserve range store synchronization ownership in `DualTimeline` and inject it into `useBrushZoomSync`. — This keeps time/filter/coordination/viewport writes on the same parity-safe path while extracting D3 side effects.
+- [Phase 49]: Keep brush/zoom conversion math routed through `interaction-guards` and make `isSyncingRef` guard boundaries explicitly testable via `withSyncGuard`. — This prevents feedback-loop drift during decomposition.
 
 ## Blockers/Concerns
 
@@ -62,6 +64,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 15:42 UTC
-Stopped at: Completed 49-01-PLAN.md
+Last session: 2026-03-09 16:36 UTC
+Stopped at: Completed 49-02-PLAN.md
 Resume file: None
