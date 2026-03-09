@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { bin, max } from 'd3-array';
 import { brushX } from 'd3-brush';
 import { select } from 'd3-selection';
-import { scaleUtc, type ScaleTime } from 'd3-scale';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { useMeasure } from '@/hooks/useMeasure';
@@ -21,8 +20,9 @@ import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
-import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import { useDensityStripDerivation, DETAIL_DENSITY_RECOMPUTE_MAX_DAYS } from './hooks/useDensityStripDerivation';
+import { useScaleTransforms } from './hooks/useScaleTransforms';
 import {
   buildZoomTransformFromBrush,
   brushSelectionToEpochRange,
@@ -40,7 +40,6 @@ const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
 const TIME_CURSOR_COLOR = '#10b981';
-const DETAIL_DENSITY_RECOMPUTE_MAX_DAYS = 60;
 
 const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
   amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
@@ -58,7 +57,6 @@ const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 const DEBUG_PREVIEW_WARP_PROFILE_ID = '__debug-full-auto-preview__';
 
 const clamp = clampToRange;
-type StrictTimelineScale = ScaleTime<number, number>;
 
 interface TimelineSliceGeometry {
   id: string;
@@ -71,56 +69,6 @@ interface TimelineSliceGeometry {
   overlapCount: number;
   color: string | undefined;
 }
-
-const computeDensityMap = (
-  timestamps: number[],
-  domain: [number, number],
-  binCount: number,
-  kernelWidth: number
-): Float32Array => {
-  const [start, end] = domain;
-  const span = end - start || 1;
-  const bins = new Float32Array(binCount);
-
-  for (let i = 0; i < timestamps.length; i += 1) {
-    const t = timestamps[i];
-    if (!Number.isFinite(t)) continue;
-    const norm = (t - start) / span;
-    if (norm < 0 || norm > 1) continue;
-    const idx = Math.min(Math.floor(norm * binCount), binCount - 1);
-    bins[idx] += 1;
-  }
-
-  let smoothed = bins;
-  if (kernelWidth > 1) {
-    smoothed = new Float32Array(binCount);
-    for (let i = 0; i < binCount; i += 1) {
-      let sum = 0;
-      let count = 0;
-      for (let k = -kernelWidth; k <= kernelWidth; k += 1) {
-        const idx = i + k;
-        if (idx >= 0 && idx < binCount) {
-          sum += bins[idx];
-          count += 1;
-        }
-      }
-      smoothed[i] = count > 0 ? sum / count : 0;
-    }
-  }
-
-  let maxVal = 0;
-  for (let i = 0; i < smoothed.length; i += 1) {
-    if (smoothed[i] > maxVal) maxVal = smoothed[i];
-  }
-  if (maxVal === 0) maxVal = 1;
-
-  const normalized = new Float32Array(binCount);
-  for (let i = 0; i < binCount; i += 1) {
-    normalized[i] = smoothed[i] / maxVal;
-  }
-
-  return normalized;
-};
 
 const resolveSliceColor = (color?: string): { fill: string; stroke: string } => {
   if (!color) {
@@ -302,10 +250,13 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     return points.filter((_, index) => index % step === 0);
   }, [detailPointsOverride, viewportCrimes, timestampSeconds, detailRangeSec]);
 
-  const detailSpanDays = useMemo(() => {
-    const spanSeconds = Math.abs(detailRangeSec[1] - detailRangeSec[0]);
-    return spanSeconds / 86400;
-  }, [detailRangeSec]);
+  const { detailSpanDays, detailDensityMap } = useDensityStripDerivation({
+    detailPoints,
+    detailRangeSec,
+    densityMap,
+    domainStart,
+    domainEnd,
+  });
 
   const resolvedDetailRenderMode = useMemo(() => {
     if (detailRenderMode === 'auto') {
@@ -329,193 +280,18 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     [detailBins]
   );
 
-  const detailDensityMap = useMemo(() => {
-    const hasPoints = detailPoints.length > 0;
-    const binCount = densityMap?.length ?? ADAPTIVE_BIN_COUNT;
-    if (hasPoints && detailSpanDays <= DETAIL_DENSITY_RECOMPUTE_MAX_DAYS) {
-      return computeDensityMap(detailPoints, detailRangeSec, binCount, ADAPTIVE_KERNEL_WIDTH);
-    }
-
-    if (!densityMap || densityMap.length === 0) return densityMap;
-    const span = domainEnd - domainStart || 1;
-    const startRatio = clamp((detailRangeSec[0] - domainStart) / span, 0, 1);
-    const endRatio = clamp((detailRangeSec[1] - domainStart) / span, 0, 1);
-    const rangeStart = Math.min(startRatio, endRatio);
-    const rangeEnd = Math.max(startRatio, endRatio);
-    const lastIndex = Math.max(0, densityMap.length - 1);
-    const startIndex = clamp(Math.floor(rangeStart * lastIndex), 0, lastIndex);
-    const endIndex = clamp(Math.ceil(rangeEnd * lastIndex), startIndex, lastIndex);
-    return densityMap.subarray(startIndex, Math.min(densityMap.length, endIndex + 1));
-  }, [densityMap, detailPoints, detailRangeSec, detailSpanDays, domainEnd, domainStart]);
-
-  const sampleWarpSeconds = useCallback(
-    (linearSec: number, warpMapVal: Float32Array, warpDomain: [number, number]) => {
-      if (warpMapVal.length === 0) return linearSec;
-      const [warpStartSec, warpEndSec] = warpDomain;
-      const warpSpan = Math.max(1e-9, warpEndSec - warpStartSec);
-      const normalized = clamp((linearSec - warpStartSec) / warpSpan, 0, 1);
-      const rawIndex = normalized * (warpMapVal.length - 1);
-      const low = Math.floor(rawIndex);
-      const high = Math.min(low + 1, warpMapVal.length - 1);
-      const frac = rawIndex - low;
-      const lowVal = warpMapVal[Math.max(0, low)] ?? linearSec;
-      const highVal = warpMapVal[Math.max(0, high)] ?? lowVal;
-      return lowVal * (1 - frac) + highVal * frac;
-    },
-    []
-  );
-
-  const toDisplaySeconds = useCallback(
-    (
-      linearSec: number,
-      warpFactorVal: number,
-      warpMapVal: Float32Array,
-      warpDomain: [number, number]
-    ) => {
-      const warpedSec = sampleWarpSeconds(linearSec, warpMapVal, warpDomain);
-      return linearSec * (1 - warpFactorVal) + warpedSec * warpFactorVal;
-    },
-    [sampleWarpSeconds]
-  );
-
-  const toLinearSeconds = useCallback(
-    (
-      displaySec: number,
-      linearDomain: [number, number],
-      warpFactorVal: number,
-      warpMapVal: Float32Array,
-      warpDomain: [number, number]
-    ) => {
-      const [domainMin, domainMax] = linearDomain;
-      let low = domainMin;
-      let high = domainMax;
-
-      for (let i = 0; i < 24; i += 1) {
-        const mid = (low + high) / 2;
-        const mapped = toDisplaySeconds(mid, warpFactorVal, warpMapVal, warpDomain);
-        if (mapped < displaySec) {
-          low = mid;
-        } else {
-          high = mid;
-        }
-      }
-
-      return (low + high) / 2;
-    },
-    [toDisplaySeconds]
-  );
-
-  const applyAdaptiveWarping = useCallback(
-    (
-      linearScale: StrictTimelineScale,
-      warpFactorVal: number,
-      warpMapVal: Float32Array | null,
-      innerWidth: number,
-      warpDomain: [number, number]
-    ): StrictTimelineScale => {
-      if (
-        timeScaleMode !== 'adaptive' ||
-        warpFactorVal <= 0 ||
-        !warpMapVal ||
-        warpMapVal.length < 2 ||
-        innerWidth <= 0
-      ) {
-        return linearScale;
-      }
-
-      const [domainStartDate, domainEndDate] = linearScale.domain();
-      const linearStartSec = domainStartDate.getTime() / 1000;
-      const linearEndSec = domainEndDate.getTime() / 1000;
-      const safeDomain: [number, number] =
-        linearStartSec <= linearEndSec
-          ? [linearStartSec, linearEndSec]
-          : [linearEndSec, linearStartSec];
-
-      const displayStartSec = toDisplaySeconds(safeDomain[0], warpFactorVal, warpMapVal, warpDomain);
-      const displayEndSec = toDisplaySeconds(safeDomain[1], warpFactorVal, warpMapVal, warpDomain);
-      const displaySpan = Math.max(1e-9, displayEndSec - displayStartSec);
-
-      const adaptiveScale = ((value: Date | number) => {
-        const date = value instanceof Date ? value : new Date(value);
-        const linearSec = date.getTime() / 1000;
-        const displaySec = toDisplaySeconds(linearSec, warpFactorVal, warpMapVal, warpDomain);
-        const t = clamp((displaySec - displayStartSec) / displaySpan, 0, 1);
-        return t * innerWidth;
-      }) as StrictTimelineScale;
-
-      Object.assign(adaptiveScale, linearScale);
-
-      adaptiveScale.invert = (x: number) => {
-        const t = clamp(innerWidth <= 0 ? 0 : x / innerWidth, 0, 1);
-        const displaySec = displayStartSec + t * displaySpan;
-        const linearSec = toLinearSeconds(
-          displaySec,
-          safeDomain,
-          warpFactorVal,
-          warpMapVal,
-          warpDomain
-        );
-        return new Date(linearSec * 1000);
-      };
-
-      return adaptiveScale;
-    },
-    [timeScaleMode, toDisplaySeconds, toLinearSeconds]
-  );
-
-  const overviewInteractionScale = useMemo(
-    () =>
-      scaleUtc()
-        .domain([new Date(domainStart * 1000), new Date(domainEnd * 1000)])
-        .range([0, overviewInnerWidth]),
-    [domainStart, domainEnd, overviewInnerWidth]
-  );
-
-  const detailInteractionScale = useMemo(
-    () =>
-      scaleUtc()
-        .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
-        .range([0, detailInnerWidth]),
-    [detailRangeSec, detailInnerWidth]
-  );
-
-  const overviewScale = useMemo(
-    () =>
-      applyAdaptiveWarping(
-        overviewInteractionScale.copy(),
-        warpFactor,
-        effectiveWarpMap,
-        overviewInnerWidth,
-        effectiveWarpDomain
-      ),
-    [
-      applyAdaptiveWarping,
-      effectiveWarpDomain,
-      effectiveWarpMap,
+  const { overviewInteractionScale, detailInteractionScale, overviewScale, detailScale } =
+    useScaleTransforms({
+      domainStart,
+      domainEnd,
+      detailRangeSec,
       overviewInnerWidth,
-      overviewInteractionScale,
-      warpFactor,
-    ]
-  );
-
-  const detailScale = useMemo(
-    () =>
-      applyAdaptiveWarping(
-        detailInteractionScale.copy(),
-        warpFactor,
-        effectiveWarpMap,
-        detailInnerWidth,
-        effectiveWarpDomain
-      ),
-    [
-      applyAdaptiveWarping,
       detailInnerWidth,
-      detailInteractionScale,
-      effectiveWarpDomain,
-      effectiveWarpMap,
+      timeScaleMode,
       warpFactor,
-    ]
-  );
+      warpMap: effectiveWarpMap,
+      warpDomain: effectiveWarpDomain,
+    });
 
   const applyRangeToStores = useCallback(
     (startSec: number, endSec: number) => {
