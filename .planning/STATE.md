@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **50 of 51** (Query Layer Decomposition)
-Plan: **1 of 3** in current phase
+Plan: **2 of 3** in current phase
 Status: **In progress**
-Last activity: 2026-03-09 - Completed 50-01 modular query-layer foundation and compatibility facade
+Last activity: 2026-03-09 - Completed 50-02 hot-path range/count parameterization with metadata parity regression coverage
 
-Progress: **███████████████████░** 176/180 plans complete (97.8%)
+Progress: **███████████████████░** 177/180 plans complete (98.3%)
 
 ## Milestone Status
 
@@ -63,6 +63,8 @@ Progress: **███████████████████░** 176/1
 - [Phase 50]: Keep `src/lib/queries.ts` as an import-compatible facade while internalizing query construction into `src/lib/queries/*`. — This allows decomposition without route churn.
 - [Phase 50]: Centralize non-bindable SQL sanitization in `src/lib/queries/sanitization.ts` with explicit allow-list/clamp helpers. — This creates one auditable boundary for structural SQL values.
 - [Phase 50]: Extract filter/aggregation/builder scaffolds before hot-path parameterization. — This keeps 50-01 focused on boundaries and parity, leaving semantic hardening to 50-02/50-03.
+- [Phase 50]: Parameterize hot-path range/count values (`startEpoch`, `endEpoch`, filter lists, stride/limit) through builder-managed `{ sql, params }` outputs. — This removes ad-hoc interpolation from highest-traffic queries while preserving query signatures.
+- [Phase 50]: Preserve `/api/crimes/range` consumer contract by pinning `sampled`, `sampleStride`, and buffer metadata parity in route-level regression tests. — This keeps observable API behavior stable while query internals evolve.
 
 ## Blockers/Concerns
 
@@ -70,6 +72,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 20:20 UTC
-Stopped at: Completed 50-01-PLAN.md
+Last session: 2026-03-09 20:27 UTC
+Stopped at: Completed 50-02-PLAN.md
 Resume file: None
