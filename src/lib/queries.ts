@@ -8,6 +8,7 @@ import {
   buildCrimeCountQuery,
   buildCrimesInRangeQuery,
   buildDensityBinsQuery,
+  buildGlobalAdaptiveCacheQueries,
   clampPositiveInt,
   computeWarpMap,
   sanitizeTableName,
@@ -62,6 +63,11 @@ interface AdaptiveCacheRow {
   warp_json: string;
   generated_at: string;
 }
+
+type DbLike = {
+  all: (...args: unknown[]) => void;
+  run: (...args: unknown[]) => void;
+};
 
 const normalizeRange = (start: number, end: number) => {
   if (start <= end) return { start, end };
@@ -177,7 +183,7 @@ const mockCrimeCount = (startEpoch: number, endEpoch: number, filters?: QueryFil
 };
 
 const executeAll = <T>(
-  db: { all: (...args: unknown[]) => void },
+  db: Pick<DbLike, 'all'>,
   sql: string,
   params: unknown[]
 ): Promise<T[]> =>
@@ -188,6 +194,17 @@ const executeAll = <T>(
         return;
       }
       resolve(rows as T[]);
+    });
+  });
+
+const executeRun = (db: Pick<DbLike, 'run'>, sql: string, params: unknown[] = []): Promise<void> =>
+  new Promise((resolve, reject) => {
+    db.run(sql, ...params, (err: Error | null) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
     });
   });
 
@@ -261,49 +278,20 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const safeKernelWidth = clampPositiveInt(kernelWidth, 0, 200);
   const cacheKey = `global:${safeBinCount}:${safeKernelWidth}`;
 
-  const allAsync = <T>(query: string): Promise<T[]> =>
-    new Promise((resolve, reject) => {
-      db.all(query, (err: Error | null, rows: unknown[]) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows as T[]);
-      });
-    });
+  const cacheQueries = buildGlobalAdaptiveCacheQueries(cacheTableName, {
+    cacheKey,
+    binCount: safeBinCount,
+    kernelWidth: safeKernelWidth,
+    domain: [0, 0],
+    rowCount: 0,
+    densityJson: '[]',
+    burstJson: '[]',
+    warpJson: '[]',
+  });
 
-  const runAsync = (query: string): Promise<void> =>
-    new Promise((resolve, reject) => {
-      db.run(query, (err: Error | null) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
+  await executeRun(db, cacheQueries.ensureTableSql);
 
-  await runAsync(`
-    CREATE TABLE IF NOT EXISTS ${cacheTableName} (
-      cache_key VARCHAR PRIMARY KEY,
-      bin_count INTEGER,
-      kernel_width INTEGER,
-      domain_start DOUBLE,
-      domain_end DOUBLE,
-      row_count BIGINT,
-      density_json VARCHAR,
-      burstiness_json VARCHAR,
-      warp_json VARCHAR,
-      generated_at TIMESTAMP DEFAULT now()
-    )
-  `);
-
-  const cached = await allAsync<AdaptiveCacheRow>(`
-    SELECT domain_start, domain_end, row_count, density_json, burstiness_json, warp_json, CAST(generated_at AS VARCHAR) as generated_at
-    FROM ${cacheTableName}
-    WHERE cache_key = '${cacheKey}'
-    LIMIT 1
-  `);
+  const cached = await executeAll<AdaptiveCacheRow>(db, cacheQueries.readByKey.sql, cacheQueries.readByKey.params);
 
   if (cached.length > 0) {
     const row = cached[0];
@@ -319,8 +307,10 @@ export const getOrCreateGlobalAdaptiveMaps = async (
     };
   }
 
-  const domainRows = await allAsync<{ min_ts: number | bigint; max_ts: number | bigint; row_count: number | bigint }>(
-    buildAdaptiveDomainQuery(tableName)
+  const domainRows = await executeAll<{ min_ts: number | bigint; max_ts: number | bigint; row_count: number | bigint }>(
+    db,
+    buildAdaptiveDomainQuery(tableName),
+    []
   );
 
   const minTs = toNumber(domainRows[0]?.min_ts);
@@ -328,8 +318,10 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const rowCount = toNumber(domainRows[0]?.row_count);
   const domain: [number, number] = [minTs, maxTs > minTs ? maxTs : minTs + 1];
 
-  const densityRows = await allAsync<{ idx: number | bigint; count: number | bigint }>(
-    buildAdaptiveDensityQuery(tableName, domain, safeBinCount)
+  const densityRows = await executeAll<{ idx: number | bigint; count: number | bigint }>(
+    db,
+    buildAdaptiveDensityQuery(tableName, domain, safeBinCount),
+    []
   );
 
   const rawDensity = new Float32Array(safeBinCount);
@@ -350,8 +342,10 @@ export const getOrCreateGlobalAdaptiveMaps = async (
     normalizedDensity[i] = smoothedDensity[i] / maxDensity;
   }
 
-  const burstRows = await allAsync<{ idx: number | bigint; c: number | bigint; s: number | bigint; ss: number | bigint }>(
-    buildAdaptiveBurstQuery(tableName, domain, safeBinCount)
+  const burstRows = await executeAll<{ idx: number | bigint; c: number | bigint; s: number | bigint; ss: number | bigint }>(
+    db,
+    buildAdaptiveBurstQuery(tableName, domain, safeBinCount),
+    []
   );
 
   const burstinessMap = new Float32Array(safeBinCount);
@@ -379,30 +373,19 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const burstJson = JSON.stringify(Array.from(burstinessMap));
   const warpJson = JSON.stringify(Array.from(warpMap));
 
-  await runAsync(`DELETE FROM ${cacheTableName} WHERE cache_key = '${cacheKey}'`);
-  await runAsync(`
-    INSERT INTO ${cacheTableName} (
-      cache_key,
-      bin_count,
-      kernel_width,
-      domain_start,
-      domain_end,
-      row_count,
-      density_json,
-      burstiness_json,
-      warp_json
-    ) VALUES (
-      '${cacheKey}',
-      ${safeBinCount},
-      ${safeKernelWidth},
-      ${domain[0]},
-      ${domain[1]},
-      ${rowCount},
-      '${densityJson}',
-      '${burstJson}',
-      '${warpJson}'
-    )
-  `);
+  const persistQueries = buildGlobalAdaptiveCacheQueries(cacheTableName, {
+    cacheKey,
+    binCount: safeBinCount,
+    kernelWidth: safeKernelWidth,
+    domain,
+    rowCount,
+    densityJson,
+    burstJson,
+    warpJson,
+  });
+
+  await executeRun(db, persistQueries.deleteByKey.sql, persistQueries.deleteByKey.params);
+  await executeRun(db, persistQueries.insert.sql, persistQueries.insert.params);
 
   return {
     binCount: safeBinCount,
