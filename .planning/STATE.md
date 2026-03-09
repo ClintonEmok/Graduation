@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **49 of 51** (DualTimeline Decomposition)
-Plan: **0 of 0** in current phase
-Status: **Ready for planning**
-Last activity: 2026-03-09 - Completed Phase 48 verification gap closure and re-verified phase goal
+Plan: **2 of 3** in current phase
+Status: **In progress**
+Last activity: 2026-03-09 - Completed 49-01 DualTimeline transform and density hook extraction
 
-Progress: **███████████████████░** 171/173 plans complete (98.8%)
+Progress: **███████████████████░** 172/173 plans complete (99.4%)
 
 ## Milestone Status
 
@@ -53,6 +53,8 @@ Progress: **███████████████████░** 171/1
 - [Phase 48]: Included bufferDays in the useCrimeData query key. — Visible start/end epochs alone no longer distinguish cache entries once buffering moved fully server-side.
 - [Phase 48]: Let src/lib/coordinate-normalization.ts own both JS helpers and SQL-safe normalization expressions. — Range routes and query builders now share one Chicago normalization contract instead of duplicating bounds and formulas.
 - [Phase 48]: Preserve the 48-02 buffering behavior while refactoring only normalization ownership. — The gap closure needed coordinate unification without reintroducing any buffering drift.
+- [Phase 49]: Keep adaptive/linear timeline transform-domain math in `useScaleTransforms` and consume it from `DualTimeline` orchestration. — This isolates pure scale conversion behavior ahead of interaction extraction work.
+- [Phase 49]: Keep detail density-strip recompute/fallback decisions in `useDensityStripDerivation`, with `DualTimeline` reusing the shared threshold constant. — This prevents render-mode drift while decomposition continues.
 
 ## Blockers/Concerns
 
@@ -60,6 +62,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 04:49 UTC
-Stopped at: Ready for Phase 49 planning
+Last session: 2026-03-09 15:42 UTC
+Stopped at: Completed 49-01-PLAN.md
 Resume file: None
