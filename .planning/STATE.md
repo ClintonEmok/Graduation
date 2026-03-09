@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **46 of 51** (Guardrails and Baselines)
-Plan: **3 of 3** in current phase
-Status: **Phase complete (ready for Phase 47)**
-Last activity: 2026-03-06 - Completed 46-03-PLAN.md interaction guard extraction and tests.
+Phase: **48 of 51** (API Layer Stabilization)
+Plan: **1 of 2** in current phase
+Status: **In progress**
+Last activity: 2026-03-09 - Completed 48-01-PLAN.md - centralized crime coordinate normalization
 
-Progress: **████████████████████░** 167/169 plans complete (98.8%)
+Progress: **███████████████████░** 169/172 plans complete (98.3%)
 
 ## Milestone Status
 
@@ -47,6 +47,8 @@ Progress: **████████████████████░** 16
 - Standardized Vitest config loading via `vitest.config.mts` after resolving an ESM startup blocker.
 - Extracted DualTimeline interaction math into `src/components/timeline/lib/interaction-guards.ts` and pinned brush/zoom/selection invariants with deterministic tests.
 - Enforced lint-safe hook ordering for burst auto-slice synchronization while keeping interaction contracts unchanged.
+- [Phase 48]: Centralized Chicago coordinate normalization in a shared adapter — Stream and range consumers now share one canonical -50..50 transform instead of drifting formulas.
+- [Phase 48]: Normalize stream CSV rows after parsing with the shared helper — Mock and database-backed stream responses now follow the same conversion path.
 
 ## Blockers/Concerns
 
@@ -54,6 +56,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-06 23:54 UTC
-Stopped at: Completed 46-03-PLAN.md
+Last session: 2026-03-09 00:27 UTC
+Stopped at: Completed 48-01-PLAN.md
 Resume file: None

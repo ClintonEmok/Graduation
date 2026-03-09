@@ -104,7 +104,7 @@ Plans:
   3. Range/stream endpoint coordinate behavior remains consistent with existing contracts.
 **Plans**: 2 plans
 Plans:
-- [ ] 48-01-PLAN.md — Create coordinate normalization adapter and fix stream route
+- [x] 48-01-PLAN.md — Create coordinate normalization adapter and fix stream route
 - [ ] 48-02-PLAN.md — Fix double-buffering in useCrimeData, update tests
 
 ### Phase 49: DualTimeline Decomposition
@@ -155,8 +155,8 @@ Plans:
 | 44 | v2.0 | 2/2 | Complete | 2026-03-06 |
 | 45 | v2.0 | 1/1 | Complete | 2026-03-06 |
 | 46 | v2.1 | 3/3 | Complete | 2026-03-06 |
-| 47 | v2.1 | 1/1 | Planned | - |
-| 48 | v2.1 | 2/2 | Planned | - |
+| 47 | v2.1 | 1/1 | Complete | 2026-03-07 |
+| 48 | v2.1 | 1/2 | In Progress | - |
 | 49 | v2.1 | 0/0 | Planned | - |
 | 50 | v2.1 | 0/0 | Planned | - |
 | 51 | v2.1 | 0/0 | Planned | - |
