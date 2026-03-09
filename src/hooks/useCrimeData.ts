@@ -4,13 +4,12 @@
  * 
  * This hook:
  * - Accepts viewport bounds as parameters (not from store - let caller decide)
- * - Applies buffer to range (start - buffer, end + buffer)
- * - Calls /api/crimes/range with params
+ * - Passes the visible range to /api/crimes/range
+ * - Lets the API apply any requested buffering
  * - Returns CrimeRecord[] format
  * - Handles errors gracefully
  */
 import { useQuery } from '@tanstack/react-query'
-import { addDays } from 'date-fns'
 import { 
   CrimeDataMeta,
   CrimeRecord, 
@@ -29,6 +28,7 @@ interface CrimeRangeResponse {
 async function fetchCrimesInRange(
   startEpoch: number,
   endEpoch: number,
+  bufferDays: number,
   crimeTypes?: string[],
   districts?: string[],
   limit?: number
@@ -37,6 +37,7 @@ async function fetchCrimesInRange(
     const params = new URLSearchParams({
       startEpoch: startEpoch.toString(),
       endEpoch: endEpoch.toString(),
+      bufferDays: bufferDays.toString(),
     })
     
     if (crimeTypes?.length) {
@@ -96,34 +97,24 @@ export function useCrimeData(
     limit = 50000 
   } = options
   
-  // Convert epoch seconds to Date objects for buffer calculation
-  const start = new Date(startEpoch * 1000)
-  const end = new Date(endEpoch * 1000)
-  
-  // Calculate buffered range
-  const bufferedStart = addDays(start, -bufferDays)
-  const bufferedEnd = addDays(end, bufferDays)
-  
-  // Convert back to epoch seconds for API
-  const bufferedStartEpoch = Math.floor(bufferedStart.getTime() / 1000)
-  const bufferedEndEpoch = Math.floor(bufferedEnd.getTime() / 1000)
-  
   const queryKey = [
     'crimes', 
     'viewport', 
-    bufferedStartEpoch, 
-    bufferedEndEpoch,
+    startEpoch,
+    endEpoch,
+    bufferDays,
     crimeTypes,
     districts
   ];
   
-  console.log('[useCrimeData] queryKey:', queryKey);
+  console.log('[useCrimeData] queryKey (visible range):', queryKey);
   
   const query = useQuery({
     queryKey,
     queryFn: () => fetchCrimesInRange(
-      bufferedStartEpoch,
-      bufferedEndEpoch,
+      startEpoch,
+      endEpoch,
+      bufferDays,
       crimeTypes,
       districts,
       limit
@@ -143,8 +134,8 @@ export function useCrimeData(
     isFetching: query.isFetching,
     error: query.error as Error | null,
     bufferedRange: {
-      start: bufferedStartEpoch,
-      end: bufferedEndEpoch,
+      start: query.data?.meta?.buffer?.applied.start ?? startEpoch,
+      end: query.data?.meta?.buffer?.applied.end ?? endEpoch,
     },
   }
 }
