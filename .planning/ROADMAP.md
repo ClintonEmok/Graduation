@@ -22,7 +22,7 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - [x] **Phase 45: 3D Suggestion and Acceptance Parity** - Bring suggestion generation, review, and acceptance workflows to the 3D test experience.
 - [x] **Phase 46: Guardrails and Baselines** - Add regression safety checks and baseline metrics before structural refactors.
 - [ ] **Phase 47: Dead Code Removal** - Remove legacy hooks and stale paths no longer used by active workflows.
-- [ ] **Phase 48: API Layer Stabilization** - Normalize coordinate handling and eliminate double-buffering drift.
+- [x] **Phase 48: API Layer Stabilization** - Normalize coordinate handling and eliminate double-buffering drift.
 - [ ] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity.
 - [ ] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization.
 - [ ] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths.
@@ -105,7 +105,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 48-01-PLAN.md — Create coordinate normalization adapter and fix stream route
-- [ ] 48-02-PLAN.md — Fix double-buffering in useCrimeData, update tests
+- [x] 48-02-PLAN.md — Fix double-buffering in useCrimeData, update tests
 
 ### Phase 49: DualTimeline Decomposition
 **Goal**: Decompose `DualTimeline.tsx` into dedicated hooks to improve maintainability and testability.
@@ -156,7 +156,7 @@ Plans:
 | 45 | v2.0 | 1/1 | Complete | 2026-03-06 |
 | 46 | v2.1 | 3/3 | Complete | 2026-03-06 |
 | 47 | v2.1 | 1/1 | Complete | 2026-03-07 |
-| 48 | v2.1 | 1/2 | In Progress | - |
+| 48 | v2.1 | 2/2 | Complete | 2026-03-09 |
 | 49 | v2.1 | 0/0 | Planned | - |
 | 50 | v2.1 | 0/0 | Planned | - |
 | 51 | v2.1 | 0/0 | Planned | - |

@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **48 of 51** (API Layer Stabilization)
-Plan: **1 of 2** in current phase
-Status: **In progress**
-Last activity: 2026-03-09 - Completed 48-01-PLAN.md - centralized crime coordinate normalization
+Plan: **2 of 2** in current phase
+Status: **Phase complete**
+Last activity: 2026-03-09 - Completed 48-02-PLAN.md - removed client/API double-buffering drift
 
-Progress: **███████████████████░** 169/172 plans complete (98.3%)
+Progress: **███████████████████░** 170/172 plans complete (98.8%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: **███████████████████░** 169/1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 1/6 phases complete (Phase 46 complete)
+- v2.1: 2/6 phases complete (Phases 46-48 complete)
 
 ## Decisions
 
@@ -49,6 +49,8 @@ Progress: **███████████████████░** 169/1
 - Enforced lint-safe hook ordering for burst auto-slice synchronization while keeping interaction contracts unchanged.
 - [Phase 48]: Centralized Chicago coordinate normalization in a shared adapter — Stream and range consumers now share one canonical -50..50 transform instead of drifting formulas.
 - [Phase 48]: Normalize stream CSV rows after parsing with the shared helper — Mock and database-backed stream responses now follow the same conversion path.
+- [Phase 48]: Kept /api/crimes/range as the only buffering authority so hooks forward visible epochs and consume server-reported buffer metadata. — This removes double-buffer drift and keeps fetched-range reporting aligned with the API response.
+- [Phase 48]: Included bufferDays in the useCrimeData query key. — Visible start/end epochs alone no longer distinguish cache entries once buffering moved fully server-side.
 
 ## Blockers/Concerns
 
@@ -56,6 +58,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 00:27 UTC
-Stopped at: Completed 48-01-PLAN.md
+Last session: 2026-03-09 00:31 UTC
+Stopped at: Completed 48-02-PLAN.md
 Resume file: None

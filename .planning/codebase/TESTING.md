@@ -14,6 +14,7 @@
 **Run Commands:**
 ```bash
 npm test                 # Run tests once (vitest)
+npm run typecheck        # Run repository TypeScript check
 npx vitest --watch       # Watch mode
 npx vitest --coverage    # Coverage report
 ```
@@ -149,9 +150,9 @@ expect(() => parseDate('not-a-date')).toThrow();
 
 ## Current Gaps (high-impact)
 
-- No tests for `src/hooks/useCrimeData.ts` and no contract tests for `/api/crimes/range` in `src/app/api/crimes/range/route.ts`.
 - No component interaction tests for `src/components/timeline/DualTimeline.tsx` or `/timeslicing` page orchestration.
 - Integration tests for full-auto acceptance flow are minimal.
+- Hook tests use `react-test-renderer`, which now emits deprecation warnings and should eventually move to a more modern harness.
 
 ---
 

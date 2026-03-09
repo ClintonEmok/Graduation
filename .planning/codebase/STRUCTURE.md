@@ -74,7 +74,7 @@ neon-tiger/
 - `src/app/timeslicing/page.tsx`: timeslicing route.
 
 **Configuration:**
-- `package.json`: scripts (`dev`, `build`, `test`, `lint`) and `postinstall` DuckDB symlink.
+- `package.json`: scripts (`dev`, `build`, `test`, `typecheck`, `lint`) and `postinstall` DuckDB symlink.
 - `tsconfig.json`: strict TS and `@/*` alias.
 - `eslint.config.mjs`: lint rules and ignores.
 - `vitest.config.ts`: test include pattern and alias.
