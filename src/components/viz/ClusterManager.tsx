@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { selectFilteredData } from '@/lib/data/selectors';
+import { selectFilteredData, type FilteredDataState } from '@/lib/data/selectors';
 import { FilteredPoint } from '@/lib/data/types';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useClusterStore, Cluster } from '@/store/useClusterStore';
@@ -40,10 +40,12 @@ export const ClusterManager: React.FC = () => {
     }
 
     // 1. Get filtered data
-    const filteredPoints = selectFilteredData(
-      { columns, data, minTimestampSec, maxTimestampSec } as any,
-      { selectedTypes, selectedDistricts, selectedTimeRange }
-    );
+    const filteredDataState: FilteredDataState = { columns, data, minTimestampSec, maxTimestampSec };
+    const filteredPoints = selectFilteredData(filteredDataState, {
+      selectedTypes,
+      selectedDistricts,
+      selectedTimeRange,
+    });
 
     if (filteredPoints.length === 0) {
       setClusters([]);

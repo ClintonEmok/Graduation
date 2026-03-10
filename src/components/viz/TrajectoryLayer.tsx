@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { selectFilteredData } from '@/lib/data/selectors';
+import { selectFilteredData, type FilteredDataState } from '@/lib/data/selectors';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTrajectoryStore } from '@/store/useTrajectoryStore';
 import { groupToTrajectories } from '@/lib/trajectories';
@@ -25,10 +25,8 @@ export const TrajectoryLayer: React.FC = () => {
 
   // 1. Get filtered data (to know which blocks to show)
   const filteredPoints = useMemo(() => {
-    return selectFilteredData(
-      { columns, data, minTimestampSec, maxTimestampSec } as any,
-      { selectedTypes, selectedDistricts, selectedTimeRange }
-    );
+    const filteredDataState: FilteredDataState = { columns, data, minTimestampSec, maxTimestampSec };
+    return selectFilteredData(filteredDataState, { selectedTypes, selectedDistricts, selectedTimeRange });
   }, [columns, data, minTimestampSec, maxTimestampSec, selectedTypes, selectedDistricts, selectedTimeRange]);
 
   const filteredIndices = useMemo(() => new Set(filteredPoints.map(p => p.originalIndex)), [filteredPoints]);
