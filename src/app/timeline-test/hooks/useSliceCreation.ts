@@ -10,7 +10,15 @@ import {
   getSnapInterval,
   snapToInterval,
 } from '@/app/timeline-test/lib/slice-utils';
-import { useSliceCreationStore } from '@/store/useSliceCreationStore';
+import {
+  select,
+  selectCreationPreviewEnd,
+  selectCreationPreviewFeedback,
+  selectCreationPreviewStart,
+  selectCreationSnapEnabled,
+  selectIsCreating,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 
 export const DRAG_THRESHOLD = 10;
 
@@ -65,20 +73,22 @@ export function useSliceCreation(
   scale: ScaleTime<number, number>,
   containerRef: RefObject<HTMLElement | null>
 ) {
-  const isCreating = useSliceCreationStore((state) => state.isCreating);
-  const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
-  const previewStart = useSliceCreationStore((state) => state.previewStart);
-  const previewEnd = useSliceCreationStore((state) => state.previewEnd);
-  const updatePreview = useSliceCreationStore((state) => state.updatePreview);
-  const setPreviewFeedback = useSliceCreationStore((state) => state.setPreviewFeedback);
-  const setDragActive = useSliceCreationStore((state) => state.setDragActive);
-  const commitCreation = useSliceCreationStore((state) => state.commitCreation);
-  const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
-  const previewIsValid = useSliceCreationStore((state) => state.previewIsValid);
-  const previewReason = useSliceCreationStore((state) => state.previewReason);
-  const previewDurationLabel = useSliceCreationStore((state) => state.previewDurationLabel);
-  const previewTimeRangeLabel = useSliceCreationStore((state) => state.previewTimeRangeLabel);
-  const snapInterval = useSliceCreationStore((state) => state.snapInterval);
+  const isCreating = useSliceDomainStore(selectIsCreating);
+  const snapEnabled = useSliceDomainStore(selectCreationSnapEnabled);
+  const previewStart = useSliceDomainStore(selectCreationPreviewStart);
+  const previewEnd = useSliceDomainStore(selectCreationPreviewEnd);
+  const updatePreview = useSliceDomainStore(select((state) => state.updatePreview));
+  const setPreviewFeedback = useSliceDomainStore(select((state) => state.setPreviewFeedback));
+  const setDragActive = useSliceDomainStore(select((state) => state.setDragActive));
+  const commitCreation = useSliceDomainStore(select((state) => state.commitCreation));
+  const cancelCreation = useSliceDomainStore(select((state) => state.cancelCreation));
+  const {
+    isValid: previewIsValid,
+    reason: previewReason,
+    durationLabel: previewDurationLabel,
+    timeRangeLabel: previewTimeRangeLabel,
+    snapInterval,
+  } = useSliceDomainStore(selectCreationPreviewFeedback);
 
   const dragStartRef = useRef<DragStart | null>(null);
   const isDraggingRef = useRef(false);

@@ -4,7 +4,11 @@ import type { ScaleTime } from 'd3-scale';
 import { formatDuration } from '@/app/timeline-test/lib/slice-utils';
 import { useSliceBoundaryAdjustment } from '@/app/timeline-test/hooks/useSliceBoundaryAdjustment';
 import type { AdjustmentHandle } from '@/app/timeline-test/lib/slice-adjustment';
-import { useSliceStore } from '@/store/useSliceStore';
+import {
+  selectActiveSliceId,
+  selectSlices,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 
 interface SliceBoundaryHandlesLayerProps {
   scale: ScaleTime<number, number>;
@@ -31,8 +35,8 @@ const toBoundarySec = (normalized: number, domainStartSec: number, domainEndSec:
 };
 
 export function SliceBoundaryHandlesLayer({ scale, height, domainSec }: SliceBoundaryHandlesLayerProps) {
-  const slices = useSliceStore((state) => state.slices);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
+  const slices = useSliceDomainStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
 
   const {
     draggingSliceId,

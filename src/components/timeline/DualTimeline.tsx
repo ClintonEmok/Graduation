@@ -9,7 +9,13 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { useSliceStore } from '@/store/useSliceStore';
+import {
+  select,
+  selectActiveSliceId,
+  selectActiveSliceUpdatedAt,
+  selectSlices,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 import { resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -167,10 +173,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
-  const slices = useSliceStore((state) => state.slices);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const activeSliceUpdatedAt = useSliceStore((state) => state.activeSliceUpdatedAt);
-  const getSliceOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
+  const slices = useSliceDomainStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const activeSliceUpdatedAt = useSliceDomainStore(selectActiveSliceUpdatedAt);
+  const getSliceOverlapCounts = useSliceDomainStore(select((state) => state.getOverlapCounts));
   const warpSlices = useWarpSliceStore((state) => state.slices);
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
