@@ -1,5 +1,5 @@
 import { useAdaptiveStore } from '../useAdaptiveStore';
-import { useDataStore } from '../useDataStore';
+import { useTimelineDataStore } from '../useTimelineDataStore';
 import { calculateRangeTolerance, rangesMatch } from '../../lib/slice-utils';
 import { epochSecondsToNormalized, toEpochSeconds } from '../../lib/time-domain';
 import type { SliceCoreState, SliceDomainStateCreator, TimeSlice } from './types';
@@ -19,7 +19,7 @@ const toNormalizedStoreRange = (start: number, end: number): [number, number] =>
     return [rawStart, rawEnd];
   }
 
-  const { minTimestampSec, maxTimestampSec } = useDataStore.getState();
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
   if (minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec) {
     const startSec = toEpochSeconds(rawStart);
     const endSec = toEpochSeconds(rawEnd);

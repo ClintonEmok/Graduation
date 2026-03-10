@@ -15,7 +15,7 @@ import { SliceList } from '@/app/timeline-test/components/SliceList';
 import { WarpSliceEditor } from '@/app/timeline-test/components/WarpSliceEditor';
 import { SNAP_INTERVALS } from '@/app/timeline-test/lib/slice-utils';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore, type DataPoint } from '@/store/useDataStore';
+import type { DataPoint } from '@/lib/data/types';
 import { useFilterStore } from '@/store/useFilterStore';
 import {
   select,
@@ -30,6 +30,7 @@ import {
 } from '@/store/useSliceDomainStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 
 const SAMPLE_POINT_COUNT = 160;
@@ -195,8 +196,8 @@ export default function TimelineTestPage() {
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const warpSlices = useWarpSliceStore((state) => state.slices);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const resetFilters = useFilterStore((state) => state.resetFilters);
@@ -234,7 +235,7 @@ export default function TimelineTestPage() {
   useEffect(() => {
     if (!useMockData) return;
     computeMaps(mockTimestamps, [MOCK_START_SEC, MOCK_END_SEC]);
-    useDataStore.setState({
+    useTimelineDataStore.setState({
       data: buildMockPoints(mockTimestamps),
       columns: null,
       minTimestampSec: MOCK_START_SEC,

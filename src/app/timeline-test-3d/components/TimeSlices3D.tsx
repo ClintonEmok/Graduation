@@ -11,7 +11,7 @@ import {
   type AdjustmentHandle,
 } from "@/app/timeline-test/lib/slice-adjustment";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
-import { useDataStore } from "@/store/useDataStore";
+import { useTimelineDataStore } from "@/store/useTimelineDataStore";
 import {
   select,
   selectActiveSliceId,
@@ -87,8 +87,8 @@ export function TimeSlices3D() {
   const draggingHandle = useSliceDomainStore(selectDraggingHandle);
   const liveBoundarySec = useSliceDomainStore(selectLiveBoundarySec);
 
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);

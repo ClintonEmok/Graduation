@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { bin, max } from 'd3-array';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
 import { useMeasure } from '@/hooks/useMeasure';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
@@ -152,10 +152,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   detailBinCount = 60,
   disableAutoBurstSlices = false,
 }) => {
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const data = useTimelineDataStore((state) => state.data);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const currentTime = useTimeStore((state) => state.currentTime);

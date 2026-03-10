@@ -9,7 +9,7 @@ import { HistogramLayer } from './layers/HistogramLayer';
 import { AxisLayer } from './layers/AxisLayer';
 import { MarkerLayer } from './layers/MarkerLayer';
 import { TimelineBrush } from './TimelineBrush';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
@@ -31,7 +31,7 @@ const TimelineContent = ({ width, height, data: propData, onChange, selectedDoma
    const [viewMode, setViewMode] = useState<'histogram' | 'markers'>('histogram');
    
    // Connect to stores
-   const { columns, minTimestampSec, maxTimestampSec } = useDataStore();
+   const { columns, minTimestampSec, maxTimestampSec } = useTimelineDataStore();
    const { setRange, timeRange } = useTimeStore();
    const { setBrushRange } = useCoordinationStore();
 

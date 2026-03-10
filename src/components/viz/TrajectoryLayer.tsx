@@ -59,7 +59,7 @@ export const TrajectoryLayer: React.FC = () => {
     if (columns) {
       return groupToTrajectories(allPoints, filteredIndices);
     }
-    // Mock data handling (if useDataStore.data is used)
+    // Mock data handling (if timeline store fallback data is used)
     const mockPoints = data.map((p, i) => ({
       x: p.x,
       y: p.timestamp,

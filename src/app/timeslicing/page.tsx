@@ -167,7 +167,7 @@ export default function TimeslicingPage() {
   }, [crimeMeta, dataStats, isLoading]);
 
   // Cross-route parity with /timeline-test:
-  // DualTimeline overview histogram reads from useDataStore + adaptive maps.
+  // DualTimeline overview histogram reads from timeline data store + adaptive maps.
   // Timeslicing fetches via useCrimeData, so mirror fetched records into those stores.
   useEffect(() => {
     if (!crimes || crimes.length === 0) {
