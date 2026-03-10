@@ -1,7 +1,7 @@
 'use client';
 
 import { getCrimeTypeName, getDistrictName } from '@/lib/category-maps';
-import { DataPoint } from '@/lib/data/types';
+import type { DataPoint } from '@/lib/data/types';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
