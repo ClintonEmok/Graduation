@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **51 of 51** (Store Consolidation)
-Plan: **11 of 12** in current phase
+Plan: **12 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-04 timeline-test slice consumer bounded-store rewiring and split-store import gate
+Last activity: 2026-03-10 - Completed 51-10 residual route/3D canonical timeline store migration and import gate
 
-Progress: **███████████████████░** 186/192 plans complete (96.9%)
+Progress: **███████████████████░** 187/192 plans complete (97.4%)
 
 ## Milestone Status
 
@@ -87,6 +87,8 @@ Progress: **███████████████████░** 186/1
 - [Phase 51]: Migrate supporting viz overlays and inspector consumers (`BurstDetails`, `BurstList`, `HeatmapOverlay`, `PointInspector`, `SliceManagerUI`) to `useTimelineDataStore`. — This removes another supporting-viz batch from deprecated `useDataStore` ownership while preserving behavior parity.
 - [Phase 51]: Treat targeted lint verification as a blocking migration gate for supporting viz files and fix hook/memoization blockers inline. — This keeps store-retirement work aligned with existing quality gates.
 - [Phase 51]: Rewire core 3D scene/render files (`CubeVisualization`, `MainScene`, `DataPoints`, `TimeGrid`, `TimeLoop`, `TimeSlices`) to `useTimelineDataStore` and enforce a zero deprecated-import gate in this batch. — This clears high-visibility render surfaces from `useDataStore` before final deletion.
+- [Phase 51]: Replace residual route-level and 3D consumer `useDataStore` reads/writes with `useTimelineDataStore` in timeslicing and timeline-test-3d route files. — This removes deprecated-store ownership from the remaining route/3D migration batch while preserving behavior parity.
+- [Phase 51]: Route canonical 3D point derivation through `selectFilteredData` and enforce a targeted zero-import gate for the residual batch. — This aligns canonical point reads with shared selector ownership and provides deterministic evidence before final deletion planning.
 
 ## Blockers/Concerns
 
@@ -94,6 +96,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10 01:09 UTC
-Stopped at: Completed 51-04-PLAN.md
+Last session: 2026-03-10 01:16 UTC
+Stopped at: Completed 51-10-PLAN.md
 Resume file: None
