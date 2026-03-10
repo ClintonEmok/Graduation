@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **50 of 51** (Query Layer Decomposition)
-Plan: **3 of 3** in current phase
-Status: **Phase complete**
-Last activity: 2026-03-09 - Completed 50-03 aggregation/cache decomposition with sanitization boundary hardening
+Phase: **51 of 51** (Store Consolidation)
+Plan: **1 of 12** in current phase
+Status: **In progress**
+Last activity: 2026-03-10 - Completed 51-01 bounded slice-domain store foundation and dependency audit
 
-Progress: **███████████████████░** 178/180 plans complete (98.9%)
+Progress: **████████████████████░** 179/180 plans complete (99.4%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: **███████████████████░** 178/1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 5/6 phases complete (Phases 46-50 complete)
+- v2.1: 5/6 phases complete (Phase 51 in progress)
 
 ## Decisions
 
@@ -68,6 +68,9 @@ Progress: **███████████████████░** 178/1
 - [Phase 50]: Keep `src/lib/queries.ts` as a compatibility facade while moving density-bin and adaptive-cache SQL assembly into `src/lib/queries/aggregations.ts`. — This completes decomposition without requiring route import churn.
 - [Phase 50]: Enforce adaptive aggregation scalar sanitization through centralized clamps (`clampAdaptiveBinCount`, `clampKernelWidth`, `clampDensityResolution`) and bind builder runtime values through params. — This tightens structural SQL safety with one auditable policy surface.
 - [Phase 50]: Lock decomposition compatibility with regressions that assert callable facade exports and parameterized aggregation/cache query assembly contracts. — This guards API-facing behavior while internals continue to evolve.
+- [Phase 51]: Consolidate authored slice lifecycle, selection, creation preview, and adjustment interaction state into one bounded `useSliceDomainStore` composed from internal slices. — This establishes a single ownership boundary before consumer migration.
+- [Phase 51]: Apply `persist` once at the bounded store boundary and partialize to authored `slices` only. — This preserves persisted user-authored slice data while keeping drag/hover/selection interaction state transient.
+- [Phase 51]: Export explicit slice-domain selector helpers from a single store entrypoint. — This supports parity-safe consumer rewires with fine-grained subscriptions instead of broad store selections.
 
 ## Blockers/Concerns
 
@@ -75,6 +78,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09 20:35 UTC
-Stopped at: Completed 50-03-PLAN.md
+Last session: 2026-03-10 00:53 UTC
+Stopped at: Completed 51-01-PLAN.md
 Resume file: None

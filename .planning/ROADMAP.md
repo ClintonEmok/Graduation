@@ -147,7 +147,7 @@ Plans:
   3. No duplicate slice state sources remain in active workflows.
 **Plans**: 12 plans
 Plans:
-- [ ] 51-01-PLAN.md — Audit store coupling and introduce bounded `useSliceDomainStore` foundation
+- [x] 51-01-PLAN.md — Audit store coupling and introduce bounded `useSliceDomainStore` foundation
 - [ ] 51-02-PLAN.md — Convert legacy slice stores into bounded-domain compatibility adapters
 - [ ] 51-03-PLAN.md — Extract shared data contracts/selectors and introduce `useTimelineDataStore`
 - [ ] 51-04-PLAN.md — Rewire timeline-test slice consumers to bounded selectors/actions
@@ -176,7 +176,7 @@ Plans:
 | 48 | v2.1 | 3/3 | Complete | 2026-03-09 |
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
 | 50 | v2.1 | Complete    | 2026-03-09 | - |
-| 51 | v2.1 | 0/12 | Planned | - |
+| 51 | v2.1 | 1/12 | In Progress | - |
 
 ---
 
