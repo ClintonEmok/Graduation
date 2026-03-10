@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **51 of 51** (Store Consolidation)
-Plan: **3 of 12** in current phase
+Plan: **5 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-03 timeline data contract/store extraction and compatibility shim
+Last activity: 2026-03-10 - Completed 51-05 timeline-test-3d slice-domain selector/action rewire
 
-Progress: **███████████████████░** 180/192 plans complete (93.8%)
+Progress: **███████████████████░** 181/192 plans complete (94.3%)
 
 ## Milestone Status
 
@@ -76,6 +76,9 @@ Progress: **███████████████████░** 180/1
 - [Phase 51]: Move `DataPoint`, `ColumnarData`, `FilteredPoint`, and `selectFilteredData` ownership to `src/lib/data/*` modules. — This unanchors shared contracts from the deprecated `useDataStore` file before broad consumer migration.
 - [Phase 51]: Introduce `useTimelineDataStore` as canonical timeline metadata/loading surface and keep `useDataStore` as a temporary re-export shim. — This preserves import compatibility while reducing deletion blast radius for 51-12.
 - [Phase 51]: Rewire immediate trajectory/clustering consumers to shared selector/type imports from `src/lib/data/*`. — This validates extraction parity on key visualization paths during migration.
+- [Phase 51]: Rewire `TimeSlices3D` slice interactions directly to `useSliceDomainStore` selectors/actions. — This keeps timeline-test-3d aligned with the bounded slice-domain ownership model before legacy split-store cleanup.
+- [Phase 51]: Enforce zero split-store imports in `TimeSlices3D` via import-gate verification. — This prevents regression to deprecated `useSliceSelectionStore`/`useSliceCreationStore`/`useSliceAdjustmentStore` paths.
+- [Phase 51]: Migrated core timeline/map components to useTimelineDataStore and shared selectors/types for parity-safe deprecated-store retirement. — Reduces high-traffic dependency on useDataStore while preserving interaction behavior before final store deletion.
 
 ## Blockers/Concerns
 
@@ -83,6 +86,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10 00:59 UTC
-Stopped at: Completed 51-03-PLAN.md
+Last session: 2026-03-10 01:07 UTC
+Stopped at: Completed 51-05-PLAN.md
 Resume file: None
