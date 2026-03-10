@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
