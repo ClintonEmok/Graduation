@@ -12,9 +12,9 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 Phase: **51 of 51** (Store Consolidation)
 Plan: **11 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-09 supporting viz overlay/inspector migration off deprecated data store imports
+Last activity: 2026-03-10 - Completed 51-08 core viz scene/render migration off deprecated data store imports
 
-Progress: **███████████████████░** 185/192 plans complete (96.4%)
+Progress: **███████████████████░** 186/192 plans complete (96.9%)
 
 ## Milestone Status
 
@@ -85,6 +85,7 @@ Progress: **███████████████████░** 185/1
 - [Phase 51]: Record explicit zero-import gate evidence for the migrated hook/lib batch (`@/store/useDataStore` count = 0). — This provides deterministic readiness evidence for staged deprecated-store deletion.
 - [Phase 51]: Migrate supporting viz overlays and inspector consumers (`BurstDetails`, `BurstList`, `HeatmapOverlay`, `PointInspector`, `SliceManagerUI`) to `useTimelineDataStore`. — This removes another supporting-viz batch from deprecated `useDataStore` ownership while preserving behavior parity.
 - [Phase 51]: Treat targeted lint verification as a blocking migration gate for supporting viz files and fix hook/memoization blockers inline. — This keeps store-retirement work aligned with existing quality gates.
+- [Phase 51]: Rewire core 3D scene/render files (`CubeVisualization`, `MainScene`, `DataPoints`, `TimeGrid`, `TimeLoop`, `TimeSlices`) to `useTimelineDataStore` and enforce a zero deprecated-import gate in this batch. — This clears high-visibility render surfaces from `useDataStore` before final deletion.
 
 ## Blockers/Concerns
 
@@ -92,6 +93,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10 01:08 UTC
-Stopped at: Completed 51-09-PLAN.md
+Last session: 2026-03-10 01:09 UTC
+Stopped at: Completed 51-08-PLAN.md
 Resume file: None
