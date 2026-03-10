@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { RefreshCcw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
@@ -11,7 +11,7 @@ import { useLogger } from '@/hooks/useLogger';
 
 export default function CubeVisualization() {
   const { triggerReset } = useUIStore();
-  const { loadRealData, isLoading, columns } = useDataStore();
+  const { loadRealData, isLoading, columns } = useTimelineDataStore();
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);

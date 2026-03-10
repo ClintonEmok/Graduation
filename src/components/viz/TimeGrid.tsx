@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { timeDay, timeHour, timeMonth, timeWeek, timeYear } from 'd3-time';
 import { useTimeStore } from '@/store/useTimeStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
 
@@ -12,8 +12,8 @@ const MAX_LINES = 40;
 
 export function TimeGrid() {
   const timeResolution = useTimeStore((state) => state.timeResolution);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);

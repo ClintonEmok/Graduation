@@ -5,7 +5,7 @@ import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
 import { SimpleCrimePoints } from './SimpleCrimePoints';
 import MapBase from '../map/MapBase';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
@@ -50,7 +50,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
     let cancelled = false;
 
     const fallbackToLocalCompute = () => {
-      const { columns, data } = useDataStore.getState();
+      const { columns, data } = useTimelineDataStore.getState();
 
       if (columns && columns.timestamp) {
         useAdaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
