@@ -11,10 +11,10 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 Phase: **51 of 51** (Store Consolidation)
 Plan: **12 of 12** in current phase
-Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-10 residual route/3D canonical timeline store migration and import gate
+Status: **Phase complete**
+Last activity: 2026-03-10 - Completed 51-12 deprecated store deletion and final import gate
 
-Progress: **███████████████████░** 187/192 plans complete (97.4%)
+Progress: **███████████████████░** 188/192 plans complete (97.9%)
 
 ## Milestone Status
 
@@ -23,7 +23,7 @@ Progress: **███████████████████░** 187/1
 - v1.2: Complete (2026-03-02)
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
-- v2.1: 5/6 phases complete (Phase 51 in progress)
+- v2.1: 6/6 phases complete
 
 ## Decisions
 
@@ -89,13 +89,16 @@ Progress: **███████████████████░** 187/1
 - [Phase 51]: Rewire core 3D scene/render files (`CubeVisualization`, `MainScene`, `DataPoints`, `TimeGrid`, `TimeLoop`, `TimeSlices`) to `useTimelineDataStore` and enforce a zero deprecated-import gate in this batch. — This clears high-visibility render surfaces from `useDataStore` before final deletion.
 - [Phase 51]: Replace residual route-level and 3D consumer `useDataStore` reads/writes with `useTimelineDataStore` in timeslicing and timeline-test-3d route files. — This removes deprecated-store ownership from the remaining route/3D migration batch while preserving behavior parity.
 - [Phase 51]: Route canonical 3D point derivation through `selectFilteredData` and enforce a targeted zero-import gate for the residual batch. — This aligns canonical point reads with shared selector ownership and provides deterministic evidence before final deletion planning.
+- [Phase 51]: Used useTimelineDataStore as canonical fallback for residual timeline/slice reads after useDataStore deletion — Prevents reintroducing deprecated ownership while preserving existing selector behavior.
+- [Phase 51]: Handled residual deprecated imports as regression fixes discovered in post-delete gates — Ensures final deletion gate is enforced by code state, not only by staged migration assumptions.
+- [Phase 51]: Recorded lint debt separately while keeping typecheck and targeted store tests as passing parity gates — Broad lint issues pre-existed and are outside this terminal deletion plan scope.
 
 ## Blockers/Concerns
 
-None currently.
+- Targeted lint command for timeline/map/viz surfaces still reports pre-existing repo lint errors outside the 51-12 deletion change set.
 
 ## Session Continuity
 
-Last session: 2026-03-10 01:16 UTC
-Stopped at: Completed 51-10-PLAN.md
+Last session: 2026-03-10 01:22 UTC
+Stopped at: Completed 51-12-PLAN.md
 Resume file: None
