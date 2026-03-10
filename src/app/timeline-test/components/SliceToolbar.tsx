@@ -3,10 +3,18 @@
 import { Magnet, Merge, Scissors, Trash2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useSliceCreationStore } from '@/store/useSliceCreationStore';
-import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
-import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
-import { useSliceStore } from '@/store/useSliceStore';
+import {
+  select,
+  selectAdjustmentFixedSnapPresetSec,
+  selectAdjustmentSnapEnabled,
+  selectAdjustmentSnapMode,
+  selectCreationSnapEnabled,
+  selectIsCreating,
+  selectSelectedCount,
+  selectSelectedIds,
+  selectSlices,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 import { useTimeStore } from '@/store/useTimeStore';
 
 const SNAP_PRESETS = [
@@ -25,22 +33,22 @@ export const BURST_CHIP_CLASSNAME =
 export const BURST_CHIP_ICON_CLASSNAME = 'h-2.5 w-2.5 text-slate-400';
 
 export function SliceToolbar() {
-  const isCreating = useSliceCreationStore((state) => state.isCreating);
-  const startCreation = useSliceCreationStore((state) => state.startCreation);
-  const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
-  const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
-  const setSnapEnabled = useSliceCreationStore((state) => state.setSnapEnabled);
-  const adjustmentSnapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
-  const adjustmentSnapMode = useSliceAdjustmentStore((state) => state.snapMode);
-  const fixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
-  const setAdjustmentSnap = useSliceAdjustmentStore((state) => state.setSnap);
-  const slices = useSliceStore((state) => state.slices);
-  const clearSlices = useSliceStore((state) => state.clearSlices);
-  const removeSlice = useSliceStore((state) => state.removeSlice);
-  const mergeSlices = useSliceStore((state) => state.mergeSlices);
-  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
-  const selectedCount = useSliceSelectionStore((state) => state.selectedCount);
-  const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
+  const isCreating = useSliceDomainStore(selectIsCreating);
+  const startCreation = useSliceDomainStore(select((state) => state.startCreation));
+  const cancelCreation = useSliceDomainStore(select((state) => state.cancelCreation));
+  const snapEnabled = useSliceDomainStore(selectCreationSnapEnabled);
+  const setSnapEnabled = useSliceDomainStore(select((state) => state.setSnapEnabled));
+  const adjustmentSnapEnabled = useSliceDomainStore(selectAdjustmentSnapEnabled);
+  const adjustmentSnapMode = useSliceDomainStore(selectAdjustmentSnapMode);
+  const fixedSnapPresetSec = useSliceDomainStore(selectAdjustmentFixedSnapPresetSec);
+  const setAdjustmentSnap = useSliceDomainStore(select((state) => state.setSnap));
+  const slices = useSliceDomainStore(selectSlices);
+  const clearSlices = useSliceDomainStore(select((state) => state.clearSlices));
+  const removeSlice = useSliceDomainStore(select((state) => state.removeSlice));
+  const mergeSlices = useSliceDomainStore(select((state) => state.mergeSlices));
+  const selectedIds = useSliceDomainStore(selectSelectedIds);
+  const selectedCount = useSliceDomainStore(selectSelectedCount);
+  const clearSelection = useSliceDomainStore(select((state) => state.clearSelection));
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);

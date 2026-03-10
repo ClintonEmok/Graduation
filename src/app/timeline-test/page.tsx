@@ -17,8 +17,17 @@ import { SNAP_INTERVALS } from '@/app/timeline-test/lib/slice-utils';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useDataStore, type DataPoint } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
-import { useSliceCreationStore } from '@/store/useSliceCreationStore';
-import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
+import {
+  select,
+  selectAdjustmentFixedSnapPresetSec,
+  selectAdjustmentSnapEnabled,
+  selectAdjustmentSnapMode,
+  selectCreationMode,
+  selectCreationPreviewFeedback,
+  selectCreationSnapEnabled,
+  selectIsCreating,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
@@ -191,18 +200,17 @@ export default function TimelineTestPage() {
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const resetFilters = useFilterStore((state) => state.resetFilters);
-  const isCreatingSlice = useSliceCreationStore((state) => state.isCreating);
-  const startCreation = useSliceCreationStore((state) => state.startCreation);
-  const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
-  const creationMode = useSliceCreationStore((state) => state.creationMode);
-  const dragActive = useSliceCreationStore((state) => state.dragActive);
-  const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
-  const snapInterval = useSliceCreationStore((state) => state.snapInterval);
-  const previewIsValid = useSliceCreationStore((state) => state.previewIsValid);
-  const previewReason = useSliceCreationStore((state) => state.previewReason);
-  const boundarySnapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
-  const boundarySnapMode = useSliceAdjustmentStore((state) => state.snapMode);
-  const boundaryFixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
+  const isCreatingSlice = useSliceDomainStore(selectIsCreating);
+  const startCreation = useSliceDomainStore(select((state) => state.startCreation));
+  const cancelCreation = useSliceDomainStore(select((state) => state.cancelCreation));
+  const creationMode = useSliceDomainStore(selectCreationMode);
+  const dragActive = useSliceDomainStore(select((state) => state.dragActive));
+  const snapEnabled = useSliceDomainStore(selectCreationSnapEnabled);
+  const { isValid: previewIsValid, reason: previewReason, snapInterval } =
+    useSliceDomainStore(selectCreationPreviewFeedback);
+  const boundarySnapEnabled = useSliceDomainStore(selectAdjustmentSnapEnabled);
+  const boundarySnapMode = useSliceDomainStore(selectAdjustmentSnapMode);
+  const boundaryFixedSnapPresetSec = useSliceDomainStore(selectAdjustmentFixedSnapPresetSec);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
