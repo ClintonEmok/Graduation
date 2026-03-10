@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **51 of 51** (Store Consolidation)
-Plan: **6 of 12** in current phase
+Plan: **11 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-06 core component consumer migration to canonical timeline store contracts
+Last activity: 2026-03-10 - Completed 51-11 advanced viz and slice-adapter residual migration off useDataStore
 
-Progress: **███████████████████░** 181/192 plans complete (94.3%)
+Progress: **███████████████████░** 182/192 plans complete (94.8%)
 
 ## Milestone Status
 
@@ -79,6 +79,8 @@ Progress: **███████████████████░** 181/1
 - [Phase 51]: Rewire `TimeSlices3D` slice interactions directly to `useSliceDomainStore` selectors/actions. — This keeps timeline-test-3d aligned with the bounded slice-domain ownership model before legacy split-store cleanup.
 - [Phase 51]: Enforce zero split-store imports in `TimeSlices3D` via import-gate verification. — This prevents regression to deprecated `useSliceSelectionStore`/`useSliceCreationStore`/`useSliceAdjustmentStore` paths.
 - [Phase 51]: Migrated core timeline/map components to useTimelineDataStore and shared selectors/types for parity-safe deprecated-store retirement. — Reduces high-traffic dependency on useDataStore while preserving interaction behavior before final store deletion.
+- [Phase 51]: Switch advanced `ClusterManager` and `TrajectoryLayer` consumers to `useTimelineDataStore` while preserving selector-derived clustering/trajectory behavior. — This clears advanced visualization residual ownership from the deprecated store path.
+- [Phase 51]: Update `useSliceStore` normalization fallback to read timestamp bounds from `useTimelineDataStore`. — This keeps the slice compatibility adapter independent from `useDataStore` before 51-12 deletion gating.
 
 ## Blockers/Concerns
 
@@ -86,6 +88,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10 01:07 UTC
-Stopped at: Completed 51-06-PLAN.md
+Last session: 2026-03-10 01:06 UTC
+Stopped at: Completed 51-11-PLAN.md
 Resume file: None
