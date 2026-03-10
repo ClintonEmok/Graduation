@@ -12,9 +12,15 @@ import {
 } from "@/app/timeline-test/lib/slice-adjustment";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
 import { useDataStore } from "@/store/useDataStore";
-import { useSliceAdjustmentStore } from "@/store/useSliceAdjustmentStore";
-import { useSliceSelectionStore } from "@/store/useSliceSelectionStore";
-import { useSliceStore } from "@/store/useSliceStore";
+import {
+  selectActiveSliceId,
+  selectDraggingHandle,
+  selectDraggingSliceId,
+  selectLiveBoundarySec,
+  selectSelectedIds,
+  selectSlices,
+  useSliceDomainStore,
+} from "@/store/useSliceDomainStore";
 import { useTimeStore } from "@/store/useTimeStore";
 
 const clamp = (value: number, min: number, max: number) =>
@@ -45,26 +51,26 @@ type DragState = {
 };
 
 export function TimeSlices3D() {
-  const slices = useSliceStore((state) => state.slices);
-  const addSlice = useSliceStore((state) => state.addSlice);
-  const updateSlice = useSliceStore((state) => state.updateSlice);
-  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const getOverlapCounts = useSliceStore((state) => state.getOverlapCounts);
-  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
-  const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
-  const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
-  const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
+  const slices = useSliceDomainStore(selectSlices);
+  const addSlice = useSliceDomainStore((state) => state.addSlice);
+  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
+  const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const getOverlapCounts = useSliceDomainStore((state) => state.getOverlapCounts);
+  const selectedIds = useSliceDomainStore(selectSelectedIds);
+  const selectSlice = useSliceDomainStore((state) => state.selectSlice);
+  const toggleSlice = useSliceDomainStore((state) => state.toggleSlice);
+  const clearSelection = useSliceDomainStore((state) => state.clearSelection);
 
-  const beginDrag = useSliceAdjustmentStore((state) => state.beginDrag);
-  const updateDrag = useSliceAdjustmentStore((state) => state.updateDrag);
-  const endDrag = useSliceAdjustmentStore((state) => state.endDrag);
-  const snapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
-  const snapMode = useSliceAdjustmentStore((state) => state.snapMode);
-  const fixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
-  const draggingSliceId = useSliceAdjustmentStore((state) => state.draggingSliceId);
-  const draggingHandle = useSliceAdjustmentStore((state) => state.draggingHandle);
-  const liveBoundarySec = useSliceAdjustmentStore((state) => state.liveBoundarySec);
+  const beginDrag = useSliceDomainStore((state) => state.beginDrag);
+  const updateDrag = useSliceDomainStore((state) => state.updateDrag);
+  const endDrag = useSliceDomainStore((state) => state.endDrag);
+  const snapEnabled = useSliceDomainStore((state) => state.snapEnabled);
+  const snapMode = useSliceDomainStore((state) => state.snapMode);
+  const fixedSnapPresetSec = useSliceDomainStore((state) => state.fixedSnapPresetSec);
+  const draggingSliceId = useSliceDomainStore(selectDraggingSliceId);
+  const draggingHandle = useSliceDomainStore(selectDraggingHandle);
+  const liveBoundarySec = useSliceDomainStore(selectLiveBoundarySec);
 
   const minTimestampSec = useDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
