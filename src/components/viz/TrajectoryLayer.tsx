@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { selectFilteredData } from '@/lib/data/selectors';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTrajectoryStore } from '@/store/useTrajectoryStore';
@@ -12,10 +12,10 @@ import * as THREE from 'three';
 export const TrajectoryLayer: React.FC = () => {
   const isVisible = useTrajectoryStore((state) => state.isVisible);
   const selectedBlock = useTrajectoryStore((state) => state.selectedBlock);
-  const columns = useDataStore((state) => state.columns);
-  const data = useDataStore((state) => state.data);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const data = useTimelineDataStore((state) => state.data);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
 
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);

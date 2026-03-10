@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { selectFilteredData } from '@/lib/data/selectors';
 import { FilteredPoint } from '@/lib/data/types';
 import { useFilterStore } from '@/store/useFilterStore';
@@ -15,10 +15,10 @@ import { DBSCAN } from 'density-clustering';
 import debounce from 'lodash.debounce';
 
 export const ClusterManager: React.FC = () => {
-  const columns = useDataStore((state) => state.columns);
-  const data = useDataStore((state) => state.data);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const data = useTimelineDataStore((state) => state.data);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);

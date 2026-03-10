@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAdaptiveStore } from './useAdaptiveStore';
-import { useDataStore } from './useDataStore';
+import { useTimelineDataStore } from './useTimelineDataStore';
 import { epochSecondsToNormalized, toEpochSeconds } from '../lib/time-domain';
 import { useSliceDomainStore } from './useSliceDomainStore';
 
@@ -22,7 +22,7 @@ const toNormalizedStoreRange = (start: number, end: number): [number, number] =>
     return [rawStart, rawEnd];
   }
 
-  const { minTimestampSec, maxTimestampSec } = useDataStore.getState();
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
   if (minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec) {
     const startSec = toEpochSeconds(rawStart);
     const endSec = toEpochSeconds(rawEnd);
