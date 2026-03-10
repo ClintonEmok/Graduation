@@ -12,7 +12,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 Phase: **51 of 51** (Store Consolidation)
 Plan: **11 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-08 core viz scene/render migration off deprecated data store imports
+Last activity: 2026-03-10 - Completed 51-04 timeline-test slice consumer bounded-store rewiring and split-store import gate
 
 Progress: **███████████████████░** 186/192 plans complete (96.9%)
 
@@ -71,6 +71,7 @@ Progress: **███████████████████░** 186/1
 - [Phase 51]: Consolidate authored slice lifecycle, selection, creation preview, and adjustment interaction state into one bounded `useSliceDomainStore` composed from internal slices. — This establishes a single ownership boundary before consumer migration.
 - [Phase 51]: Apply `persist` once at the bounded store boundary and partialize to authored `slices` only. — This preserves persisted user-authored slice data while keeping drag/hover/selection interaction state transient.
 - [Phase 51]: Export explicit slice-domain selector helpers from a single store entrypoint. — This supports parity-safe consumer rewires with fine-grained subscriptions instead of broad store selections.
+- [Phase 51]: Rewire timeline-test slice consumers and `DualTimeline` orchestration reads to bounded `useSliceDomainStore` selectors/actions. — This removes split-store consumer ownership while preserving create/select/adjust parity.
 - [Phase 51]: Convert `useSliceStore`, `useSliceSelectionStore`, `useSliceCreationStore`, and `useSliceAdjustmentStore` into compatibility adapters over `useSliceDomainStore`. — This removes split legacy store roots while preserving import paths for downstream rewires.
 - [Phase 51]: Add explicit no-new-root adapter guards and verify zero `create(` calls in legacy slice modules. — This locks a single bounded owner assumption before consumer migration plans.
 - [Phase 51]: Move `DataPoint`, `ColumnarData`, `FilteredPoint`, and `selectFilteredData` ownership to `src/lib/data/*` modules. — This unanchors shared contracts from the deprecated `useDataStore` file before broad consumer migration.
@@ -94,5 +95,5 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-03-10 01:09 UTC
-Stopped at: Completed 51-08-PLAN.md
+Stopped at: Completed 51-04-PLAN.md
 Resume file: None
