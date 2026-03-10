@@ -1,7 +1,8 @@
 'use client';
 
 import { getCrimeTypeName, getDistrictName } from '@/lib/category-maps';
-import { useDataStore } from '@/store/useDataStore';
+import { DataPoint } from '@/lib/data/types';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { normalizedToEpochSeconds, toEpochSeconds } from '@/lib/time-domain';
@@ -11,7 +12,7 @@ interface PointInspectorProps {
 }
 
 export function PointInspector({ pointId }: PointInspectorProps) {
-  const { data, columns, minTimestampSec, maxTimestampSec } = useDataStore();
+  const { data, columns, minTimestampSec, maxTimestampSec } = useTimelineDataStore();
 
   const point = useMemo(() => {
     // If using columnar data, assume pointId is the index
@@ -34,7 +35,7 @@ export function PointInspector({ pointId }: PointInspectorProps) {
       return data[index];
     }
 
-    return data.find(p => p.id === pointId);
+    return data.find((p) => p.id === pointId);
   }, [pointId, data, columns]);
 
   const timestampLabel = useMemo(() => {
@@ -53,7 +54,7 @@ export function PointInspector({ pointId }: PointInspectorProps) {
       return { primary: 'Time not available', secondary: normalized.toFixed(2) };
     }
 
-    const raw = (point as any).timestamp;
+    const raw: unknown = (point as DataPoint).timestamp;
     if (raw instanceof Date) {
       return { primary: raw.toLocaleString(), secondary: null };
     }

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
@@ -10,16 +10,26 @@ import { focusTimelineRange } from '@/lib/slice-utils';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 
+const formatDuration = (seconds: number): string => {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+  return `${Math.round(seconds / 86400)}d`;
+};
+
 export type BurstWindow = {
   id: string;
   start: number;
   end: number;
   peak: number;
+  count: number;
+  duration: number;
 };
 
 export const useBurstWindows = () => {
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
+  const countMap = useAdaptiveStore((state) => state.countMap);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
   const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
@@ -38,34 +48,39 @@ export const useBurstWindows = () => {
 
     let startIdx: number | null = null;
     let peak = 0;
+    let windowCount = 0;
 
     for (let i = 0; i < selectedMap.length; i += 1) {
       const value = Number.isFinite(selectedMap[i]) ? selectedMap[i] : 0;
+      if (countMap && Number.isFinite(countMap[i])) {
+        windowCount += countMap[i];
+      }
       if (value >= burstCutoff) {
         if (startIdx === null) startIdx = i;
         peak = Math.max(peak, value);
       } else if (startIdx !== null) {
         const start = mapDomain[0] + startIdx * step;
         const end = mapDomain[0] + i * step;
-        windows.push({ id: `${startIdx}-${i}`, start, end, peak });
+        windows.push({ id: `${startIdx}-${i}`, start, end, peak, count: Math.round(windowCount), duration: end - start });
         startIdx = null;
         peak = 0;
+        windowCount = 0;
       }
     }
 
     if (startIdx !== null) {
       const start = mapDomain[0] + startIdx * step;
       const end = mapDomain[1];
-      windows.push({ id: `${startIdx}-end`, start, end, peak });
+      windows.push({ id: `${startIdx}-end`, start, end, peak, count: Math.round(windowCount), duration: end - start });
     }
 
     return windows.sort((a, b) => b.peak - a.peak).slice(0, 10);
-  }, [burstCutoff, burstMetric, burstinessMap, densityMap, mapDomain]);
+  }, [burstCutoff, burstMetric, burstinessMap, countMap, densityMap, mapDomain]);
 };
 
 export function BurstList() {
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const setRange = useTimeStore((state) => state.setRange);
@@ -89,7 +104,7 @@ export function BurstList() {
   const isNormalizedDomain = mapDomain[1] < 1000;
   const isEpochMilliseconds = mapDomain[1] > 1e11;
 
-  const toNormalizedRange = (start: number, end: number): [number, number] | null => {
+  const toNormalizedRange = useCallback((start: number, end: number): [number, number] | null => {
     if (!Number.isFinite(start) || !Number.isFinite(end)) {
       return null;
     }
@@ -121,7 +136,7 @@ export function BurstList() {
       Math.max(0, Math.min(100, Math.min(normalizedStart, normalizedEnd))),
       Math.max(0, Math.min(100, Math.max(normalizedStart, normalizedEnd))),
     ];
-  };
+  }, [isEpochMilliseconds, isNormalizedDomain, maxTimestampSec, minTimestampSec]);
 
   const burstMatches = useMemo(() => {
     const lookup = new Map<string, string | null>();
@@ -135,7 +150,7 @@ export function BurstList() {
       lookup.set(window.id, match?.id ?? null);
     }
     return lookup;
-  }, [burstWindows, findMatchingSlice, isEpochMilliseconds, isNormalizedDomain, maxTimestampSec, minTimestampSec]);
+  }, [burstWindows, findMatchingSlice, toNormalizedRange]);
 
   const formatWindow = (start: number, end: number) => {
     let startEpoch: number;
@@ -260,7 +275,13 @@ export function BurstList() {
             <div className="flex items-center justify-between text-muted-foreground">
               <span>Burst {index + 1}</span>
               <span className="inline-flex items-center gap-2">
-                <span>Peak {Math.round(window.peak * 100)}%</span>
+                <span title={burstMetric === 'density' ? 'Crime density relative to densest area' : 'Temporal clustering intensity'}>
+                  Peak {Math.round(window.peak * 100)}%
+                </span>
+                <span className="text-muted-foreground/60">|</span>
+                <span>{window.count} crimes</span>
+                <span className="text-muted-foreground/60">|</span>
+                <span>{formatDuration(window.duration)}</span>
                 {isLinked ? (
                   <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                     Linked

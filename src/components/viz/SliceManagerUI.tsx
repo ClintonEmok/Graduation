@@ -1,7 +1,7 @@
 'use client';
 
 import { useSliceStore } from '@/store/useSliceStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useHeatmapStore } from '@/store/useHeatmapStore';
 import { useClusterStore } from '@/store/useClusterStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
@@ -29,7 +29,7 @@ interface SliceManagerUIProps {
 
 export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
   const { slices, addSlice, removeSlice, updateSlice, toggleLock, toggleVisibility, clearSlices } = useSliceStore();
-  const { minTimestampSec, maxTimestampSec } = useDataStore();
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore();
   const { isEnabled: isHeatmapFeatureEnabled } = useFeatureFlagsStore();
   
   const { 

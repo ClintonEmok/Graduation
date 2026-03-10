@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
 
@@ -17,10 +17,10 @@ const formatInterval = (seconds: number) => {
 
 export function BurstDetails() {
   const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const data = useTimelineDataStore((state) => state.data);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
 
   const stats = useMemo(() => {
     if (selectedBurstWindows.length === 0) return null;
