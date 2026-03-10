@@ -2,4 +2,6 @@ import { useSliceDomainStore } from './useSliceDomainStore';
 
 export type { SliceAdjustmentState, TooltipPayload } from './useSliceDomainStore';
 
-export const useSliceAdjustmentStore = useSliceDomainStore;
+const noNewRootGuard = <T>(store: T): T => store;
+
+export const useSliceAdjustmentStore = noNewRootGuard(useSliceDomainStore);

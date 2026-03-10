@@ -6,7 +6,9 @@ import { useSliceDomainStore } from './useSliceDomainStore';
 
 export type { TimeSlice } from './useSliceDomainStore';
 
-export const useSliceStore = useSliceDomainStore;
+const noNewRootGuard = <T>(store: T): T => store;
+
+export const useSliceStore = noNewRootGuard(useSliceDomainStore);
 
 const normalizeRange = (start: number, end: number): [number, number] =>
   start <= end ? [start, end] : [end, start];

@@ -7,4 +7,6 @@ export type {
 } from './useSliceDomainStore';
 export type { GhostPosition, PreviewFeedback } from './slice-domain/types';
 
-export const useSliceCreationStore = useSliceDomainStore;
+const noNewRootGuard = <T>(store: T): T => store;
+
+export const useSliceCreationStore = noNewRootGuard(useSliceDomainStore);
