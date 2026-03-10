@@ -15,6 +15,7 @@ export interface WorkerOutput {
   densityMap: Float32Array;
   burstinessMap: Float32Array;
   warpMap: Float32Array;
+  countMap: Float32Array;
 }
 
 self.onmessage = (e: MessageEvent<WorkerInput>) => {
@@ -35,12 +36,12 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
       emptyWarp[i] = tStart + (i / denom) * tSpan;
     }
     self.postMessage(
-      { requestId, densityMap: emptyDensity, burstinessMap: emptyBurstiness, warpMap: emptyWarp }
+      { requestId, densityMap: emptyDensity, burstinessMap: emptyBurstiness, warpMap: emptyWarp, countMap: emptyDensity }
     );
     return;
   }
 
-  // 1. Binning (Histogram)
+  // 1. Binning (Histogram) - raw counts
   const density = new Float32Array(binCount);
 
   for (let i = 0; i < timestamps.length; i++) {
@@ -141,6 +142,6 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
   }
 
   self.postMessage(
-    { requestId, densityMap: normalizedDensity, burstinessMap, warpMap }
+    { requestId, densityMap: normalizedDensity, burstinessMap, warpMap, countMap: smoothedDensity }
   );
 };

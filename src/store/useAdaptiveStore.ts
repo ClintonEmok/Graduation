@@ -7,6 +7,7 @@ interface AdaptiveState {
   densityScope: 'viewport' | 'global';
   densityMap: Float32Array | null;
   burstinessMap: Float32Array | null;
+  countMap: Float32Array | null;
   warpMap: Float32Array | null;
   isComputing: boolean;
   burstMetric: 'density' | 'burstiness';
@@ -23,7 +24,8 @@ interface AdaptiveState {
     densityMap: Float32Array,
     burstinessMap: Float32Array,
     warpMap: Float32Array,
-    domain: [number, number]
+    domain: [number, number],
+    countMap?: Float32Array | null
   ) => void;
   computeMaps: (timestamps: Float32Array, domain: [number, number]) => void;
 }
@@ -53,11 +55,12 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
     // Setup listener
     if (worker) {
         worker.onmessage = (e) => {
-            const { requestId, densityMap, burstinessMap, warpMap } = e.data as {
+            const { requestId, densityMap, burstinessMap, warpMap, countMap } = e.data as {
               requestId: number;
               densityMap: Float32Array;
               burstinessMap: Float32Array;
               warpMap: Float32Array;
+              countMap: Float32Array;
             };
             if (requestId !== activeRequestId) {
               return;
@@ -65,6 +68,7 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
             set((state) => ({
               densityMap,
               burstinessMap,
+              countMap,
               warpMap,
               isComputing: false,
               burstCutoff: computePercentile(
@@ -81,6 +85,7 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
       densityScope: 'viewport',
       densityMap: null,
       burstinessMap: null,
+      countMap: null,
       warpMap: null,
       isComputing: false,
       burstMetric: 'density',
@@ -109,12 +114,13 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           burstCutoff: resolveBurstMap(state) ? computePercentile(resolveBurstMap(state) as Float32Array, v) : state.burstCutoff
         })),
 
-      setPrecomputedMaps: (densityMap, burstinessMap, warpMap, domain) =>
+      setPrecomputedMaps: (densityMap, burstinessMap, warpMap, domain, countMap = null) =>
         {
           activeRequestId += 1;
           set((state) => ({
             densityMap,
             burstinessMap,
+            countMap,
             warpMap,
             mapDomain: domain,
             isComputing: false,
