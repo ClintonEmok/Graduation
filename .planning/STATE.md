@@ -12,7 +12,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 Phase: **51 of 51** (Store Consolidation)
 Plan: **11 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-07 hook/lib canonical timeline-store migration and import gate
+Last activity: 2026-03-10 - Completed 51-09 supporting viz overlay/inspector migration off deprecated data store imports
 
 Progress: **███████████████████░** 185/192 plans complete (96.4%)
 
@@ -83,6 +83,8 @@ Progress: **███████████████████░** 185/1
 - [Phase 51]: Update `useSliceStore` normalization fallback to read timestamp bounds from `useTimelineDataStore`. — This keeps the slice compatibility adapter independent from `useDataStore` before 51-12 deletion gating.
 - [Phase 51]: Keep hook/lib consumer rewires parity-safe by migrating ownership/import paths to `useTimelineDataStore` and shared selectors without changing selection/density/slice-stat semantics. — This lowers deprecated-store coupling while preserving user-visible behavior.
 - [Phase 51]: Record explicit zero-import gate evidence for the migrated hook/lib batch (`@/store/useDataStore` count = 0). — This provides deterministic readiness evidence for staged deprecated-store deletion.
+- [Phase 51]: Migrate supporting viz overlays and inspector consumers (`BurstDetails`, `BurstList`, `HeatmapOverlay`, `PointInspector`, `SliceManagerUI`) to `useTimelineDataStore`. — This removes another supporting-viz batch from deprecated `useDataStore` ownership while preserving behavior parity.
+- [Phase 51]: Treat targeted lint verification as a blocking migration gate for supporting viz files and fix hook/memoization blockers inline. — This keeps store-retirement work aligned with existing quality gates.
 
 ## Blockers/Concerns
 
@@ -91,5 +93,5 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-03-10 01:08 UTC
-Stopped at: Completed 51-07-PLAN.md
+Stopped at: Completed 51-09-PLAN.md
 Resume file: None
