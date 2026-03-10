@@ -2,7 +2,7 @@
 
 import React, { useCallback } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { resolutionToNormalizedStep } from '@/lib/time-domain';
 import { TimelineContainer } from '@/components/timeline/TimelineContainer';
 import { 
@@ -27,8 +27,8 @@ export function TimeControls() {
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeResolution = useTimeStore((state) => state.timeResolution);
 
   const handleTimeChange = useCallback(

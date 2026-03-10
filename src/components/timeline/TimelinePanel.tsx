@@ -16,7 +16,7 @@ import { DualTimeline } from './DualTimeline';
 import { useLogger } from '@/hooks/useLogger';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
 
 export function TimelinePanel() {
@@ -35,8 +35,8 @@ export function TimelinePanel() {
     setSpeed,
     setTimeScaleMode
   } = useTimeStore();
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
   const { isComputing } = useDebouncedDensity();

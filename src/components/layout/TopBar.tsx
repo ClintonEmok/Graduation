@@ -7,7 +7,7 @@ import { FloatingToolbar } from '@/components/viz/FloatingToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDraggable } from '@/hooks/useDraggable';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 
@@ -16,7 +16,7 @@ export function TopBar() {
   const [toolbarDocked, setToolbarDocked] = useState(true);
   const [adaptiveOpen, setAdaptiveOpen] = useState(false);
   const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
-  const { columns, data, generateMockData, isMock, dataCount } = useDataStore();
+  const { columns, data, generateMockData, isMock, dataCount } = useTimelineDataStore();
   const activeFilterCount = useFilterStore((state) => state.getActiveFilterCount());
   const resetFilters = useFilterStore((state) => state.resetFilters);
   
