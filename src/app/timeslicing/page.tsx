@@ -257,8 +257,6 @@ export default function TimeslicingPage() {
     return selectionTimestamps.filter((_, index) => index % step === 0);
   }, [selectionTimestamps]);
 
-  const minTs = useTimelineDataStore((s) => s.minTimestampSec);
-  const maxTs = useTimelineDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
   const clearSlices = useSliceStore((s) => s.clearSlices);
   
