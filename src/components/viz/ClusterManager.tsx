@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
-import { useDataStore, selectFilteredData, FilteredPoint } from '@/store/useDataStore';
+import { useDataStore } from '@/store/useDataStore';
+import { selectFilteredData } from '@/lib/data/selectors';
+import { FilteredPoint } from '@/lib/data/types';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useClusterStore, Cluster } from '@/store/useClusterStore';
 import { useTimeStore } from '@/store/useTimeStore';

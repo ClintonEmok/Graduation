@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
-import { useDataStore, selectFilteredData } from '@/store/useDataStore';
+import { useDataStore } from '@/store/useDataStore';
+import { selectFilteredData } from '@/lib/data/selectors';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTrajectoryStore } from '@/store/useTrajectoryStore';
 import { groupToTrajectories } from '@/lib/trajectories';
