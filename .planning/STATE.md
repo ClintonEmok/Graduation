@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **51 of 51** (Store Consolidation)
-Plan: **1 of 12** in current phase
+Plan: **3 of 12** in current phase
 Status: **In progress**
-Last activity: 2026-03-10 - Completed 51-01 bounded slice-domain store foundation and dependency audit
+Last activity: 2026-03-10 - Completed 51-03 timeline data contract/store extraction and compatibility shim
 
-Progress: **████████████████████░** 179/180 plans complete (99.4%)
+Progress: **███████████████████░** 180/192 plans complete (93.8%)
 
 ## Milestone Status
 
@@ -71,6 +71,9 @@ Progress: **████████████████████░** 17
 - [Phase 51]: Consolidate authored slice lifecycle, selection, creation preview, and adjustment interaction state into one bounded `useSliceDomainStore` composed from internal slices. — This establishes a single ownership boundary before consumer migration.
 - [Phase 51]: Apply `persist` once at the bounded store boundary and partialize to authored `slices` only. — This preserves persisted user-authored slice data while keeping drag/hover/selection interaction state transient.
 - [Phase 51]: Export explicit slice-domain selector helpers from a single store entrypoint. — This supports parity-safe consumer rewires with fine-grained subscriptions instead of broad store selections.
+- [Phase 51]: Move `DataPoint`, `ColumnarData`, `FilteredPoint`, and `selectFilteredData` ownership to `src/lib/data/*` modules. — This unanchors shared contracts from the deprecated `useDataStore` file before broad consumer migration.
+- [Phase 51]: Introduce `useTimelineDataStore` as canonical timeline metadata/loading surface and keep `useDataStore` as a temporary re-export shim. — This preserves import compatibility while reducing deletion blast radius for 51-12.
+- [Phase 51]: Rewire immediate trajectory/clustering consumers to shared selector/type imports from `src/lib/data/*`. — This validates extraction parity on key visualization paths during migration.
 
 ## Blockers/Concerns
 
@@ -78,6 +81,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10 00:53 UTC
-Stopped at: Completed 51-01-PLAN.md
+Last session: 2026-03-10 00:59 UTC
+Stopped at: Completed 51-03-PLAN.md
 Resume file: None
