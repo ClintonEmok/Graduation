@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import * as THREE from "three";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
 import { useCoordinationStore } from "@/store/useCoordinationStore";
-import { useDataStore } from "@/store/useDataStore";
+import { useTimelineDataStore } from "@/store/useTimelineDataStore";
 import { useFilterStore } from "@/store/useFilterStore";
 import { useTimeStore } from "@/store/useTimeStore";
 
@@ -31,9 +31,9 @@ const sampleWarpSeconds = (
 };
 
 export function TimelineTest3DPoints() {
-  const data = useDataStore((state) => state.data);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const data = useTimelineDataStore((state) => state.data);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);

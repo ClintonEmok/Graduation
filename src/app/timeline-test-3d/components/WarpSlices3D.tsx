@@ -3,7 +3,7 @@
 import { Html } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
-import { useDataStore } from "@/store/useDataStore";
+import { useTimelineDataStore } from "@/store/useTimelineDataStore";
 import { useTimeStore } from "@/store/useTimeStore";
 import { useWarpSliceStore } from "@/store/useWarpSliceStore";
 
@@ -34,8 +34,8 @@ export function WarpSlices3D() {
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);

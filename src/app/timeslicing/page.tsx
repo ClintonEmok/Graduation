@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useMeasure } from '@/hooks/useMeasure';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { useCrimeData } from '@/hooks/useCrimeData';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
@@ -99,8 +99,8 @@ export default function TimeslicingPage() {
   const isDev = process.env.NODE_ENV !== 'production';
   
   // Get data from data store for fallback
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   
   // mapDomain defaults to [0, 100] in adaptive store, which is not an epoch range.
   // Only treat adaptive domain as valid when it looks like real epoch seconds.
@@ -197,7 +197,7 @@ export default function TimeslicingPage() {
       };
     });
 
-    useDataStore.setState({
+    useTimelineDataStore.setState({
       data: points,
       columns: null,
       minTimestampSec: domainStartSec,
@@ -257,8 +257,8 @@ export default function TimeslicingPage() {
     return selectionTimestamps.filter((_, index) => index % step === 0);
   }, [selectionTimestamps]);
 
-  const minTs = useDataStore((s) => s.minTimestampSec);
-  const maxTs = useDataStore((s) => s.maxTimestampSec);
+  const minTs = useTimelineDataStore((s) => s.minTimestampSec);
+  const maxTs = useTimelineDataStore((s) => s.maxTimestampSec);
   const addSlice = useSliceStore((s) => s.addSlice);
   const clearSlices = useSliceStore((s) => s.clearSlices);
   

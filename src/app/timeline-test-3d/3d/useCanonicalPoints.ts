@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { useDataStore } from "@/store/useDataStore";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
+import { selectFilteredData } from "@/lib/data/selectors";
+import { useTimelineDataStore } from "@/store/useTimelineDataStore";
 
 export interface CanonicalPoint {
   id: string;
@@ -27,11 +28,28 @@ export interface CanonicalPointsResult {
 }
 
 export function useCanonicalPoints(maxPoints = 10000): CanonicalPointsResult {
-  const data = useDataStore((state) => state.data);
+  const data = useTimelineDataStore((state) => state.data);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   return useMemo(() => {
-    if (!data || data.length === 0) {
+    const filteredPoints = selectFilteredData(
+      {
+        data,
+        columns,
+        minTimestampSec,
+        maxTimestampSec,
+      },
+      {
+        selectedTypes: [],
+        selectedDistricts: [],
+        selectedTimeRange: null,
+      }
+    );
+
+    if (!filteredPoints || filteredPoints.length === 0) {
       return {
         points: [],
         bounds: { minX: 0, maxX: 0, minZ: 0, maxZ: 0, minTime: 0, maxTime: 0 },
@@ -41,23 +59,37 @@ export function useCanonicalPoints(maxPoints = 10000): CanonicalPointsResult {
     const hasValidAdaptiveDomain =
       mapDomain[1] > mapDomain[0] && Number.isFinite(mapDomain[0]);
 
-    const sampledData =
-      data.length > maxPoints
-        ? data.filter((_, i) => i % Math.ceil(data.length / maxPoints) === 0).slice(0, maxPoints)
-        : data;
+    const sampledFilteredPoints =
+      filteredPoints.length > maxPoints
+        ? filteredPoints
+            .filter((_, i) => i % Math.ceil(filteredPoints.length / maxPoints) === 0)
+            .slice(0, maxPoints)
+        : filteredPoints;
 
-    const points: CanonicalPoint[] = sampledData.map((point) => {
+    const points: CanonicalPoint[] = sampledFilteredPoints.map((filteredPoint) => {
+      const sourcePoint = data[filteredPoint.originalIndex];
+      if (!sourcePoint) {
+        return {
+          id: String(filteredPoint.originalIndex),
+          timestamp: filteredPoint.y,
+          x: filteredPoint.x,
+          y: 0,
+          z: filteredPoint.z,
+          type: "Unknown",
+        };
+      }
+
       const adaptiveX = hasValidAdaptiveDomain
-        ? ((point.timestamp - mapDomain[0]) / (mapDomain[1] - mapDomain[0])) * 200 - 100
+        ? ((sourcePoint.timestamp - mapDomain[0]) / (mapDomain[1] - mapDomain[0])) * 200 - 100
         : undefined;
 
       return {
-        id: point.id,
-        timestamp: point.timestamp,
-        x: point.x,
-        y: point.y,
-        z: point.z,
-        type: point.type,
+        id: sourcePoint.id,
+        timestamp: sourcePoint.timestamp,
+        x: sourcePoint.x,
+        y: sourcePoint.y,
+        z: sourcePoint.z,
+        type: sourcePoint.type,
         adaptiveX,
       };
     });
@@ -89,5 +121,5 @@ export function useCanonicalPoints(maxPoints = 10000): CanonicalPointsResult {
         maxTime: maxTime === -Infinity ? 0 : maxTime,
       },
     };
-  }, [data, mapDomain, maxPoints]);
+  }, [columns, data, mapDomain, maxPoints, maxTimestampSec, minTimestampSec]);
 }

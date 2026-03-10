@@ -11,7 +11,7 @@ import { BurstList } from "@/components/viz/BurstList";
 import { useCrimeData } from "@/hooks/useCrimeData";
 import { useViewportStore } from "@/lib/stores/viewportStore";
 import { useAdaptiveStore } from "@/store/useAdaptiveStore";
-import { useDataStore } from "@/store/useDataStore";
+import { useTimelineDataStore } from "@/store/useTimelineDataStore";
 import { useFilterStore } from "@/store/useFilterStore";
 import { useSliceStore } from "@/store/useSliceStore";
 import {
@@ -36,8 +36,8 @@ export default function TimelineTest3DPage() {
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const warpSlices = useWarpSliceStore((state) => state.slices);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
@@ -100,7 +100,7 @@ export default function TimelineTest3DPage() {
       };
     });
 
-    useDataStore.setState({
+    useTimelineDataStore.setState({
       data: points,
       columns: null,
       minTimestampSec: domainStartSec,
