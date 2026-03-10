@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import debounce from 'lodash.debounce';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 
 export interface UseDebouncedDensityOptions {
@@ -14,7 +14,7 @@ export function useDebouncedDensity(options: UseDebouncedDensityOptions = {}) {
   const delay = options.delay ?? DEFAULT_DELAY_MS;
   const computeMaps = useAdaptiveStore((state) => state.computeMaps);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
-  const columns = useDataStore((state) => state.columns);
+  const columns = useTimelineDataStore((state) => state.columns);
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);

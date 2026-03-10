@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useSliceStore } from '@/store/useSliceStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { getCrimeTypeName, getDistrictName } from '@/lib/category-maps';
 
 export interface SliceStats {
@@ -12,7 +12,8 @@ export interface SliceStats {
 
 export function useSliceStats(sliceId: string | null): SliceStats {
   const slice = useSliceStore((s) => s.slices.find((sl) => sl.id === sliceId));
-  const { columns, isLoading: isDataLoading } = useDataStore();
+  const columns = useTimelineDataStore((state) => state.columns);
+  const isDataLoading = useTimelineDataStore((state) => state.isLoading);
 
   return useMemo(() => {
     if (!sliceId || !slice || !columns || isDataLoading) {

@@ -1,4 +1,4 @@
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { unproject } from '@/lib/projection';
 
@@ -44,7 +44,7 @@ const resolveLatLon = (
 };
 
 export const resolvePointByIndex = (index: number): SelectionPoint | null => {
-  const { columns, data, minTimestampSec, maxTimestampSec } = useDataStore.getState();
+  const { columns, data, minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
 
   if (columns) {
     if (index < 0 || index >= columns.length) return null;
@@ -70,7 +70,7 @@ export const resolvePointByIndex = (index: number): SelectionPoint | null => {
 export const findNearestIndexByTime = (
   targetSec: number
 ): { index: number; distance: number; point: SelectionPoint } | null => {
-  const { columns, data, minTimestampSec, maxTimestampSec } = useDataStore.getState();
+  const { columns, data, minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
 
   if (columns) {
     const count = columns.length;
@@ -116,7 +116,7 @@ export const findNearestIndexByScenePosition = (
   x: number,
   z: number
 ): { index: number; distance: number; point: SelectionPoint } | null => {
-  const { columns, data } = useDataStore.getState();
+  const { columns, data } = useTimelineDataStore.getState();
 
   if (columns) {
     const count = columns.length;
