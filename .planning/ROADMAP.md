@@ -198,13 +198,13 @@ Plans:
 
 ### Phase 53: Add dedicated timeslicing algos route
 
-**Goal:** Add a dedicated `/timeslicing-algos` route focused on core timeslicing algorithm behavior and timeline interaction testing, with deterministic route-to-mode wiring.
+**Goal:** Add a dedicated `/timeslicing-algos` route focused on core timeslicing algorithm behavior and timeline interaction testing, including in-route comparison of `uniform-time` and `uniform-events`, with a clear extension point for future methods (for example STKDE/KDE).
 **Depends on:** Phase 52
 **Plans:** 2 plans
 
 Plans:
-- [ ] 53-01-PLAN.md — Build a focused `/timeslicing-algos` route shell for algorithm + timeline testing (no full-auto workflow UI)
-- [ ] 53-02-PLAN.md — Wire and test centralized `/timeslicing` + `/timeslicing-algos` route-to-binning resolution in MainScene
+- [ ] 53-01-PLAN.md — Build a focused `/timeslicing-algos` route shell for algorithm + timeline testing with both mode controls and a future-friendly algorithm selector contract (no full-auto workflow UI)
+- [ ] 53-02-PLAN.md — Wire and test centralized route-to-binning resolution with `/timeslicing-algos` override support for both modes
 
 ---
 
