@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **52 of 52** (Uniform-Events Binning for Timeslicing)
-Plan: **3 of 3** in current phase
+Plan: **4 of 4** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-11 - Completed 52-03 global adaptive mode-aware cache parity and regression coverage
+Last activity: 2026-03-11 - Completed 52-04 global adaptive cache insert SQL parity blocker fix
 
-Progress: **████████████████████** 192/192 plans complete (100.0%)
+Progress: **███████████████████░** 194/196 plans complete (99.0%)
 
 ## Milestone Status
 
@@ -100,6 +100,8 @@ Progress: **████████████████████** 192/1
 - [Phase 52]: Extended global adaptive cache keys with binning mode suffix to isolate uniform-time and uniform-events entries. — Prevents cross-mode cache collisions when density scope switches or callers request different binning modes.
 - [Phase 52]: Default missing binning mode to uniform-time in global adaptive API/query path. — Preserves backward compatibility for existing callers that do not pass mode.
 - [Phase 52]: Hydrate countMap with global precomputed payloads in MainScene. — Keeps global and viewport adaptive contract parity for downstream consumers.
+- [Phase 52]: Keep global adaptive cache insert SQL column order unchanged and fix VALUES placeholders to 11/11 parity. — Resolves cache-miss persistence failure risk without widening query-layer behavior changes.
+- [Phase 52]: Enforce global adaptive cache insert parity through deterministic builder-level SQL parsing tests. — Prevents future column/placeholder drift from reintroducing runtime SQL failures.
 
 ## Blockers/Concerns
 
@@ -107,6 +109,6 @@ Progress: **████████████████████** 192/1
 
 ## Session Continuity
 
-Last session: 2026-03-11 17:29 UTC
-Stopped at: Completed 52-03-PLAN.md
+Last session: 2026-03-11 19:46 UTC
+Stopped at: Completed 52-04-PLAN.md
 Resume file: None
