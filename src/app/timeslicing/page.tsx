@@ -210,7 +210,9 @@ export default function TimeslicingPage() {
       isMock: false,
     });
 
-    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec]);
+    useAdaptiveStore
+      .getState()
+      .computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: 'uniform-events' });
   }, [crimes, domainEndSec, domainStartSec]);
 
   // Get time domain for slice creation - prefer selection range, fallback to viewport
