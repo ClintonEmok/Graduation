@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **52 of 52** (Uniform-Events Binning for Timeslicing)
-Plan: **1 of 3** in current phase
+Plan: **2 of 3** in current phase
 Status: **In progress**
-Last activity: 2026-03-11 - Completed 52-01 mode-aware adaptive binning contract and worker foundation
+Last activity: 2026-03-11 - Completed 52-02 timeslicing uniform-events wiring and regression guard
 
-Progress: **███████████████████░** 189/192 plans complete (98.4%)
+Progress: **███████████████████░** 190/192 plans complete (99.0%)
 
 ## Milestone Status
 
@@ -95,6 +95,8 @@ Progress: **███████████████████░** 189/1
 - [Phase 52]: Kept adaptive compute calls backward-compatible by defaulting missing `binningMode` to `uniform-time` at store/worker boundaries. — Existing timeline-test, timeline-test-3d, and MainScene call sites remain unchanged.
 - [Phase 52]: Standardized worker outputs to preserve `densityMap`/`countMap`/`burstinessMap`/`warpMap` shape while adding uniform-events internals. — Consumers can adopt mode overrides without output-contract branching.
 - [Phase 52]: Locked `countMap` to raw per-bin event counts and treated density smoothing/normalization as a separate concern. — This preserves count semantics for burst reporting while still supporting adaptive warp weighting.
+- [Phase 52]: Scoped `binningMode: 'uniform-events'` override to `/timeslicing` route recompute wiring. — Non-timeslicing routes preserve default `uniform-time` behavior without call-site churn.
+- [Phase 52]: Added route-level timeslicing mode-intent regression coverage in `page.binning-mode.test.ts`. — Refactors now fail fast if explicit uniform-events wiring is removed.
 
 ## Blockers/Concerns
 
@@ -102,6 +104,6 @@ Progress: **███████████████████░** 189/1
 
 ## Session Continuity
 
-Last session: 2026-03-11 17:21 UTC
-Stopped at: Completed 52-01-PLAN.md
+Last session: 2026-03-11 17:25 UTC
+Stopped at: Completed 52-02-PLAN.md
 Resume file: None
