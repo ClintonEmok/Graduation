@@ -128,7 +128,7 @@ export const buildGlobalAdaptiveCacheQueries = (
         count_json,
         burstiness_json,
         warp_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     params: [
       payload.cacheKey,
