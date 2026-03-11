@@ -27,7 +27,7 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - [x] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity. (completed 2026-03-09)
 - [x] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization. (completed 2026-03-09)
 - [x] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths. (completed 2026-03-10)
-- [ ] **Phase 52: Uniform-Events Binning for Timeslicing** - Add quantile-style event-balanced binning alongside existing uniform-time bins.
+- [x] **Phase 52: Uniform-Events Binning for Timeslicing** - Add quantile-style event-balanced binning alongside existing uniform-time bins. (completed 2026-03-11)
 
 ## Phase Details
 
@@ -194,7 +194,7 @@ Plans:
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
 | 50 | v2.1 | Complete    | 2026-03-09 | - |
 | 51 | 12/12 | Complete    | 2026-03-10 | - |
-| 52 | v2.2 | 0/4 | Planned | - |
+| 52 | v2.2 | Complete    | 2026-03-11 | - |
 
 ---
 
