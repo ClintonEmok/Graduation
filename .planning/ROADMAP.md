@@ -170,11 +170,12 @@ Plans:
   1. Timeslicing can request uniform-events bins (equal-event-target bins) in addition to uniform-time bins.
   2. Worker/store contracts expose count and density outputs for both modes with parity-safe defaults.
   3. Existing flows remain backward-compatible when uniform-time mode is used.
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
 - [ ] 52-01-PLAN.md — Add mode-aware adaptive worker/store contract and uniform-events binning algorithm
 - [ ] 52-02-PLAN.md — Wire `/timeslicing` to request uniform-events bins with route-level regression guard
 - [ ] 52-03-PLAN.md — Make global adaptive precompute/cache mode-aware with count+density parity outputs
+- [ ] 52-04-PLAN.md — Close verification gap by fixing global cache insert SQL parity and adding regression guard
 
 ## Progress
 
@@ -193,7 +194,7 @@ Plans:
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
 | 50 | v2.1 | Complete    | 2026-03-09 | - |
 | 51 | 12/12 | Complete    | 2026-03-10 | - |
-| 52 | v2.2 | 0/3 | Planned | - |
+| 52 | v2.2 | 0/4 | Planned | - |
 
 ---
 
