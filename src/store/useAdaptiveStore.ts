@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 
+export type AdaptiveBinningMode = 'uniform-time' | 'uniform-events';
+
+interface ComputeMapsOptions {
+  binningMode?: AdaptiveBinningMode;
+}
+
 interface AdaptiveState {
   warpFactor: number; // 0 = Linear, 1 = Fully Adaptive
   warpSource: 'density' | 'slice-authored';
@@ -27,7 +33,7 @@ interface AdaptiveState {
     domain: [number, number],
     countMap?: Float32Array | null
   ) => void;
-  computeMaps: (timestamps: Float32Array, domain: [number, number]) => void;
+  computeMaps: (timestamps: Float32Array, domain: [number, number], options?: ComputeMapsOptions) => void;
 }
 
 const computePercentile = (values: Float32Array, percentile: number): number => {
@@ -131,10 +137,11 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           }));
         },
       
-      computeMaps: (timestamps, domain) => {
+      computeMaps: (timestamps, domain, options) => {
         if (!worker) return;
         activeRequestId += 1;
         const requestId = activeRequestId;
+        const binningMode: AdaptiveBinningMode = options?.binningMode ?? 'uniform-time';
         set({ isComputing: true, mapDomain: domain });
         
         // Copy data to avoid detaching the original buffer
@@ -146,7 +153,8 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           domain,
           config: {
             binCount: ADAPTIVE_BIN_COUNT,
-            kernelWidth: ADAPTIVE_KERNEL_WIDTH
+            kernelWidth: ADAPTIVE_KERNEL_WIDTH,
+            binningMode
           }
         }, [timestampsCopy.buffer]);
       }
