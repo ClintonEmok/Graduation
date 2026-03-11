@@ -165,7 +165,7 @@ describe('aggregation decomposition compatibility and safety', () => {
     expect(built.readByKey.sql).toContain('WHERE cache_key = ?');
     expect(built.readByKey.sql).not.toContain("global:60:8' OR 1=1 --");
     expect(built.readByKey.params).toEqual(["global:60:8' OR 1=1 --"]);
-    expect(built.insert.sql).toContain('VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    expect(built.insert.sql).toContain('VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     expect(built.insert.params).toEqual([
       "global:60:8' OR 1=1 --",
       60,
@@ -179,6 +179,35 @@ describe('aggregation decomposition compatibility and safety', () => {
       '[0.3,0.4]',
       '[10,15]',
     ]);
+  });
+
+  it('keeps adaptive-cache insert column and placeholder counts in parity', () => {
+    const built = buildGlobalAdaptiveCacheQueries('adaptive_global_cache', {
+      cacheKey: 'global:60:8:uniform-time',
+      binCount: 60,
+      kernelWidth: 8,
+      binningMode: 'uniform-time',
+      domain: [10, 20],
+      rowCount: 42,
+      densityJson: '[0.1,0.2]',
+      countJson: '[1,2]',
+      burstJson: '[0.3,0.4]',
+      warpJson: '[10,15]',
+    });
+
+    const insertSql = built.insert.sql.replace(/\s+/g, ' ').trim();
+    const columnsMatch = insertSql.match(/INSERT INTO .*?\((.*?)\) VALUES/i);
+    const valuesMatch = insertSql.match(/VALUES\s*\((.*?)\)/i);
+
+    expect(columnsMatch).not.toBeNull();
+    expect(valuesMatch).not.toBeNull();
+
+    const columnCount = columnsMatch?.[1].split(',').map((column) => column.trim()).filter(Boolean).length ?? 0;
+    const placeholderCount = valuesMatch?.[1].match(/\?/g)?.length ?? 0;
+
+    expect(columnCount).toBe(11);
+    expect(placeholderCount).toBe(11);
+    expect(placeholderCount).toBe(columnCount);
   });
 
   it('uses mode-sensitive cache keys and defaults mode to uniform-time', async () => {
