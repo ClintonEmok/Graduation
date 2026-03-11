@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **52 of 52** (Uniform-Events Binning for Timeslicing)
-Plan: **2 of 3** in current phase
-Status: **In progress**
-Last activity: 2026-03-11 - Completed 52-02 timeslicing uniform-events wiring and regression guard
+Plan: **3 of 3** in current phase
+Status: **Phase complete**
+Last activity: 2026-03-11 - Completed 52-03 global adaptive mode-aware cache parity and regression coverage
 
-Progress: **███████████████████░** 190/192 plans complete (99.0%)
+Progress: **████████████████████** 192/192 plans complete (100.0%)
 
 ## Milestone Status
 
@@ -97,6 +97,9 @@ Progress: **███████████████████░** 190/1
 - [Phase 52]: Locked `countMap` to raw per-bin event counts and treated density smoothing/normalization as a separate concern. — This preserves count semantics for burst reporting while still supporting adaptive warp weighting.
 - [Phase 52]: Scoped `binningMode: 'uniform-events'` override to `/timeslicing` route recompute wiring. — Non-timeslicing routes preserve default `uniform-time` behavior without call-site churn.
 - [Phase 52]: Added route-level timeslicing mode-intent regression coverage in `page.binning-mode.test.ts`. — Refactors now fail fast if explicit uniform-events wiring is removed.
+- [Phase 52]: Extended global adaptive cache keys with binning mode suffix to isolate uniform-time and uniform-events entries. — Prevents cross-mode cache collisions when density scope switches or callers request different binning modes.
+- [Phase 52]: Default missing binning mode to uniform-time in global adaptive API/query path. — Preserves backward compatibility for existing callers that do not pass mode.
+- [Phase 52]: Hydrate countMap with global precomputed payloads in MainScene. — Keeps global and viewport adaptive contract parity for downstream consumers.
 
 ## Blockers/Concerns
 
@@ -104,6 +107,6 @@ Progress: **███████████████████░** 190/1
 
 ## Session Continuity
 
-Last session: 2026-03-11 17:25 UTC
-Stopped at: Completed 52-02-PLAN.md
+Last session: 2026-03-11 17:29 UTC
+Stopped at: Completed 52-03-PLAN.md
 Resume file: None
