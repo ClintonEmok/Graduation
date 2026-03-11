@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **51 of 51** (Store Consolidation)
-Plan: **12 of 12** in current phase
-Status: **Phase complete**
-Last activity: 2026-03-10 - Completed 51-12 deprecated store deletion and final import gate
+Phase: **52 of 52** (Uniform-Events Binning for Timeslicing)
+Plan: **1 of 3** in current phase
+Status: **In progress**
+Last activity: 2026-03-11 - Completed 52-01 mode-aware adaptive binning contract and worker foundation
 
-Progress: **███████████████████░** 188/192 plans complete (97.9%)
+Progress: **███████████████████░** 189/192 plans complete (98.4%)
 
 ## Milestone Status
 
@@ -92,6 +92,9 @@ Progress: **███████████████████░** 188/1
 - [Phase 51]: Used useTimelineDataStore as canonical fallback for residual timeline/slice reads after useDataStore deletion — Prevents reintroducing deprecated ownership while preserving existing selector behavior.
 - [Phase 51]: Handled residual deprecated imports as regression fixes discovered in post-delete gates — Ensures final deletion gate is enforced by code state, not only by staged migration assumptions.
 - [Phase 51]: Recorded lint debt separately while keeping typecheck and targeted store tests as passing parity gates — Broad lint issues pre-existed and are outside this terminal deletion plan scope.
+- [Phase 52]: Kept adaptive compute calls backward-compatible by defaulting missing `binningMode` to `uniform-time` at store/worker boundaries. — Existing timeline-test, timeline-test-3d, and MainScene call sites remain unchanged.
+- [Phase 52]: Standardized worker outputs to preserve `densityMap`/`countMap`/`burstinessMap`/`warpMap` shape while adding uniform-events internals. — Consumers can adopt mode overrides without output-contract branching.
+- [Phase 52]: Locked `countMap` to raw per-bin event counts and treated density smoothing/normalization as a separate concern. — This preserves count semantics for burst reporting while still supporting adaptive warp weighting.
 
 ## Blockers/Concerns
 
@@ -99,6 +102,6 @@ Progress: **███████████████████░** 188/1
 
 ## Session Continuity
 
-Last session: 2026-03-10 01:22 UTC
-Stopped at: Completed 51-12-PLAN.md
+Last session: 2026-03-11 17:21 UTC
+Stopped at: Completed 52-01-PLAN.md
 Resume file: None
