@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **52 of 52** (Uniform-Events Binning for Timeslicing)
-Plan: **4 of 4** in current phase
+Phase: **53 of 53** (Add dedicated timeslicing algos route)
+Plan: **2 of 2** in current phase
 Status: **Phase complete**
-Last activity: 2026-03-11 - Completed 52-04 global adaptive cache insert SQL parity blocker fix
+Last activity: 2026-03-11 - Completed 53-02 centralized route-to-binning resolver wiring and tests
 
-Progress: **███████████████████░** 194/196 plans complete (99.0%)
+Progress: **████████████████████** 196/196 plans complete (100.0%)
 
 ## Milestone Status
 
@@ -102,10 +102,19 @@ Progress: **███████████████████░** 194/1
 - [Phase 52]: Hydrate countMap with global precomputed payloads in MainScene. — Keeps global and viewport adaptive contract parity for downstream consumers.
 - [Phase 52]: Keep global adaptive cache insert SQL column order unchanged and fix VALUES placeholders to 11/11 parity. — Resolves cache-miss persistence failure risk without widening query-layer behavior changes.
 - [Phase 52]: Enforce global adaptive cache insert parity through deterministic builder-level SQL parsing tests. — Prevents future column/placeholder drift from reintroducing runtime SQL failures.
+- [Phase 53]: Established `/timeslicing-algos` as an algorithm-focused route with both `uniform-time` and `uniform-events` controls and timeline interaction coverage. — This isolates algorithm behavior testing from suggestion/full-auto orchestration UI.
+- [Phase 53]: Introduced `src/app/timeslicing-algos/lib/algorithm-options.ts` as a future-friendly algorithm selector contract. — Additional methods (for example STKDE/KDE) can be added through one registry boundary.
+- [Phase 53]: Centralized route mode ownership in `resolveRouteBinningMode(pathname, explicitMode)` and wired `MainScene` to use it. — Global adaptive fetch mode no longer depends on inline pathname heuristics and now supports explicit in-route override behavior.
 
 ## Blockers/Concerns
 
 - Targeted lint command for timeline/map/viz surfaces still reports pre-existing repo lint errors outside the 51-12 deletion change set.
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 53 retargeted to dedicated `/timeslicing-algos` algorithm route with both mode comparison and extension-point contract.
 
 ## Session Continuity
 
