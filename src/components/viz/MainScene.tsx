@@ -10,7 +10,8 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { resolveRouteBinningMode } from '@/lib/adaptive/route-binning-mode';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   // Initialize the selection sync conductor - ties all views together
@@ -22,9 +23,9 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
   const pathname = usePathname();
-  const activeBinningMode: 'uniform-time' | 'uniform-events' = pathname?.startsWith('/timeslicing')
-    ? 'uniform-events'
-    : 'uniform-time';
+  const searchParams = useSearchParams();
+  const modeOverride = searchParams.get('mode');
+  const activeBinningMode = resolveRouteBinningMode(pathname, modeOverride);
 
   // Viewport mode: compute adaptive maps from current viewport records.
   useEffect(() => {
