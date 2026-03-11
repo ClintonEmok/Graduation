@@ -4,6 +4,7 @@ import {
   buildAdaptiveBurstQuery,
   buildAdaptiveDensityQuery,
   buildAdaptiveDomainQuery,
+  buildAdaptiveTimestampQuery,
   buildCrimeCountQuery,
   buildCrimesInRangeQuery,
   buildDensityBinsQuery,
@@ -16,6 +17,7 @@ import {
   toNumber,
 } from './queries/index';
 import type {
+  AdaptiveBinningMode,
   CrimeRecord,
   DensityBin,
   GlobalAdaptiveMaps,
@@ -59,8 +61,10 @@ interface AdaptiveCacheRow {
   domain_end: number | bigint;
   row_count: number | bigint;
   density_json: string;
+  count_json?: string | null;
   burstiness_json: string;
   warp_json: string;
+  binning_mode?: string | null;
   generated_at: string;
 }
 
@@ -75,6 +79,50 @@ const normalizeRange = (start: number, end: number) => {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const EPSILON = 1e-6;
+
+const resolveBinningMode = (value: string | null | undefined): AdaptiveBinningMode => {
+  if (value === 'uniform-events') return 'uniform-events';
+  return 'uniform-time';
+};
+
+const clampToBin = (index: number, binCount: number) => {
+  if (index < 0) return 0;
+  if (index >= binCount) return binCount - 1;
+  return index;
+};
+
+const ensureStrictlyMonotonicBoundaries = (
+  boundaries: Float32Array,
+  domainStart: number,
+  domainEnd: number
+) => {
+  if (boundaries.length === 0) return;
+  boundaries[0] = domainStart;
+  for (let i = 1; i < boundaries.length; i += 1) {
+    const previous = boundaries[i - 1];
+    const current = boundaries[i];
+    if (!Number.isFinite(current) || current <= previous) {
+      boundaries[i] = previous + EPSILON;
+    }
+  }
+  const lastIndex = boundaries.length - 1;
+  boundaries[lastIndex] = Math.max(domainEnd, boundaries[lastIndex - 1] + EPSILON);
+};
+
+const findBoundaryBin = (value: number, boundaries: Float32Array) => {
+  let low = 0;
+  let high = boundaries.length - 1;
+  while (low < high) {
+    const mid = Math.floor((low + high + 1) / 2);
+    if (boundaries[mid] <= value) {
+      low = mid;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return low;
+};
 
 const createSeededRandom = (seed: number) => {
   let state = seed >>> 0;
@@ -269,27 +317,34 @@ export const queryCrimeCount = async (
 
 export const getOrCreateGlobalAdaptiveMaps = async (
   binCount: number,
-  kernelWidth: number
+  kernelWidth: number,
+  binningMode: AdaptiveBinningMode = 'uniform-time'
 ): Promise<GlobalAdaptiveMaps> => {
   const db = await getDb();
   const tableName = sanitizeTableName(await ensureSortedCrimesTable());
   const cacheTableName = sanitizeTableName('adaptive_global_cache');
   const safeBinCount = clampAdaptiveBinCount(binCount);
   const safeKernelWidth = clampKernelWidth(kernelWidth);
-  const cacheKey = `global:${safeBinCount}:${safeKernelWidth}`;
+  const safeBinningMode = resolveBinningMode(binningMode);
+  const cacheKey = `global:${safeBinCount}:${safeKernelWidth}:${safeBinningMode}`;
 
   const cacheQueries = buildGlobalAdaptiveCacheQueries(cacheTableName, {
     cacheKey,
     binCount: safeBinCount,
     kernelWidth: safeKernelWidth,
+    binningMode: safeBinningMode,
     domain: [0, 0],
     rowCount: 0,
     densityJson: '[]',
+    countJson: '[]',
     burstJson: '[]',
     warpJson: '[]',
   });
 
   await executeRun(db, cacheQueries.ensureTableSql);
+  for (const ensureColumnSql of cacheQueries.ensureColumnsSql) {
+    await executeRun(db, ensureColumnSql);
+  }
 
   const cached = await executeAll<AdaptiveCacheRow>(db, cacheQueries.readByKey.sql, cacheQueries.readByKey.params);
 
@@ -298,9 +353,11 @@ export const getOrCreateGlobalAdaptiveMaps = async (
     return {
       binCount: safeBinCount,
       kernelWidth: safeKernelWidth,
+      binningMode: resolveBinningMode(row.binning_mode),
       domain: [toNumber(row.domain_start), toNumber(row.domain_end)],
       rowCount: toNumber(row.row_count),
       densityMap: Float32Array.from(JSON.parse(row.density_json) as number[]),
+      countMap: Float32Array.from(JSON.parse(row.count_json || row.density_json) as number[]),
       burstinessMap: Float32Array.from(JSON.parse(row.burstiness_json) as number[]),
       warpMap: Float32Array.from(JSON.parse(row.warp_json) as number[]),
       generatedAt: row.generated_at,
@@ -318,16 +375,61 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const rowCount = toNumber(domainRows[0]?.row_count);
   const domain: [number, number] = [minTs, maxTs > minTs ? maxTs : minTs + 1];
 
-  const densityQuery = buildAdaptiveDensityQuery(tableName, domain, safeBinCount);
-  const densityRows = await executeAll<{ idx: number | bigint; count: number | bigint }>(db, densityQuery.sql, densityQuery.params);
+  const countMap = new Float32Array(safeBinCount);
+  const densityInput = new Float32Array(safeBinCount);
 
-  const rawDensity = new Float32Array(safeBinCount);
-  for (const row of densityRows) {
-    const idx = toNumber(row.idx);
-    if (idx >= 0 && idx < safeBinCount) rawDensity[idx] = toNumber(row.count);
+  if (safeBinningMode === 'uniform-events') {
+    const timestampsQuery = buildAdaptiveTimestampQuery(tableName, domain);
+    const timestampRows = await executeAll<{ ts: number | bigint }>(db, timestampsQuery.sql, timestampsQuery.params);
+    const sorted = timestampRows
+      .map((row) => toNumber(row.ts))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+
+    if (sorted.length > 0) {
+      const boundaries = new Float32Array(safeBinCount + 1);
+      boundaries[0] = domain[0];
+      boundaries[safeBinCount] = domain[1];
+
+      const maxTimestampIndex = sorted.length - 1;
+      for (let edgeIndex = 1; edgeIndex < safeBinCount; edgeIndex += 1) {
+        const target = (edgeIndex * sorted.length) / safeBinCount;
+        const sampleIndex = Math.min(maxTimestampIndex, Math.floor(target));
+        boundaries[edgeIndex] = sorted[sampleIndex] ?? domain[1];
+      }
+
+      ensureStrictlyMonotonicBoundaries(boundaries, domain[0], domain[1]);
+
+      for (const t of sorted) {
+        const boundaryIndex = findBoundaryBin(t, boundaries);
+        const idx = clampToBin(boundaryIndex, safeBinCount);
+        countMap[idx] += 1;
+      }
+
+      for (let i = 0; i < safeBinCount; i += 1) {
+        const width = Math.max(EPSILON, boundaries[i + 1] - boundaries[i]);
+        densityInput[i] = countMap[i] / width;
+      }
+    }
+  } else {
+    const densityQuery = buildAdaptiveDensityQuery(tableName, domain, safeBinCount);
+    const densityRows = await executeAll<{ idx: number | bigint; count: number | bigint }>(
+      db,
+      densityQuery.sql,
+      densityQuery.params
+    );
+
+    for (const row of densityRows) {
+      const idx = toNumber(row.idx);
+      if (idx >= 0 && idx < safeBinCount) countMap[idx] = toNumber(row.count);
+    }
+
+    for (let i = 0; i < safeBinCount; i += 1) {
+      densityInput[i] = countMap[i];
+    }
   }
 
-  const smoothedDensity = smoothSeries(rawDensity, safeKernelWidth);
+  const smoothedDensity = smoothSeries(densityInput, safeKernelWidth);
   let maxDensity = 0;
   for (let i = 0; i < smoothedDensity.length; i += 1) {
     if (smoothedDensity[i] > maxDensity) maxDensity = smoothedDensity[i];
@@ -368,6 +470,7 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   const warpMap = computeWarpMap(normalizedDensity, domain);
 
   const densityJson = JSON.stringify(Array.from(normalizedDensity));
+  const countJson = JSON.stringify(Array.from(countMap));
   const burstJson = JSON.stringify(Array.from(burstinessMap));
   const warpJson = JSON.stringify(Array.from(warpMap));
 
@@ -375,9 +478,11 @@ export const getOrCreateGlobalAdaptiveMaps = async (
     cacheKey,
     binCount: safeBinCount,
     kernelWidth: safeKernelWidth,
+    binningMode: safeBinningMode,
     domain,
     rowCount,
     densityJson,
+    countJson,
     burstJson,
     warpJson,
   });
@@ -388,9 +493,11 @@ export const getOrCreateGlobalAdaptiveMaps = async (
   return {
     binCount: safeBinCount,
     kernelWidth: safeKernelWidth,
+    binningMode: safeBinningMode,
     domain,
     rowCount,
     densityMap: normalizedDensity,
+    countMap,
     burstinessMap,
     warpMap,
     generatedAt: new Date().toISOString(),

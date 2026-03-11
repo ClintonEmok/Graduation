@@ -1,4 +1,4 @@
-import type { QueryFragment } from './types';
+import type { AdaptiveBinningMode, QueryFragment } from './types';
 import { buildNormalizedSqlExpression, NORMALIZED_COORDINATE_RANGE } from '../coordinate-normalization';
 import { clampDensityResolution } from './sanitization';
 
@@ -6,9 +6,11 @@ type AdaptiveCacheInsertPayload = {
   cacheKey: string;
   binCount: number;
   kernelWidth: number;
+  binningMode: AdaptiveBinningMode;
   domain: [number, number];
   rowCount: number;
   densityJson: string;
+  countJson: string;
   burstJson: string;
   warpJson: string;
 };
@@ -74,6 +76,7 @@ export const buildGlobalAdaptiveCacheQueries = (
   payload: AdaptiveCacheInsertPayload
 ): {
   ensureTableSql: string;
+  ensureColumnsSql: string[];
   readByKey: QueryFragment;
   deleteByKey: QueryFragment;
   insert: QueryFragment;
@@ -83,18 +86,24 @@ export const buildGlobalAdaptiveCacheQueries = (
       cache_key VARCHAR PRIMARY KEY,
       bin_count INTEGER,
       kernel_width INTEGER,
+      binning_mode VARCHAR,
       domain_start DOUBLE,
       domain_end DOUBLE,
       row_count BIGINT,
       density_json VARCHAR,
+      count_json VARCHAR,
       burstiness_json VARCHAR,
       warp_json VARCHAR,
       generated_at TIMESTAMP DEFAULT now()
     )
   `,
+  ensureColumnsSql: [
+    `ALTER TABLE ${cacheTableName} ADD COLUMN IF NOT EXISTS binning_mode VARCHAR`,
+    `ALTER TABLE ${cacheTableName} ADD COLUMN IF NOT EXISTS count_json VARCHAR`,
+  ],
   readByKey: {
     sql: `
-      SELECT domain_start, domain_end, row_count, density_json, burstiness_json, warp_json, CAST(generated_at AS VARCHAR) as generated_at
+      SELECT domain_start, domain_end, row_count, density_json, count_json, burstiness_json, warp_json, binning_mode, CAST(generated_at AS VARCHAR) as generated_at
       FROM ${cacheTableName}
       WHERE cache_key = ?
       LIMIT 1
@@ -111,26 +120,42 @@ export const buildGlobalAdaptiveCacheQueries = (
         cache_key,
         bin_count,
         kernel_width,
+        binning_mode,
         domain_start,
         domain_end,
         row_count,
         density_json,
+        count_json,
         burstiness_json,
         warp_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     params: [
       payload.cacheKey,
       payload.binCount,
       payload.kernelWidth,
+      payload.binningMode,
       payload.domain[0],
       payload.domain[1],
       payload.rowCount,
       payload.densityJson,
+      payload.countJson,
       payload.burstJson,
       payload.warpJson,
     ],
   },
+});
+
+export const buildAdaptiveTimestampQuery = (tableName: string, domain: [number, number]): QueryFragment => ({
+  sql: `
+    SELECT EXTRACT(EPOCH FROM "Date") as ts
+    FROM ${tableName}
+    WHERE "Date" IS NOT NULL
+      AND EXTRACT(EPOCH FROM "Date") >= ?
+      AND EXTRACT(EPOCH FROM "Date") <= ?
+    ORDER BY "Date" ASC
+  `,
+  params: [domain[0], domain[1]],
 });
 
 export const buildAdaptiveDensityQuery = (tableName: string, domain: [number, number], binCount: number): QueryFragment => {

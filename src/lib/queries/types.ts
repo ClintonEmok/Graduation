@@ -27,12 +27,16 @@ export interface QueryFilters {
   districts?: string[];
 }
 
+export type AdaptiveBinningMode = 'uniform-time' | 'uniform-events';
+
 export interface GlobalAdaptiveMaps {
   binCount: number;
   kernelWidth: number;
+   binningMode: AdaptiveBinningMode;
   domain: [number, number];
   rowCount: number;
   densityMap: Float32Array;
+   countMap: Float32Array;
   burstinessMap: Float32Array;
   warpMap: Float32Array;
   generatedAt: string;
