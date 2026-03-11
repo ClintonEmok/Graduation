@@ -10,6 +10,7 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
+import { usePathname } from 'next/navigation';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   // Initialize the selection sync conductor - ties all views together
@@ -20,6 +21,10 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const { data: viewportCrimes } = useViewportCrimeData({ bufferDays: 30 });
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
+  const pathname = usePathname();
+  const activeBinningMode: 'uniform-time' | 'uniform-events' = pathname?.startsWith('/timeslicing')
+    ? 'uniform-events'
+    : 'uniform-time';
 
   // Viewport mode: compute adaptive maps from current viewport records.
   useEffect(() => {
@@ -97,7 +102,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
 
     const loadGlobalMaps = async () => {
       try {
-        const response = await fetch('/api/adaptive/global');
+        const response = await fetch(`/api/adaptive/global?binningMode=${activeBinningMode}`);
         if (!response.ok) {
           throw new Error(`Global adaptive fetch failed: ${response.status}`);
         }
@@ -105,6 +110,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         const payload = (await response.json()) as {
           domain: [number, number];
           densityMap: number[];
+          countMap: number[];
           burstinessMap: number[];
           warpMap: number[];
         };
@@ -115,7 +121,8 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
           Float32Array.from(payload.densityMap || []),
           Float32Array.from(payload.burstinessMap || []),
           Float32Array.from(payload.warpMap || []),
-          payload.domain
+          payload.domain,
+          Float32Array.from(payload.countMap || [])
         );
       } catch (error) {
         console.warn('Falling back to local global adaptive compute:', error);
@@ -128,7 +135,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
     return () => {
       cancelled = true;
     };
-  }, [densityScope]);
+  }, [activeBinningMode, densityScope]);
 
   useEffect(() => {
     if (controlsRef.current) {
