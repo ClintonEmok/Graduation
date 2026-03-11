@@ -1,123 +1,87 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-06
+**Analysis Date:** 2026-03-11
 
 ## Tech Debt
 
-**DualTimeline monolith:**
-- Issue: One component holds rendering + interaction + store synchronization + data selection logic.
-- Files: `src/components/timeline/DualTimeline.tsx`
-- Impact: High regression risk for brush/zoom/scrub changes; difficult to test and review.
-- Fix approach: Extract independent hooks/modules for (1) scale transforms, (2) brush/zoom sync, (3) point selection, (4) density strip derivation.
+**Duplicate slice-authored warp-map logic across routes:**
+- Issue: Equivalent `buildSliceAuthoredWarpMap` logic exists in both `src/app/timeslicing/page.tsx` and `src/app/timeline-test/page.tsx`
+- Files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/lib/route-orchestration.ts`
+- Impact: Drift risk when changing warp behavior; inconsistent adaptive results across routes
+- Fix approach: Extract a single shared utility in `src/lib/` and consume it from all routes
 
-**Deprecated data store still active in flow:**
-- Issue: `useDataStore` is marked deprecated but is still required for timeline and timeslicing parity.
-- Files: `src/store/useDataStore.ts`, `src/app/timeslicing/page.tsx`, `src/components/timeline/DualTimeline.tsx`
-- Impact: Confusing ownership between React Query and store data; duplicate sources of truth.
-- Fix approach: Define one canonical timeline input contract and remove deprecated pathways incrementally.
-
-**Suggestion trigger path duplication:**
-- Issue: Legacy mock trigger hook remains alongside real generator hook.
-- Files: `src/hooks/useSuggestionTrigger.ts`, `src/hooks/useSuggestionGenerator.ts`
-- Impact: Future contributors may attach UI to outdated mock path.
-- Fix approach: Remove or clearly deprecate `useSuggestionTrigger.ts` and keep one workflow entry.
+**Large all-in-one UI modules:**
+- Issue: Several high-complexity files exceed 700-1100 LOC
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/app/timeslicing/components/SuggestionToolbar.tsx`, `src/app/timeslicing/page.tsx`, `src/store/useSuggestionStore.ts`
+- Impact: Slower onboarding, fragile edits, and higher regression probability
+- Fix approach: Split by concern (data derivation hooks, render layers, action handlers) and add focused tests per extracted module
 
 ## Known Bugs
 
-**Double buffering in crimes range pipeline:**
-- Symptoms: Queried range is expanded twice (client-side in hook and server-side in route default buffer logic).
-- Files: `src/hooks/useCrimeData.ts`, `src/app/api/crimes/range/route.ts`
-- Trigger: Any `useCrimeData` call with non-zero `bufferDays` (hook pre-buffers; API applies buffer again).
-- Workaround: Set `bufferDays: 0` at hook call sites until one layer is made authoritative.
-
-**Coordinate normalization mismatch across APIs:**
-- Symptoms: Different endpoints return incompatible x/z scales.
-- Files: `src/app/api/crimes/range/route.ts`, `src/app/api/crime/stream/route.ts`
-- Trigger: Mixing data from range API (`x/z` in `[-50,50]`) and stream API (`x/z` near `[0,1]` style formulas).
-- Workaround: Normalize in one adapter before mixing datasets.
+**Facets API references parquet path not created by default flow:**
+- Symptoms: Facet requests can fail in real-data mode when `data/crime.parquet` is absent
+- Files: `src/app/api/crime/facets/route.ts`, `scripts/setup-data.js`, `src/lib/db.ts`
+- Trigger: Running app with DuckDB enabled but only CSV-based dataset setup
+- Workaround: Generate `data/crime.parquet` via `scripts/setup-data.js` or keep mock mode enabled
 
 ## Security Considerations
 
-**String-built SQL queries:**
-- Risk: Dynamic SQL string construction is used broadly.
-- Files: `src/lib/queries.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/crime/stream/route.ts`
-- Current mitigation: Some manual escaping for filter values in `src/lib/queries.ts`.
-- Recommendations: Centralize sanitized query builders and avoid direct interpolation where possible.
+**SQL string interpolation with user-provided filters:**
+- Risk: Injection surface via unsanitized `types`, `districts`, and date filter interpolation
+- Files: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`
+- Current mitigation: Partial helper use (some routes parameterize via query builders in `src/lib/queries.ts`)
+- Recommendations: Route all SQL generation through parameterized builders; avoid concatenating filter values into SQL strings
+
+**Local environment file committed in repository:**
+- Risk: Accidental credential leakage and environment drift
+- Files: `.env`, `.gitignore`
+- Current mitigation: None in code
+- Recommendations: Remove tracked `.env` from version control and enforce `.env.example` pattern
 
 ## Performance Bottlenecks
 
-**High-frequency logging in client paths:**
-- Problem: Large objects and repetitive logs execute during interactive usage.
-- Files: `src/components/layout/TopBar.tsx`, `src/hooks/useCrimeData.ts`, `src/components/viz/DataPoints.tsx`
-- Cause: Debug `console.log` left in render/interaction code.
-- Improvement path: Gate logs behind feature flags or remove in production path.
-
-**Large detail point mapping inside timeline render cycle:**
-- Problem: Repeated filtering/subsampling and SVG circle rendering for dense ranges.
-- Files: `src/components/timeline/DualTimeline.tsx`
-- Cause: Derivations and rendering occur in one large component with broad dependencies.
-- Improvement path: Memoize by stable signatures, reduce re-renders via selector granularity, and consider canvas for dense point layers.
+**Repeated `read_csv_auto(...)` scans in metadata/facet/stream endpoints:**
+- Problem: Hot API paths re-scan raw CSV instead of querying persisted sorted table/cache
+- Files: `src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`
+- Cause: Multiple endpoints bypass `ensureSortedCrimesTable` and query builders in `src/lib/queries.ts`
+- Improvement path: Consolidate onto shared query layer/table and leverage persisted cache tables for repeated domain operations
 
 ## Fragile Areas
 
-**Data path contract divergence:**
-- Files: `src/lib/db.ts`, `src/app/api/crime/facets/route.ts`, `scripts/setup-data.js`, `data/README.md`
-- Why fragile: CSV path (`data/sources/...csv`) and parquet path (`data/crime.parquet`) assumptions are inconsistent across modules.
-- Safe modification: Choose one canonical ingestion path and update all API/data docs together.
-- Test coverage: No integration tests validate end-to-end data-file contract.
-
-**Timeslicing parity bridge relies on manual store mirroring:**
-- Files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test-3d/page.tsx`
-- Why fragile: Page-level effect writes into `useDataStore` and triggers adaptive compute solely for `DualTimeline` compatibility.
-- Safe modification: Introduce shared adapter hook for timeline input instead of route-local state mutation.
-- Test coverage: No tests on this mirroring effect.
+**Cross-store timeline synchronization contract:**
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/components/timeline/hooks/useBrushZoomSync.ts`, `src/components/timeline/hooks/usePointSelection.ts`, `src/store/useTimeStore.ts`, `src/store/useFilterStore.ts`, `src/lib/stores/viewportStore.ts`
+- Why fragile: Behavior depends on synchronized updates across multiple stores and D3 event loops
+- Safe modification: Preserve `applyRangeToStoresContract` semantics and update related hook tests together (`src/components/timeline/hooks/*.test.ts`)
+- Test coverage: Moderate for helper hooks; limited direct tests for full `DualTimeline` integration
 
 ## Scaling Limits
 
-**Range API response sizing:**
-- Current capacity: `limit` default 50,000 with optional sampling (`sampleStride`) in `/api/crimes/range`.
-- Limit: Large windows can become sampled or heavy in client memory/rendering.
-- Scaling path: Add paged window loading or server-side aggregation endpoints for timeline-only consumers.
-
-**Mock fallback cardinality mismatch:**
-- Current capacity: Mock range returns up to 2,000 records even if client requests 50,000.
-- Limit: Behavior diverges from real-data path and can hide scaling issues.
-- Scaling path: Align mock generation controls with real route limits and metadata semantics.
+**Client payload and render ceiling for viewport data:**
+- Current capacity: API limits return payload to ~50k records (`limit` defaults in `src/hooks/useCrimeData.ts` and `src/app/api/crimes/range/route.ts`)
+- Limit: Large ranges can still trigger heavy network/CPU cost and UI degradation
+- Scaling path: Add server-side tiling/aggregation for map/timeline views and progressive chunked loading
 
 ## Dependencies at Risk
 
-**Native DuckDB binding wiring:**
-- Risk: `postinstall` symlink workaround is ABI/path-sensitive.
-- Files: `package.json` (`postinstall`), `next.config.ts`
-- Impact: Install/runtime failures on environments that differ from expected `duckdb` binding layout.
-- Migration plan: Validate against current DuckDB package guidance or move heavy querying behind stable service boundary.
+**Patched native DuckDB integration:**
+- Risk: Postinstall symlink + patch-package workaround can break on dependency updates/platform differences
+- Impact: Install/runtime failures for local and CI environments
+- Migration plan: Pin supported DuckDB version and replace patch with upstream-compatible install strategy
 
 ## Missing Critical Features
 
-**Suggestion workflow persistence and apply path:**
-- Problem: Suggestions can be accepted/rejected in store but there is no durable persistence or direct apply-to-slice pipeline.
-- Blocks: End-to-end semi-automated timeslicing flow completion.
-- Files: `src/store/useSuggestionStore.ts`, `src/app/timeslicing/components/SuggestionCard.tsx`
-
-**Mode switching implementation in generator:**
-- Problem: `mode` is fixed to `'manual'`; `setMode` is a no-op.
-- Blocks: Planned automatic/on-demand generation behavior.
-- Files: `src/hooks/useSuggestionGenerator.ts`
+**No CI enforcement for lint/type/test gates:**
+- Problem: Quality checks are manual only
+- Blocks: Reliable regression prevention across contributors
 
 ## Test Coverage Gaps
 
-**`useCrimeData` + `/api/crimes/range` contract:**
-- What's not tested: Buffering semantics, metadata shape, filter parameter handling end-to-end.
-- Files: `src/hooks/useCrimeData.ts`, `src/app/api/crimes/range/route.ts`
-- Risk: Silent drift between client assumptions and server response behavior.
-- Priority: High
-
-**Timeline interaction regressions:**
-- What's not tested: Brush/zoom sync, adaptive axis inversion, selection behavior under warped scales.
-- Files: `src/components/timeline/DualTimeline.tsx`, `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/page.tsx`
-- Risk: Breaks are only discovered manually.
+**Major route/page orchestration not directly tested:**
+- What's not tested: End-to-end behavior of `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, and map/cube integration
+- Files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, `src/components/map/MapVisualization.tsx`, `src/components/viz/CubeVisualization.tsx`
+- Risk: Regressions in cross-panel synchronization and feature workflows can ship unnoticed
 - Priority: High
 
 ---
 
-*Concerns audit: 2026-03-06*
+*Concerns audit: 2026-03-11*

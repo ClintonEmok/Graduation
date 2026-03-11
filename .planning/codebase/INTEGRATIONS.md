@@ -1,80 +1,79 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-06
+**Analysis Date:** 2026-03-11
 
 ## APIs & External Services
 
-**Third-party services:**
-- Not detected (no external SaaS API clients in `src/**`).
+**Map basemap service:**
+- CARTO basemap style endpoints - map style JSON pulled by MapLibre
+  - SDK/Client: `maplibre-gl` + `react-map-gl` in `src/components/map/MapBase.tsx`
+  - Auth: None detected (public style URLs in `src/lib/palettes.ts`)
 
-**Internal app APIs (Next route handlers):**
-- Crime range API: `src/app/api/crimes/range/route.ts`
-- Crime metadata: `src/app/api/crime/meta/route.ts`
-- Crime Arrow stream: `src/app/api/crime/stream/route.ts`
-- Crime facets: `src/app/api/crime/facets/route.ts`
-- Aggregated bins: `src/app/api/crime/bins/route.ts`
-- Global adaptive maps: `src/app/api/adaptive/global/route.ts`
-- Study log ingestion: `src/app/api/study/log/route.ts`
+**Browser telemetry endpoint (internal):**
+- Study logging endpoint - buffered client events are POSTed to app route
+  - SDK/Client: native `fetch` / `navigator.sendBeacon` in `src/lib/logger.ts`
+  - Auth: None detected on endpoint `src/app/api/study/log/route.ts`
 
 ## Data Storage
 
 **Databases:**
-- Local DuckDB (embedded file DB)
-  - Connection: `src/lib/db.ts` (`getDb`, `getDbPath`)
-  - Client: `duckdb` package
+- Embedded DuckDB (local file DB)
+  - Connection: `DUCKDB_PATH` env var (optional) in `src/lib/db.ts`
+  - Client: `duckdb` node package in `src/lib/db.ts` and `src/lib/queries.ts`
 
 **File Storage:**
 - Local filesystem only
-  - CSV source path for DB queries: `data/sources/Crimes_-_2001_to_Present_20260114.csv` (expected by `src/lib/db.ts`)
-  - Parquet path used by facets/setup script: `data/crime.parquet` (`src/app/api/crime/facets/route.ts`, `scripts/setup-data.js`)
-  - Study logs: `logs/study-sessions.jsonl` (`src/app/api/study/log/route.ts`)
+  - Source CSVs in `data/sources/*.csv` referenced by `src/lib/db.ts`
+  - Optional parquet path in API facets route: `data/crime.parquet` in `src/app/api/crime/facets/route.ts`
+  - Study logs in `logs/study-sessions.jsonl` in `src/app/api/study/log/route.ts`
 
 **Caching:**
-- React Query in-memory client cache (`src/providers/QueryProvider.tsx`)
-- DuckDB table cache for global adaptive maps (`adaptive_global_cache` in `src/lib/queries.ts`)
+- No external cache service detected
+- In-process/browser cache via TanStack Query in `src/providers/QueryProvider.tsx`
+- DB-level cache table `adaptive_global_cache` managed in `src/lib/queries.ts`
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Not applicable.
-  - Implementation: None detected in `src/app/api/**` or middleware.
+- Custom anonymous session identity only (no auth provider)
+  - Implementation: client-side persisted IDs in `src/store/useStudyStore.ts`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected (no Sentry/Datadog/etc integration).
+- None detected (no Sentry/Datadog/etc. integration)
 
 **Logs:**
-- Console logging across API/hooks/components (`src/lib/queries.ts`, `src/hooks/useCrimeData.ts`, `src/components/layout/TopBar.tsx`).
-- Structured study-session NDJSON logging endpoint in `src/app/api/study/log/route.ts`.
+- Console logging throughout app/runtime (`console.*`) in multiple files including `src/lib/queries.ts` and `src/hooks/useCrimeData.ts`
+- Study event log sink to local JSONL via `src/app/api/study/log/route.ts`
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not explicitly configured in repository.
-- App assumes Node runtime for server routes and local file access.
+- Not explicitly configured in-repo; app is deployable as a Node Next.js service
 
 **CI Pipeline:**
-- Not detected (no GitHub Actions/workflow files surfaced in this mapping pass).
+- None detected (`.github/workflows/` not present)
 
 ## Environment Configuration
 
 **Required env vars:**
-- `USE_MOCK_DATA` (toggle mock mode)
-- `DISABLE_DUCKDB` (legacy equivalent toggle)
-- `DUCKDB_PATH` (optional DB path override)
+- `USE_MOCK_DATA` / `DISABLE_DUCKDB` - toggles mock-vs-DuckDB mode in `src/lib/db.ts`
+- `DUCKDB_PATH` - optional DB location override in `src/lib/db.ts`
+- `NODE_ENV` - dev checks in `src/app/timeslicing/page.tsx` and `src/app/timeslicing/components/SuggestionToolbar.tsx`
 
 **Secrets location:**
-- Not applicable; no secret-bearing integrations detected.
+- `.env` file exists at repo root; no secret manager integration detected in code
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None from external systems.
+- None (all API routes are request/response endpoints under `src/app/api/*`)
 
 **Outgoing:**
-- None to external systems.
+- Browser->app callback: POST `/api/study/log` from `src/lib/logger.ts`
+- Browser->app data fetches for internal APIs (`/api/crimes/range`, `/api/crime/meta`, `/api/adaptive/global`, etc.) from hooks/components in `src/hooks/*` and `src/components/*`
 
 ---
 
-*Integration audit: 2026-03-06*
+*Integration audit: 2026-03-11*

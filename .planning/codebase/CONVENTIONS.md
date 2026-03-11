@@ -1,97 +1,91 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-06
+**Analysis Date:** 2026-03-11
 
 ## Naming Patterns
 
 **Files:**
-- Use `PascalCase.tsx` for React components in `src/components/**` and `src/app/**/components/**`.
-- Use `useXxx.ts` for hooks and stores in `src/hooks/**` and `src/store/**`.
-- Use `route.ts` for API handlers under `src/app/api/**`.
-- Use `*.test.ts` for unit tests colocated with source.
-- Use descriptive algorithm names: `*-orchestrator.ts`, `*-generation.ts`, `*-detection.ts`, `*-scoring.ts`.
+- Hooks are `use*.ts` (for example `src/hooks/useCrimeData.ts`)
+- Zustand stores are `use*Store.ts` (for example `src/store/useAdaptiveStore.ts`)
+- Store slice factories use `create*Slice.ts` in `src/store/slice-domain/`
+- Components are PascalCase `.tsx` files (for example `src/components/timeline/DualTimeline.tsx`)
 
 **Functions:**
-- Use `camelCase` for functions and local helpers (e.g., `detectBoundaries` in `src/lib/interval-detection.ts`, `computeMaps` in `src/store/useAdaptiveStore.ts`).
-- Use descriptive verb prefixes: `generate*`, `detect*`, `build*`, `score*`, `plan*`.
+- Utilities use camelCase (`buildBufferedRange`, `resolveNearestSelectionIndex`, `generateRankedAutoProposalSets`)
+- Store actions are verb-first (`setTimeRange`, `toggleType`, `clearSlices`)
 
 **Variables:**
-- Use `camelCase` for mutable/local variables.
-- Use `UPPER_SNAKE_CASE` for constants (e.g., `MOCK_START_SEC` in `src/lib/constants.ts`, `DEFAULT_DELAY_MS` in `src/hooks/useDebouncedDensity.ts`).
+- camelCase by default; constants use UPPER_SNAKE_CASE (`ADAPTIVE_BIN_COUNT`, `DEFAULT_START_EPOCH`)
 
 **Types:**
-- Use `PascalCase` interfaces/types (`CrimeRecord`, `UseCrimeDataOptions`, `BoundarySuggestion`, `AutoProposalSet`).
-- Group related types in `src/types/` directory (e.g., `autoProposalSet.ts`).
+- `interface` and `type` names are PascalCase (`CrimeRecord`, `UseCrimeDataOptions`, `AdaptiveState`)
 
 ## Code Style
 
 **Formatting:**
-- Use ESLint + Next presets (`eslint.config.mjs`) as the enforced baseline.
-- Keep existing quote/semicolon style per file; repo currently mixes generated double-quote files (`src/app/layout.tsx`) and single-quote files (`src/hooks/useCrimeData.ts`).
+- No Prettier config detected; formatting is maintained by contributor habits + linting
+- Mixed quote/semicolon style exists across modules (for example `src/components/ui/button.tsx` vs `src/hooks/useCrimeData.ts`); preserve local style in touched files
 
 **Linting:**
-- Lint with `npm run lint`.
-- Respect ignored paths from `eslint.config.mjs` (including `datapreprocessing/.venv/**`).
+- ESLint (`eslint.config.mjs`) with Next core-web-vitals + TypeScript presets
+- Use `npm run lint` / `pnpm lint` before merge
 
 ## Import Organization
 
 **Order:**
-1. External packages (`react`, `next/server`, `d3-*`, etc.)
-2. `@/*` alias imports (`@/store/...`, `@/lib/...`, `@/types/...`)
-3. Relative imports (`./...`, `../...`)
+1. React/external packages
+2. Internal alias imports (`@/...`)
+3. Local relative imports
 
 **Path Aliases:**
-- Use `@/*` alias from `tsconfig.json` for app source imports.
+- Use `@/*` alias from `tsconfig.json` for cross-module imports
 
 ## Error Handling
 
 **Patterns:**
-- API routes return `NextResponse.json` with status and error payload on validation/runtime errors (`src/app/api/crimes/range/route.ts`).
-- Data APIs prefer fallback demo payloads with warning headers rather than hard failures when DuckDB/data is unavailable (`src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`).
-- Client hooks throw/propagate fetch errors (`src/hooks/useCrimeData.ts`) and route UIs render error state.
+- API routes validate early and return explicit 4xx JSON for invalid params (`src/app/api/crimes/range/route.ts`)
+- Runtime failures usually catch/log and return fallback mock payloads (`src/app/api/crime/meta/route.ts`, `src/app/api/crime/bins/route.ts`)
+- Hooks surface errors through React Query instead of swallowing (`src/hooks/useCrimeData.ts`)
 
 ## Logging
 
-**Framework:** `console.*` plus optional buffered study logger (`src/lib/logger.ts`).
+**Framework:** console + lightweight buffered logger service
 
 **Patterns:**
-- Keep server errors as `console.error` in API/lib modules.
-- Avoid adding new verbose `console.log` in hot client paths; existing logs in `src/hooks/useCrimeData.ts` and `src/components/layout/TopBar.tsx` are already noisy.
+- `console.error` for backend failures and critical fetch/query errors
+- `console.warn` for fallback mode transitions
+- study interactions use `useLogger` -> `logger.log()` in `src/hooks/useLogger.ts` and `src/lib/logger.ts`
 
 ## Comments
 
 **When to Comment:**
-- Comment only when behavior is non-obvious (adaptive mapping math, store synchronization, fallback logic, algorithm scoring weights).
-- Prefer short, purpose-focused comments over narrative blocks.
+- Comments are used heavily for intent and behavior contracts in stores/hooks/routes; keep them when they explain non-obvious constraints (for example buffer/range semantics)
 
 **JSDoc/TSDoc:**
-- Use block comments for exported hooks/types/modules when they define contracts (`src/hooks/useCrimeData.ts`, `src/types/crime.ts`).
-- Document algorithm weights and thresholds in `full-auto-orchestrator.ts`.
+- Used on shared hooks/utilities and API contracts (`src/hooks/useCrimeData.ts`, `src/lib/db.ts`, `src/lib/stores/viewportStore.ts`)
 
 ## Function Design
 
 **Size:**
-- Small/medium pure helpers in `src/lib/**`.
-- UI orchestrators can be large but should isolate pure helpers where possible (current exception: `src/components/timeline/DualTimeline.tsx`).
-- Algorithm modules should be focused and testable (e.g., `full-auto-orchestrator.ts`).
+- Small pure helper functions are preferred in `src/lib/*`
+- Some feature functions/components are large orchestration blocks (for example `src/components/timeline/DualTimeline.tsx`)
 
 **Parameters:**
-- Prefer typed options objects for extensible APIs (`UseCrimeDataOptions`, `BoundaryOptions`, `FullAutoGenerationParams`).
+- Structured options objects are common for complex APIs (`UseCrimeDataOptions`, `GenerationParams`, query builder options)
 
 **Return Values:**
-- Hooks return structured object results, not tuples (`UseCrimeDataResult`, `UseViewportCrimeDataResult`).
-- Algorithm functions return typed result interfaces (`RankedAutoProposalSets`).
+- Hooks return typed result envelopes (data/meta/loading/error)
+- API handlers return JSON objects with top-level `data` + `meta` where applicable
 
 ## Module Design
 
 **Exports:**
-- Prefer named exports for hooks/stores/utils.
-- Use default exports for route pages/layouts and selected provider components (`src/providers/QueryProvider.tsx`).
+- Use named exports for helpers/types; default export for route/page components is common
+- Store modules typically export `useXStore` plus related selectors/types
 
 **Barrel Files:**
-- Not used broadly; import directly from module paths.
-- Exception: `src/types/index.ts` for re-exporting common types.
+- Minimal barrel usage; `src/lib/queries/index.ts` is a notable barrel for query builders/types
 
 ---
 
-*Convention analysis: 2026-03-06*
+*Convention analysis: 2026-03-11*
