@@ -24,7 +24,7 @@ import {
   buildGlobalAdaptiveCacheQueries,
 } from './queries/index';
 import * as queriesFacade from './queries';
-import { queryCrimeCount, queryCrimesInRange, queryDensityBins } from './queries';
+import { getOrCreateGlobalAdaptiveMaps, queryCrimeCount, queryCrimesInRange, queryDensityBins } from './queries';
 
 describe('queries normalization parity', () => {
   beforeEach(() => {
@@ -153,9 +153,11 @@ describe('aggregation decomposition compatibility and safety', () => {
       cacheKey: "global:60:8' OR 1=1 --",
       binCount: 60,
       kernelWidth: 8,
+      binningMode: 'uniform-time',
       domain: [10, 20],
       rowCount: 42,
       densityJson: '[0.1,0.2]',
+      countJson: '[1,2]',
       burstJson: '[0.3,0.4]',
       warpJson: '[10,15]',
     });
@@ -163,18 +165,103 @@ describe('aggregation decomposition compatibility and safety', () => {
     expect(built.readByKey.sql).toContain('WHERE cache_key = ?');
     expect(built.readByKey.sql).not.toContain("global:60:8' OR 1=1 --");
     expect(built.readByKey.params).toEqual(["global:60:8' OR 1=1 --"]);
-    expect(built.insert.sql).toContain('VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    expect(built.insert.sql).toContain('VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     expect(built.insert.params).toEqual([
       "global:60:8' OR 1=1 --",
       60,
       8,
+      'uniform-time',
       10,
       20,
       42,
       '[0.1,0.2]',
+      '[1,2]',
       '[0.3,0.4]',
       '[10,15]',
     ]);
+  });
+
+  it('uses mode-sensitive cache keys and defaults mode to uniform-time', async () => {
+    ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
+
+    const all = vi.fn((query: string, ...args: unknown[]) => {
+      const callback = args.at(-1) as (err: Error | null, rows: unknown[]) => void;
+      if (query.includes('WHERE cache_key = ?')) {
+        callback(null, [
+          {
+            domain_start: 10,
+            domain_end: 20,
+            row_count: 100,
+            density_json: '[0.1,0.2]',
+            count_json: null,
+            burstiness_json: '[0.3,0.4]',
+            warp_json: '[11,19]',
+            binning_mode: null,
+            generated_at: '2026-03-11T00:00:00.000Z',
+          },
+        ]);
+        return;
+      }
+      callback(null, []);
+    });
+    const run = vi.fn((_query: string, ...args: unknown[]) => {
+      const callback = args.at(-1) as (err: Error | null) => void;
+      callback(null);
+    });
+
+    getDbMock.mockResolvedValue({ all, run });
+
+    const result = await getOrCreateGlobalAdaptiveMaps(128, 2);
+    const readCall = all.mock.calls.find(([query]) => (query as string).includes('WHERE cache_key = ?'));
+    const params = (readCall?.slice(1, -1) ?? []) as unknown[];
+
+    expect(params[0]).toBe('global:128:2:uniform-time');
+    expect(result.binningMode).toBe('uniform-time');
+    expect(result.countMap[0]).toBeCloseTo(0.1, 6);
+    expect(result.countMap[1]).toBeCloseTo(0.2, 6);
+  });
+
+  it('returns stable map contract for explicit uniform-events mode', async () => {
+    ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
+
+    const all = vi.fn((query: string, ...args: unknown[]) => {
+      const callback = args.at(-1) as (err: Error | null, rows: unknown[]) => void;
+      if (query.includes('WHERE cache_key = ?')) {
+        callback(null, [
+          {
+            domain_start: 5,
+            domain_end: 25,
+            row_count: 8,
+            density_json: '[0.5,0.25,0.0]',
+            count_json: '[3,3,2]',
+            burstiness_json: '[0.1,0.2,0.3]',
+            warp_json: '[5,12,25]',
+            binning_mode: 'uniform-events',
+            generated_at: '2026-03-11T00:00:00.000Z',
+          },
+        ]);
+        return;
+      }
+      callback(null, []);
+    });
+    const run = vi.fn((_query: string, ...args: unknown[]) => {
+      const callback = args.at(-1) as (err: Error | null) => void;
+      callback(null);
+    });
+
+    getDbMock.mockResolvedValue({ all, run });
+
+    const result = await getOrCreateGlobalAdaptiveMaps(256, 4, 'uniform-events');
+    const readCall = all.mock.calls.find(([query]) => (query as string).includes('WHERE cache_key = ?'));
+    const params = (readCall?.slice(1, -1) ?? []) as unknown[];
+
+    expect(params[0]).toBe('global:256:4:uniform-events');
+    expect(result.binningMode).toBe('uniform-events');
+    expect(result).toHaveProperty('densityMap');
+    expect(result).toHaveProperty('countMap');
+    expect(result).toHaveProperty('burstinessMap');
+    expect(result).toHaveProperty('warpMap');
+    expect(Array.from(result.countMap)).toEqual([3, 3, 2]);
   });
 
   it('clamps density resolutions and keeps epoch filters parameterized', () => {
