@@ -196,6 +196,16 @@ Plans:
 | 51 | 12/12 | Complete    | 2026-03-10 | - |
 | 52 | v2.2 | Complete    | 2026-03-11 | - |
 
+### Phase 53: Add dedicated uniform-events timeslicing route
+
+**Goal:** Split timeslicing binning methods into dedicated routes so users can switch between uniform-time and uniform-events by URL without mode ambiguity.
+**Depends on:** Phase 52
+**Plans:** 2 plans
+
+Plans:
+- [ ] 53-01-PLAN.md — Extract shared timeslicing shell and add dedicated uniform-time/uniform-events route wrappers
+- [ ] 53-02-PLAN.md — Centralize route-to-binning resolution and replace MainScene pathname heuristic with tested resolver wiring
+
 ---
 
 *For milestone history, see `.planning/MILESTONES.md`*
