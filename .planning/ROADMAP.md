@@ -14,6 +14,7 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - ✅ **v1.3 Fully Automated Timeslicing Workflows** - Phases 40-42 (shipped 2026-03-04)
 - ✅ **v2.0 3D Timeline-Test Parity** - Phases 43-45 (shipped 2026-03-06)
 - 📋 **v2.1 Refactoring and Decomposition** - Phases 46-51 (planned)
+- 📋 **v2.2 Timeslicing Fidelity Improvements** - Phase 52 (planned)
 
 ## Phases
 
@@ -26,6 +27,7 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - [x] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity. (completed 2026-03-09)
 - [x] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization. (completed 2026-03-09)
 - [x] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths. (completed 2026-03-10)
+- [ ] **Phase 52: Uniform-Events Binning for Timeslicing** - Add quantile-style event-balanced binning alongside existing uniform-time bins.
 
 ## Phase Details
 
@@ -160,6 +162,20 @@ Plans:
 - [ ] 51-11-PLAN.md — Migrate advanced viz and adapter residual consumers off `useDataStore`
 - [ ] 51-12-PLAN.md — Enforce zero-import gate and delete `src/store/useDataStore.ts`
 
+### Phase 52: Uniform-Events Binning for Timeslicing
+**Goal**: Implement quantile-style uniform-events binning in adaptive map generation and wire it into timeslicing without regressing existing behavior.
+**Depends on**: Phase 51
+**Requirements**: BINS-01, BINS-02
+**Success Criteria** (what must be TRUE):
+  1. Timeslicing can request uniform-events bins (equal-event-target bins) in addition to uniform-time bins.
+  2. Worker/store contracts expose count and density outputs for both modes with parity-safe defaults.
+  3. Existing flows remain backward-compatible when uniform-time mode is used.
+**Plans**: 3 plans
+Plans:
+- [ ] 52-01-PLAN.md — Add mode-aware adaptive worker/store contract and uniform-events binning algorithm
+- [ ] 52-02-PLAN.md — Wire `/timeslicing` to request uniform-events bins with route-level regression guard
+- [ ] 52-03-PLAN.md — Make global adaptive precompute/cache mode-aware with count+density parity outputs
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -177,6 +193,7 @@ Plans:
 | 49 | v2.1 | Complete    | 2026-03-09 | - |
 | 50 | v2.1 | Complete    | 2026-03-09 | - |
 | 51 | 12/12 | Complete    | 2026-03-10 | - |
+| 52 | v2.2 | 0/3 | Planned | - |
 
 ---
 
