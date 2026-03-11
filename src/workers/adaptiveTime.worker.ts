@@ -42,9 +42,7 @@ const ensureStrictlyMonotonicBoundaries = (
     }
   }
   const lastIndex = boundaries.length - 1;
-  if (boundaries[lastIndex] < domainEnd) {
-    boundaries[lastIndex] = domainEnd;
-  }
+  boundaries[lastIndex] = Math.max(domainEnd, boundaries[lastIndex - 1] + EPSILON);
 };
 
 const findBoundaryBin = (value: number, boundaries: Float32Array) => {
@@ -188,7 +186,8 @@ export const computeAdaptiveMaps = (
   const warpMap = new Float32Array(safeBinCount);
   let accumulated = 0;
   for (let i = 0; i < safeBinCount; i++) {
-    warpMap[i] = tStart + (accumulated / totalWeight) * tSpan;
+    const warped = tStart + (accumulated / totalWeight) * tSpan;
+    warpMap[i] = Number.isFinite(warped) ? warped : tStart;
     accumulated += weights[i];
   }
 
