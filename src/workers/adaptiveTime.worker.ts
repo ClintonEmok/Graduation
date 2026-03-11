@@ -237,8 +237,10 @@ export const computeAdaptiveMaps = (
   };
 };
 
-self.onmessage = (e: MessageEvent<WorkerInput>) => {
-  const { requestId, timestamps, domain, config } = e.data;
-  const maps = computeAdaptiveMaps(timestamps, domain, config);
-  self.postMessage({ requestId, ...maps });
-};
+if (typeof self !== 'undefined') {
+  self.onmessage = (e: MessageEvent<WorkerInput>) => {
+    const { requestId, timestamps, domain, config } = e.data;
+    const maps = computeAdaptiveMaps(timestamps, domain, config);
+    self.postMessage({ requestId, ...maps });
+  };
+}
