@@ -5,17 +5,18 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
-import { useAdaptiveStore, type AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { ACTIVE_ALGORITHM_OPTIONS, ALGORITHM_OPTIONS } from './algorithm-options';
+import {
+  parseTimeslicingAlgosModeIntent,
+  resolveTimeslicingAlgosEffectiveMode,
+  type TimeslicingAlgosModeIntent,
+} from './mode-intent';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
 const MIN_VALID_DATA_EPOCH = 946684800;
-
-const isBinningMode = (value: string | null): value is AdaptiveBinningMode => {
-  return value === 'uniform-time' || value === 'uniform-events';
-};
 
 export function TimeslicingAlgosRouteShell() {
   const router = useRouter();
@@ -24,7 +25,8 @@ export function TimeslicingAlgosRouteShell() {
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
 
   const requestedMode = searchParams.get('mode');
-  const activeMode: AdaptiveBinningMode = isBinningMode(requestedMode) ? requestedMode : 'uniform-events';
+  const selectedModeIntent = parseTimeslicingAlgosModeIntent(requestedMode);
+  const effectiveMode = resolveTimeslicingAlgosEffectiveMode(pathname, selectedModeIntent);
 
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -43,7 +45,7 @@ export function TimeslicingAlgosRouteShell() {
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
 
-  const setMode = (nextMode: AdaptiveBinningMode) => {
+  const setModeIntent = (nextMode: TimeslicingAlgosModeIntent) => {
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set('mode', nextMode);
     router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
@@ -54,9 +56,9 @@ export function TimeslicingAlgosRouteShell() {
       return;
     }
     const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set('mode', activeMode);
+    nextParams.set('mode', selectedModeIntent);
     router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
-  }, [activeMode, pathname, requestedMode, router, searchParams]);
+  }, [pathname, requestedMode, router, searchParams, selectedModeIntent]);
 
   useEffect(() => {
     if (!crimes || crimes.length === 0) {
@@ -99,8 +101,8 @@ export function TimeslicingAlgosRouteShell() {
       isMock: false,
     });
 
-    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: activeMode });
-  }, [activeMode, crimes, domainEndSec, domainStartSec]);
+    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: effectiveMode });
+  }, [crimes, domainEndSec, domainStartSec, effectiveMode]);
 
   const dataSummaryLabel = useMemo(() => {
     if (isLoading) return 'Loading...';
@@ -139,13 +141,13 @@ export function TimeslicingAlgosRouteShell() {
 
           <div className="mt-4 flex flex-wrap gap-2" data-testid="algo-mode-controls">
             {ACTIVE_ALGORITHM_OPTIONS.map((option) => {
-              const mode = option.binningMode as AdaptiveBinningMode;
-              const isActive = activeMode === mode;
+              const modeIntent = option.modeIntent as TimeslicingAlgosModeIntent;
+              const isActive = selectedModeIntent === modeIntent;
               return (
                 <button
                   key={option.algorithmId}
                   type="button"
-                  onClick={() => setMode(mode)}
+                  onClick={() => setModeIntent(modeIntent)}
                   className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
                     isActive
                       ? 'border-emerald-400 bg-emerald-400/20 text-emerald-200'
