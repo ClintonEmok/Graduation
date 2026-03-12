@@ -9,6 +9,7 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { ALGORITHM_OPTIONS } from './algorithm-options';
+import { TimeslicingAlgosStrategyStats } from './TimeslicingAlgosStrategyStats';
 import {
   resolveTimeslicingAlgosSelection,
   serializeTimeslicingAlgosSelection,
@@ -169,6 +170,12 @@ export function TimeslicingAlgosRouteShell() {
               selectedTimeScale={selectedTimeScale}
               onStrategyChange={handleStrategyChange}
               onTimeScaleChange={handleTimeScaleChange}
+            />
+
+            <TimeslicingAlgosStrategyStats
+              timestamps={crimes.map((crime) => crime.timestamp)}
+              domain={[domainStartSec, domainEndSec]}
+              selectedStrategy={selectedStrategy}
             />
           </div>
 

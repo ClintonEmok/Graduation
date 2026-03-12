@@ -24,3 +24,9 @@ export const resolveTimeslicingAlgosEffectiveMode = (
   const explicitOverride = modeIntent === 'adaptive' ? null : modeIntent;
   return resolveRouteBinningMode(pathname, explicitOverride);
 };
+
+export const resolveTimeslicingAlgosTimeScaleMode = (
+  modeIntent: TimeslicingAlgosModeIntent,
+): 'linear' | 'adaptive' => {
+  return modeIntent === 'adaptive' ? 'adaptive' : 'linear';
+};

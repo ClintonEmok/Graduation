@@ -27,6 +27,16 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/selectedTimeScale === 'adaptive' && warpFactor === 0/);
     expect(shellSource).toMatch(/computeMaps\(timestamps, \[domainStartSec, domainEndSec\], \{ binningMode: selectedStrategy \}\)/);
     expect(shellSource).toMatch(/serializeTimeslicingAlgosSelection/);
+    expect(shellSource).toMatch(/TimeslicingAlgosStrategyStats/);
+  });
+
+  test('renders a per-strategy stats widget below interaction controls', () => {
+    const statsSource = readFileSync(new URL('./lib/TimeslicingAlgosStrategyStats.tsx', import.meta.url), 'utf8');
+    expect(statsSource).toMatch(/Binning strategy stats/);
+    expect(statsSource).toMatch(/Uniform Time/);
+    expect(statsSource).toMatch(/Uniform Events/);
+    expect(statsSource).toMatch(/Variance\/bin/);
+    expect(statsSource).toMatch(/strategy-stats-widget/);
   });
 
   test('stays focused and does not include suggestion workflow orchestration UI', () => {

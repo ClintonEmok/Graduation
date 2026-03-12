@@ -27,13 +27,40 @@ export const selectCreationPreviewRange = select((state) =>
     ? null
     : ([state.previewStart, state.previewEnd] as [number, number])
 );
-export const selectCreationPreviewFeedback = select((state) => ({
-  isValid: state.previewIsValid,
-  reason: state.previewReason,
-  durationLabel: state.previewDurationLabel,
-  timeRangeLabel: state.previewTimeRangeLabel,
-  snapInterval: state.snapInterval,
-}));
+
+type CreationPreviewFeedback = {
+  isValid: boolean;
+  reason: string | null;
+  durationLabel: string | null;
+  timeRangeLabel: string | null;
+  snapInterval: number | null;
+};
+
+let cachedCreationPreviewFeedback: CreationPreviewFeedback | null = null;
+export const selectCreationPreviewFeedback = select((state) => {
+  const next: CreationPreviewFeedback = {
+    isValid: state.previewIsValid,
+    reason: state.previewReason,
+    durationLabel: state.previewDurationLabel,
+    timeRangeLabel: state.previewTimeRangeLabel,
+    snapInterval: state.snapInterval,
+  };
+
+  const prev = cachedCreationPreviewFeedback;
+  if (
+    prev !== null &&
+    prev.isValid === next.isValid &&
+    prev.reason === next.reason &&
+    prev.durationLabel === next.durationLabel &&
+    prev.timeRangeLabel === next.timeRangeLabel &&
+    prev.snapInterval === next.snapInterval
+  ) {
+    return prev;
+  }
+
+  cachedCreationPreviewFeedback = next;
+  return next;
+});
 
 export const selectDraggingSliceId = select((state) => state.draggingSliceId);
 export const selectDraggingHandle = select((state) => state.draggingHandle);

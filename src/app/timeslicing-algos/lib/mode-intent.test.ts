@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   parseTimeslicingAlgosModeIntent,
   resolveTimeslicingAlgosEffectiveMode,
+  resolveTimeslicingAlgosTimeScaleMode,
 } from './mode-intent';
 
 describe('timeslicing algos mode intent helper', () => {
@@ -28,5 +29,11 @@ describe('timeslicing algos mode intent helper', () => {
 
   test('keeps fallback safe on non-algos pathnames', () => {
     expect(resolveTimeslicingAlgosEffectiveMode('/dashboard', 'adaptive')).toBe('uniform-time');
+  });
+
+  test('maps adaptive intent to adaptive timescale and explicit modes to linear timescale', () => {
+    expect(resolveTimeslicingAlgosTimeScaleMode('adaptive')).toBe('adaptive');
+    expect(resolveTimeslicingAlgosTimeScaleMode('uniform-time')).toBe('linear');
+    expect(resolveTimeslicingAlgosTimeScaleMode('uniform-events')).toBe('linear');
   });
 });
