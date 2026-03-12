@@ -5,16 +5,16 @@
 See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** v2.1 refactoring and decomposition planning based on `.planning/REFACTORING-PLAN.md`.
+**Current focus:** Execute Phase 54 plans to deliver adaptive-mode testing and verbose diagnostics in `/timeslicing-algos`.
 
 ## Current Position
 
-Phase: **53 of 53** (Add dedicated timeslicing algos route)
-Plan: **2 of 2** in current phase
-Status: **Phase complete**
-Last activity: 2026-03-11 - Completed 53-02 centralized route-to-binning resolver wiring and tests
+Phase: **54 of 54** (Adaptive timeslicing in algos route with verbose diagnostics)
+Plan: **1 of 3** in current phase
+Status: **In progress**
+Last activity: 2026-03-12 - Completed 54-01 adaptive mode intent wiring for `/timeslicing-algos`
 
-Progress: **████████████████████** 196/196 plans complete (100.0%)
+Progress: **███████████████████░** 197/200 plans complete (98.5%)
 
 ## Milestone Status
 
@@ -24,6 +24,8 @@ Progress: **████████████████████** 196/1
 - v1.3: Complete (2026-03-04)
 - v2.0: 3/3 phases complete
 - v2.1: 6/6 phases complete
+- v2.2: 2/2 phases complete
+- v2.3: 0/1 phases complete (planned)
 
 ## Decisions
 
@@ -105,6 +107,10 @@ Progress: **████████████████████** 196/1
 - [Phase 53]: Established `/timeslicing-algos` as an algorithm-focused route with both `uniform-time` and `uniform-events` controls and timeline interaction coverage. — This isolates algorithm behavior testing from suggestion/full-auto orchestration UI.
 - [Phase 53]: Introduced `src/app/timeslicing-algos/lib/algorithm-options.ts` as a future-friendly algorithm selector contract. — Additional methods (for example STKDE/KDE) can be added through one registry boundary.
 - [Phase 53]: Centralized route mode ownership in `resolveRouteBinningMode(pathname, explicitMode)` and wired `MainScene` to use it. — Global adaptive fetch mode no longer depends on inline pathname heuristics and now supports explicit in-route override behavior.
+- [Phase 54]: Keep `adaptive` as `/timeslicing-algos` route intent and resolve effective compute mode via `resolveRouteBinningMode`. — This adds third-mode QA coverage without widening backend/store binning contracts.
+- [Phase 54]: Preserve existing invalid/missing mode fallback as `uniform-events` on `/timeslicing-algos`. — This keeps current user behavior stable while adding adaptive query intent support.
+- Reconciled roadmap checkboxes and progress table to match on-disk phase completion after stale/duplicate planning artifact cleanup.
+- Added roadmap placeholder for Phase 54 to introduce adaptive mode coverage and route-scoped verbose diagnostics in `/timeslicing-algos`.
 
 ## Blockers/Concerns
 
@@ -118,6 +124,6 @@ Progress: **████████████████████** 196/1
 
 ## Session Continuity
 
-Last session: 2026-03-11 19:46 UTC
-Stopped at: Completed 52-04-PLAN.md
+Last session: 2026-03-12 16:35 UTC
+Stopped at: Completed 54-01-PLAN.md
 Resume file: None
