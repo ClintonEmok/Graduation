@@ -7,11 +7,26 @@ describe('/timeslicing-algos route intent', () => {
     expect(pageSource).toMatch(/TimeslicingAlgosRouteShell/);
   });
 
-  test('exposes both binning mode controls in algorithm shell', () => {
+  test('exposes separate controls for strategy and interaction mode', () => {
     const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
-    expect(shellSource).toMatch(/uniform-time/);
-    expect(shellSource).toMatch(/uniform-events/);
-    expect(shellSource).toMatch(/algo-mode-controls/);
+    expect(shellSource).toMatch(/TimeslicingAlgosInteractionControls/);
+
+    const controlsSource = readFileSync(new URL('./lib/TimeslicingAlgosInteractionControls.tsx', import.meta.url), 'utf8');
+    expect(controlsSource).toMatch(/Binning strategy/);
+    expect(controlsSource).toMatch(/Timeline interaction mode/);
+
+    const optionsSource = readFileSync(new URL('./lib/algorithm-options.ts', import.meta.url), 'utf8');
+    expect(optionsSource).toMatch(/uniform-time/);
+    expect(optionsSource).toMatch(/uniform-events/);
+    expect(optionsSource).toMatch(/BINNING_STRATEGY_OPTIONS/);
+  });
+
+  test('wires timeline parity behavior and compute strategy selection', () => {
+    const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
+    expect(shellSource).toMatch(/setTimeScaleMode/);
+    expect(shellSource).toMatch(/selectedTimeScale === 'adaptive' && warpFactor === 0/);
+    expect(shellSource).toMatch(/computeMaps\(timestamps, \[domainStartSec, domainEndSec\], \{ binningMode: selectedStrategy \}\)/);
+    expect(shellSource).toMatch(/serializeTimeslicingAlgosSelection/);
   });
 
   test('stays focused and does not include suggestion workflow orchestration UI', () => {
