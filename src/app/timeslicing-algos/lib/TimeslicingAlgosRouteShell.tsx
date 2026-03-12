@@ -6,13 +6,15 @@ import { useMeasure } from '@/hooks/useMeasure';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useTimeStore } from '@/store/useTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { ACTIVE_ALGORITHM_OPTIONS, ALGORITHM_OPTIONS } from './algorithm-options';
+import { ALGORITHM_OPTIONS } from './algorithm-options';
 import {
-  parseTimeslicingAlgosModeIntent,
-  resolveTimeslicingAlgosEffectiveMode,
-  type TimeslicingAlgosModeIntent,
-} from './mode-intent';
+  resolveTimeslicingAlgosSelection,
+  serializeTimeslicingAlgosSelection,
+  type TimeslicingAlgosSelection,
+} from './mode-selection';
+import { TimeslicingAlgosInteractionControls } from './TimeslicingAlgosInteractionControls';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -24,9 +26,12 @@ export function TimeslicingAlgosRouteShell() {
   const searchParams = useSearchParams();
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
 
-  const requestedMode = searchParams.get('mode');
-  const selectedModeIntent = parseTimeslicingAlgosModeIntent(requestedMode);
-  const effectiveMode = resolveTimeslicingAlgosEffectiveMode(pathname, selectedModeIntent);
+  const selection = useMemo(() => resolveTimeslicingAlgosSelection(searchParams), [searchParams]);
+  const selectedStrategy = selection.strategy;
+  const selectedTimeScale = selection.timescale;
+  const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
 
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -45,20 +50,39 @@ export function TimeslicingAlgosRouteShell() {
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
 
-  const setModeIntent = (nextMode: TimeslicingAlgosModeIntent) => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set('mode', nextMode);
+  const setSelection = (nextSelection: TimeslicingAlgosSelection) => {
+    const nextParams = serializeTimeslicingAlgosSelection(searchParams, nextSelection);
     router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
   };
 
   useEffect(() => {
-    if (requestedMode !== null) {
+    const nextParams = serializeTimeslicingAlgosSelection(searchParams, selection);
+    if (nextParams.toString() === searchParams.toString()) {
       return;
     }
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set('mode', selectedModeIntent);
     router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
-  }, [pathname, requestedMode, router, searchParams, selectedModeIntent]);
+  }, [pathname, router, searchParams, selection]);
+
+  const handleStrategyChange = (strategy: TimeslicingAlgosSelection['strategy']) => {
+    setSelection({
+      strategy,
+      timescale: selectedTimeScale,
+    });
+  };
+
+  const handleTimeScaleChange = (timescale: TimeslicingAlgosSelection['timescale']) => {
+    setSelection({
+      strategy: selectedStrategy,
+      timescale,
+    });
+  };
+
+  useEffect(() => {
+    setTimeScaleMode(selectedTimeScale);
+    if (selectedTimeScale === 'adaptive' && warpFactor === 0) {
+      setWarpFactor(1);
+    }
+  }, [selectedTimeScale, setTimeScaleMode, setWarpFactor, warpFactor]);
 
   useEffect(() => {
     if (!crimes || crimes.length === 0) {
@@ -101,8 +125,8 @@ export function TimeslicingAlgosRouteShell() {
       isMock: false,
     });
 
-    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: effectiveMode });
-  }, [crimes, domainEndSec, domainStartSec, effectiveMode]);
+    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: selectedStrategy });
+  }, [crimes, domainEndSec, domainStartSec, selectedStrategy]);
 
   const dataSummaryLabel = useMemo(() => {
     if (isLoading) return 'Loading...';
@@ -139,25 +163,13 @@ export function TimeslicingAlgosRouteShell() {
             </span>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2" data-testid="algo-mode-controls">
-            {ACTIVE_ALGORITHM_OPTIONS.map((option) => {
-              const modeIntent = option.modeIntent as TimeslicingAlgosModeIntent;
-              const isActive = selectedModeIntent === modeIntent;
-              return (
-                <button
-                  key={option.algorithmId}
-                  type="button"
-                  onClick={() => setModeIntent(modeIntent)}
-                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
-                    isActive
-                      ? 'border-emerald-400 bg-emerald-400/20 text-emerald-200'
-                      : 'border-slate-700 bg-slate-800/70 text-slate-200 hover:border-slate-500'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+          <div className="mt-4">
+            <TimeslicingAlgosInteractionControls
+              selectedStrategy={selectedStrategy}
+              selectedTimeScale={selectedTimeScale}
+              onStrategyChange={handleStrategyChange}
+              onTimeScaleChange={handleTimeScaleChange}
+            />
           </div>
 
           <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-400" data-testid="algorithm-registry">
