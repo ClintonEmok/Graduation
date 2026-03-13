@@ -35,6 +35,7 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/endEpoch: baseDomainEndSec/);
     expect(shellSource).toMatch(/const \[rangeStart, rangeEnd\] = useMemo/);
     expect(shellSource).toMatch(/detailRangeOverride=\{\[rangeStart, rangeEnd\]\}/);
+    expect(shellSource).toMatch(/tickLabelStrategy="span-aware"/);
     expect(shellSource).toMatch(/computeMaps\(timestamps, \[baseDomainStartSec, baseDomainEndSec\], \{ binningMode: selectedStrategy \}\)/);
     expect(shellSource).toMatch(/serializeTimeslicingAlgosSelection/);
     expect(shellSource).toMatch(/TimeslicingAlgosStrategyStats/);

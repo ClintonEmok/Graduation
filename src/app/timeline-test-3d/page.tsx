@@ -375,6 +375,7 @@ export default function TimelineTest3DPage() {
                   adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
                   detailRangeOverride={[selectionStart, selectionEnd]}
                   disableAutoBurstSlices={true}
+                  tickLabelStrategy="span-aware"
                 />
                 <BurstList />
               </>

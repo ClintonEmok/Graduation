@@ -611,6 +611,7 @@ export default function TimelineTestPage() {
             <DualTimeline
               adaptiveWarpMapOverride={effectiveWarpMap}
               adaptiveWarpDomainOverride={mapDomain}
+              tickLabelStrategy="span-aware"
             />
             {detailInnerWidth > 0 && (
               <>

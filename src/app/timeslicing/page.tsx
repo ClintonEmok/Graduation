@@ -614,6 +614,7 @@ export default function TimeslicingPage() {
                   disableAutoBurstSlices={true}
                   adaptiveWarpMapOverride={sliceAuthoredWarpMapMain}
                   adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
+                  tickLabelStrategy="span-aware"
                 />
                 {hoverPreviewGlobal.type !== null && (
                   <div className="pointer-events-none absolute inset-3 z-20 overflow-hidden rounded-sm">
@@ -709,6 +710,7 @@ export default function TimeslicingPage() {
                 disableAutoBurstSlices={true}
                 adaptiveWarpMapOverride={sliceAuthoredWarpMapSelection}
                 adaptiveWarpDomainOverride={[rangeStart, rangeEnd]}
+                tickLabelStrategy="span-aware"
               />
               {hoverPreviewSelection.type !== null && (
                 <div className="pointer-events-none absolute inset-3 z-10 overflow-hidden rounded-sm">

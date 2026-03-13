@@ -247,6 +247,7 @@ export function TimeslicingAlgosRouteShell() {
                 detailRangeOverride={[rangeStart, rangeEnd]}
                 detailRenderMode="auto"
                 disableAutoBurstSlices={true}
+                tickLabelStrategy="span-aware"
               />
             ) : (
               <div className="h-40" />

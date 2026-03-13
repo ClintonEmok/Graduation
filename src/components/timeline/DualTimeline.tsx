@@ -33,6 +33,11 @@ import {
   computeRangeUpdate,
   resolveSelectionX,
 } from './lib/interaction-guards';
+import {
+  buildSpanAwareTicks,
+  formatSpanAwareTickLabel,
+  type TickLabelStrategy,
+} from './lib/tick-ux';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -138,6 +143,7 @@ interface DualTimelineProps {
   detailRenderMode?: 'auto' | 'points' | 'bins';
   detailBinCount?: number;
   disableAutoBurstSlices?: boolean;
+  tickLabelStrategy?: TickLabelStrategy;
 }
 
 export const DualTimeline: React.FC<DualTimelineProps> = ({
@@ -151,6 +157,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   detailRenderMode = 'auto',
   detailBinCount = 60,
   disableAutoBurstSlices = false,
+  tickLabelStrategy = 'legacy',
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
@@ -466,8 +473,26 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   // Auto-create burst slices when burst data becomes available (unless disabled)
   useAutoBurstSlices(burstWindowsForAutoSlices);
-  const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
+  const overviewTicks = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return buildSpanAwareTicks(overviewScale, {
+        rangeStartSec: domainStart,
+        rangeEndSec: domainEnd,
+        axisWidth: overviewInnerWidth,
+      });
+    }
+
+    return overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
+  }, [domainEnd, domainStart, overviewInnerWidth, overviewScale, tickLabelStrategy]);
   const detailTicks = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return buildSpanAwareTicks(detailScale, {
+        rangeStartSec: detailRangeSec[0],
+        rangeEndSec: detailRangeSec[1],
+        axisWidth: detailInnerWidth,
+      });
+    }
+
     const spanSeconds = Math.max(1, detailRangeSec[1] - detailRangeSec[0]);
     const maxTicks = Math.max(2, Math.floor(detailInnerWidth / 140));
     const pickStep = (unitSeconds: number, steps: number[]) => {
@@ -509,8 +534,17 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       default:
         return detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
     }
-  }, [detailInnerWidth, detailRangeSec, detailScale, timeResolution]);
+  }, [detailInnerWidth, detailRangeSec, detailScale, tickLabelStrategy, timeResolution]);
   const detailTickFormat = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return (date: Date) =>
+        formatSpanAwareTickLabel(date, {
+          rangeStartSec: detailRangeSec[0],
+          rangeEndSec: detailRangeSec[1],
+          axisWidth: detailInnerWidth,
+        });
+    }
+
     switch (timeResolution) {
       case 'seconds':
         return (date: Date) => date.toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
@@ -529,7 +563,19 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       default:
         return (date: Date) => date.toLocaleDateString();
     }
-  }, [timeResolution]);
+  }, [detailInnerWidth, detailRangeSec, tickLabelStrategy, timeResolution]);
+  const overviewTickFormat = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return (date: Date) =>
+        formatSpanAwareTickLabel(date, {
+          rangeStartSec: domainStart,
+          rangeEndSec: domainEnd,
+          axisWidth: overviewInnerWidth,
+        });
+    }
+
+    return (date: Date) => date.toLocaleDateString();
+  }, [domainEnd, domainStart, overviewInnerWidth, tickLabelStrategy]);
 
   const stripSelection = useMemo(() => {
     if (!overviewInnerWidth) return null;
@@ -829,7 +875,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                       fontSize={10}
                       fill="currentColor"
                     >
-                      {tick.toLocaleDateString()}
+                      {overviewTickFormat(tick)}
                     </text>
                   </g>
                 );

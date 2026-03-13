@@ -68,6 +68,14 @@ export const FLAG_DEFINITIONS: FeatureFlag[] = [
     status: 'experimental',
     default: false,
   },
+  {
+    id: 'timelineSpanAwareTicks',
+    name: 'Span-Aware Timeline Ticks',
+    description: 'Use visible-span-aware timeline labels on the dashboard timeline.',
+    category: 'visualization',
+    status: 'beta',
+    default: false,
+  },
 ];
 
 export function getDefaultFlags(): Record<string, boolean> {
