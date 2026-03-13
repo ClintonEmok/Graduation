@@ -25,9 +25,21 @@ describe('/timeslicing-algos route intent', () => {
     const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
     expect(shellSource).toMatch(/setTimeScaleMode/);
     expect(shellSource).toMatch(/selectedTimeScale === 'adaptive' && warpFactor === 0/);
-    expect(shellSource).toMatch(/computeMaps\(timestamps, \[domainStartSec, domainEndSec\], \{ binningMode: selectedStrategy \}\)/);
+    expect(shellSource).toMatch(/useFilterStore\(\(state\) => state\.selectedTimeRange\)/);
+    expect(shellSource).not.toMatch(/SELECTION_SETTLE_DELAY_MS/);
+    expect(shellSource).not.toMatch(/setSettledSelectedTimeRange/);
+    expect(shellSource).not.toMatch(/window\.setTimeout/);
+    expect(shellSource).not.toMatch(/queryKey: \['crime-meta'\]/);
+    expect(shellSource).not.toMatch(/fetch\('\/api\/crime\/meta'\)/);
+    expect(shellSource).toMatch(/startEpoch: baseDomainStartSec/);
+    expect(shellSource).toMatch(/endEpoch: baseDomainEndSec/);
+    expect(shellSource).toMatch(/const \[rangeStart, rangeEnd\] = useMemo/);
+    expect(shellSource).toMatch(/detailRangeOverride=\{\[rangeStart, rangeEnd\]\}/);
+    expect(shellSource).toMatch(/computeMaps\(timestamps, \[baseDomainStartSec, baseDomainEndSec\], \{ binningMode: selectedStrategy \}\)/);
     expect(shellSource).toMatch(/serializeTimeslicingAlgosSelection/);
     expect(shellSource).toMatch(/TimeslicingAlgosStrategyStats/);
+    expect(shellSource).toMatch(/Timeline: \{dataDomainLabel\}/);
+    expect(shellSource).toMatch(/Fetched: \{fetchedDomainLabel\}/);
   });
 
   test('renders a per-strategy stats widget below interaction controls', () => {
