@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **54 of 54** (Adaptive timeslicing in algos route with verbose diagnostics)
-Plan: **2 of 4** completed in current phase
+Plan: **3 of 5** completed in current phase
 Status: **In progress**
-Last activity: 2026-03-12 - Completed 54-04 strategy/time-scale control parity for `/timeslicing-algos`
+Last activity: 2026-03-13 - Completed 54-05 timeline parity rewire for `/timeslicing-algos`
 
-Progress: **███████████████████░** 198/200 plans complete (99.0%)
+Progress: **███████████████████░** 199/202 plans complete (98.5%)
 
 ## Milestone Status
 
@@ -111,6 +111,8 @@ Progress: **███████████████████░** 198/2
 - [Phase 54]: Preserve existing invalid/missing mode fallback as `uniform-events` on `/timeslicing-algos`. — This keeps current user behavior stable while adding adaptive query intent support.
 - [Phase 54]: Keep `adaptive` as timeline interaction mode while binning strategy remains explicitly `uniform-time`/`uniform-events`. — This preserves compute contract stability and keeps uniform strategy selection first-class.
 - [Phase 54]: Canonicalize `/timeslicing-algos` query state to `strategy` + `timescale` with field-level fallback from legacy `mode`. — This keeps old links functional while making route intent deterministic.
+- [Phase 54]: Remove settled selection delay and `/api/crime/meta` label ownership from `/timeslicing-algos`. — Fetch-domain and status labels now follow the active base timeline domain contract.
+- [Phase 54]: Keep `computeMaps` and timeline store domain writes pinned to `[baseDomainStartSec, baseDomainEndSec]` while detail range always follows selected/viewport range. — This aligns drag/brush behavior with `/timeslicing` without recoupling selection to fetch windows.
 - Reconciled roadmap checkboxes and progress table to match on-disk phase completion after stale/duplicate planning artifact cleanup.
 - Added roadmap placeholder for Phase 54 to introduce adaptive mode coverage and route-scoped verbose diagnostics in `/timeslicing-algos`.
 
@@ -126,6 +128,6 @@ Progress: **███████████████████░** 198/2
 
 ## Session Continuity
 
-Last session: 2026-03-12 23:20 UTC
-Stopped at: Completed 54-04-PLAN.md
+Last session: 2026-03-13 01:22 UTC
+Stopped at: Completed 54-05-PLAN.md
 Resume file: None
