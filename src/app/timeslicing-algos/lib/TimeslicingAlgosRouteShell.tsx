@@ -9,6 +9,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 import { ALGORITHM_OPTIONS } from './algorithm-options';
 import { TimeslicingAlgosStrategyStats } from './TimeslicingAlgosStrategyStats';
 import {
@@ -39,6 +40,8 @@ export function TimeslicingAlgosRouteShell() {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
 
   const hasValidAdaptiveDomain = mapDomain[1] > mapDomain[0] && mapDomain[0] >= MIN_VALID_DATA_EPOCH;
   const baseDomainStartSec = hasValidAdaptiveDomain ? mapDomain[0] : (minTimestampSec ?? DEFAULT_START_EPOCH);
@@ -50,6 +53,17 @@ export function TimeslicingAlgosRouteShell() {
     bufferDays: 30,
     limit: 50000,
   });
+
+  const [rangeStart, rangeEnd] = useMemo(() => {
+    if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
+      const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
+      const end = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
+      if (start !== end) {
+        return [start, end] as [number, number];
+      }
+    }
+    return [viewportStart, viewportEnd] as [number, number];
+  }, [selectedTimeRange, viewportEnd, viewportStart]);
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
 
@@ -92,9 +106,6 @@ export function TimeslicingAlgosRouteShell() {
       return;
     }
 
-    const timelineDomainStartSec = meta?.buffer?.applied.start ?? baseDomainStartSec;
-    const timelineDomainEndSec = meta?.buffer?.applied.end ?? baseDomainEndSec;
-
     let minX = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let minZ = Number.POSITIVE_INFINITY;
@@ -121,8 +132,8 @@ export function TimeslicingAlgosRouteShell() {
     useTimelineDataStore.setState({
       data: points,
       columns: null,
-      minTimestampSec: timelineDomainStartSec,
-      maxTimestampSec: timelineDomainEndSec,
+      minTimestampSec: baseDomainStartSec,
+      maxTimestampSec: baseDomainEndSec,
       minX: Number.isFinite(minX) ? minX : -50,
       maxX: Number.isFinite(maxX) ? maxX : 50,
       minZ: Number.isFinite(minZ) ? minZ : -50,
@@ -133,8 +144,8 @@ export function TimeslicingAlgosRouteShell() {
 
     useAdaptiveStore
       .getState()
-      .computeMaps(timestamps, [timelineDomainStartSec, timelineDomainEndSec], { binningMode: selectedStrategy });
-  }, [baseDomainEndSec, baseDomainStartSec, crimes, meta?.buffer?.applied.end, meta?.buffer?.applied.start, selectedStrategy]);
+      .computeMaps(timestamps, [baseDomainStartSec, baseDomainEndSec], { binningMode: selectedStrategy });
+  }, [baseDomainEndSec, baseDomainStartSec, crimes, selectedStrategy]);
 
   const dataSummaryLabel = useMemo(() => {
     if (isLoading) return 'Loading...';
@@ -144,9 +155,11 @@ export function TimeslicingAlgosRouteShell() {
     const returned = meta?.returned ?? crimes.length;
     const details: string[] = [];
     const bufferDays = meta?.buffer?.days ?? 0;
+    const isMock = Boolean((meta as { isMock?: boolean } | undefined)?.isMock);
 
     if (returned !== total) details.push(`showing ${returned.toLocaleString()}`);
     if (bufferDays > 0) details.push(`buffered +/-${bufferDays}d`);
+    if (isMock) details.push('demo data');
 
     return details.length > 0
       ? `${total.toLocaleString()} crimes (${details.join(', ')})`
@@ -159,14 +172,16 @@ export function TimeslicingAlgosRouteShell() {
     return `${minLabel} - ${maxLabel}`;
   }, [baseDomainEndSec, baseDomainStartSec]);
 
-  const selectionRangeLabel = useMemo(() => {
-    if (!selectedTimeRange) return null;
-    const [start, end] = [
-      Math.min(selectedTimeRange[0], selectedTimeRange[1]),
-      Math.max(selectedTimeRange[0], selectedTimeRange[1]),
-    ];
+  const detailRangeLabel = useMemo(() => {
+    const [start, end] = [Math.min(rangeStart, rangeEnd), Math.max(rangeStart, rangeEnd)];
     return `${new Date(start * 1000).toLocaleDateString()} - ${new Date(end * 1000).toLocaleDateString()}`;
-  }, [selectedTimeRange]);
+  }, [rangeEnd, rangeStart]);
+
+  const fetchedDomainLabel = useMemo(() => {
+    const fetchedStart = meta?.buffer?.applied.start ?? baseDomainStartSec;
+    const fetchedEnd = meta?.buffer?.applied.end ?? baseDomainEndSec;
+    return `${new Date(fetchedStart * 1000).toLocaleDateString()} - ${new Date(fetchedEnd * 1000).toLocaleDateString()}`;
+  }, [baseDomainEndSec, baseDomainStartSec, meta?.buffer?.applied.end, meta?.buffer?.applied.start]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
@@ -184,11 +199,12 @@ export function TimeslicingAlgosRouteShell() {
             <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
               Timeline: {dataDomainLabel}
             </span>
-            {selectionRangeLabel ? (
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                Selection: {selectionRangeLabel}
-              </span>
-            ) : null}
+            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+              Fetched: {fetchedDomainLabel}
+            </span>
+            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+              Detail: {detailRangeLabel}
+            </span>
           </div>
 
           <div className="mt-4">
@@ -228,7 +244,7 @@ export function TimeslicingAlgosRouteShell() {
               <div className="flex h-40 items-center justify-center text-red-400">Error loading data: {error.message}</div>
             ) : timelineWidth > 0 ? (
               <DualTimeline
-                detailRangeOverride={selectedTimeRange ? undefined : [baseDomainStartSec, baseDomainEndSec]}
+                detailRangeOverride={[rangeStart, rangeEnd]}
                 detailRenderMode="auto"
                 disableAutoBurstSlices={true}
               />
