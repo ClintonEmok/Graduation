@@ -33,6 +33,18 @@ export default function Home() {
             >
               Open timeline test 3D
             </Link>
+            <Link
+              href="/timeslicing"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#34d399]/60 bg-[#072018] px-7 py-3 text-sm font-semibold text-[#d1fae5] transition hover:border-[#6ee7b7] hover:bg-[#0b2b21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#34d399] focus-visible:ring-offset-2"
+            >
+              Open timeslicing
+            </Link>
+            <Link
+              href="/timeslicing-algos"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#f59e0b]/60 bg-[#2a1a05] px-7 py-3 text-sm font-semibold text-[#fde68a] transition hover:border-[#fbbf24] hover:bg-[#382308] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f59e0b] focus-visible:ring-offset-2"
+            >
+              Open timeslicing algos
+            </Link>
             <span className="text-sm text-[#8e8e93]">Built for current QA cycle.</span>
           </div>
         </div>

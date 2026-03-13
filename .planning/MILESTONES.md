@@ -1,5 +1,70 @@
 # Project Milestones: Adaptive Space-Time Cube
 
+## v2.2 Timeslicing Fidelity Improvements (Shipped: 2026-03-11)
+
+**Delivered:** Uniform-events binning support for timeslicing plus a dedicated `/timeslicing-algos` route for focused algorithm/mode validation.
+
+**Phases completed:** 52-53 (6 plans total)
+
+**Key accomplishments:**
+
+- Added mode-aware adaptive binning contracts with backward-compatible defaults
+- Wired `/timeslicing` and global adaptive cache paths for explicit uniform-events behavior
+- Added `/timeslicing-algos` route with mode controls and centralized route-to-mode resolution
+
+**Stats:**
+
+- 6 plans, 6 summaries
+- 2 phases completed
+- 2 days from first phase-52 work to phase-53 completion (2026-03-10 -> 2026-03-11)
+
+**What's next:** Milestone closure and planning for the next roadmap cycle
+
+---
+
+## v2.1 Refactoring and Decomposition (Shipped: 2026-03-10)
+
+**Delivered:** Behavior-preserving internal decomposition across guardrails, dead code retirement, API plumbing stabilization, timeline/query modularization, and store consolidation.
+
+**Phases completed:** 46-51 (26 plans total)
+
+**Key accomplishments:**
+
+- Added baseline capture and refactor quality gates before structural changes
+- Stabilized API coordinate normalization and buffering ownership
+- Decomposed DualTimeline and query layer into testable focused modules
+- Consolidated slice-domain ownership and retired deprecated data-store paths
+
+**Stats:**
+
+- 26 plans, 26 summaries
+- 6 phases completed
+- 5 days from first phase-46 work to phase-51 completion (2026-03-06 -> 2026-03-10)
+
+**What's next:** Timeslicing fidelity upgrades with uniform-events mode and route-level algorithm testing
+
+---
+
+## v2.0 3D Timeline-Test Parity (Shipped: 2026-03-06)
+
+**Delivered:** A dedicated `/timeline-test-3d` experience with timeline-test parity for core controls, interactions, and suggestion acceptance flows.
+
+**Phases completed:** 43-45 (4 plans total)
+
+**Key accomplishments:**
+
+- Established route-local 3D runtime context with shared timeline-domain state plumbing
+- Added manual timeslicing and warp interaction parity in 3D
+- Brought suggestion generation/review/acceptance parity to 3D test route
+
+**Stats:**
+
+- 4 plans, 4 summaries
+- 3 phases completed
+- 2 days from first phase-43 work to phase-45 completion (2026-03-05 -> 2026-03-06)
+
+**What's next:** Refactoring and decomposition to reduce structural complexity safely
+
 ## v1.3 Fully Automated Timeslicing Workflows (Shipped: 2026-03-04)
 
 **Delivered:** Fully automated timeslicing package generation and acceptance workflow with ranked recommendations and aligned package acceptance semantics.

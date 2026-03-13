@@ -4,7 +4,7 @@
 
 v2.0 delivered a **3D version of timeline-test functionality** with interaction, suggestion, and acceptance parity.
 
-Next focus is v2.1: a **refactoring and decomposition milestone** that reduces structural complexity, removes dead code, and hardens critical behavior before major internal cleanup.
+Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algos`). Next focus is v2.3: adaptive-mode integration and route-level observability for `/timeslicing-algos`.
 
 ## Milestones
 
@@ -13,8 +13,9 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - ✅ **v1.2 Semi-Automated Timeslicing Workflows** - Phases 34-39 (shipped 2026-03-02)
 - ✅ **v1.3 Fully Automated Timeslicing Workflows** - Phases 40-42 (shipped 2026-03-04)
 - ✅ **v2.0 3D Timeline-Test Parity** - Phases 43-45 (shipped 2026-03-06)
-- 📋 **v2.1 Refactoring and Decomposition** - Phases 46-51 (planned)
-- 📋 **v2.2 Timeslicing Fidelity Improvements** - Phase 52 (planned)
+- ✅ **v2.1 Refactoring and Decomposition** - Phases 46-51 (shipped 2026-03-10)
+- ✅ **v2.2 Timeslicing Fidelity Improvements** - Phases 52-53 (shipped 2026-03-11)
+- 📋 **v2.3 Adaptive Timeslicing Algos Hardening** - Phase 54 (planned)
 
 ## Phases
 
@@ -22,13 +23,14 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
 - [x] **Phase 44: 3D Interaction Parity** - Bring manual timeslicing and warp interactions to 3D with behavior matching timeline-test.
 - [x] **Phase 45: 3D Suggestion and Acceptance Parity** - Bring suggestion generation, review, and acceptance workflows to the 3D test experience.
 - [x] **Phase 46: Guardrails and Baselines** - Add regression safety checks and baseline metrics before structural refactors.
-- [ ] **Phase 47: Dead Code Removal** - Remove legacy hooks and stale paths no longer used by active workflows.
+- [x] **Phase 47: Dead Code Removal** - Remove legacy hooks and stale paths no longer used by active workflows. (completed 2026-03-07)
 - [x] **Phase 48: API Layer Stabilization** - Normalize coordinate handling and eliminate double-buffering drift.
 - [x] **Phase 49: DualTimeline Decomposition** - Extract focused hooks from DualTimeline and reduce component complexity. (completed 2026-03-09)
 - [x] **Phase 50: Query Layer Decomposition** - Split `lib/queries.ts` into modular builders with safer parameterization. (completed 2026-03-09)
 - [x] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths. (completed 2026-03-10)
 - [x] **Phase 52: Uniform-Events Binning for Timeslicing** - Add quantile-style event-balanced binning alongside existing uniform-time bins. (completed 2026-03-11)
 - [x] **Phase 53: Add dedicated timeslicing algos route** - Add `/timeslicing-algos` for algorithm-focused timeline testing with mode comparison and centralized route-mode wiring. (completed 2026-03-11)
+- [ ] **Phase 54: Adaptive timeslicing in algos route with verbose diagnostics** - Add adaptive-mode controls and high-signal runtime diagnostics for `/timeslicing-algos` validation workflows.
 
 ## Phase Details
 
@@ -41,10 +43,9 @@ Next focus is v2.1: a **refactoring and decomposition milestone** that reduces s
   2. Core controls (time scale mode, warp source/mode, generation triggers) are available and connected.
   3. Data and timeline context stay synchronized between 3D visualization and timeline panel.
   4. Parity-critical behavior can be implemented with 3D-specific logic copies without requiring cross-surface consolidation in v2.0.
-**Plans**: 2 plans
+**Plans**: 1 plan
 Plans:
-- [ ] 43-01-PLAN.md — Stand up `/timeline-test-3d` runtime context and core control wiring
-- [ ] 43-02-PLAN.md — Add store-backed 3D scene synchronization and QA verification checkpoint
+- [x] 43-01-PLAN.md — Stand up `/timeline-test-3d` runtime context and core control wiring
 
 ### Phase 44: 3D Interaction Parity
 **Goal**: Enable core manual timeslicing and warp interactions in 3D with timeline-test-equivalent behavior.
@@ -121,10 +122,10 @@ Plans:
   3. Extracted hook behavior is covered by tests and preserves existing interactions.
 **Plans**: 4 plans
 Plans:
-- [ ] 49-01-PLAN.md — Extract scale transforms and density derivation into dedicated hooks with deterministic tests
-- [ ] 49-02-PLAN.md — Extract brush/zoom synchronization into a focused hook with parity-safe D3 wiring tests
-- [ ] 49-03-PLAN.md — Extract point selection and finalize DualTimeline as an orchestration-focused hook composer
-- [ ] 49-04-PLAN.md — Close verification gap with deterministic brush/zoom range-update parity regression coverage
+- [x] 49-01-PLAN.md — Extract scale transforms and density derivation into dedicated hooks with deterministic tests
+- [x] 49-02-PLAN.md — Extract brush/zoom synchronization into a focused hook with parity-safe D3 wiring tests
+- [x] 49-03-PLAN.md — Extract point selection and finalize DualTimeline as an orchestration-focused hook composer
+- [x] 49-04-PLAN.md — Close verification gap with deterministic brush/zoom range-update parity regression coverage
 
 ### Phase 50: Query Layer Decomposition
 **Goal**: Break `lib/queries.ts` into modular query builders with safer SQL construction.
@@ -136,9 +137,9 @@ Plans:
   3. Query behavior remains backward-compatible for API consumers.
 **Plans**: 3 plans
 Plans:
-- [ ] 50-01-PLAN.md — Create modular query-layer foundation and compatibility facade
-- [ ] 50-02-PLAN.md — Parameterize hot-path range/count queries with parity regression coverage
-- [ ] 50-03-PLAN.md — Complete aggregation/cache decomposition with sanitization boundary hardening
+- [x] 50-01-PLAN.md — Create modular query-layer foundation and compatibility facade
+- [x] 50-02-PLAN.md — Parameterize hot-path range/count queries with parity regression coverage
+- [x] 50-03-PLAN.md — Complete aggregation/cache decomposition with sanitization boundary hardening
 
 ### Phase 51: Store Consolidation
 **Goal**: Consolidate slice-domain state into coherent stores and retire deprecated data store paths.
@@ -151,17 +152,17 @@ Plans:
 **Plans**: 12 plans
 Plans:
 - [x] 51-01-PLAN.md — Audit store coupling and introduce bounded `useSliceDomainStore` foundation
-- [ ] 51-02-PLAN.md — Convert legacy slice stores into bounded-domain compatibility adapters
-- [ ] 51-03-PLAN.md — Extract shared data contracts/selectors and introduce `useTimelineDataStore`
-- [ ] 51-04-PLAN.md — Rewire timeline-test slice consumers to bounded selectors/actions
-- [ ] 51-05-PLAN.md — Rewire timeline-test-3d slice consumers to bounded selectors/actions
-- [ ] 51-06-PLAN.md — Migrate core component data consumers off `useDataStore`
-- [ ] 51-07-PLAN.md — Migrate core hook/lib data consumers off `useDataStore`
-- [ ] 51-08-PLAN.md — Migrate core viz scene/render consumers off `useDataStore`
-- [ ] 51-09-PLAN.md — Migrate supporting viz overlays/inspector consumers off `useDataStore`
-- [ ] 51-10-PLAN.md — Migrate residual route/3D data consumers off `useDataStore`
-- [ ] 51-11-PLAN.md — Migrate advanced viz and adapter residual consumers off `useDataStore`
-- [ ] 51-12-PLAN.md — Enforce zero-import gate and delete `src/store/useDataStore.ts`
+- [x] 51-02-PLAN.md — Convert legacy slice stores into bounded-domain compatibility adapters
+- [x] 51-03-PLAN.md — Extract shared data contracts/selectors and introduce `useTimelineDataStore`
+- [x] 51-04-PLAN.md — Rewire timeline-test slice consumers to bounded selectors/actions
+- [x] 51-05-PLAN.md — Rewire timeline-test-3d slice consumers to bounded selectors/actions
+- [x] 51-06-PLAN.md — Migrate core component data consumers off `useDataStore`
+- [x] 51-07-PLAN.md — Migrate core hook/lib data consumers off `useDataStore`
+- [x] 51-08-PLAN.md — Migrate core viz scene/render consumers off `useDataStore`
+- [x] 51-09-PLAN.md — Migrate supporting viz overlays/inspector consumers off `useDataStore`
+- [x] 51-10-PLAN.md — Migrate residual route/3D data consumers off `useDataStore`
+- [x] 51-11-PLAN.md — Migrate advanced viz and adapter residual consumers off `useDataStore`
+- [x] 51-12-PLAN.md — Enforce zero-import gate and delete `src/store/useDataStore.ts`
 
 ### Phase 52: Uniform-Events Binning for Timeslicing
 **Goal**: Implement quantile-style uniform-events binning in adaptive map generation and wire it into timeslicing without regressing existing behavior.
@@ -173,10 +174,24 @@ Plans:
   3. Existing flows remain backward-compatible when uniform-time mode is used.
 **Plans**: 4 plans
 Plans:
-- [ ] 52-01-PLAN.md — Add mode-aware adaptive worker/store contract and uniform-events binning algorithm
-- [ ] 52-02-PLAN.md — Wire `/timeslicing` to request uniform-events bins with route-level regression guard
-- [ ] 52-03-PLAN.md — Make global adaptive precompute/cache mode-aware with count+density parity outputs
-- [ ] 52-04-PLAN.md — Close verification gap by fixing global cache insert SQL parity and adding regression guard
+- [x] 52-01-PLAN.md — Add mode-aware adaptive worker/store contract and uniform-events binning algorithm
+- [x] 52-02-PLAN.md — Wire `/timeslicing` to request uniform-events bins with route-level regression guard
+- [x] 52-03-PLAN.md — Make global adaptive precompute/cache mode-aware with count+density parity outputs
+- [x] 52-04-PLAN.md — Close verification gap by fixing global cache insert SQL parity and adding regression guard
+
+### Phase 54: Adaptive timeslicing in algos route with verbose diagnostics
+**Goal**: Extend `/timeslicing-algos` to include adaptive timeslicing mode and add explicit route-level diagnostics so behavior is inspectable during algorithm comparisons.
+**Depends on**: Phase 53
+**Requirements**: ALGOS-ADAPTIVE-01, OBS-01
+**Success Criteria** (what must be TRUE):
+  1. `/timeslicing-algos` can switch across `uniform-time`, `uniform-events`, and adaptive mode in a single route session.
+  2. Adaptive-mode toggles and request payloads are explicit and test-covered to prevent silent fallback behavior.
+  3. Verbose diagnostics are available for QA (selected mode, effective parameters, cache-key/mode context) without polluting non-algos routes.
+**Plans**: 3 plans
+Plans:
+- [ ] 54-01-PLAN.md — Add adaptive mode option and route wiring in `/timeslicing-algos`
+- [ ] 54-02-PLAN.md — Add verbose route-scoped diagnostics panel/logging for mode/payload/cache context
+- [ ] 54-03-PLAN.md — Add regression coverage for adaptive mode selection, fallback behavior, and diagnostics visibility
 
 ## Progress
 
@@ -186,17 +201,18 @@ Plans:
 | 26-33 | v1.1 | 36/36 | Complete | 2026-02-22 |
 | 34-39 | v1.2 | 25/25 | Complete | 2026-03-02 |
 | 40-42 | v1.3 | 13/13 | Complete | 2026-03-04 |
-| 43 | v2.0 | 2/2 | Complete | 2026-03-05 |
+| 43 | v2.0 | 1/1 | Complete | 2026-03-05 |
 | 44 | v2.0 | 2/2 | Complete | 2026-03-06 |
 | 45 | v2.0 | 1/1 | Complete | 2026-03-06 |
 | 46 | v2.1 | 3/3 | Complete | 2026-03-06 |
 | 47 | v2.1 | 1/1 | Complete | 2026-03-07 |
 | 48 | v2.1 | 3/3 | Complete | 2026-03-09 |
-| 49 | v2.1 | Complete    | 2026-03-09 | - |
-| 50 | v2.1 | Complete    | 2026-03-09 | - |
-| 51 | 12/12 | Complete    | 2026-03-10 | - |
-| 52 | v2.2 | Complete    | 2026-03-11 | - |
+| 49 | v2.1 | 4/4 | Complete | 2026-03-09 |
+| 50 | v2.1 | 3/3 | Complete | 2026-03-09 |
+| 51 | v2.1 | 12/12 | Complete | 2026-03-10 |
+| 52 | v2.2 | 4/4 | Complete | 2026-03-11 |
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
+| 54 | v2.3 | 0/3 | Planned | - |
 
 ### Phase 53: Add dedicated timeslicing algos route
 
