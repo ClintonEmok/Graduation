@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
+import { useFilterStore } from '@/store/useFilterStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -37,14 +38,15 @@ export function TimeslicingAlgosRouteShell() {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
+  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
 
   const hasValidAdaptiveDomain = mapDomain[1] > mapDomain[0] && mapDomain[0] >= MIN_VALID_DATA_EPOCH;
-  const domainStartSec = hasValidAdaptiveDomain ? mapDomain[0] : (minTimestampSec ?? DEFAULT_START_EPOCH);
-  const domainEndSec = hasValidAdaptiveDomain ? mapDomain[1] : (maxTimestampSec ?? DEFAULT_END_EPOCH);
+  const baseDomainStartSec = hasValidAdaptiveDomain ? mapDomain[0] : (minTimestampSec ?? DEFAULT_START_EPOCH);
+  const baseDomainEndSec = hasValidAdaptiveDomain ? mapDomain[1] : (maxTimestampSec ?? DEFAULT_END_EPOCH);
 
   const { data: crimes, meta, isLoading, error } = useCrimeData({
-    startEpoch: domainStartSec,
-    endEpoch: domainEndSec,
+    startEpoch: baseDomainStartSec,
+    endEpoch: baseDomainEndSec,
     bufferDays: 30,
     limit: 50000,
   });
@@ -90,6 +92,9 @@ export function TimeslicingAlgosRouteShell() {
       return;
     }
 
+    const timelineDomainStartSec = meta?.buffer?.applied.start ?? baseDomainStartSec;
+    const timelineDomainEndSec = meta?.buffer?.applied.end ?? baseDomainEndSec;
+
     let minX = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let minZ = Number.POSITIVE_INFINITY;
@@ -116,8 +121,8 @@ export function TimeslicingAlgosRouteShell() {
     useTimelineDataStore.setState({
       data: points,
       columns: null,
-      minTimestampSec: domainStartSec,
-      maxTimestampSec: domainEndSec,
+      minTimestampSec: timelineDomainStartSec,
+      maxTimestampSec: timelineDomainEndSec,
       minX: Number.isFinite(minX) ? minX : -50,
       maxX: Number.isFinite(maxX) ? maxX : 50,
       minZ: Number.isFinite(minZ) ? minZ : -50,
@@ -126,8 +131,10 @@ export function TimeslicingAlgosRouteShell() {
       isMock: false,
     });
 
-    useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: selectedStrategy });
-  }, [crimes, domainEndSec, domainStartSec, selectedStrategy]);
+    useAdaptiveStore
+      .getState()
+      .computeMaps(timestamps, [timelineDomainStartSec, timelineDomainEndSec], { binningMode: selectedStrategy });
+  }, [baseDomainEndSec, baseDomainStartSec, crimes, meta?.buffer?.applied.end, meta?.buffer?.applied.start, selectedStrategy]);
 
   const dataSummaryLabel = useMemo(() => {
     if (isLoading) return 'Loading...';
@@ -146,6 +153,21 @@ export function TimeslicingAlgosRouteShell() {
       : `${total.toLocaleString()} crimes`;
   }, [crimes.length, isLoading, meta]);
 
+  const dataDomainLabel = useMemo(() => {
+    const minLabel = new Date(baseDomainStartSec * 1000).toLocaleDateString();
+    const maxLabel = new Date(baseDomainEndSec * 1000).toLocaleDateString();
+    return `${minLabel} - ${maxLabel}`;
+  }, [baseDomainEndSec, baseDomainStartSec]);
+
+  const selectionRangeLabel = useMemo(() => {
+    if (!selectedTimeRange) return null;
+    const [start, end] = [
+      Math.min(selectedTimeRange[0], selectedTimeRange[1]),
+      Math.max(selectedTimeRange[0], selectedTimeRange[1]),
+    ];
+    return `${new Date(start * 1000).toLocaleDateString()} - ${new Date(end * 1000).toLocaleDateString()}`;
+  }, [selectedTimeRange]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -160,8 +182,13 @@ export function TimeslicingAlgosRouteShell() {
           <div className="flex flex-wrap items-center gap-4">
             <span className="text-sm text-slate-300">Data: <strong className="text-slate-100">{dataSummaryLabel}</strong></span>
             <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-              {new Date(domainStartSec * 1000).toLocaleDateString()} - {new Date(domainEndSec * 1000).toLocaleDateString()}
+              Timeline: {dataDomainLabel}
             </span>
+            {selectionRangeLabel ? (
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                Selection: {selectionRangeLabel}
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-4">
@@ -174,7 +201,7 @@ export function TimeslicingAlgosRouteShell() {
 
             <TimeslicingAlgosStrategyStats
               timestamps={crimes.map((crime) => crime.timestamp)}
-              domain={[domainStartSec, domainEndSec]}
+              domain={[baseDomainStartSec, baseDomainEndSec]}
               selectedStrategy={selectedStrategy}
             />
           </div>
@@ -201,7 +228,7 @@ export function TimeslicingAlgosRouteShell() {
               <div className="flex h-40 items-center justify-center text-red-400">Error loading data: {error.message}</div>
             ) : timelineWidth > 0 ? (
               <DualTimeline
-                detailRangeOverride={[domainStartSec, domainEndSec]}
+                detailRangeOverride={selectedTimeRange ? undefined : [baseDomainStartSec, baseDomainEndSec]}
                 detailRenderMode="auto"
                 disableAutoBurstSlices={true}
               />
