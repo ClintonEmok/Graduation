@@ -55,4 +55,27 @@ describe('computeAdaptiveMaps', () => {
     expect(counts.every((value) => Number.isInteger(value))).toBe(true);
     expect(counts.some((value) => value > 0)).toBe(true);
   });
+
+  test.each(['uniform-time', 'uniform-events'] as const)(
+    'uses density-derived warp weights in %s mode',
+    (binningMode) => {
+      const timestamps = Float32Array.from([0, 1, 2, 10, 11, 12, 13, 20, 30, 31]);
+      const domain: [number, number] = [0, 40];
+      const maps = computeAdaptiveMaps(timestamps, domain, {
+        binCount: 4,
+        kernelWidth: 1,
+        binningMode,
+      });
+
+      const weights = Array.from(maps.densityMap, (value) => 1 + value * 5);
+      const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+      const span = domain[1] - domain[0];
+      let accumulated = 0;
+
+      for (let index = 0; index < maps.warpMap.length; index += 1) {
+        expect(maps.warpMap[index]).toBeCloseTo(domain[0] + (accumulated / totalWeight) * span, 5);
+        accumulated += weights[index] ?? 0;
+      }
+    },
+  );
 });
