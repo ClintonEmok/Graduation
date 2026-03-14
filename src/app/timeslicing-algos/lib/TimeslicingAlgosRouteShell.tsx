@@ -11,6 +11,8 @@ import { useTimeStore } from '@/store/useTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { ALGORITHM_OPTIONS } from './algorithm-options';
+import { AdaptiveBinDiagnosticsPanel } from './AdaptiveBinDiagnosticsPanel';
+import { buildAdaptiveBinDiagnostics } from './adaptive-bin-diagnostics';
 import { TimeslicingAlgosStrategyStats } from './TimeslicingAlgosStrategyStats';
 import {
   resolveTimeslicingAlgosSelection,
@@ -36,7 +38,10 @@ export function TimeslicingAlgosRouteShell() {
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
 
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const countMap = useAdaptiveStore((state) => state.countMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const warpMap = useAdaptiveStore((state) => state.warpMap);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
@@ -66,6 +71,18 @@ export function TimeslicingAlgosRouteShell() {
   }, [selectedTimeRange, viewportEnd, viewportStart]);
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
+  const timestamps = useMemo(() => crimes.map((crime) => crime.timestamp), [crimes]);
+  const adaptiveDiagnosticsRows = useMemo(
+    () => buildAdaptiveBinDiagnostics({
+      selectedStrategy,
+      domain: mapDomain,
+      timestamps,
+      countMap,
+      densityMap,
+      warpMap,
+    }),
+    [countMap, densityMap, mapDomain, selectedStrategy, timestamps, warpMap],
+  );
 
   const setSelection = (nextSelection: TimeslicingAlgosSelection) => {
     const nextParams = serializeTimeslicingAlgosSelection(searchParams, nextSelection);
@@ -216,9 +233,16 @@ export function TimeslicingAlgosRouteShell() {
             />
 
             <TimeslicingAlgosStrategyStats
-              timestamps={crimes.map((crime) => crime.timestamp)}
+              timestamps={timestamps}
               domain={[baseDomainStartSec, baseDomainEndSec]}
               selectedStrategy={selectedStrategy}
+            />
+
+            <AdaptiveBinDiagnosticsPanel
+              rows={adaptiveDiagnosticsRows}
+              selectedStrategy={selectedStrategy}
+              selectedTimeScale={selectedTimeScale}
+              domain={mapDomain}
             />
           </div>
 
