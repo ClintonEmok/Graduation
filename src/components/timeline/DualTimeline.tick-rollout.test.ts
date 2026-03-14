@@ -24,13 +24,10 @@ describe('DualTimeline tick rollout wiring', () => {
     expect(timelineTest3dSource).toMatch(/tickLabelStrategy="span-aware"/);
   });
 
-  it('keeps dashboard rollout behind the timelineSpanAwareTicks feature flag', () => {
+  it('leaves dashboard on legacy behavior without new rollout wiring', () => {
     const timelinePanelSource = readFileSync(new URL('./TimelinePanel.tsx', import.meta.url), 'utf8');
-    const flagsSource = readFileSync(new URL('../../lib/feature-flags.ts', import.meta.url), 'utf8');
 
-    expect(timelinePanelSource).toMatch(/timelineSpanAwareTicks/);
-    expect(timelinePanelSource).toMatch(/tickLabelStrategy=\{timelineSpanAwareTicks \? 'span-aware' : 'legacy'\}/);
-    expect(flagsSource).toMatch(/id: 'timelineSpanAwareTicks'/);
-    expect(flagsSource).toMatch(/default: false/);
+    expect(timelinePanelSource).not.toMatch(/timelineSpanAwareTicks/);
+    expect(timelinePanelSource).not.toMatch(/tickLabelStrategy=/);
   });
 });

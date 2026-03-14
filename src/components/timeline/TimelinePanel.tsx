@@ -17,7 +17,6 @@ import { useLogger } from '@/hooks/useLogger';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
 
 export function TimelinePanel() {
@@ -38,7 +37,6 @@ export function TimelinePanel() {
   } = useTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
-  const timelineSpanAwareTicks = useFeatureFlagsStore((state) => state.isEnabled('timelineSpanAwareTicks'));
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
   const { isComputing } = useDebouncedDensity();
@@ -167,7 +165,7 @@ export function TimelinePanel() {
             <span>Timeline Overview + Detail</span>
             <span>Drag overview to zoom • Click detail to select</span>
           </div>
-          <DualTimeline tickLabelStrategy={timelineSpanAwareTicks ? 'span-aware' : 'legacy'} />
+          <DualTimeline />
         </div>
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
