@@ -187,11 +187,15 @@ Plans:
   1. `/timeslicing-algos` can switch across `uniform-time`, `uniform-events`, and adaptive mode in a single route session.
   2. Adaptive-mode toggles and request payloads are explicit and test-covered to prevent silent fallback behavior.
   3. Verbose diagnostics are available for QA (selected mode, effective parameters, cache-key/mode context) without polluting non-algos routes.
-**Plans**: 3 plans
+**Plans**: 7 plans
 Plans:
-- [ ] 54-01-PLAN.md — Add adaptive mode option and route wiring in `/timeslicing-algos`
+- [x] 54-01-PLAN.md — Add adaptive mode option and route wiring in `/timeslicing-algos`
 - [ ] 54-02-PLAN.md — Add verbose route-scoped diagnostics panel/logging for mode/payload/cache context
 - [ ] 54-03-PLAN.md — Add regression coverage for adaptive mode selection, fallback behavior, and diagnostics visibility
+- [x] 54-04-PLAN.md — Separate strategy/time-scale controls and timeline-test parity wiring for `/timeslicing-algos`
+- [x] 54-05-PLAN.md — Rewire `/timeslicing-algos` timeline domain/fetch lifecycle to match `/timeslicing`
+- [ ] 54-06-PLAN.md — Improve span-aware DualTimeline tick UX and guarded dashboard rollout
+- [ ] 54-07-PLAN.md — Add deep per-bin adaptive diagnostics for `/timeslicing-algos` QA
 
 ## Progress
 
@@ -212,7 +216,7 @@ Plans:
 | 51 | v2.1 | 12/12 | Complete | 2026-03-10 |
 | 52 | v2.2 | 4/4 | Complete | 2026-03-11 |
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
-| 54 | v2.3 | 0/3 | Planned | - |
+| 54 | v2.3 | 3/7 | In progress | - |
 
 ### Phase 53: Add dedicated timeslicing algos route
 
