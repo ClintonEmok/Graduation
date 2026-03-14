@@ -37,6 +37,8 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/detailRangeOverride=\{\[rangeStart, rangeEnd\]\}/);
     expect(shellSource).toMatch(/tickLabelStrategy="span-aware"/);
     expect(shellSource).toMatch(/computeMaps\(timestamps, \[baseDomainStartSec, baseDomainEndSec\], \{ binningMode: selectedStrategy \}\)/);
+    expect(shellSource).toMatch(/buildAdaptiveBinDiagnostics/);
+    expect(shellSource).toMatch(/AdaptiveBinDiagnosticsPanel/);
     expect(shellSource).toMatch(/serializeTimeslicingAlgosSelection/);
     expect(shellSource).toMatch(/TimeslicingAlgosStrategyStats/);
     expect(shellSource).toMatch(/Timeline: \{dataDomainLabel\}/);
@@ -50,6 +52,22 @@ describe('/timeslicing-algos route intent', () => {
     expect(statsSource).toMatch(/Uniform Events/);
     expect(statsSource).toMatch(/Variance\/bin/);
     expect(statsSource).toMatch(/strategy-stats-widget/);
+  });
+
+  test('renders an algos-only adaptive bin diagnostics table from current route state', () => {
+    const panelSource = readFileSync(new URL('./lib/AdaptiveBinDiagnosticsPanel.tsx', import.meta.url), 'utf8');
+    expect(panelSource).toMatch(/Adaptive bin diagnostics/);
+    expect(panelSource).toMatch(/adaptiveMultiplier/);
+    expect(panelSource).toMatch(/Strategy: \{selectedStrategy\}/);
+    expect(panelSource).toMatch(/Interaction: \{selectedTimeScale\}/);
+    expect(panelSource).toMatch(/adaptive-bin-diagnostics-panel/);
+
+    const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
+    expect(shellSource).toMatch(/rows=\{adaptiveDiagnosticsRows\}/);
+    expect(shellSource).toMatch(/selectedTimeScale=\{selectedTimeScale\}/);
+
+    const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
+    expect(timeslicingPageSource).not.toMatch(/AdaptiveBinDiagnosticsPanel/);
   });
 
   test('stays focused and does not include suggestion workflow orchestration UI', () => {
