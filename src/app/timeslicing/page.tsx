@@ -16,6 +16,8 @@ import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { planFullAutoAcceptanceArtifacts } from './full-auto-acceptance';
 import { Toaster } from 'sonner';
+import { buildTimelineQaModel } from '@/components/timeline/qa/timeline-qa-model';
+import { TimelineQaContextCard } from '@/components/timeline/qa/TimelineQaContextCard';
 
 // Default to full date range if no real data loaded yet
 const DEFAULT_START_EPOCH = 978307200; // 2001-01-01
@@ -232,6 +234,12 @@ export default function TimeslicingPage() {
     return [viewportStart, viewportEnd];
   }, [selectedTimeRange, viewportStart, viewportEnd]);
 
+  const hasActiveSelection = useMemo(() => {
+    if (!selectedTimeRange) return false;
+    if (!Number.isFinite(selectedTimeRange[0]) || !Number.isFinite(selectedTimeRange[1])) return false;
+    return selectedTimeRange[0] !== selectedTimeRange[1];
+  }, [selectedTimeRange]);
+
   const {
     data: selectionCrimes,
     isLoading: isSelectionLoading,
@@ -258,6 +266,24 @@ export default function TimeslicingPage() {
     const step = Math.ceil(selectionTimestamps.length / maxPoints);
     return selectionTimestamps.filter((_, index) => index % step === 0);
   }, [selectionTimestamps]);
+
+  const fetchedDomainLabel = useMemo(() => {
+    const fetchedStart = crimeMeta?.buffer?.applied.start ?? domainStartSec;
+    const fetchedEnd = crimeMeta?.buffer?.applied.end ?? domainEndSec;
+    return [fetchedStart, fetchedEnd] as [number, number];
+  }, [crimeMeta?.buffer?.applied.end, crimeMeta?.buffer?.applied.start, domainEndSec, domainStartSec]);
+
+  const timelineQaModel = useMemo(
+    () =>
+      buildTimelineQaModel({
+        routeRole: 'timeslicing',
+        referenceDomainSec: [domainStartSec, domainEndSec],
+        fetchedDomainSec: fetchedDomainLabel,
+        detailDomainSec: [rangeStart, rangeEnd],
+        hasActiveSelection,
+      }),
+    [domainEndSec, domainStartSec, fetchedDomainLabel, hasActiveSelection, rangeEnd, rangeStart],
+  );
 
   const addSlice = useSliceStore((s) => s.addSlice);
   const clearSlices = useSliceStore((s) => s.clearSlices);
@@ -579,6 +605,8 @@ export default function TimeslicingPage() {
                 </span>
               )}
             </div>
+
+            <TimelineQaContextCard model={timelineQaModel} />
 
             {/* Suggestion Toolbar */}
             <SuggestionToolbar />

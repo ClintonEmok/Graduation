@@ -43,6 +43,11 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/TimeslicingAlgosStrategyStats/);
     expect(shellSource).toMatch(/Timeline: \{dataDomainLabel\}/);
     expect(shellSource).toMatch(/Fetched: \{fetchedDomainLabel\}/);
+    expect(shellSource).toMatch(/buildTimelineQaModel/);
+    expect(shellSource).toMatch(/TimelineQaContextCard/);
+    expect(shellSource).toMatch(/routeRole:\s*'timeslicing-algos'/);
+    expect(shellSource).toMatch(/strategyLabel:\s*selectedStrategy/);
+    expect(shellSource).toMatch(/timescaleLabel:\s*selectedTimeScale/);
   });
 
   test('renders a per-strategy stats widget below interaction controls', () => {

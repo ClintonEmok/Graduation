@@ -20,6 +20,8 @@ import {
   type TimeslicingAlgosSelection,
 } from './mode-selection';
 import { TimeslicingAlgosInteractionControls } from './TimeslicingAlgosInteractionControls';
+import { buildTimelineQaModel } from '@/components/timeline/qa/timeline-qa-model';
+import { TimelineQaContextCard } from '@/components/timeline/qa/TimelineQaContextCard';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -200,6 +202,41 @@ export function TimeslicingAlgosRouteShell() {
     return `${new Date(fetchedStart * 1000).toLocaleDateString()} - ${new Date(fetchedEnd * 1000).toLocaleDateString()}`;
   }, [baseDomainEndSec, baseDomainStartSec, meta?.buffer?.applied.end, meta?.buffer?.applied.start]);
 
+  const fetchedDomainSec = useMemo(() => {
+    const fetchedStart = meta?.buffer?.applied.start ?? baseDomainStartSec;
+    const fetchedEnd = meta?.buffer?.applied.end ?? baseDomainEndSec;
+    return [fetchedStart, fetchedEnd] as [number, number];
+  }, [baseDomainEndSec, baseDomainStartSec, meta?.buffer?.applied.end, meta?.buffer?.applied.start]);
+
+  const hasActiveSelection = useMemo(() => {
+    if (!selectedTimeRange) return false;
+    if (!Number.isFinite(selectedTimeRange[0]) || !Number.isFinite(selectedTimeRange[1])) return false;
+    return selectedTimeRange[0] !== selectedTimeRange[1];
+  }, [selectedTimeRange]);
+
+  const timelineQaModel = useMemo(
+    () =>
+      buildTimelineQaModel({
+        routeRole: 'timeslicing-algos',
+        referenceDomainSec: [baseDomainStartSec, baseDomainEndSec],
+        fetchedDomainSec,
+        detailDomainSec: [rangeStart, rangeEnd],
+        hasActiveSelection,
+        strategyLabel: selectedStrategy,
+        timescaleLabel: selectedTimeScale,
+      }),
+    [
+      baseDomainEndSec,
+      baseDomainStartSec,
+      fetchedDomainSec,
+      hasActiveSelection,
+      rangeEnd,
+      rangeStart,
+      selectedStrategy,
+      selectedTimeScale,
+    ],
+  );
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -222,6 +259,10 @@ export function TimeslicingAlgosRouteShell() {
             <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
               Detail: {detailRangeLabel}
             </span>
+          </div>
+
+          <div className="mt-4">
+            <TimelineQaContextCard model={timelineQaModel} />
           </div>
 
           <div className="mt-4">
