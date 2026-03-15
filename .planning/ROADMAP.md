@@ -4,7 +4,8 @@
 
 v2.0 delivered a **3D version of timeline-test functionality** with interaction, suggestion, and acceptance parity.
 
-Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algos`). Next focus is v2.3: adaptive-mode integration and route-level observability for `/timeslicing-algos`.
+Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algos`). Current focus is v2.3: adaptive-mode integration and route-level observability for `/timeslicing-algos`.
+Planned next focus is v2.4: STKDE exploratory route with Chicago heatmap + hotspot panel for QA analysis.
 
 ## Milestones
 
@@ -16,6 +17,7 @@ Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algo
 - ✅ **v2.1 Refactoring and Decomposition** - Phases 46-51 (shipped 2026-03-10)
 - ✅ **v2.2 Timeslicing Fidelity Improvements** - Phases 52-53 (shipped 2026-03-11)
 - 📋 **v2.3 Adaptive Timeslicing Algos Hardening** - Phase 54 (planned)
+- 📋 **v2.4 STKDE Exploration Surface** - Phase 55 (planned)
 
 ## Phases
 
@@ -31,6 +33,7 @@ Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algo
 - [x] **Phase 52: Uniform-Events Binning for Timeslicing** - Add quantile-style event-balanced binning alongside existing uniform-time bins. (completed 2026-03-11)
 - [x] **Phase 53: Add dedicated timeslicing algos route** - Add `/timeslicing-algos` for algorithm-focused timeline testing with mode comparison and centralized route-mode wiring. (completed 2026-03-11)
 - [ ] **Phase 54: Adaptive timeslicing in algos route with verbose diagnostics** - Add adaptive-mode controls and high-signal runtime diagnostics for `/timeslicing-algos` validation workflows.
+- [ ] **Phase 55: STKDE exploration route with Chicago heatmap and hotspots panel** - Add a dedicated STKDE QA route with spatiotemporal hotspot heatmap rendering and interactive hotspot list linked to map selection.
 
 ## Phase Details
 
@@ -187,7 +190,7 @@ Plans:
   1. `/timeslicing-algos` can switch across `uniform-time`, `uniform-events`, and adaptive mode in a single route session.
   2. Adaptive-mode toggles and request payloads are explicit and test-covered to prevent silent fallback behavior.
   3. Verbose diagnostics are available for QA (selected mode, effective parameters, cache-key/mode context) without polluting non-algos routes.
-**Plans**: 8 plans
+**Plans**: 9 plans
 Plans:
 - [x] 54-01-PLAN.md — Add adaptive mode option and route wiring in `/timeslicing-algos`
 - [ ] 54-02-PLAN.md — Add verbose route-scoped diagnostics panel/logging for mode/payload/cache context
@@ -197,6 +200,21 @@ Plans:
 - [ ] 54-06-PLAN.md — Improve span-aware DualTimeline tick UX and guarded dashboard rollout
 - [ ] 54-07-PLAN.md — Add deep per-bin adaptive diagnostics for `/timeslicing-algos` QA
 - [ ] 54-08-PLAN.md — Clarify QA/exploration timeline semantics across `/timeslicing` and `/timeslicing-algos`
+- [ ] 54-09-PLAN.md — Add selection-specific high-capacity detail fetch with explicit provenance, diagnostics source control, and guardrailed fallback
+
+### Phase 55: STKDE exploration route with Chicago heatmap and hotspots panel
+**Goal**: Provide a dedicated STKDE exploration surface for QA to inspect spatial-temporal hotspots on Chicago map + timeline context, without changing general-user dashboard flows.
+**Depends on**: Phase 54
+**Requirements**: STKDE-01, STKDE-02, STKDE-03
+**Success Criteria** (what must be TRUE):
+  1. A dedicated `/stkde` route exists and is isolated from existing `/timeslicing` and `/timeslicing-algos` workflows.
+  2. STKDE computation runs with QA-tunable parameters and returns deterministic heatmap + hotspot outputs under explicit compute limits.
+  3. Chicago heatmap rendering and hotspot panel stay synchronized through a two-way interaction loop (map selection filters list; list selection focuses map).
+  4. Hotspot rows expose spatial + temporal attributes (location, intensity score, time window, support counts) suitable for QA analysis.
+  5. Performance guardrails, regression tests, and rollback toggles are in place to disable STKDE surfaces quickly if compute/render pressure is too high.
+**Plans**: 1 plan
+Plans:
+- [ ] 55-01-PLAN.md — Build dedicated `/stkde` QA route with hybrid STKDE compute pipeline, Chicago heatmap rendering, and interactive hotspot panel
 
 ## Progress
 
@@ -217,7 +235,8 @@ Plans:
 | 51 | v2.1 | 12/12 | Complete | 2026-03-10 |
 | 52 | v2.2 | 4/4 | Complete | 2026-03-11 |
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
-| 54 | v2.3 | 3/8 | In progress | - |
+| 54 | v2.3 | 3/9 | In progress | - |
+| 55 | v2.4 | 0/1 | Planned | - |
 
 ### Phase 53: Add dedicated timeslicing algos route
 
