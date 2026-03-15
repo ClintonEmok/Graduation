@@ -53,9 +53,6 @@ async function fetchCrimesInRange(
     const response = await fetch(`/api/crimes/range?${params.toString()}`)
     
       if (!response.ok) {
-        if (response.status === 404) {
-          return { data: [] }
-        }
         throw new Error(`HTTP error: ${response.status}`)
       }
     

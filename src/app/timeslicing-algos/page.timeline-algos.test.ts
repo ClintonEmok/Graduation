@@ -48,6 +48,9 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/routeRole:\s*'timeslicing-algos'/);
     expect(shellSource).toMatch(/strategyLabel:\s*selectedStrategy/);
     expect(shellSource).toMatch(/timescaleLabel:\s*selectedTimeScale/);
+    expect(shellSource).toMatch(/const hasEmptyData = !isLoading && !error && crimes.length === 0/);
+    expect(shellSource).toMatch(/timeslicing-algos-empty-data/);
+    expect(shellSource).toMatch(/No crime data returned for this timeline context\./);
   });
 
   test('renders a per-strategy stats widget below interaction controls', () => {

@@ -237,6 +237,8 @@ export function TimeslicingAlgosRouteShell() {
     ],
   );
 
+  const hasEmptyData = !isLoading && !error && crimes.length === 0;
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -307,6 +309,16 @@ export function TimeslicingAlgosRouteShell() {
               <div className="flex h-40 items-center justify-center text-slate-400">Loading crime data...</div>
             ) : error ? (
               <div className="flex h-40 items-center justify-center text-red-400">Error loading data: {error.message}</div>
+            ) : hasEmptyData ? (
+              <div
+                className="flex h-40 flex-col items-center justify-center gap-2 text-slate-300"
+                data-testid="timeslicing-algos-empty-data"
+              >
+                <p className="text-sm font-medium">No crime data returned for this timeline context.</p>
+                <p className="text-xs text-slate-400">
+                  Reference and diagnostics labels remain available for QA, but timeline bins are empty until data is returned.
+                </p>
+              </div>
             ) : timelineWidth > 0 ? (
               <DualTimeline
                 detailRangeOverride={[rangeStart, rangeEnd]}

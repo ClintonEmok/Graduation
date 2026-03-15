@@ -237,4 +237,27 @@ describe('useCrimeData', () => {
     expect(result.error?.message).toContain('HTTP error: 500');
     expect(result.data).toEqual([]);
   });
+
+  it('treats 404 range responses as explicit errors (no silent empty fallback)', async () => {
+    const harness = createRenderer();
+    cleanup = harness.cleanup;
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'not found' }),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await harness.renderAndWait({
+      startEpoch: 978307200,
+      endEpoch: 978393600,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeTruthy();
+    expect(result.error?.message).toContain('HTTP error: 404');
+    expect(result.data).toEqual([]);
+  });
 });
