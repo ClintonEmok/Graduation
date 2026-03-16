@@ -5,16 +5,16 @@
 See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Execute Phase 54 plans to deliver adaptive-mode testing and verbose diagnostics in `/timeslicing-algos`.
+**Current focus:** Execute Phase 55 plans to deliver isolated STKDE QA exploration in `/stkde` with bounded compute and rollback controls.
 
 ## Current Position
 
-Phase: **54 of 54** (Adaptive timeslicing in algos route with verbose diagnostics)
-Plan: **5 of 9** completed in current phase
-Status: **In progress**
-Last activity: 2026-03-16 - Completed 54-09 selection-detail dual-fetch provenance for `/timeslicing-algos`
+Phase: **55 of 56** (STKDE exploration route with Chicago heatmap and hotspots panel)
+Plan: **1 of 1** completed in current phase
+Status: **Phase complete**
+Last activity: 2026-03-16 - Completed 55-01 dedicated `/stkde` STKDE exploration route
 
-Progress: **███████████████████░** 201/207 plans complete (97.1%)
+Progress: **███████████████████░** 202/210 plans complete (96.2%)
 
 ## Milestone Status
 
@@ -116,6 +116,9 @@ Progress: **███████████████████░** 201/2
 - [Phase 54]: Keep per-bin diagnostics route-local and derive them from `countMap`/`densityMap`/`warpMap`, with uniform-events boundaries reconstructed under worker-locked tests. — This adds inspectable QA detail without widening adaptive store or worker contracts.
 - [Phase 54]: Normalize selection-detail `returned`/`totalMatches` meta to non-negative integer provenance and fall back to inferred counts when metadata is non-finite. — This keeps sampled/full/fallback semantics deterministic under malformed API metadata.
 - [Phase 54]: Keep diagnostics fidelity/source indicators route-local (detail cap + selection stride + fallback chips) and lock them via route-level regressions. — This preserves explicit QA provenance without widening shared store/worker contracts.
+- [Phase 55]: Keep STKDE compute authoritative on `/api/stkde/hotspots` and limit worker responsibility to hotspot projection/filtering. — This preserves deterministic compute semantics while keeping map/list interactions responsive.
+- [Phase 55]: Add hard event/grid/payload guards with explicit truncation and fallback metadata. — This keeps QA behavior observable under heavy requests without destabilizing route performance.
+- [Phase 55]: Gate `/stkde` behind `stkdeRoute` feature flag with disabled-safe fallback state. — Rollback becomes an immediate flag flip that does not impact `/timeslicing` or `/timeslicing-algos`.
 - Reconciled roadmap checkboxes and progress table to match on-disk phase completion after stale/duplicate planning artifact cleanup.
 - Added roadmap placeholder for Phase 54 to introduce adaptive mode coverage and route-scoped verbose diagnostics in `/timeslicing-algos`.
 
@@ -131,6 +134,6 @@ Progress: **███████████████████░** 201/2
 
 ## Session Continuity
 
-Last session: 2026-03-16 09:37 UTC
-Stopped at: Completed 54-09-PLAN.md
+Last session: 2026-03-16 11:06 CET
+Stopped at: Completed 55-01-PLAN.md
 Resume file: None
