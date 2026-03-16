@@ -38,6 +38,13 @@ interface BuildSelectionDetailDatasetOptions {
   contextTimestamps: number[];
 }
 
+const toNonNegativeInteger = (value: number | null | undefined): number | null => {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return Math.max(0, Math.floor(value as number));
+};
+
 const filterToFiniteRange = (timestamps: number[], startSec: number, endSec: number): number[] => {
   const start = Math.min(startSec, endSec);
   const end = Math.max(startSec, endSec);
@@ -81,19 +88,23 @@ export const buildSelectionDetailDataset = ({
   );
   const contextRangeTimestamps = filterToFiniteRange(contextTimestamps, rangeStartSec, rangeEndSec);
 
-  const returnedCount = selectionMeta?.returned ?? selectionTimestamps.length;
-  const totalMatches = selectionMeta?.totalMatches ?? returnedCount;
+  const inferredReturnedCount = selectionTimestamps.length;
+  const metaReturnedCount = toNonNegativeInteger(selectionMeta?.returned);
+  const returnedCount = metaReturnedCount ?? inferredReturnedCount;
+  const metaTotalMatches = toNonNegativeInteger(selectionMeta?.totalMatches);
+  const totalMatches = Math.max(metaTotalMatches ?? returnedCount, returnedCount);
   const rawSelectionCount = totalMatches;
   const sampled = selectionMeta?.sampled ?? totalMatches > returnedCount;
   const sampleStride = selectionMeta?.sampleStride ?? null;
   const fullPopulation = !sampled && returnedCount >= totalMatches;
+  const effectiveSelectionCount = Math.max(returnedCount, inferredReturnedCount);
 
   let fallbackToContextReason: SelectionDetailFallbackReason | null = null;
   if (selectionError) {
     fallbackToContextReason = 'selection-fetch-error';
-  } else if (returnedCount === 0 || selectionTimestamps.length === 0) {
+  } else if (effectiveSelectionCount === 0) {
     fallbackToContextReason = 'selection-empty';
-  } else if (returnedCount > selectionDetailSafetyThreshold) {
+  } else if (effectiveSelectionCount > selectionDetailSafetyThreshold) {
     fallbackToContextReason = 'selection-exceeded-safety-threshold';
   }
 

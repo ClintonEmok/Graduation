@@ -148,4 +148,45 @@ describe('buildSelectionDetailDataset', () => {
     expect(dataset.diagnosticsCapReason).toBe('diagnostics-max-points');
     expect(dataset.diagnosticsTimestamps.length).toBeLessThanOrEqual(selectionDetailDiagnosticsMaxPoints);
   });
+
+  it('treats non-finite meta counts as invalid and falls back to inferred selection size', () => {
+    const selectionData = buildCrimeRows(4);
+    const dataset = buildSelectionDetailDataset({
+      rangeStartSec: 1_000_000,
+      rangeEndSec: 1_001_000,
+      selectionData,
+      selectionMeta: {
+        returned: Number.NaN,
+        totalMatches: Number.NaN,
+        limit: 200000,
+      },
+      selectionError: null,
+      contextTimestamps: [],
+    });
+
+    expect(dataset.selectionPopulation.returnedCount).toBe(4);
+    expect(dataset.selectionPopulation.totalMatches).toBe(4);
+    expect(dataset.fallbackToContextReason).toBeNull();
+    expect(dataset.diagnosticsSource).toBe('selection');
+  });
+
+  it('keeps totalMatches at least returnedCount when metadata drifts lower', () => {
+    const selectionData = buildCrimeRows(6);
+    const dataset = buildSelectionDetailDataset({
+      rangeStartSec: 1_000_000,
+      rangeEndSec: 1_001_000,
+      selectionData,
+      selectionMeta: {
+        returned: 6,
+        totalMatches: 2,
+        limit: 200000,
+      },
+      selectionError: null,
+      contextTimestamps: [],
+    });
+
+    expect(dataset.selectionPopulation.returnedCount).toBe(6);
+    expect(dataset.selectionPopulation.totalMatches).toBe(6);
+    expect(dataset.selectionPopulation.fullPopulation).toBe(true);
+  });
 });
