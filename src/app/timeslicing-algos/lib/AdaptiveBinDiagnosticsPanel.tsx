@@ -1,12 +1,32 @@
 import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
 import type { AdaptiveBinDiagnosticRow } from './adaptive-bin-diagnostics';
+import type { SelectionDetailFallbackReason } from './selection-detail-dataset';
 
 interface AdaptiveBinDiagnosticsPanelProps {
   rows: AdaptiveBinDiagnosticRow[];
   selectedStrategy: AdaptiveBinningMode;
   selectedTimeScale: 'linear' | 'adaptive';
   domain: [number, number];
+  diagnosticsSource: 'selection' | 'context';
+  diagnosticsSourcePreference: 'selection' | 'context';
+  onDiagnosticsSourcePreferenceChange: (source: 'selection' | 'context') => void;
+  selectionUsed: boolean;
+  fallbackToContextReason: SelectionDetailFallbackReason | null;
+  selectionPopulation: {
+    rawSelectionCount: number;
+    returnedCount: number;
+    totalMatches: number;
+    sampled: boolean;
+    sampleStride: number | null;
+    fullPopulation: boolean;
+  };
 }
+
+const fallbackReasonLabel: Record<SelectionDetailFallbackReason, string> = {
+  'selection-fetch-error': 'selection fetch failed',
+  'selection-empty': 'selection returned no records',
+  'selection-exceeded-safety-threshold': 'selection exceeded safety threshold',
+};
 
 const formatDateTime = (value: number): string => new Date(value * 1000).toLocaleString();
 
@@ -25,9 +45,16 @@ export function AdaptiveBinDiagnosticsPanel({
   selectedStrategy,
   selectedTimeScale,
   domain,
+  diagnosticsSource,
+  diagnosticsSourcePreference,
+  onDiagnosticsSourcePreferenceChange,
+  selectionUsed,
+  fallbackToContextReason,
+  selectionPopulation,
 }: AdaptiveBinDiagnosticsPanelProps) {
   const totalEvents = rows.reduce((sum, row) => sum + row.rawCount, 0);
   const domainSpanSec = Math.max(0, domain[1] - domain[0]);
+  const selectionPopulationLabel = selectionPopulation.fullPopulation ? 'full' : 'sampled';
 
   return (
     <section
@@ -56,7 +83,39 @@ export function AdaptiveBinDiagnosticsPanel({
           <span className="rounded-full border border-slate-700 bg-slate-900/80 px-2 py-0.5">
             Events: {totalEvents.toLocaleString()}
           </span>
+          <span className="rounded-full border border-indigo-500/40 bg-indigo-950/30 px-2 py-0.5 text-indigo-100">
+            Diagnostics source: {diagnosticsSource}
+          </span>
+          <span className="rounded-full border border-indigo-500/40 bg-indigo-950/30 px-2 py-0.5 text-indigo-100">
+            Selection usage: {selectionUsed ? 'selection dataset' : 'context fallback'}
+          </span>
+          <span className="rounded-full border border-indigo-500/40 bg-indigo-950/30 px-2 py-0.5 text-indigo-100">
+            Selection dataset: {selectionPopulationLabel} ({selectionPopulation.returnedCount.toLocaleString()}/{selectionPopulation.totalMatches.toLocaleString()})
+          </span>
+          {fallbackToContextReason ? (
+            <span className="rounded-full border border-amber-500/40 bg-amber-950/30 px-2 py-0.5 text-amber-100">
+              Fallback: {fallbackReasonLabel[fallbackToContextReason]}
+            </span>
+          ) : null}
         </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+        <span className="text-slate-400">Diagnostics source preference:</span>
+        <button
+          type="button"
+          onClick={() => onDiagnosticsSourcePreferenceChange('selection')}
+          className={`rounded-full border px-2 py-0.5 ${diagnosticsSourcePreference === 'selection' ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100' : 'border-slate-700 bg-slate-900/80 text-slate-300'}`}
+        >
+          selection dataset
+        </button>
+        <button
+          type="button"
+          onClick={() => onDiagnosticsSourcePreferenceChange('context')}
+          className={`rounded-full border px-2 py-0.5 ${diagnosticsSourcePreference === 'context' ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100' : 'border-slate-700 bg-slate-900/80 text-slate-300'}`}
+        >
+          context dataset
+        </button>
       </div>
 
       {rows.length === 0 ? (

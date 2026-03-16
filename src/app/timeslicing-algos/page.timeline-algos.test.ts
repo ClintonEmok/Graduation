@@ -33,8 +33,18 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).not.toMatch(/fetch\('\/api\/crime\/meta'\)/);
     expect(shellSource).toMatch(/startEpoch: baseDomainStartSec/);
     expect(shellSource).toMatch(/endEpoch: baseDomainEndSec/);
+    expect(shellSource).toMatch(/bufferDays: 30/);
+    expect(shellSource).toMatch(/limit: 50000/);
+    expect(shellSource).toMatch(/startEpoch: rangeStart/);
+    expect(shellSource).toMatch(/endEpoch: rangeEnd/);
+    expect(shellSource).toMatch(/bufferDays: 0/);
+    expect(shellSource).toMatch(/limit: selectionDetailLimit/);
+    expect(shellSource).toMatch(/buildSelectionDetailDataset/);
+    expect(shellSource).toMatch(/Selection detail:/);
+    expect(shellSource).toMatch(/using context fallback/);
     expect(shellSource).toMatch(/const \[rangeStart, rangeEnd\] = useMemo/);
     expect(shellSource).toMatch(/detailRangeOverride=\{\[rangeStart, rangeEnd\]\}/);
+    expect(shellSource).toMatch(/detailPointsOverride=\{selectionDetailDataset\.renderTimestamps\}/);
     expect(shellSource).toMatch(/tickLabelStrategy="span-aware"/);
     expect(shellSource).toMatch(/computeMaps\(timestamps, \[baseDomainStartSec, baseDomainEndSec\], \{ binningMode: selectedStrategy \}\)/);
     expect(shellSource).toMatch(/buildAdaptiveBinDiagnostics/);
@@ -66,6 +76,10 @@ describe('/timeslicing-algos route intent', () => {
     const panelSource = readFileSync(new URL('./lib/AdaptiveBinDiagnosticsPanel.tsx', import.meta.url), 'utf8');
     expect(panelSource).toMatch(/Adaptive bin diagnostics/);
     expect(panelSource).toMatch(/adaptiveMultiplier/);
+    expect(panelSource).toMatch(/Diagnostics source:/);
+    expect(panelSource).toMatch(/Selection usage:/);
+    expect(panelSource).toMatch(/Fallback:/);
+    expect(panelSource).toMatch(/Diagnostics source preference:/);
     expect(panelSource).toMatch(/Strategy: \{selectedStrategy\}/);
     expect(panelSource).toMatch(/Interaction: \{selectedTimeScale\}/);
     expect(panelSource).toMatch(/adaptive-bin-diagnostics-panel/);
@@ -73,6 +87,9 @@ describe('/timeslicing-algos route intent', () => {
     const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
     expect(shellSource).toMatch(/rows=\{adaptiveDiagnosticsRows\}/);
     expect(shellSource).toMatch(/selectedTimeScale=\{selectedTimeScale\}/);
+    expect(shellSource).toMatch(/diagnosticsSource=\{diagnosticsSource\}/);
+    expect(shellSource).toMatch(/selectionUsed=\{diagnosticsSelectionUsed\}/);
+    expect(shellSource).toMatch(/fallbackToContextReason=\{diagnosticsFallbackReason\}/);
 
     const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
     expect(timeslicingPageSource).not.toMatch(/AdaptiveBinDiagnosticsPanel/);

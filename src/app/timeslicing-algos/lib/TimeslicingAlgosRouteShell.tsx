@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useCrimeData } from '@/hooks/useCrimeData';
@@ -84,6 +84,7 @@ export function TimeslicingAlgosRouteShell() {
   }, [selectedTimeRange, viewportEnd, viewportStart]);
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
+  const [diagnosticsSourcePreference, setDiagnosticsSourcePreference] = useState<'selection' | 'context'>('selection');
   const contextTimestamps = useMemo(() => crimes.map((crime) => crime.timestamp), [crimes]);
 
   const {
@@ -111,8 +112,17 @@ export function TimeslicingAlgosRouteShell() {
     [contextTimestamps, rangeEnd, rangeStart, selectionCrimes, selectionError, selectionMeta],
   );
 
+  const selectionDiagnosticsUnavailableReason = selectionDetailDataset.fallbackToContextReason;
+  const diagnosticsSource =
+    diagnosticsSourcePreference === 'selection' && !selectionDiagnosticsUnavailableReason ? 'selection' : 'context';
+  const diagnosticsFallbackReason =
+    diagnosticsSourcePreference === 'selection' && selectionDiagnosticsUnavailableReason
+      ? selectionDiagnosticsUnavailableReason
+      : null;
+  const diagnosticsSelectionUsed = diagnosticsSource === 'selection';
+
   const timestamps =
-    selectionDetailDataset.diagnosticsSource === 'selection'
+    diagnosticsSource === 'selection'
       ? selectionDetailDataset.diagnosticsTimestamps
       : contextTimestamps;
   const adaptiveDiagnosticsRows = useMemo(
@@ -368,6 +378,12 @@ export function TimeslicingAlgosRouteShell() {
               selectedStrategy={selectedStrategy}
               selectedTimeScale={selectedTimeScale}
               domain={mapDomain}
+              diagnosticsSource={diagnosticsSource}
+              diagnosticsSourcePreference={diagnosticsSourcePreference}
+              onDiagnosticsSourcePreferenceChange={setDiagnosticsSourcePreference}
+              selectionUsed={diagnosticsSelectionUsed}
+              fallbackToContextReason={diagnosticsFallbackReason}
+              selectionPopulation={selectionDetailDataset.selectionPopulation}
             />
           </div>
 
