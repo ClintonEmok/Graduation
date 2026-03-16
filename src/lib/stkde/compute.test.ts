@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { computeStkdeFromCrimes } from './compute';
+import { computeStkdeFromAggregates, computeStkdeFromCrimes } from './compute';
 import type { CrimeRecord } from '@/types/crime';
 import { validateAndNormalizeStkdeRequest } from './contracts';
+import type { FullPopulationStkdeInputs } from './full-population-pipeline';
 
 const validation = validateAndNormalizeStkdeRequest({
   domain: { startEpochSec: 1_700_000_000, endEpochSec: 1_700_086_400 },
@@ -68,5 +69,61 @@ describe('computeStkdeFromCrimes', () => {
     expect(result.meta.eventCount).toBe(5);
     expect(result.meta.truncated).toBe(true);
     expect(result.meta.fallbackApplied).toMatch(/event-cap/);
+  });
+
+  test('computes deterministic output from aggregated full-population inputs', () => {
+    const grid = {
+      bbox: request.filters.bbox ?? [-87.94, 41.64, -87.52, 42.03],
+      minLng: (request.filters.bbox ?? [-87.94, 41.64, -87.52, 42.03])[0],
+      minLat: (request.filters.bbox ?? [-87.94, 41.64, -87.52, 42.03])[1],
+      maxLng: (request.filters.bbox ?? [-87.94, 41.64, -87.52, 42.03])[2],
+      maxLat: (request.filters.bbox ?? [-87.94, 41.64, -87.52, 42.03])[3],
+      meanLat: 41.835,
+      rows: 2,
+      cols: 2,
+      latCellDegrees: 0.195,
+      lonCellDegrees: 0.21,
+      coarsenFactor: 1,
+    };
+    const cellSupport = new Float64Array([10, 0, 4, 2]);
+    const cellTemporalBuckets = new Map([
+      [0, [{ bucketStartEpochSec: 1_700_010_000, count: 5 }, { bucketStartEpochSec: 1_700_020_000, count: 5 }]],
+      [2, [{ bucketStartEpochSec: 1_700_050_000, count: 4 }]],
+      [3, [{ bucketStartEpochSec: 1_700_060_000, count: 2 }]],
+    ]);
+
+    const inputs: FullPopulationStkdeInputs = {
+      grid,
+      cellSupport,
+      cellTemporalBuckets,
+      eventCount: 16,
+      stats: {
+        scannedRows: 16,
+        aggregatedCells: 3,
+        queryMs: 12,
+        chunks: 1,
+      },
+    };
+
+    const result = computeStkdeFromAggregates(request, inputs, {
+      requestedComputeMode: 'full-population',
+      effectiveComputeMode: 'full-population',
+      fullPopulationStats: {
+        scannedRows: inputs.stats.scannedRows,
+        aggregatedCells: inputs.stats.aggregatedCells,
+        queryMs: inputs.stats.queryMs,
+      },
+    }).response;
+
+    expect(result.meta.requestedComputeMode).toBe('full-population');
+    expect(result.meta.effectiveComputeMode).toBe('full-population');
+    expect(result.meta.fullPopulationStats).toEqual({
+      scannedRows: 16,
+      aggregatedCells: 3,
+      queryMs: 12,
+    });
+    expect(result.meta.eventCount).toBe(16);
+    expect(result.hotspots.length).toBeGreaterThan(0);
+    expect(result.heatmap.cells.length).toBeGreaterThan(0);
   });
 });

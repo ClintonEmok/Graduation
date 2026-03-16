@@ -2,11 +2,13 @@ import { CHICAGO_BOUNDS } from '@/lib/coordinate-normalization';
 import type { CrimeRecord } from '@/types/crime';
 import {
   STKDE_RESPONSE_SIZE_LIMIT_BYTES,
+  type StkdeComputeMode,
   type StkdeHeatmapCell,
   type StkdeHotspot,
   type StkdeRequest,
   type StkdeResponse,
 } from './contracts';
+import type { FullPopulationStkdeInputs } from './full-population-pipeline';
 
 const METERS_PER_LAT_DEGREE = 111_320;
 
@@ -23,7 +25,21 @@ const stableCrimeSort = (a: CrimeRecord, b: CrimeRecord) => {
   return 0;
 };
 
-function buildGridConfig(request: StkdeRequest) {
+export interface StkdeGridConfig {
+  bbox: [number, number, number, number];
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+  meanLat: number;
+  rows: number;
+  cols: number;
+  latCellDegrees: number;
+  lonCellDegrees: number;
+  coarsenFactor: number;
+}
+
+export function buildStkdeGridConfig(request: StkdeRequest): StkdeGridConfig {
   const bbox = request.filters.bbox ?? [CHICAGO_BOUNDS.minLon, CHICAGO_BOUNDS.minLat, CHICAGO_BOUNDS.maxLon, CHICAGO_BOUNDS.maxLat];
   const [minLng, minLat, maxLng, maxLat] = bbox;
   const meanLat = (minLat + maxLat) / 2;
@@ -96,15 +112,135 @@ function createHotspotId(row: number, col: number, peakStartEpochSec: number, pe
   return `hs-${row}-${col}-${peakStartEpochSec}-${peakEndEpochSec}`;
 }
 
+function buildIntensityFromSupport(
+  support: Float64Array,
+  rows: number,
+  cols: number,
+  request: StkdeRequest,
+) {
+  const bandwidthCells = Math.max(1, Math.ceil(request.params.spatialBandwidthMeters / request.params.gridCellMeters));
+  const sigmaCells = Math.max(0.5, bandwidthCells / 2);
+  const kernelRadius = Math.max(1, Math.ceil(3 * sigmaCells));
+  const intensity = new Float64Array(rows * cols);
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const centerIndex = row * cols + col;
+      let sum = 0;
+      for (let r = Math.max(0, row - kernelRadius); r <= Math.min(rows - 1, row + kernelRadius); r += 1) {
+        for (let c = Math.max(0, col - kernelRadius); c <= Math.min(cols - 1, col + kernelRadius); c += 1) {
+          const neighborIndex = r * cols + c;
+          const count = support[neighborIndex];
+          if (count <= 0) continue;
+          const dr = r - row;
+          const dc = c - col;
+          const distance = Math.sqrt(dr * dr + dc * dc);
+          const weight = Math.exp(-0.5 * (distance / sigmaCells) ** 2);
+          sum += count * weight;
+        }
+      }
+      intensity[centerIndex] = sum;
+    }
+  }
+
+  let maxIntensity = 0;
+  for (let i = 0; i < intensity.length; i += 1) {
+    if (intensity[i] > maxIntensity) maxIntensity = intensity[i];
+  }
+  if (maxIntensity <= 0) maxIntensity = 1;
+  return { intensity, maxIntensity };
+}
+
+function applyResponsePayloadGuard(response: StkdeResponse): StkdeResponse {
+  let next = response;
+  let payloadBytes = new TextEncoder().encode(JSON.stringify(next)).length;
+  if (payloadBytes > STKDE_RESPONSE_SIZE_LIMIT_BYTES && next.heatmap.cells.length > 1) {
+    const sortedCells = [...next.heatmap.cells].sort((a, b) => {
+      if (b.intensity !== a.intensity) return b.intensity - a.intensity;
+      return b.support - a.support;
+    });
+    let keep = sortedCells.length;
+    while (payloadBytes > STKDE_RESPONSE_SIZE_LIMIT_BYTES && keep > 1) {
+      keep = Math.max(1, Math.floor(keep * 0.85));
+      next = {
+        ...next,
+        meta: {
+          ...next.meta,
+          truncated: true,
+          fallbackApplied: next.meta.fallbackApplied
+            ? `${next.meta.fallbackApplied},response-size-guard`
+            : 'response-size-guard',
+        },
+        heatmap: {
+          ...next.heatmap,
+          cells: sortedCells.slice(0, keep),
+        },
+      };
+      payloadBytes = new TextEncoder().encode(JSON.stringify(next)).length;
+    }
+  }
+  return next;
+}
+
+function computePeakWindowFromBuckets(
+  buckets: Array<{ bucketStartEpochSec: number; count: number }>,
+  domainStart: number,
+  domainEnd: number,
+  windowSeconds: number,
+): [number, number] {
+  if (buckets.length === 0) {
+    return [domainStart, Math.min(domainEnd, domainStart + windowSeconds)];
+  }
+
+  const sorted = [...buckets].sort((a, b) => a.bucketStartEpochSec - b.bucketStartEpochSec);
+  let bestStart = sorted[0]?.bucketStartEpochSec ?? domainStart;
+  let bestWeight = sorted[0]?.count ?? 0;
+  let startIdx = 0;
+  let runningWeight = 0;
+
+  for (let endIdx = 0; endIdx < sorted.length; endIdx += 1) {
+    runningWeight += sorted[endIdx]?.count ?? 0;
+    const endValue = sorted[endIdx]?.bucketStartEpochSec ?? domainStart;
+    while (endValue - (sorted[startIdx]?.bucketStartEpochSec ?? endValue) > windowSeconds) {
+      runningWeight -= sorted[startIdx]?.count ?? 0;
+      startIdx += 1;
+    }
+    if (runningWeight > bestWeight) {
+      bestWeight = runningWeight;
+      bestStart = sorted[startIdx]?.bucketStartEpochSec ?? bestStart;
+    }
+  }
+
+  const clampedStart = clamp(bestStart, domainStart, domainEnd);
+  const clampedEnd = clamp(clampedStart + windowSeconds, domainStart, domainEnd);
+  return [clampedStart, Math.max(clampedStart, clampedEnd)];
+}
+
 export interface ComputeStkdeOutput {
   response: StkdeResponse;
   metaNotes: string[];
 }
 
-export function computeStkdeFromCrimes(request: StkdeRequest, crimes: CrimeRecord[]): ComputeStkdeOutput {
+interface ComputeMetaOverrides {
+  requestedComputeMode?: StkdeComputeMode;
+  effectiveComputeMode?: StkdeComputeMode;
+  fallbackApplied?: string | null;
+  clampsApplied?: string[];
+  fullPopulationStats?: {
+    scannedRows: number;
+    aggregatedCells: number;
+    queryMs: number;
+  };
+}
+
+export function computeStkdeFromCrimes(
+  request: StkdeRequest,
+  crimes: CrimeRecord[],
+  metaOverrides?: ComputeMetaOverrides,
+): ComputeStkdeOutput {
   const computeStart = performance.now();
   const metaNotes: string[] = [];
-  const grid = buildGridConfig(request);
+  const grid = buildStkdeGridConfig(request);
   if (grid.coarsenFactor > 1) {
     metaNotes.push(`grid-coarsened-x${grid.coarsenFactor}`);
   }
@@ -144,36 +280,7 @@ export function computeStkdeFromCrimes(request: StkdeRequest, crimes: CrimeRecor
     cellTimestamps[idx].push(crime.timestamp);
   }
 
-  const bandwidthCells = Math.max(1, Math.ceil(request.params.spatialBandwidthMeters / request.params.gridCellMeters));
-  const sigmaCells = Math.max(0.5, bandwidthCells / 2);
-  const kernelRadius = Math.max(1, Math.ceil(3 * sigmaCells));
-  const intensity = new Float64Array(cellCount);
-
-  for (let row = 0; row < grid.rows; row += 1) {
-    for (let col = 0; col < grid.cols; col += 1) {
-      const centerIndex = row * grid.cols + col;
-      let sum = 0;
-      for (let r = Math.max(0, row - kernelRadius); r <= Math.min(grid.rows - 1, row + kernelRadius); r += 1) {
-        for (let c = Math.max(0, col - kernelRadius); c <= Math.min(grid.cols - 1, col + kernelRadius); c += 1) {
-          const neighborIndex = r * grid.cols + c;
-          const count = support[neighborIndex];
-          if (count <= 0) continue;
-          const dr = r - row;
-          const dc = c - col;
-          const distance = Math.sqrt(dr * dr + dc * dc);
-          const weight = Math.exp(-0.5 * (distance / sigmaCells) ** 2);
-          sum += count * weight;
-        }
-      }
-      intensity[centerIndex] = sum;
-    }
-  }
-
-  let maxIntensity = 0;
-  for (let i = 0; i < intensity.length; i += 1) {
-    if (intensity[i] > maxIntensity) maxIntensity = intensity[i];
-  }
-  if (maxIntensity <= 0) maxIntensity = 1;
+  const { intensity, maxIntensity } = buildIntensityFromSupport(support, grid.rows, grid.cols, request);
 
   const cells: StkdeHeatmapCell[] = [];
   for (let row = 0; row < grid.rows; row += 1) {
@@ -231,7 +338,112 @@ export function computeStkdeFromCrimes(request: StkdeRequest, crimes: CrimeRecor
       eventCount: boundedEvents.length,
       computeMs: 0,
       truncated: truncatedByEvents,
-      fallbackApplied: metaNotes.length > 0 ? metaNotes.join(',') : null,
+      requestedComputeMode: metaOverrides?.requestedComputeMode ?? request.computeMode,
+      effectiveComputeMode: metaOverrides?.effectiveComputeMode ?? request.computeMode,
+      fallbackApplied:
+        metaOverrides?.fallbackApplied ?? (metaNotes.length > 0 ? metaNotes.join(',') : null),
+      clampsApplied: metaOverrides?.clampsApplied ?? [],
+      fullPopulationStats: metaOverrides?.fullPopulationStats,
+    },
+    heatmap: {
+      cells,
+      maxIntensity: 1,
+    },
+    hotspots,
+    contracts: {
+      scoreVersion: 'stkde-v1',
+    },
+  };
+  response = applyResponsePayloadGuard(response);
+
+  response.meta.computeMs = Math.max(0, Math.round((performance.now() - computeStart) * 100) / 100);
+  return { response, metaNotes };
+}
+
+export function computeStkdeFromAggregates(
+  request: StkdeRequest,
+  inputs: FullPopulationStkdeInputs,
+  metaOverrides?: ComputeMetaOverrides,
+): ComputeStkdeOutput {
+  const computeStart = performance.now();
+  const metaNotes: string[] = [];
+  const grid = inputs.grid;
+  if (grid.coarsenFactor > 1) {
+    metaNotes.push(`grid-coarsened-x${grid.coarsenFactor}`);
+  }
+
+  const [domainStart, domainEnd] = [request.domain.startEpochSec, request.domain.endEpochSec];
+  const [minLng, minLat] = [grid.minLng, grid.minLat];
+  const cellCount = grid.rows * grid.cols;
+  const support = inputs.cellSupport;
+  const { intensity, maxIntensity } = buildIntensityFromSupport(support, grid.rows, grid.cols, request);
+
+  const cells: StkdeHeatmapCell[] = [];
+  for (let row = 0; row < grid.rows; row += 1) {
+    for (let col = 0; col < grid.cols; col += 1) {
+      const idx = row * grid.cols + col;
+      const rawIntensity = intensity[idx];
+      const normalized = rawIntensity / maxIntensity;
+      const count = support[idx];
+      if (normalized <= 0 && count <= 0) continue;
+      const lng = minLng + (col + 0.5) * grid.lonCellDegrees;
+      const lat = minLat + (row + 0.5) * grid.latCellDegrees;
+      cells.push({
+        lng,
+        lat,
+        intensity: Number(normalized.toFixed(6)),
+        support: Math.round(count),
+      });
+    }
+  }
+
+  const hotspotCandidates: StkdeHotspot[] = [];
+  const timeWindowSec = request.params.timeWindowHours * 3600;
+  for (let idx = 0; idx < cellCount; idx += 1) {
+    const supportCount = Math.round(support[idx] ?? 0);
+    if (supportCount < request.params.minSupport) continue;
+    const row = Math.floor(idx / grid.cols);
+    const col = idx % grid.cols;
+    const peak = computePeakWindowFromBuckets(
+      inputs.cellTemporalBuckets.get(idx) ?? [],
+      domainStart,
+      domainEnd,
+      timeWindowSec,
+    );
+    const normalizedIntensity = Number((intensity[idx] / maxIntensity).toFixed(6));
+    hotspotCandidates.push({
+      id: createHotspotId(row, col, peak[0], peak[1]),
+      centroidLng: Number((minLng + (col + 0.5) * grid.lonCellDegrees).toFixed(6)),
+      centroidLat: Number((minLat + (row + 0.5) * grid.latCellDegrees).toFixed(6)),
+      intensityScore: normalizedIntensity,
+      supportCount,
+      peakStartEpochSec: peak[0],
+      peakEndEpochSec: peak[1],
+      radiusMeters: request.params.spatialBandwidthMeters,
+    });
+  }
+
+  const hotspots = hotspotCandidates
+    .sort((a, b) => {
+      if (b.intensityScore !== a.intensityScore) return b.intensityScore - a.intensityScore;
+      if (b.supportCount !== a.supportCount) return b.supportCount - a.supportCount;
+      if (a.centroidLat !== b.centroidLat) return a.centroidLat - b.centroidLat;
+      if (a.centroidLng !== b.centroidLng) return a.centroidLng - b.centroidLng;
+      return a.id < b.id ? -1 : 1;
+    })
+    .slice(0, request.params.topK);
+
+  let response: StkdeResponse = {
+    meta: {
+      eventCount: inputs.eventCount,
+      computeMs: 0,
+      truncated: false,
+      requestedComputeMode: metaOverrides?.requestedComputeMode ?? request.computeMode,
+      effectiveComputeMode: metaOverrides?.effectiveComputeMode ?? request.computeMode,
+      fallbackApplied:
+        metaOverrides?.fallbackApplied ?? (metaNotes.length > 0 ? metaNotes.join(',') : null),
+      clampsApplied: metaOverrides?.clampsApplied ?? [],
+      fullPopulationStats: metaOverrides?.fullPopulationStats,
     },
     heatmap: {
       cells,
@@ -243,33 +455,7 @@ export function computeStkdeFromCrimes(request: StkdeRequest, crimes: CrimeRecor
     },
   };
 
-  let payloadBytes = new TextEncoder().encode(JSON.stringify(response)).length;
-  if (payloadBytes > STKDE_RESPONSE_SIZE_LIMIT_BYTES && response.heatmap.cells.length > 1) {
-    const sortedCells = [...response.heatmap.cells].sort((a, b) => {
-      if (b.intensity !== a.intensity) return b.intensity - a.intensity;
-      return b.support - a.support;
-    });
-    let keep = sortedCells.length;
-    while (payloadBytes > STKDE_RESPONSE_SIZE_LIMIT_BYTES && keep > 1) {
-      keep = Math.max(1, Math.floor(keep * 0.85));
-      response = {
-        ...response,
-        meta: {
-          ...response.meta,
-          truncated: true,
-          fallbackApplied: response.meta.fallbackApplied
-            ? `${response.meta.fallbackApplied},response-size-guard`
-            : 'response-size-guard',
-        },
-        heatmap: {
-          ...response.heatmap,
-          cells: sortedCells.slice(0, keep),
-        },
-      };
-      payloadBytes = new TextEncoder().encode(JSON.stringify(response)).length;
-    }
-  }
-
+  response = applyResponsePayloadGuard(response);
   response.meta.computeMs = Math.max(0, Math.round((performance.now() - computeStart) * 100) / 100);
   return { response, metaNotes };
 }

@@ -1,6 +1,7 @@
 import { CHICAGO_BOUNDS } from '@/lib/coordinate-normalization';
 
 export type StkdeScoreVersion = 'stkde-v1';
+export type StkdeComputeMode = 'sampled' | 'full-population';
 
 export interface StkdeDomain {
   startEpochSec: number;
@@ -8,6 +9,8 @@ export interface StkdeDomain {
 }
 
 export interface StkdeRequest {
+  computeMode: StkdeComputeMode;
+  callerIntent?: 'stkde' | 'unknown';
   domain: StkdeDomain;
   filters: {
     crimeTypes?: string[];
@@ -24,6 +27,10 @@ export interface StkdeRequest {
   limits: {
     maxEvents: number;
     maxGridCells: number;
+  };
+  guardrails?: {
+    fullPopulationMaxSpanDays?: number;
+    fullPopulationTimeoutMs?: number;
   };
 }
 
@@ -50,7 +57,15 @@ export interface StkdeResponse {
     eventCount: number;
     computeMs: number;
     truncated: boolean;
+    requestedComputeMode: StkdeComputeMode;
+    effectiveComputeMode: StkdeComputeMode;
     fallbackApplied?: string | null;
+    clampsApplied?: string[];
+    fullPopulationStats?: {
+      scannedRows: number;
+      aggregatedCells: number;
+      queryMs: number;
+    };
   };
   heatmap: {
     cells: StkdeHeatmapCell[];
@@ -72,6 +87,8 @@ export interface StkdeRequestValidationResult {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const DEFAULT_REQUEST: StkdeRequest = {
+  computeMode: 'sampled',
+  callerIntent: 'unknown',
   domain: { startEpochSec: 978307200, endEpochSec: 1767571200 },
   filters: {},
   params: {
@@ -86,6 +103,10 @@ const DEFAULT_REQUEST: StkdeRequest = {
     maxEvents: 50000,
     maxGridCells: 12000,
   },
+  guardrails: {
+    fullPopulationMaxSpanDays: 180,
+    fullPopulationTimeoutMs: 20000,
+  },
 };
 
 const COERCION_RANGES = {
@@ -97,6 +118,8 @@ const COERCION_RANGES = {
   timeWindowHours: [1, 168] as const,
   maxEvents: [1000, 50000] as const,
   maxGridCells: [1000, 12000] as const,
+  fullPopulationMaxSpanDays: [1, 365] as const,
+  fullPopulationTimeoutMs: [1000, 60000] as const,
 };
 
 function coerceFiniteNumber(value: unknown): number | null {
@@ -180,6 +203,8 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
   };
 
   const request: StkdeRequest = {
+    computeMode: source.computeMode === 'full-population' ? 'full-population' : 'sampled',
+    callerIntent: source.callerIntent === 'stkde' ? 'stkde' : 'unknown',
     domain: { startEpochSec, endEpochSec },
     filters: {
       crimeTypes,
@@ -204,6 +229,18 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
     limits: {
       maxEvents: resolveClamped('maxEvents', limitsRaw.maxEvents, DEFAULT_REQUEST.limits.maxEvents),
       maxGridCells: resolveClamped('maxGridCells', limitsRaw.maxGridCells, DEFAULT_REQUEST.limits.maxGridCells),
+    },
+    guardrails: {
+      fullPopulationMaxSpanDays: resolveClamped(
+        'fullPopulationMaxSpanDays',
+        (source.guardrails as Record<string, unknown> | undefined)?.fullPopulationMaxSpanDays,
+        DEFAULT_REQUEST.guardrails?.fullPopulationMaxSpanDays ?? 180,
+      ),
+      fullPopulationTimeoutMs: resolveClamped(
+        'fullPopulationTimeoutMs',
+        (source.guardrails as Record<string, unknown> | undefined)?.fullPopulationTimeoutMs,
+        DEFAULT_REQUEST.guardrails?.fullPopulationTimeoutMs ?? 20000,
+      ),
     },
   };
 
