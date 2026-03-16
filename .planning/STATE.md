@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **54 of 54** (Adaptive timeslicing in algos route with verbose diagnostics)
-Plan: **4 of 8** completed in current phase
+Plan: **5 of 9** completed in current phase
 Status: **In progress**
-Last activity: 2026-03-14 - Completed 54-07 per-bin diagnostics for `/timeslicing-algos`
+Last activity: 2026-03-16 - Completed 54-09 selection-detail dual-fetch provenance for `/timeslicing-algos`
 
-Progress: **███████████████████░** 200/205 plans complete (97.6%)
+Progress: **███████████████████░** 201/207 plans complete (97.1%)
 
 ## Milestone Status
 
@@ -114,6 +114,8 @@ Progress: **███████████████████░** 200/2
 - [Phase 54]: Remove settled selection delay and `/api/crime/meta` label ownership from `/timeslicing-algos`. — Fetch-domain and status labels now follow the active base timeline domain contract.
 - [Phase 54]: Keep `computeMaps` and timeline store domain writes pinned to `[baseDomainStartSec, baseDomainEndSec]` while detail range always follows selected/viewport range. — This aligns drag/brush behavior with `/timeslicing` without recoupling selection to fetch windows.
 - [Phase 54]: Keep per-bin diagnostics route-local and derive them from `countMap`/`densityMap`/`warpMap`, with uniform-events boundaries reconstructed under worker-locked tests. — This adds inspectable QA detail without widening adaptive store or worker contracts.
+- [Phase 54]: Normalize selection-detail `returned`/`totalMatches` meta to non-negative integer provenance and fall back to inferred counts when metadata is non-finite. — This keeps sampled/full/fallback semantics deterministic under malformed API metadata.
+- [Phase 54]: Keep diagnostics fidelity/source indicators route-local (detail cap + selection stride + fallback chips) and lock them via route-level regressions. — This preserves explicit QA provenance without widening shared store/worker contracts.
 - Reconciled roadmap checkboxes and progress table to match on-disk phase completion after stale/duplicate planning artifact cleanup.
 - Added roadmap placeholder for Phase 54 to introduce adaptive mode coverage and route-scoped verbose diagnostics in `/timeslicing-algos`.
 
@@ -129,6 +131,6 @@ Progress: **███████████████████░** 200/2
 
 ## Session Continuity
 
-Last session: 2026-03-14 20:12 UTC
-Stopped at: Completed 54-07-PLAN.md
+Last session: 2026-03-16 09:37 UTC
+Stopped at: Completed 54-09-PLAN.md
 Resume file: None
