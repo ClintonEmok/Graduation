@@ -23,6 +23,9 @@ describe('/stkde route QA shell', () => {
     expect(shellSource).toMatch(/requestIdRef/);
     expect(shellSource).toMatch(/abortRef/);
     expect(shellSource).toMatch(/Compute mode/);
+    expect(shellSource).toMatch(/type="date"/);
+    expect(shellSource).toMatch(/parseStartDateToEpoch/);
+    expect(shellSource).toMatch(/parseEndDateToEpoch/);
     expect(shellSource).toMatch(/stkde-provenance-label/);
     expect(shellSource).toMatch(/requested=\{response.meta.requestedComputeMode\}/);
     expect(shellSource).toMatch(/effective=\{response.meta.effectiveComputeMode\}/);

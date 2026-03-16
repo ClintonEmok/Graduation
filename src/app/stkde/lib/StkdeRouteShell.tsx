@@ -28,6 +28,24 @@ const distanceSq = (a: [number, number], b: [number, number]) => {
   return dx * dx + dy * dy;
 };
 
+const toDateInputValue = (epochSec: number) => {
+  return new Date(epochSec * 1000).toISOString().slice(0, 10);
+};
+
+const parseStartDateToEpoch = (value: string, fallback: number) => {
+  if (!value) return fallback;
+  const parsed = Date.parse(`${value}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.floor(parsed / 1000);
+};
+
+const parseEndDateToEpoch = (value: string, fallback: number) => {
+  if (!value) return fallback;
+  const parsed = Date.parse(`${value}T23:59:59Z`);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.floor(parsed / 1000);
+};
+
 export function StkdeRouteShell() {
   const router = useRouter();
   const pathname = usePathname();
@@ -317,10 +335,28 @@ export function StkdeRouteShell() {
         <section className="rounded-xl border border-slate-700/60 bg-slate-900/65 p-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
             <label className="text-xs text-slate-300">Start
-              <input className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" type="number" value={queryState.startEpochSec} onChange={(event) => setStateAndSyncUrl({ startEpochSec: Number(event.target.value) || queryState.startEpochSec })} />
+              <input
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1"
+                type="date"
+                value={toDateInputValue(queryState.startEpochSec)}
+                onChange={(event) =>
+                  setStateAndSyncUrl({
+                    startEpochSec: parseStartDateToEpoch(event.target.value, queryState.startEpochSec),
+                  })
+                }
+              />
             </label>
             <label className="text-xs text-slate-300">End
-              <input className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" type="number" value={queryState.endEpochSec} onChange={(event) => setStateAndSyncUrl({ endEpochSec: Number(event.target.value) || queryState.endEpochSec })} />
+              <input
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1"
+                type="date"
+                value={toDateInputValue(queryState.endEpochSec)}
+                onChange={(event) =>
+                  setStateAndSyncUrl({
+                    endEpochSec: parseEndDateToEpoch(event.target.value, queryState.endEpochSec),
+                  })
+                }
+              />
             </label>
             <label className="text-xs text-slate-300">Spatial BW (m)
               <input className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" type="number" value={queryState.spatialBandwidthMeters} onChange={(event) => setStateAndSyncUrl({ spatialBandwidthMeters: Number(event.target.value) || queryState.spatialBandwidthMeters })} />
