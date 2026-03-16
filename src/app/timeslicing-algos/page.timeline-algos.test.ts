@@ -41,6 +41,7 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/limit: selectionDetailLimit/);
     expect(shellSource).toMatch(/buildSelectionDetailDataset/);
     expect(shellSource).toMatch(/Selection detail:/);
+    expect(shellSource).toMatch(/Diagnostics detail:/);
     expect(shellSource).toMatch(/using context fallback/);
     expect(shellSource).toMatch(/const \[rangeStart, rangeEnd\] = useMemo/);
     expect(shellSource).toMatch(/detailRangeOverride=\{\[rangeStart, rangeEnd\]\}/);
@@ -78,6 +79,7 @@ describe('/timeslicing-algos route intent', () => {
     expect(panelSource).toMatch(/adaptiveMultiplier/);
     expect(panelSource).toMatch(/Diagnostics source:/);
     expect(panelSource).toMatch(/Selection usage:/);
+    expect(panelSource).toMatch(/Selection stride:/);
     expect(panelSource).toMatch(/Fallback:/);
     expect(panelSource).toMatch(/Diagnostics source preference:/);
     expect(panelSource).toMatch(/Strategy: \{selectedStrategy\}/);

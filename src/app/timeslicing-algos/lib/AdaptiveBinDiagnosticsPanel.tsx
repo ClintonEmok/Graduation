@@ -92,6 +92,11 @@ export function AdaptiveBinDiagnosticsPanel({
           <span className="rounded-full border border-indigo-500/40 bg-indigo-950/30 px-2 py-0.5 text-indigo-100">
             Selection dataset: {selectionPopulationLabel} ({selectionPopulation.returnedCount.toLocaleString()}/{selectionPopulation.totalMatches.toLocaleString()})
           </span>
+          {selectionPopulation.sampleStride ? (
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/30 px-2 py-0.5 text-indigo-100">
+              Selection stride: {selectionPopulation.sampleStride}
+            </span>
+          ) : null}
           {fallbackToContextReason ? (
             <span className="rounded-full border border-amber-500/40 bg-amber-950/30 px-2 py-0.5 text-amber-100">
               Fallback: {fallbackReasonLabel[fallbackToContextReason]}
