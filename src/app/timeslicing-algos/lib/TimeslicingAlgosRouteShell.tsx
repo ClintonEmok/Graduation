@@ -22,10 +22,21 @@ import {
 import { TimeslicingAlgosInteractionControls } from './TimeslicingAlgosInteractionControls';
 import { buildTimelineQaModel } from '@/components/timeline/qa/timeline-qa-model';
 import { TimelineQaContextCard } from '@/components/timeline/qa/TimelineQaContextCard';
+import {
+  buildSelectionDetailDataset,
+  selectionDetailLimit,
+  type SelectionDetailFallbackReason,
+} from './selection-detail-dataset';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
 const MIN_VALID_DATA_EPOCH = 946684800;
+
+const selectionFallbackReasonLabel: Record<SelectionDetailFallbackReason, string> = {
+  'selection-fetch-error': 'selection fetch failed',
+  'selection-empty': 'selection returned no records',
+  'selection-exceeded-safety-threshold': 'selection exceeded safety threshold',
+};
 
 export function TimeslicingAlgosRouteShell() {
   const router = useRouter();
@@ -73,7 +84,37 @@ export function TimeslicingAlgosRouteShell() {
   }, [selectedTimeRange, viewportEnd, viewportStart]);
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
-  const timestamps = useMemo(() => crimes.map((crime) => crime.timestamp), [crimes]);
+  const contextTimestamps = useMemo(() => crimes.map((crime) => crime.timestamp), [crimes]);
+
+  const {
+    data: selectionCrimes,
+    meta: selectionMeta,
+    isLoading: isSelectionLoading,
+    error: selectionError,
+  } = useCrimeData({
+    startEpoch: rangeStart,
+    endEpoch: rangeEnd,
+    bufferDays: 0,
+    limit: selectionDetailLimit,
+  });
+
+  const selectionDetailDataset = useMemo(
+    () =>
+      buildSelectionDetailDataset({
+        rangeStartSec: rangeStart,
+        rangeEndSec: rangeEnd,
+        selectionData: selectionCrimes,
+        selectionMeta,
+        selectionError,
+        contextTimestamps,
+      }),
+    [contextTimestamps, rangeEnd, rangeStart, selectionCrimes, selectionError, selectionMeta],
+  );
+
+  const timestamps =
+    selectionDetailDataset.diagnosticsSource === 'selection'
+      ? selectionDetailDataset.diagnosticsTimestamps
+      : contextTimestamps;
   const adaptiveDiagnosticsRows = useMemo(
     () => buildAdaptiveBinDiagnostics({
       selectedStrategy,
@@ -196,6 +237,35 @@ export function TimeslicingAlgosRouteShell() {
     return `${new Date(start * 1000).toLocaleDateString()} - ${new Date(end * 1000).toLocaleDateString()}`;
   }, [rangeEnd, rangeStart]);
 
+  const selectionPopulationLabel = useMemo(() => {
+    const populationState = selectionDetailDataset.selectionPopulation.fullPopulation
+      ? 'full population'
+      : 'sampled population';
+    const returned = selectionDetailDataset.selectionPopulation.returnedCount.toLocaleString();
+    const total = selectionDetailDataset.selectionPopulation.totalMatches.toLocaleString();
+    const stride = selectionDetailDataset.selectionPopulation.sampleStride;
+    const strideLabel = stride ? `, stride ${stride}` : '';
+    return `${populationState}: ${returned}/${total}${strideLabel}`;
+  }, [selectionDetailDataset.selectionPopulation]);
+
+  const selectionRenderLabel = useMemo(() => {
+    if (!selectionDetailDataset.renderDownsampled) {
+      return `rendering all ${selectionDetailDataset.renderTimestamps.length.toLocaleString()} detail points`;
+    }
+    return `render downsampled (${selectionDetailDataset.renderTimestamps.length.toLocaleString()} points, every ${selectionDetailDataset.renderDownsampleStride}th)`;
+  }, [
+    selectionDetailDataset.renderDownsampleStride,
+    selectionDetailDataset.renderDownsampled,
+    selectionDetailDataset.renderTimestamps.length,
+  ]);
+
+  const selectionFallbackLabel = useMemo(() => {
+    if (!selectionDetailDataset.fallbackToContextReason) {
+      return 'selection dataset active';
+    }
+    return `using context fallback: ${selectionFallbackReasonLabel[selectionDetailDataset.fallbackToContextReason]}`;
+  }, [selectionDetailDataset.fallbackToContextReason]);
+
   const fetchedDomainLabel = useMemo(() => {
     const fetchedStart = meta?.buffer?.applied.start ?? baseDomainStartSec;
     const fetchedEnd = meta?.buffer?.applied.end ?? baseDomainEndSec;
@@ -261,6 +331,18 @@ export function TimeslicingAlgosRouteShell() {
             <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
               Detail: {detailRangeLabel}
             </span>
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+              Selection detail: {selectionPopulationLabel}
+            </span>
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+              Detail render: {selectionRenderLabel}
+            </span>
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+              {selectionFallbackLabel}
+            </span>
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+              Selection fetch: {isSelectionLoading ? 'loading' : selectionError ? 'error' : 'ready'} • limit {selectionDetailLimit.toLocaleString()} • buffer 0d
+            </span>
           </div>
 
           <div className="mt-4">
@@ -322,6 +404,7 @@ export function TimeslicingAlgosRouteShell() {
             ) : timelineWidth > 0 ? (
               <DualTimeline
                 detailRangeOverride={[rangeStart, rangeEnd]}
+                detailPointsOverride={selectionDetailDataset.renderTimestamps}
                 detailRenderMode="auto"
                 disableAutoBurstSlices={true}
                 tickLabelStrategy="span-aware"
