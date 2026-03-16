@@ -190,6 +190,49 @@ describe('useCrimeData', () => {
     expect(result.bufferedRange).toEqual({ start: -170800, end: 175800 });
   });
 
+  it('supports selection-oriented high-limit fetch while preserving filters and zero-buffer semantics', async () => {
+    const harness = createRenderer();
+    cleanup = harness.cleanup;
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [],
+        meta: {
+          viewport: { start: 1000, end: 5000 },
+          buffer: { days: 0, applied: { start: 1000, end: 5000 } },
+          returned: 0,
+          totalMatches: 240000,
+          limit: 200000,
+          sampled: true,
+          sampleStride: 2,
+        },
+      }),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await harness.renderAndWait({
+      startEpoch: 1000,
+      endEpoch: 5000,
+      bufferDays: 0,
+      crimeTypes: ['THEFT'],
+      districts: ['1'],
+      limit: 200000,
+    });
+
+    const calledUrl = String(fetchMock.mock.calls[0][0]);
+    expect(calledUrl).toContain('startEpoch=1000');
+    expect(calledUrl).toContain('endEpoch=5000');
+    expect(calledUrl).toContain('bufferDays=0');
+    expect(calledUrl).toContain('limit=200000');
+    expect(calledUrl).toContain('crimeTypes=THEFT');
+    expect(calledUrl).toContain('districts=1');
+    expect(result.bufferedRange).toEqual({ start: 1000, end: 5000 });
+    expect(result.meta?.sampled).toBe(true);
+    expect(result.meta?.sampleStride).toBe(2);
+  });
+
   it('keeps query key stable and avoids refetch on equivalent rerender', async () => {
     const harness = createRenderer();
     cleanup = harness.cleanup;
@@ -259,5 +302,25 @@ describe('useCrimeData', () => {
     expect(result.error).toBeTruthy();
     expect(result.error?.message).toContain('HTTP error: 404');
     expect(result.data).toEqual([]);
+  });
+
+  it('wraps fetch TypeError with request context', async () => {
+    const harness = createRenderer();
+    cleanup = harness.cleanup;
+
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await harness.renderAndWait({
+      startEpoch: 978307200,
+      endEpoch: 978393600,
+      bufferDays: 30,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeTruthy();
+    expect(result.error?.message).toContain('Network error while fetching crimes from /api/crimes/range?');
+    expect(result.error?.message).toContain('startEpoch=978307200');
+    expect(result.error?.message).toContain('endEpoch=978393600');
   });
 });

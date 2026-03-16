@@ -33,24 +33,17 @@ async function fetchCrimesInRange(
   districts?: string[],
   limit?: number
 ): Promise<CrimeRangeResponse> {
+  const requestPath = `/api/crimes/range?${new URLSearchParams({
+    startEpoch: startEpoch.toString(),
+    endEpoch: endEpoch.toString(),
+    bufferDays: bufferDays.toString(),
+    ...(crimeTypes?.length ? { crimeTypes: crimeTypes.join(',') } : {}),
+    ...(districts?.length ? { districts: districts.join(',') } : {}),
+    ...(limit ? { limit: limit.toString() } : {}),
+  }).toString()}`;
+
   try {
-    const params = new URLSearchParams({
-      startEpoch: startEpoch.toString(),
-      endEpoch: endEpoch.toString(),
-      bufferDays: bufferDays.toString(),
-    })
-    
-    if (crimeTypes?.length) {
-      params.append('crimeTypes', crimeTypes.join(','))
-    }
-    if (districts?.length) {
-      params.append('districts', districts.join(','))
-    }
-    if (limit) {
-      params.append('limit', limit.toString())
-    }
-    
-    const response = await fetch(`/api/crimes/range?${params.toString()}`)
+    const response = await fetch(requestPath)
     
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`)
@@ -65,6 +58,9 @@ async function fetchCrimesInRange(
     }
   } catch (error) {
     console.error('[useCrimeData] Error fetching crimes:', error)
+    if (error instanceof TypeError) {
+      throw new Error(`Network error while fetching crimes from ${requestPath}`)
+    }
     throw error
   }
 }
@@ -100,6 +96,7 @@ export function useCrimeData(
     startEpoch,
     endEpoch,
     bufferDays,
+    limit,
     crimeTypes,
     districts
   ];
