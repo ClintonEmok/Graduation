@@ -10,6 +10,8 @@ describe('/stkde route QA shell', () => {
   test('contains route-isolated STKDE controls and API wiring', () => {
     const shellSource = readFileSync(new URL('./lib/StkdeRouteShell.tsx', import.meta.url), 'utf8');
     expect(shellSource).toMatch(/fetch\('\/api\/stkde\/hotspots'/);
+    expect(shellSource).toMatch(/computeMode: state.computeMode/);
+    expect(shellSource).toMatch(/callerIntent: 'stkde'/);
     expect(shellSource).toMatch(/STKDE QA Route/);
     expect(shellSource).toMatch(/Spatial BW \(m\)/);
     expect(shellSource).toMatch(/Temporal BW \(h\)/);
@@ -20,6 +22,10 @@ describe('/stkde route QA shell', () => {
     expect(shellSource).toMatch(/HotspotPanel/);
     expect(shellSource).toMatch(/requestIdRef/);
     expect(shellSource).toMatch(/abortRef/);
+    expect(shellSource).toMatch(/Compute mode/);
+    expect(shellSource).toMatch(/stkde-provenance-label/);
+    expect(shellSource).toMatch(/requested=\{response.meta.requestedComputeMode\}/);
+    expect(shellSource).toMatch(/effective=\{response.meta.effectiveComputeMode\}/);
     expect(shellSource).toMatch(/isEnabled\('stkdeRoute'\)/);
     expect(shellSource).toMatch(/stkde-disabled-state/);
     expect(shellSource).not.toMatch(/SuggestionPanel/);

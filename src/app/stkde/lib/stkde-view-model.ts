@@ -41,6 +41,7 @@ export function buildStkdeViewModel(state: StkdeQueryState, response: StkdeRespo
   }
 
   const summaryLabel = [
+    `${response.meta.requestedComputeMode} → ${response.meta.effectiveComputeMode}`,
     `${response.meta.eventCount.toLocaleString()} events`,
     `${response.heatmap.cells.length.toLocaleString()} cells`,
     `${response.hotspots.length.toLocaleString()} hotspots`,

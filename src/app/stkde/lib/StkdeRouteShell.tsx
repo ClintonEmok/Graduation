@@ -94,6 +94,8 @@ export function StkdeRouteShell() {
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
+          computeMode: state.computeMode,
+          callerIntent: 'stkde',
           domain: {
             startEpochSec: state.startEpochSec,
             endEpochSec: state.endEpochSec,
@@ -112,6 +114,10 @@ export function StkdeRouteShell() {
           limits: {
             maxEvents: 50000,
             maxGridCells: 12000,
+          },
+          guardrails: {
+            fullPopulationMaxSpanDays: 180,
+            fullPopulationTimeoutMs: 20000,
           },
         }),
       });
@@ -334,6 +340,20 @@ export function StkdeRouteShell() {
             <label className="text-xs text-slate-300">Window (h)
               <input className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" type="number" value={queryState.timeWindowHours} onChange={(event) => setStateAndSyncUrl({ timeWindowHours: Number(event.target.value) || queryState.timeWindowHours })} />
             </label>
+            <label className="text-xs text-slate-300">Compute mode
+              <select
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1"
+                value={queryState.computeMode}
+                onChange={(event) =>
+                  setStateAndSyncUrl({
+                    computeMode: event.target.value === 'full-population' ? 'full-population' : 'sampled',
+                  })
+                }
+              >
+                <option value="sampled">sampled</option>
+                <option value="full-population">full-population</option>
+              </select>
+            </label>
           </div>
           <div className="mt-3 flex items-center gap-3 text-xs text-slate-300">
             <button className="rounded border border-indigo-500/70 bg-indigo-500/20 px-3 py-1.5 text-indigo-100" type="button" onClick={() => void runStkde(queryState)}>
@@ -342,6 +362,14 @@ export function StkdeRouteShell() {
             <span data-testid="stkde-summary-label">{viewModel.summaryLabel}</span>
             {isLoading ? <span className="text-amber-300">computing...</span> : null}
             {error ? <span className="text-rose-300">{error}</span> : null}
+            {response ? (
+              <span data-testid="stkde-provenance-label" className="text-sky-200">
+                requested={response.meta.requestedComputeMode} effective={response.meta.effectiveComputeMode}
+                {response.meta.truncated ? ' • truncated' : ''}
+                {response.meta.fallbackApplied ? ` • fallback=${response.meta.fallbackApplied}` : ''}
+                {response.meta.clampsApplied?.length ? ` • clamps=${response.meta.clampsApplied.join('|')}` : ''}
+              </span>
+            ) : null}
           </div>
         </section>
 
