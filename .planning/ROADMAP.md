@@ -5,7 +5,7 @@
 v2.0 delivered a **3D version of timeline-test functionality** with interaction, suggestion, and acceptance parity.
 
 Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algos`). Current focus is v2.3: adaptive-mode integration and route-level observability for `/timeslicing-algos`.
-Planned next focus is v2.4: STKDE exploratory route with Chicago heatmap + hotspot panel for QA analysis.
+Planned next focuses are v2.4 (STKDE exploratory route) and v2.5 (`/api/crimes/range` variable-sampling fidelity hardening for `/timeslicing-algos`).
 
 ## Milestones
 
@@ -18,6 +18,7 @@ Planned next focus is v2.4: STKDE exploratory route with Chicago heatmap + hotsp
 - ✅ **v2.2 Timeslicing Fidelity Improvements** - Phases 52-53 (shipped 2026-03-11)
 - 📋 **v2.3 Adaptive Timeslicing Algos Hardening** - Phase 54 (planned)
 - 📋 **v2.4 STKDE Exploration Surface** - Phase 55 (planned)
+- 📋 **v2.5 Variable Sampling API Fidelity** - Phase 56 (planned)
 
 ## Phases
 
@@ -34,6 +35,7 @@ Planned next focus is v2.4: STKDE exploratory route with Chicago heatmap + hotsp
 - [x] **Phase 53: Add dedicated timeslicing algos route** - Add `/timeslicing-algos` for algorithm-focused timeline testing with mode comparison and centralized route-mode wiring. (completed 2026-03-11)
 - [ ] **Phase 54: Adaptive timeslicing in algos route with verbose diagnostics** - Add adaptive-mode controls and high-signal runtime diagnostics for `/timeslicing-algos` validation workflows.
 - [ ] **Phase 55: STKDE exploration route with Chicago heatmap and hotspots panel** - Add a dedicated STKDE QA route with spatiotemporal hotspot heatmap rendering and interactive hotspot list linked to map selection.
+- [ ] **Phase 56: Variable sampling API support for high-fidelity selection detail** - Upgrade `/api/crimes/range` with intent-aware sampling semantics and wire `/timeslicing-algos` selection-detail requests to preserve explicit provenance under dense selections.
 
 ## Phase Details
 
@@ -212,9 +214,26 @@ Plans:
   3. Chicago heatmap rendering and hotspot panel stay synchronized through a two-way interaction loop (map selection filters list; list selection focuses map).
   4. Hotspot rows expose spatial + temporal attributes (location, intensity score, time window, support counts) suitable for QA analysis.
   5. Performance guardrails, regression tests, and rollback toggles are in place to disable STKDE surfaces quickly if compute/render pressure is too high.
-**Plans**: 1 plan
+**Plans**: 2 plans
 Plans:
 - [ ] 55-01-PLAN.md — Build dedicated `/stkde` QA route with hybrid STKDE compute pipeline, Chicago heatmap rendering, and interactive hotspot panel
+- [ ] 55-02-PLAN.md — Add QA-only full-population STKDE mode with SQL/chunked aggregation path, guardrailed fallback, and provenance UI on `/stkde`
+
+### Phase 56: Variable sampling API support for high-fidelity selection detail
+**Goal**: Introduce intent-aware variable sampling for `/api/crimes/range` and use it from `/timeslicing-algos` to improve dense selection fidelity without breaking legacy consumers.
+**Depends on**: Phase 54
+**Requirements**: SAMPLING-01, SAMPLING-02, PROVENANCE-01
+**Success Criteria** (what must be TRUE):
+  1. `/api/crimes/range` accepts variable sampling semantics (`samplingIntent` and optional `targetPoints`) while remaining backward-compatible with legacy query patterns.
+  2. Sampling provenance remains explicit and test-covered (`sampled`, `sampleStride`, returned/total counts, intent/target/effective policy metadata).
+  3. `/timeslicing-algos` selection-detail flow requests high-fidelity intent-aware sampling and preserves explicit fallback/provenance labels.
+  4. Regression + baseline guardrails exist for dense selection behavior, and rollback steps are documented and executable.
+  5. Dashboard route behavior remains unchanged (out of scope).
+**Plans**: 3 plans
+Plans:
+- [ ] 56-01-PLAN.md — Define `/api/crimes/range` variable-sampling contract and policy-backed provenance metadata with backward-compatible defaults
+- [ ] 56-02-PLAN.md — Integrate intent-aware selection-detail requests in `/timeslicing-algos` while preserving explicit provenance/fallback labels
+- [ ] 56-03-PLAN.md — Add dense-selection regressions, rollout guardrail baseline capture, and executable rollback checklist
 
 ## Progress
 
@@ -236,7 +255,8 @@ Plans:
 | 52 | v2.2 | 4/4 | Complete | 2026-03-11 |
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
 | 54 | v2.3 | 3/9 | In progress | - |
-| 55 | v2.4 | 0/1 | Planned | - |
+| 55 | v2.4 | 0/2 | Planned | - |
+| 56 | v2.5 | 0/3 | Planned | - |
 
 ### Phase 53: Add dedicated timeslicing algos route
 
