@@ -10,6 +10,11 @@ import { DEFAULT_STKDE_BBOX, resolveStkdeQueryState, serializeStkdeQueryState, t
 import { buildStkdeViewModel, type StkdeHotspotRowModel } from './stkde-view-model';
 import type { StkdeResponse } from '@/lib/stkde/contracts';
 import { useStkdeStore } from '@/store/useStkdeStore';
+import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
+import { STKDE_RESPONSE_SIZE_LIMIT_BYTES } from '@/lib/stkde/contracts';
+import type { StkdeWorkerOutput } from '@/workers/stkdeHotspot.worker';
+
+const worker = typeof window !== 'undefined' ? new Worker(new URL('../../../workers/stkdeHotspot.worker.ts', import.meta.url)) : null;
 
 const toRadiusDegrees = (lat: number, radiusMeters: number) => {
   const latDelta = radiusMeters / 111_320;
@@ -37,10 +42,16 @@ export function StkdeRouteShell() {
   const setHoveredHotspot = useStkdeStore((state) => state.setHoveredHotspot);
   const setSpatialFilter = useStkdeStore((state) => state.setSpatialFilter);
   const setTemporalFilter = useStkdeStore((state) => state.setTemporalFilter);
+  const spatialFilter = useStkdeStore((state) => state.spatialFilter);
+  const temporalFilter = useStkdeStore((state) => state.temporalFilter);
+  const isStkdeRouteEnabled = useFeatureFlagsStore((state) => state.isEnabled('stkdeRoute'));
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<StkdeResponse | null>(null);
+  const [workerRows, setWorkerRows] = useState<StkdeResponse['hotspots'] | null>(null);
+
+  const workerRequestIdRef = useRef(0);
 
   const queryState = useMemo(() => resolveStkdeQueryState(searchParams), [searchParams]);
   const viewModel = useMemo(() => buildStkdeViewModel(queryState, response), [queryState, response]);
@@ -50,7 +61,24 @@ export function StkdeRouteShell() {
     [selectedHotspotId, viewModel.rows],
   );
 
+  useEffect(() => {
+    if (!worker) return;
+    const handler = (event: MessageEvent<StkdeWorkerOutput>) => {
+      if (event.data.requestId !== workerRequestIdRef.current) return;
+      setWorkerRows(event.data.rows);
+    };
+    worker.addEventListener('message', handler);
+    return () => worker.removeEventListener('message', handler);
+  }, []);
+
   const runStkde = async (state: StkdeQueryState) => {
+    if (!isStkdeRouteEnabled) {
+      setError(null);
+      setResponse(null);
+      setIsLoading(false);
+      return;
+    }
+
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
     abortRef.current?.abort();
@@ -97,7 +125,42 @@ export function StkdeRouteShell() {
       if (requestId !== requestIdRef.current) {
         return;
       }
-      setResponse(data);
+
+      const payloadBytes = new TextEncoder().encode(JSON.stringify(data)).length;
+      const guardedResponse =
+        payloadBytes <= STKDE_RESPONSE_SIZE_LIMIT_BYTES
+          ? data
+          : {
+              ...data,
+              meta: {
+                ...data.meta,
+                truncated: true,
+                fallbackApplied: data.meta.fallbackApplied
+                  ? `${data.meta.fallbackApplied},client-response-size-guard`
+                  : 'client-response-size-guard',
+              },
+              heatmap: {
+                ...data.heatmap,
+                cells: [...data.heatmap.cells]
+                  .sort((a, b) => b.intensity - a.intensity)
+                  .slice(0, 8000),
+              },
+            };
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[stkde] compute complete', {
+          requestId,
+          computeMs: guardedResponse.meta.computeMs,
+          eventCount: guardedResponse.meta.eventCount,
+          hotspotCount: guardedResponse.hotspots.length,
+          heatmapCells: guardedResponse.heatmap.cells.length,
+          truncated: guardedResponse.meta.truncated,
+          fallbackApplied: guardedResponse.meta.fallbackApplied,
+          payloadBytes,
+        });
+      }
+
+      setResponse(guardedResponse);
     } catch (runError) {
       if (controller.signal.aborted) return;
       setError(runError instanceof Error ? runError.message : 'Failed to run STKDE');
@@ -109,9 +172,38 @@ export function StkdeRouteShell() {
   };
 
   useEffect(() => {
-    runStkde(queryState);
+    void runStkde(queryState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!response || !worker) {
+      setWorkerRows(null);
+      return;
+    }
+
+    workerRequestIdRef.current += 1;
+    worker.postMessage({
+      requestId: workerRequestIdRef.current,
+      hotspots: response.hotspots,
+      filters: {
+        minIntensity: 0,
+        minSupport: queryState.minSupport,
+        temporalWindow: temporalFilter ? [temporalFilter.startEpochSec, temporalFilter.endEpochSec] : null,
+        spatialBbox: spatialFilter
+          ? [spatialFilter.minLng, spatialFilter.minLat, spatialFilter.maxLng, spatialFilter.maxLat]
+          : null,
+      },
+    });
+  }, [queryState.minSupport, response, spatialFilter, temporalFilter]);
+
+  useEffect(() => {
+    if (!isStkdeRouteEnabled) {
+      setResponse(null);
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [isStkdeRouteEnabled]);
 
   useEffect(() => {
     return () => {
@@ -151,7 +243,18 @@ export function StkdeRouteShell() {
     const target: [number, number] = [event.lngLat.lng, event.lngLat.lat];
     let nearest: StkdeHotspotRowModel | null = null;
     let nearestDistance = Number.POSITIVE_INFINITY;
-    for (const row of viewModel.rows) {
+    const sourceRows = workerRows ? workerRows.map((hotspot, index) => ({
+      id: hotspot.id,
+      centroid: [hotspot.centroidLng, hotspot.centroidLat] as [number, number],
+      title: `Hotspot ${index + 1}`,
+      location: '',
+      intensityLabel: '',
+      supportLabel: '',
+      windowLabel: '',
+      radiusMeters: hotspot.radiusMeters,
+    })) : viewModel.rows;
+
+    for (const row of sourceRows) {
       const d = distanceSq(target, row.centroid);
       if (d < nearestDistance) {
         nearestDistance = d;
@@ -172,6 +275,28 @@ export function StkdeRouteShell() {
     if (!nearest) return;
     selectHotspot(nearest);
   };
+
+  const displayedRows = useMemo(() => {
+    if (!response) return viewModel.rows;
+    if (!workerRows) return viewModel.rows;
+    const byId = new Map(viewModel.rows.map((row) => [row.id, row]));
+    return workerRows
+      .map((hotspot) => byId.get(hotspot.id))
+      .filter((row): row is StkdeHotspotRowModel => Boolean(row));
+  }, [response, viewModel.rows, workerRows]);
+
+  if (!isStkdeRouteEnabled) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12" data-testid="stkde-disabled-state">
+        <div className="mx-auto w-full max-w-4xl rounded-xl border border-amber-500/40 bg-amber-950/20 p-6">
+          <h1 className="text-xl font-semibold">STKDE route is temporarily disabled</h1>
+          <p className="mt-2 text-sm text-slate-300">
+            This surface is behind the <code>stkdeRoute</code> feature flag. Toggle it on to resume QA exploration.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12" data-testid="stkde-route-shell">
@@ -237,7 +362,7 @@ export function StkdeRouteShell() {
           </div>
 
           <HotspotPanel
-            rows={viewModel.rows}
+            rows={displayedRows}
             selectedHotspotId={selectedHotspotId}
             hoveredHotspotId={hoveredHotspotId}
             onSelectHotspot={selectHotspot}

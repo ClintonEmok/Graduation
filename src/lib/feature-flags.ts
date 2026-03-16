@@ -13,6 +13,14 @@ export interface FeatureFlag {
 
 // Define all feature flags for Phases 12-19
 export const FLAG_DEFINITIONS: FeatureFlag[] = [
+  {
+    id: 'stkdeRoute',
+    name: 'STKDE QA Route',
+    description: 'Enable /stkde exploratory route with hotspot heatmap and panel',
+    category: 'experimental',
+    status: 'experimental',
+    default: true,
+  },
   // Phase 14: Color Schemes
   {
     id: 'colorSchemes',

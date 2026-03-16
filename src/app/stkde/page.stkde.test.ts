@@ -20,6 +20,8 @@ describe('/stkde route QA shell', () => {
     expect(shellSource).toMatch(/HotspotPanel/);
     expect(shellSource).toMatch(/requestIdRef/);
     expect(shellSource).toMatch(/abortRef/);
+    expect(shellSource).toMatch(/isEnabled\('stkdeRoute'\)/);
+    expect(shellSource).toMatch(/stkde-disabled-state/);
     expect(shellSource).not.toMatch(/SuggestionPanel/);
     expect(shellSource).not.toMatch(/SuggestionToolbar/);
     expect(shellSource).not.toMatch(/accept-full-auto-package/);
