@@ -5,16 +5,16 @@
 See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Execute Phase 55 plans to deliver isolated STKDE QA exploration in `/stkde` with bounded compute and rollback controls.
+**Current focus:** Prepare Phase 56 variable sampling/fidelity work on top of mode-aware `/stkde` sampled/full-population provenance and guardrails.
 
 ## Current Position
 
-Phase: **55 of 56** (STKDE exploration route with Chicago heatmap and hotspots panel)
-Plan: **1 of 1** completed in current phase
-Status: **Phase complete**
-Last activity: 2026-03-16 - Completed 55-01 dedicated `/stkde` STKDE exploration route
+Phase: **56 of 56** (Variable sampling selection fidelity)
+Plan: **0 of 1** completed in current phase
+Status: **In progress**
+Last activity: 2026-03-16 - Completed 55-02 QA full-population STKDE mode and provenance flow
 
-Progress: **███████████████████░** 202/210 plans complete (96.2%)
+Progress: **███████████████████░** 203/211 plans complete (96.2%)
 
 ## Milestone Status
 
@@ -119,6 +119,9 @@ Progress: **███████████████████░** 202/2
 - [Phase 55]: Keep STKDE compute authoritative on `/api/stkde/hotspots` and limit worker responsibility to hotspot projection/filtering. — This preserves deterministic compute semantics while keeping map/list interactions responsive.
 - [Phase 55]: Add hard event/grid/payload guards with explicit truncation and fallback metadata. — This keeps QA behavior observable under heavy requests without destabilizing route performance.
 - [Phase 55]: Gate `/stkde` behind `stkdeRoute` feature flag with disabled-safe fallback state. — Rollback becomes an immediate flag flip that does not impact `/timeslicing` or `/timeslicing-algos`.
+- [Phase 55]: Keep full-population STKDE QA-scoped by requiring `/stkde` caller intent and QA env gate while preserving sampled as backward-compatible default. — This adds high-fidelity mode controls without changing legacy callers.
+- [Phase 55]: Implement full-population input derivation via DuckDB SQL aggregation with chunked reads. — This avoids naive row-level JS materialization and keeps server memory bounded on large windows.
+- [Phase 55]: Standardize STKDE provenance metadata (`requestedComputeMode`, `effectiveComputeMode`, fallback/clamp reasons, optional full-pop stats) end-to-end from API to `/stkde` UI. — QA can trust what was actually computed under guardrails.
 - Reconciled roadmap checkboxes and progress table to match on-disk phase completion after stale/duplicate planning artifact cleanup.
 - Added roadmap placeholder for Phase 54 to introduce adaptive mode coverage and route-scoped verbose diagnostics in `/timeslicing-algos`.
 
@@ -134,6 +137,6 @@ Progress: **███████████████████░** 202/2
 
 ## Session Continuity
 
-Last session: 2026-03-16 11:06 CET
-Stopped at: Completed 55-01-PLAN.md
+Last session: 2026-03-16 12:23 CET
+Stopped at: Completed 55-02-PLAN.md
 Resume file: None
