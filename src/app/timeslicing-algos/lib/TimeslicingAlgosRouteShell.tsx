@@ -38,6 +38,10 @@ const selectionFallbackReasonLabel: Record<SelectionDetailFallbackReason, string
   'selection-exceeded-safety-threshold': 'selection exceeded safety threshold',
 };
 
+const diagnosticsCapReasonLabel = {
+  'diagnostics-max-points': 'diagnostics capped for safety',
+} as const;
+
 export function TimeslicingAlgosRouteShell() {
   const router = useRouter();
   const pathname = usePathname();
@@ -276,6 +280,17 @@ export function TimeslicingAlgosRouteShell() {
     return `using context fallback: ${selectionFallbackReasonLabel[selectionDetailDataset.fallbackToContextReason]}`;
   }, [selectionDetailDataset.fallbackToContextReason]);
 
+  const diagnosticsDatasetLabel = useMemo(() => {
+    if (!selectionDetailDataset.diagnosticsCapped) {
+      return `diagnostics using ${selectionDetailDataset.diagnosticsTimestamps.length.toLocaleString()} points`;
+    }
+    return `${diagnosticsCapReasonLabel[selectionDetailDataset.diagnosticsCapReason ?? 'diagnostics-max-points']}: ${selectionDetailDataset.diagnosticsTimestamps.length.toLocaleString()} points`;
+  }, [
+    selectionDetailDataset.diagnosticsCapReason,
+    selectionDetailDataset.diagnosticsCapped,
+    selectionDetailDataset.diagnosticsTimestamps.length,
+  ]);
+
   const fetchedDomainLabel = useMemo(() => {
     const fetchedStart = meta?.buffer?.applied.start ?? baseDomainStartSec;
     const fetchedEnd = meta?.buffer?.applied.end ?? baseDomainEndSec;
@@ -346,6 +361,9 @@ export function TimeslicingAlgosRouteShell() {
             </span>
             <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
               Detail render: {selectionRenderLabel}
+            </span>
+            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+              Diagnostics detail: {diagnosticsDatasetLabel}
             </span>
             <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
               {selectionFallbackLabel}
