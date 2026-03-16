@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       } else {
         const spanDays =
           (normalizedRequest.domain.endEpochSec - normalizedRequest.domain.startEpochSec) / 86_400;
-        const maxSpanDays = normalizedRequest.guardrails?.fullPopulationMaxSpanDays ?? 180;
+        const maxSpanDays = normalizedRequest.guardrails?.fullPopulationMaxSpanDays ?? 12000;
         if (spanDays > maxSpanDays) {
           effectiveMode = 'sampled';
           fallbackReasons.push('full-pop-span-cap');

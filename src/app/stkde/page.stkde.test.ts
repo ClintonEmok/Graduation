@@ -29,6 +29,8 @@ describe('/stkde route QA shell', () => {
     expect(shellSource).toMatch(/stkde-provenance-label/);
     expect(shellSource).toMatch(/requested=\{response.meta.requestedComputeMode\}/);
     expect(shellSource).toMatch(/effective=\{response.meta.effectiveComputeMode\}/);
+    expect(shellSource).toMatch(/stkde-radius-note/);
+    expect(shellSource).toMatch(/Map zoom only changes the displayed heatmap radius/);
     expect(shellSource).toMatch(/isEnabled\('stkdeRoute'\)/);
     expect(shellSource).toMatch(/stkde-disabled-state/);
     expect(shellSource).not.toMatch(/SuggestionPanel/);

@@ -134,7 +134,7 @@ export function StkdeRouteShell() {
             maxGridCells: 12000,
           },
           guardrails: {
-            fullPopulationMaxSpanDays: 180,
+            fullPopulationMaxSpanDays: 12000,
             fullPopulationTimeoutMs: 20000,
           },
         }),
@@ -406,6 +406,10 @@ export function StkdeRouteShell() {
                 {response.meta.clampsApplied?.length ? ` • clamps=${response.meta.clampsApplied.join('|')}` : ''}
               </span>
             ) : null}
+          </div>
+          <div className="mt-3 rounded-md border border-slate-700/70 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-300" data-testid="stkde-radius-note">
+            <strong className="text-slate-100">Radius note:</strong> algorithm smoothing uses <code>Spatial BW (m)</code>.
+            Map zoom only changes the displayed heatmap radius in pixels for readability and does not recompute STKDE intensity.
           </div>
         </section>
 

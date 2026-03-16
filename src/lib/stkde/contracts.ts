@@ -104,7 +104,7 @@ const DEFAULT_REQUEST: StkdeRequest = {
     maxGridCells: 12000,
   },
   guardrails: {
-    fullPopulationMaxSpanDays: 180,
+    fullPopulationMaxSpanDays: 12000,
     fullPopulationTimeoutMs: 20000,
   },
 };
@@ -118,7 +118,7 @@ const COERCION_RANGES = {
   timeWindowHours: [1, 168] as const,
   maxEvents: [1000, 50000] as const,
   maxGridCells: [1000, 12000] as const,
-  fullPopulationMaxSpanDays: [1, 365] as const,
+  fullPopulationMaxSpanDays: [1, 12000] as const,
   fullPopulationTimeoutMs: [1000, 60000] as const,
 };
 
@@ -234,7 +234,7 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
       fullPopulationMaxSpanDays: resolveClamped(
         'fullPopulationMaxSpanDays',
         (source.guardrails as Record<string, unknown> | undefined)?.fullPopulationMaxSpanDays,
-        DEFAULT_REQUEST.guardrails?.fullPopulationMaxSpanDays ?? 180,
+        DEFAULT_REQUEST.guardrails?.fullPopulationMaxSpanDays ?? 12000,
       ),
       fullPopulationTimeoutMs: resolveClamped(
         'fullPopulationTimeoutMs',
