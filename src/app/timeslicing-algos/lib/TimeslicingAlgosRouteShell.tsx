@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useCrimeData } from '@/hooks/useCrimeData';
@@ -11,8 +11,6 @@ import { useTimeStore } from '@/store/useTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { ALGORITHM_OPTIONS } from './algorithm-options';
-import { AdaptiveBinDiagnosticsPanel } from './AdaptiveBinDiagnosticsPanel';
-import { buildAdaptiveBinDiagnostics } from './adaptive-bin-diagnostics';
 import { TimeslicingAlgosStrategyStats } from './TimeslicingAlgosStrategyStats';
 import {
   resolveTimeslicingAlgosSelection,
@@ -38,10 +36,6 @@ const selectionFallbackReasonLabel: Record<SelectionDetailFallbackReason, string
   'selection-exceeded-safety-threshold': 'selection exceeded safety threshold',
 };
 
-const diagnosticsCapReasonLabel = {
-  'diagnostics-max-points': 'diagnostics capped for safety',
-} as const;
-
 export function TimeslicingAlgosRouteShell() {
   const router = useRouter();
   const pathname = usePathname();
@@ -55,10 +49,7 @@ export function TimeslicingAlgosRouteShell() {
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
 
-  const densityMap = useAdaptiveStore((state) => state.densityMap);
-  const countMap = useAdaptiveStore((state) => state.countMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
-  const warpMap = useAdaptiveStore((state) => state.warpMap);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
@@ -88,7 +79,6 @@ export function TimeslicingAlgosRouteShell() {
   }, [selectedTimeRange, viewportEnd, viewportStart]);
 
   const timelineWidth = Math.max(0, Math.floor(timelineBounds.width));
-  const [diagnosticsSourcePreference, setDiagnosticsSourcePreference] = useState<'selection' | 'context'>('selection');
   const contextTimestamps = useMemo(() => crimes.map((crime) => crime.timestamp), [crimes]);
 
   const {
@@ -114,31 +104,6 @@ export function TimeslicingAlgosRouteShell() {
         contextTimestamps,
       }),
     [contextTimestamps, rangeEnd, rangeStart, selectionCrimes, selectionError, selectionMeta],
-  );
-
-  const selectionDiagnosticsUnavailableReason = selectionDetailDataset.fallbackToContextReason;
-  const diagnosticsSource =
-    diagnosticsSourcePreference === 'selection' && !selectionDiagnosticsUnavailableReason ? 'selection' : 'context';
-  const diagnosticsFallbackReason =
-    diagnosticsSourcePreference === 'selection' && selectionDiagnosticsUnavailableReason
-      ? selectionDiagnosticsUnavailableReason
-      : null;
-  const diagnosticsSelectionUsed = diagnosticsSource === 'selection';
-
-  const timestamps =
-    diagnosticsSource === 'selection'
-      ? selectionDetailDataset.diagnosticsTimestamps
-      : contextTimestamps;
-  const adaptiveDiagnosticsRows = useMemo(
-    () => buildAdaptiveBinDiagnostics({
-      selectedStrategy,
-      domain: mapDomain,
-      timestamps,
-      countMap,
-      densityMap,
-      warpMap,
-    }),
-    [countMap, densityMap, mapDomain, selectedStrategy, timestamps, warpMap],
   );
 
   const setSelection = (nextSelection: TimeslicingAlgosSelection) => {
@@ -280,16 +245,12 @@ export function TimeslicingAlgosRouteShell() {
     return `using context fallback: ${selectionFallbackReasonLabel[selectionDetailDataset.fallbackToContextReason]}`;
   }, [selectionDetailDataset.fallbackToContextReason]);
 
-  const diagnosticsDatasetLabel = useMemo(() => {
-    if (!selectionDetailDataset.diagnosticsCapped) {
-      return `diagnostics using ${selectionDetailDataset.diagnosticsTimestamps.length.toLocaleString()} points`;
+  const diagnosticsSourceLabel = useMemo(() => {
+    if (!selectionDetailDataset.fallbackToContextReason) {
+      return 'Source: selection detail dataset';
     }
-    return `${diagnosticsCapReasonLabel[selectionDetailDataset.diagnosticsCapReason ?? 'diagnostics-max-points']}: ${selectionDetailDataset.diagnosticsTimestamps.length.toLocaleString()} points`;
-  }, [
-    selectionDetailDataset.diagnosticsCapReason,
-    selectionDetailDataset.diagnosticsCapped,
-    selectionDetailDataset.diagnosticsTimestamps.length,
-  ]);
+    return 'Source: context dataset fallback';
+  }, [selectionDetailDataset.fallbackToContextReason]);
 
   const fetchedDomainLabel = useMemo(() => {
     const fetchedStart = meta?.buffer?.applied.start ?? baseDomainStartSec;
@@ -363,14 +324,23 @@ export function TimeslicingAlgosRouteShell() {
               Detail render: {selectionRenderLabel}
             </span>
             <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-              Diagnostics detail: {diagnosticsDatasetLabel}
-            </span>
-            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
               {selectionFallbackLabel}
             </span>
             <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
               Selection fetch: {isSelectionLoading ? 'loading' : selectionError ? 'error' : 'ready'} • limit {selectionDetailLimit.toLocaleString()} • buffer 0d
             </span>
+          </div>
+
+          <div className="mt-3 rounded-md border border-slate-700/70 bg-slate-900/70 p-2" data-testid="timeslicing-algos-diagnostics">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Diagnostics</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-200">
+              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-indigo-100">
+                {selectionFallbackLabel}
+              </span>
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-slate-300">
+                {diagnosticsSourceLabel}
+              </span>
+            </div>
           </div>
 
           <div className="mt-4">
@@ -386,22 +356,9 @@ export function TimeslicingAlgosRouteShell() {
             />
 
             <TimeslicingAlgosStrategyStats
-              timestamps={timestamps}
+              timestamps={contextTimestamps}
               domain={[baseDomainStartSec, baseDomainEndSec]}
               selectedStrategy={selectedStrategy}
-            />
-
-            <AdaptiveBinDiagnosticsPanel
-              rows={adaptiveDiagnosticsRows}
-              selectedStrategy={selectedStrategy}
-              selectedTimeScale={selectedTimeScale}
-              domain={mapDomain}
-              diagnosticsSource={diagnosticsSource}
-              diagnosticsSourcePreference={diagnosticsSourcePreference}
-              onDiagnosticsSourcePreferenceChange={setDiagnosticsSourcePreference}
-              selectionUsed={diagnosticsSelectionUsed}
-              fallbackToContextReason={diagnosticsFallbackReason}
-              selectionPopulation={selectionDetailDataset.selectionPopulation}
             />
           </div>
 
