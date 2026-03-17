@@ -87,6 +87,21 @@ describe('useSuggestionGenerator diagnostics metadata integration', () => {
     expect(metadata.sections.spatial.notice).toContain('Spatial diagnostics missing');
   });
 
+  test('keeps section keys present when temporal diagnostics are missing', () => {
+    const temporalMissingDiagnostics = buildContextDiagnostics({
+      timestamps: [],
+      crimes: crimesFixture,
+      staticProfileName: 'All Crimes',
+    });
+
+    const metadata = buildSuggestionDiagnosticsMetadata(temporalMissingDiagnostics);
+
+    expect(Object.keys(metadata.sections).sort()).toEqual(['spatial', 'temporal']);
+    expect(metadata.sections.temporal.status).toBe('missing');
+    expect(metadata.sections.temporal.notice).toContain('Temporal diagnostics missing');
+    expect(metadata.sections.spatial.status).toBe('available');
+  });
+
   test('keeps ranking/order parity for identical inputs with diagnostics wiring', () => {
     const staticProfile = detectSmartProfile(contextFixture);
 
