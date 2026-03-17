@@ -124,6 +124,7 @@ export function SuggestionPanel() {
   const [viewMode, setViewMode] = useState<'suggestions' | 'history'>('suggestions');
   const [comparisonExpanded, setComparisonExpanded] = useState(false);
   const [showConfidenceDetails, setShowConfidenceDetails] = useState(false);
+  const [showDiagnosticsDetails, setShowDiagnosticsDetails] = useState(false);
   const [processedCollapsed, setProcessedCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem(PROCESSED_COLLAPSE_SESSION_KEY) === 'true';
@@ -160,6 +161,8 @@ export function SuggestionPanel() {
       : fullAutoProposalSets.find((proposalSet) => proposalSet.id === selectedFullAutoSetId) ?? null;
   const diagnosticsSuggestion = pendingSuggestions[0] ?? visibleSuggestions[0] ?? null;
   const diagnostics = diagnosticsSuggestion?.contextMetadata?.contextDiagnostics;
+  const temporalMissing = diagnostics?.sections.temporal.status === 'missing';
+  const spatialMissing = diagnostics?.sections.spatial.status === 'missing';
 
   const toggleComparison = (id: string) => {
     if (comparisonIds[0] === id) {
@@ -507,6 +510,9 @@ export function SuggestionPanel() {
                         Dynamic profile:{' '}
                         <span className="font-medium">{diagnostics.dynamicProfileLabel || 'No strong profile'}</span>
                       </p>
+                      <p className="mt-1 text-xs text-slate-300">
+                        {diagnostics.temporalSummary ?? diagnostics.spatialSummary ?? 'Context diagnostics are available.'}
+                      </p>
                     </div>
                     {diagnostics.hasNoStrongProfile ? (
                       <span className="rounded border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] text-rose-200">
@@ -523,35 +529,53 @@ export function SuggestionPanel() {
                     )}
                   </div>
 
-                  <div className="mt-2 space-y-1 text-xs text-slate-300">
-                    <p>
-                      {diagnostics.sections.temporal.status === 'available'
-                        ? diagnostics.temporalSummary ?? 'Temporal summary unavailable.'
-                        : diagnostics.sections.temporal.notice ?? 'Temporal diagnostics missing.'}
-                    </p>
-                    {diagnostics.sections.spatial.status === 'available' ? (
-                      diagnostics.spatialHotspots && diagnostics.spatialHotspots.length > 0 ? (
-                        <ul className="space-y-1 text-slate-300">
-                          {diagnostics.spatialHotspots.slice(0, 3).map((hotspot) => (
-                            <li key={`${hotspot.label}-${hotspot.supportCount}`}>
-                              {hotspot.label} · {hotspot.supportCount} events · {(hotspot.density * 100).toFixed(1)}%
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p>{diagnostics.spatialSummary ?? 'Spatial summary unavailable.'}</p>
-                      )
-                    ) : (
-                      <p>{diagnostics.sections.spatial.notice ?? 'Spatial diagnostics missing.'}</p>
-                    )}
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                    <span className="rounded border border-slate-700 bg-slate-800/70 px-2 py-0.5 text-slate-300">
+                      Temporal: {diagnostics.sections.temporal.status === 'available' ? 'available' : 'missing'}
+                    </span>
+                    <span className="rounded border border-slate-700 bg-slate-800/70 px-2 py-0.5 text-slate-300">
+                      Spatial: {diagnostics.sections.spatial.status === 'available' ? 'available' : 'missing'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDiagnosticsDetails((current) => !current)}
+                      className="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-slate-300 hover:text-slate-100"
+                    >
+                      {showDiagnosticsDetails ? 'Hide diagnostics details' : 'Show diagnostics details'}
+                    </button>
                   </div>
 
-                  {(diagnostics.sections.temporal.status === 'missing' || diagnostics.sections.spatial.status === 'missing') && (
+                  {showDiagnosticsDetails && (
+                    <div className="mt-2 space-y-1 text-xs text-slate-300">
+                      <p>
+                        {diagnostics.sections.temporal.status === 'available'
+                          ? diagnostics.temporalSummary ?? 'Temporal summary unavailable.'
+                          : diagnostics.sections.temporal.notice ?? 'Temporal diagnostics missing.'}
+                      </p>
+                      {diagnostics.sections.spatial.status === 'available' ? (
+                        diagnostics.spatialHotspots && diagnostics.spatialHotspots.length > 0 ? (
+                          <ul className="space-y-1 text-slate-300">
+                            {diagnostics.spatialHotspots.slice(0, 3).map((hotspot) => (
+                              <li key={`${hotspot.label}-${hotspot.supportCount}`}>
+                                {hotspot.label} · {hotspot.supportCount} events · {(hotspot.density * 100).toFixed(1)}%
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>{diagnostics.spatialSummary ?? 'Spatial summary unavailable.'}</p>
+                        )
+                      ) : (
+                        <p>{diagnostics.sections.spatial.notice ?? 'Spatial diagnostics missing.'}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {(temporalMissing || spatialMissing) && (
                     <div className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">
-                      {diagnostics.sections.temporal.status === 'missing' && (
+                      {temporalMissing && (
                         <p>{diagnostics.sections.temporal.notice ?? 'Temporal diagnostics missing.'}</p>
                       )}
-                      {diagnostics.sections.spatial.status === 'missing' && (
+                      {spatialMissing && (
                         <p>{diagnostics.sections.spatial.notice ?? 'Spatial diagnostics missing.'}</p>
                       )}
                     </div>

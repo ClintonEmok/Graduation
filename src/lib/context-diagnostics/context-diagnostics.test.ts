@@ -31,6 +31,27 @@ describe('context diagnostics engine', () => {
     expect(temporal.rangeSpanSec).toBe(159900);
     expect(temporal.dominantWindow.eventCount).toBe(5);
     expect(temporal.activitySummary).toMatch(/events in dominant 24h window/);
+    expect(temporal.activitySummary).toMatch(/across 2d range/);
+  });
+
+  test('adapts dominant temporal window label for wider ranges', () => {
+    const temporal = buildTemporalSummary({
+      timestamps: [
+        1_700_000_000,
+        1_700_200_000,
+        1_700_400_000,
+        1_700_800_000,
+        1_701_000_000,
+        1_701_200_000,
+      ],
+    });
+
+    expect(temporal.status).toBe('available');
+    if (temporal.status !== 'available') {
+      throw new Error('expected available temporal summary');
+    }
+
+    expect(temporal.activitySummary).toMatch(/dominant (3d|7d|14d) window/);
   });
 
   test('caps spatial hotspot summary to top 3 and uses deterministic dominant-signal tie-break', () => {

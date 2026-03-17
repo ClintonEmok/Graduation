@@ -28,6 +28,29 @@ export type TemporalSummaryResult = TemporalSummaryAvailable | TemporalSummaryMi
 
 const DEFAULT_WINDOW_HOURS = 24;
 
+const resolveAdaptiveWindowHours = (rangeSpanSec: number): number => {
+  const spanHours = Math.max(1, rangeSpanSec / 3600);
+
+  if (spanHours <= 72) {
+    return DEFAULT_WINDOW_HOURS;
+  }
+  if (spanHours <= 24 * 14) {
+    return 72;
+  }
+  if (spanHours <= 24 * 90) {
+    return 168;
+  }
+  return 336;
+};
+
+const formatWindowLabel = (windowHours: number): string => {
+  if (windowHours % 24 === 0) {
+    const days = windowHours / 24;
+    return days === 1 ? '24h' : `${days}d`;
+  }
+  return `${windowHours}h`;
+};
+
 const toSortedFiniteTimestamps = (timestamps: ArrayLike<number>): number[] =>
   Array.from(timestamps)
     .filter((value) => Number.isFinite(value))
@@ -80,12 +103,13 @@ export const buildTemporalSummary = (input: TemporalSummaryInput): TemporalSumma
   const rangeSpanSec = Math.max(0, Math.round(last - first));
   const windowHours = Number.isFinite(input.dominantWindowHours)
     ? Math.max(1, Math.round(input.dominantWindowHours ?? DEFAULT_WINDOW_HOURS))
-    : DEFAULT_WINDOW_HOURS;
+    : resolveAdaptiveWindowHours(rangeSpanSec);
   const windowSec = windowHours * 3600;
   const dominantWindow = findDominantWindow(sorted, first, last, windowSec);
   const concentration = dominantWindow.eventCount / sorted.length;
   const concentrationPercent = (concentration * 100).toFixed(1);
-  const activitySummary = `${dominantWindow.eventCount}/${sorted.length} events in dominant ${windowHours}h window (${concentrationPercent}%).`;
+  const rangeDays = Math.max(1, Math.round(rangeSpanSec / 86400));
+  const activitySummary = `${dominantWindow.eventCount}/${sorted.length} events in dominant ${formatWindowLabel(windowHours)} window across ${rangeDays}d range (${concentrationPercent}%).`;
 
   return {
     status: 'available',

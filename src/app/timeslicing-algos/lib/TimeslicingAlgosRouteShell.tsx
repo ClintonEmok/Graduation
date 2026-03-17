@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMeasure } from '@/hooks/useMeasure';
 import { useCrimeData } from '@/hooks/useCrimeData';
@@ -41,6 +41,7 @@ export function TimeslicingAlgosRouteShell() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
+  const [showRouteDiagnosticsDetails, setShowRouteDiagnosticsDetails] = useState(false);
 
   const selection = useMemo(() => resolveTimeslicingAlgosSelection(searchParams), [searchParams]);
   const selectedStrategy = selection.strategy;
@@ -312,24 +313,36 @@ export function TimeslicingAlgosRouteShell() {
               Timeline: {dataDomainLabel}
             </span>
             <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-              Fetched: {fetchedDomainLabel}
-            </span>
-            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
               Detail: {detailRangeLabel}
             </span>
-            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-              Selection detail: {selectionPopulationLabel}
-            </span>
-            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-              Detail render: {selectionRenderLabel}
-            </span>
-            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-              {selectionFallbackLabel}
-            </span>
-            <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-              Selection fetch: {isSelectionLoading ? 'loading' : selectionError ? 'error' : 'ready'} • limit {selectionDetailLimit.toLocaleString()} • buffer 0d
-            </span>
+            <button
+              type="button"
+              className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:text-slate-100"
+              onClick={() => setShowRouteDiagnosticsDetails((current) => !current)}
+            >
+              {showRouteDiagnosticsDetails ? 'Hide data diagnostics' : 'Show data diagnostics'}
+            </button>
           </div>
+
+          {showRouteDiagnosticsDetails && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                Fetched: {fetchedDomainLabel}
+              </span>
+              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                Selection detail: {selectionPopulationLabel}
+              </span>
+              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                Detail render: {selectionRenderLabel}
+              </span>
+              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                {selectionFallbackLabel}
+              </span>
+              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                Selection fetch: {isSelectionLoading ? 'loading' : selectionError ? 'error' : 'ready'} • limit {selectionDetailLimit.toLocaleString()} • buffer 0d
+              </span>
+            </div>
+          )}
 
           <div className="mt-3 rounded-md border border-slate-700/70 bg-slate-900/70 p-2" data-testid="timeslicing-algos-diagnostics">
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Diagnostics</p>
