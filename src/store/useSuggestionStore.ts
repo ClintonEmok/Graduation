@@ -49,6 +49,13 @@ export interface SuggestionContextMetadata {
     isWeakSignal: boolean;
     hasNoStrongProfile: boolean;
     confidence?: number;
+    temporalSummary?: string;
+    spatialSummary?: string;
+    spatialHotspots?: Array<{
+      label: string;
+      supportCount: number;
+      density: number;
+    }>;
     staticProfileLabel: string;
     profileComparison: {
       matches: boolean;

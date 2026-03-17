@@ -190,6 +190,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
     [getCurrentContext, suggestion.contextMetadata]
   );
   const smartProfile = useSmartProfiles(suggestionContext);
+  const diagnostics = suggestion.contextMetadata?.contextDiagnostics;
   const [rangeStart, rangeEnd] = React.useMemo(() => {
     if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
       const start = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
@@ -604,7 +605,9 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
             <ContextBadge
               crimeTypes={suggestionContext.crimeTypes}
               isFullDataset={suggestionContext.isFullDataset}
-              smartProfileName={suggestion.contextMetadata?.profileName ?? smartProfile?.name}
+              smartProfileName={diagnostics?.dynamicProfileLabel ?? suggestion.contextMetadata?.profileName ?? smartProfile?.name}
+              signalState={diagnostics?.signalState}
+              warningLabel={diagnostics?.hasNoStrongProfile ? 'No strong profile' : diagnostics?.isWeakSignal ? 'Signal is weak' : null}
             />
           </div>
           {/* Collapsed: show count, Expanded: show full details */}

@@ -122,6 +122,8 @@ export function SuggestionPanel() {
 
   const [showContext, setShowContext] = useState(false);
   const [viewMode, setViewMode] = useState<'suggestions' | 'history'>('suggestions');
+  const [comparisonExpanded, setComparisonExpanded] = useState(false);
+  const [showConfidenceDetails, setShowConfidenceDetails] = useState(false);
   const [processedCollapsed, setProcessedCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem(PROCESSED_COLLAPSE_SESSION_KEY) === 'true';
@@ -156,6 +158,8 @@ export function SuggestionPanel() {
     selectedFullAutoSetId === null
       ? null
       : fullAutoProposalSets.find((proposalSet) => proposalSet.id === selectedFullAutoSetId) ?? null;
+  const diagnosticsSuggestion = pendingSuggestions[0] ?? visibleSuggestions[0] ?? null;
+  const diagnostics = diagnosticsSuggestion?.contextMetadata?.contextDiagnostics;
 
   const toggleComparison = (id: string) => {
     if (comparisonIds[0] === id) {
@@ -494,6 +498,102 @@ export function SuggestionPanel() {
             </div>
           ) : (
             <div className="space-y-3">
+              {diagnostics && (
+                <div className="rounded-lg border border-slate-700/80 bg-slate-800/40 p-3" data-testid="suggestion-diagnostics-summary">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-xs font-medium uppercase tracking-wide text-slate-300">Diagnostics</h3>
+                      <p className="mt-1 text-sm text-slate-100">
+                        Dynamic profile:{' '}
+                        <span className="font-medium">{diagnostics.dynamicProfileLabel || 'No strong profile'}</span>
+                      </p>
+                    </div>
+                    {diagnostics.hasNoStrongProfile ? (
+                      <span className="rounded border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] text-rose-200">
+                        No strong profile
+                      </span>
+                    ) : diagnostics.isWeakSignal ? (
+                      <span className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-200">
+                        Signal is weak
+                      </span>
+                    ) : (
+                      <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-200">
+                        Strong signal
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 space-y-1 text-xs text-slate-300">
+                    <p>
+                      {diagnostics.sections.temporal.status === 'available'
+                        ? diagnostics.temporalSummary ?? 'Temporal summary unavailable.'
+                        : diagnostics.sections.temporal.notice ?? 'Temporal diagnostics missing.'}
+                    </p>
+                    {diagnostics.sections.spatial.status === 'available' ? (
+                      diagnostics.spatialHotspots && diagnostics.spatialHotspots.length > 0 ? (
+                        <ul className="space-y-1 text-slate-300">
+                          {diagnostics.spatialHotspots.slice(0, 3).map((hotspot) => (
+                            <li key={`${hotspot.label}-${hotspot.supportCount}`}>
+                              {hotspot.label} · {hotspot.supportCount} events · {(hotspot.density * 100).toFixed(1)}%
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>{diagnostics.spatialSummary ?? 'Spatial summary unavailable.'}</p>
+                      )
+                    ) : (
+                      <p>{diagnostics.sections.spatial.notice ?? 'Spatial diagnostics missing.'}</p>
+                    )}
+                  </div>
+
+                  {(diagnostics.sections.temporal.status === 'missing' || diagnostics.sections.spatial.status === 'missing') && (
+                    <div className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">
+                      {diagnostics.sections.temporal.status === 'missing' && (
+                        <p>{diagnostics.sections.temporal.notice ?? 'Temporal diagnostics missing.'}</p>
+                      )}
+                      {diagnostics.sections.spatial.status === 'missing' && (
+                        <p>{diagnostics.sections.spatial.notice ?? 'Spatial diagnostics missing.'}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-2 border-t border-slate-700/80 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setComparisonExpanded((current) => !current)}
+                      className="flex items-center gap-1 text-xs font-medium text-slate-300 hover:text-slate-100"
+                      aria-expanded={comparisonExpanded}
+                      aria-controls="profile-comparison-panel"
+                    >
+                      {comparisonExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                      Comparison (static vs dynamic)
+                    </button>
+                    {comparisonExpanded && (
+                      <div id="profile-comparison-panel" className="mt-2 space-y-1 text-xs text-slate-300">
+                        <p>Static: {diagnostics.staticProfileLabel}</p>
+                        <p>Dynamic: {diagnostics.dynamicProfileLabel}</p>
+                        <p className="text-slate-400">{diagnostics.profileComparison.reason}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 border-t border-slate-700/80 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfidenceDetails((current) => !current)}
+                      className="text-xs font-medium text-slate-300 hover:text-slate-100"
+                    >
+                      {showConfidenceDetails ? 'Hide confidence details' : 'Show confidence details'}
+                    </button>
+                    {showConfidenceDetails && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Confidence: {typeof diagnostics.confidence === 'number' ? `${Math.round(diagnostics.confidence * 100)}%` : 'Unavailable'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {(hasAutoProposalSetData || fullAutoNoResultReason || hasFullAutoLowConfidence) && (
                 <div className="space-y-2 rounded-lg border border-slate-700/80 bg-slate-800/30 p-2">
                   <div className="flex items-center justify-between">

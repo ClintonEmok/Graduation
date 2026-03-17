@@ -42,6 +42,22 @@ export function buildSuggestionDiagnosticsMetadata(
     isWeakSignal: diagnostics.dynamicProfile.state === 'weak-signal',
     hasNoStrongProfile: diagnostics.dynamicProfile.state === 'no-strong',
     confidence: diagnostics.dynamicProfile.confidence,
+    temporalSummary:
+      diagnostics.temporal.status === 'available'
+        ? diagnostics.temporal.activitySummary
+        : undefined,
+    spatialSummary:
+      diagnostics.spatial.status === 'available'
+        ? diagnostics.spatial.summary
+        : undefined,
+    spatialHotspots:
+      diagnostics.spatial.status === 'available'
+        ? diagnostics.spatial.hotspots.map((hotspot, index) => ({
+            label: `#${index + 1} ${hotspot.dominantCrimeType}`,
+            supportCount: hotspot.supportCount,
+            density: hotspot.density,
+          }))
+        : undefined,
     staticProfileLabel: diagnostics.comparison.staticProfileName,
     profileComparison: {
       matches: diagnostics.comparison.matches,
