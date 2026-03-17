@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { useSuggestionStore, type TimeScaleData, type IntervalBoundaryData } from '@/store/useSuggestionStore';
+import {
+  useSuggestionStore,
+  type TimeScaleData,
+  type IntervalBoundaryData,
+  type SuggestionContextMetadata,
+} from '@/store/useSuggestionStore';
 import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
 import { generateRankedAutoProposalSets } from '@/lib/full-auto-orchestrator';
@@ -11,10 +16,63 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useContextExtractor } from '@/hooks/useContextExtractor';
 import { detectSmartProfile } from '@/hooks/useSmartProfiles';
 import type { RankedAutoProposalSets } from '@/types/autoProposalSet';
+import { buildContextDiagnostics } from '@/lib/context-diagnostics';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
 export type AutoRunStatus = 'idle' | 'running' | 'fresh' | 'error';
 export type AutoRunSource = 'auto' | 'manual' | null;
+
+type DiagnosticsMetadata = NonNullable<SuggestionContextMetadata['contextDiagnostics']>;
+
+export function buildSuggestionDiagnosticsMetadata(
+  diagnostics: ReturnType<typeof buildContextDiagnostics>
+): DiagnosticsMetadata {
+  const profileComparisonOutcome: DiagnosticsMetadata['profileComparison']['outcome'] = diagnostics
+    .comparison.matches
+    ? 'same'
+    : diagnostics.dynamicProfile.state === 'no-strong'
+      ? 'no-strong'
+      : diagnostics.dynamicProfile.state === 'weak-signal'
+        ? 'weak-signal'
+        : 'strong-different';
+
+  return {
+    dynamicProfileLabel: diagnostics.dynamicProfile.label,
+    signalState: diagnostics.dynamicProfile.state,
+    isWeakSignal: diagnostics.dynamicProfile.state === 'weak-signal',
+    hasNoStrongProfile: diagnostics.dynamicProfile.state === 'no-strong',
+    confidence: diagnostics.dynamicProfile.confidence,
+    staticProfileLabel: diagnostics.comparison.staticProfileName,
+    profileComparison: {
+      matches: diagnostics.comparison.matches,
+      outcome: profileComparisonOutcome,
+      reason: diagnostics.comparison.reason,
+    },
+    sections: {
+      temporal:
+        diagnostics.temporal.status === 'available'
+          ? { status: 'available' }
+          : { status: 'missing', notice: diagnostics.temporal.notice },
+      spatial:
+        diagnostics.spatial.status === 'available'
+          ? { status: 'available' }
+          : { status: 'missing', notice: diagnostics.spatial.notice },
+    },
+  };
+}
+
+export function buildSuggestionContextMetadata(input: {
+  context: ReturnType<ReturnType<typeof useContextExtractor>['getCurrentContext']>;
+  diagnostics: ReturnType<typeof buildContextDiagnostics>;
+}): SuggestionContextMetadata {
+  return {
+    crimeTypes: input.context.crimeTypes,
+    timeRange: input.context.timeRange,
+    isFullDataset: input.context.isFullDataset,
+    profileName: input.diagnostics.dynamicProfile.label,
+    contextDiagnostics: buildSuggestionDiagnosticsMetadata(input.diagnostics),
+  };
+}
 
 export function transitionAutoRunLifecycle(
   currentStatus: AutoRunStatus,
@@ -249,6 +307,16 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       
       const context = getCurrentContext(params.contextMode);
       const smartProfile = detectSmartProfile(context);
+      const diagnostics = buildContextDiagnostics({
+        timestamps: crimes.map((crime) => crime.timestamp),
+        crimes,
+        staticProfileName: smartProfile?.name,
+      });
+      const diagnosticsMetadata = buildSuggestionDiagnosticsMetadata(diagnostics);
+      const suggestionContextMetadata = buildSuggestionContextMetadata({
+        context,
+        diagnostics,
+      });
       const timeRange = {
         start: context.timeRange.start,
         end: context.timeRange.end,
@@ -259,12 +327,12 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       if (useFullAutoPath) {
         const rankedResult = generateRankedAutoProposalSets({
           crimes,
-          context: {
-            crimeTypes: context.crimeTypes,
-            timeRange: context.timeRange,
-            isFullDataset: context.isFullDataset,
-            profileName: smartProfile?.name,
-          },
+            context: {
+              crimeTypes: context.crimeTypes,
+              timeRange: context.timeRange,
+              isFullDataset: context.isFullDataset,
+              profileName: smartProfile?.name,
+            },
           params: {
             warpCount: params.warpCount,
             snapToUnit: params.snapToUnit,
@@ -283,10 +351,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
             type: 'time-scale',
             confidence: set.confidence,
             contextMetadata: {
-              crimeTypes: context.crimeTypes,
-              timeRange: context.timeRange,
-              isFullDataset: context.isFullDataset,
-              profileName: smartProfile?.name,
+              ...suggestionContextMetadata,
             },
             data: {
               name: `${set.warp.name} (Rank ${set.rank})${set.isRecommended ? ' - Recommended' : ''}`,
@@ -320,10 +385,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
             type: 'time-scale',
             confidence: profile.confidence,
             contextMetadata: {
-              crimeTypes: context.crimeTypes,
-              timeRange: context.timeRange,
-              isFullDataset: context.isFullDataset,
-              profileName: smartProfile?.name,
+              ...suggestionContextMetadata,
             },
             data: {
               name: profile.name,
@@ -346,10 +408,7 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
           type: 'interval-boundary',
           confidence: boundary.confidence,
           contextMetadata: {
-            crimeTypes: context.crimeTypes,
-            timeRange: context.timeRange,
-            isFullDataset: context.isFullDataset,
-            profileName: smartProfile?.name,
+            ...suggestionContextMetadata,
           },
           data: {
             boundaries: boundary.boundaries,
