@@ -268,6 +268,18 @@ Plans:
 - [x] 53-01-PLAN.md — Build a focused `/timeslicing-algos` route shell for algorithm + timeline testing with both mode controls and a future-friendly algorithm selector contract (no full-auto workflow UI)
 - [x] 53-02-PLAN.md — Wire and test centralized route-to-binning resolution with `/timeslicing-algos` override support for both modes
 
+### Phase 57: Context-aware timeslicing core (temporal + spatial, data-driven diagnostics)
+
+**Goal:** Add a deterministic context-diagnostics core (temporal + spatial) and surface compact, explainable dynamic profile insights in timeslicing/timeslicing-algos without changing generation ranking behavior.
+**Requirements**: None (phase-context decisions in 57-CONTEXT.md)
+**Depends on:** Phase 56
+**Plans:** 3 plans
+
+Plans:
+- [ ] 57-01-PLAN.md — Build deterministic temporal/spatial diagnostics engine with dynamic profile + comparison contracts
+- [ ] 57-02-PLAN.md — Integrate diagnostics output into suggestion generation metadata persistence
+- [ ] 57-03-PLAN.md — Surface compact diagnostics UI with collapsed comparison, confidence toggle, and partial-failure notices
+
 ---
 
 *For milestone history, see `.planning/MILESTONES.md`*
