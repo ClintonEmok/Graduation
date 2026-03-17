@@ -43,6 +43,29 @@ export interface SuggestionContextMetadata {
   };
   isFullDataset: boolean;
   profileName?: string;
+  contextDiagnostics?: {
+    dynamicProfileLabel: string;
+    signalState: 'strong' | 'weak-signal' | 'no-strong';
+    isWeakSignal: boolean;
+    hasNoStrongProfile: boolean;
+    confidence?: number;
+    staticProfileLabel: string;
+    profileComparison: {
+      matches: boolean;
+      outcome: 'same' | 'strong-different' | 'weak-signal' | 'no-strong';
+      reason: string;
+    };
+    sections: {
+      temporal: {
+        status: 'available' | 'missing';
+        notice?: string;
+      };
+      spatial: {
+        status: 'available' | 'missing';
+        notice?: string;
+      };
+    };
+  };
 }
 
 export interface Suggestion {
@@ -323,7 +346,9 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
           crimeTypes: context.crimeTypes,
           timeRange: context.timeRange,
           isFullDataset: context.isFullDataset,
-          profileName: activeProfile?.name ?? suggestion.contextMetadata?.profileName,
+          profileName:
+            suggestion.contextMetadata?.profileName ?? activeProfile?.name,
+          contextDiagnostics: suggestion.contextMetadata?.contextDiagnostics,
         },
       };
 
@@ -684,7 +709,12 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   addToHistory: (suggestion) =>
     set((state) => ({
       acceptedHistory: [
-        { id: crypto.randomUUID(), suggestion, acceptedAt: Date.now() },
+        {
+          id: crypto.randomUUID(),
+          suggestion,
+          acceptedAt: Date.now(),
+          contextMetadata: suggestion.contextMetadata,
+        },
         ...state.acceptedHistory,
       ].slice(0, 50), // Keep max 50 entries
     })),
@@ -716,6 +746,7 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         id: crypto.randomUUID(),
         suggestion: { ...entry.suggestion, createdAt: Date.now(), status: 'accepted' },
         acceptedAt: Date.now(),
+        contextMetadata: entry.contextMetadata,
       };
 
       return {
