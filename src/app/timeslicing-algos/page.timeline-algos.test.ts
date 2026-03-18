@@ -69,10 +69,15 @@ describe('/timeslicing-algos route intent', () => {
 
   test('renders a per-strategy stats widget below interaction controls', () => {
     const statsSource = readFileSync(new URL('./lib/TimeslicingAlgosStrategyStats.tsx', import.meta.url), 'utf8');
-    expect(statsSource).toMatch(/Binning strategy stats/);
+    const comparisonSource = readFileSync(new URL('./lib/strategy-comparison.ts', import.meta.url), 'utf8');
+    expect(statsSource).toMatch(/What changes when you switch/);
+    expect(statsSource).toMatch(/buildStrategyComparison/);
+    expect(comparisonSource).toMatch(/Best for fixed-width readability/);
+    expect(comparisonSource).toMatch(/Best for burst identification/);
     expect(statsSource).toMatch(/Uniform Time/);
     expect(statsSource).toMatch(/Uniform Events/);
     expect(statsSource).toMatch(/Variance\/bin/);
+    expect(statsSource).toMatch(/Peak share/);
     expect(statsSource).toMatch(/strategy-stats-widget/);
   });
 
