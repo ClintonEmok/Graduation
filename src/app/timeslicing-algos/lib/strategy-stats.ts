@@ -4,6 +4,7 @@ const EPSILON = 1e-6;
 
 export interface BinningStrategyStats {
   strategy: AdaptiveBinningMode;
+  binCount: number;
   totalEvents: number;
   nonEmptyBins: number;
   emptyBins: number;
@@ -13,6 +14,10 @@ export interface BinningStrategyStats {
   medianBinWidthSec: number;
   minBinWidthSec: number;
   maxBinWidthSec: number;
+  occupiedBinShare: number;
+  peakBinShare: number;
+  topThreeBinShare: number;
+  widthSpreadRatio: number;
 }
 
 const clampToBin = (index: number, binCount: number): number => {
@@ -72,6 +77,7 @@ const buildStats = (
   let nonEmptyBins = 0;
   let maxBinEvents = 0;
   let sum = 0;
+  const sortedCounts = Array.from(counts).sort((a, b) => b - a);
 
   for (const count of counts) {
     if (count > 0) nonEmptyBins += 1;
@@ -90,9 +96,11 @@ const buildStats = (
   const widths = Array.from(binWidthsSec).filter((value) => Number.isFinite(value) && value > 0);
   const minBinWidthSec = widths.length > 0 ? Math.min(...widths) : 0;
   const maxBinWidthSec = widths.length > 0 ? Math.max(...widths) : 0;
+  const topThreeBinEvents = sortedCounts.slice(0, 3).reduce((total, count) => total + count, 0);
 
   return {
     strategy,
+    binCount: counts.length,
     totalEvents,
     nonEmptyBins,
     emptyBins: counts.length - nonEmptyBins,
@@ -102,6 +110,10 @@ const buildStats = (
     medianBinWidthSec: computeMedian(widths),
     minBinWidthSec,
     maxBinWidthSec,
+    occupiedBinShare: counts.length > 0 ? nonEmptyBins / counts.length : 0,
+    peakBinShare: totalEvents > 0 ? maxBinEvents / totalEvents : 0,
+    topThreeBinShare: totalEvents > 0 ? topThreeBinEvents / totalEvents : 0,
+    widthSpreadRatio: minBinWidthSec > 0 ? maxBinWidthSec / minBinWidthSec : 0,
   };
 };
 
