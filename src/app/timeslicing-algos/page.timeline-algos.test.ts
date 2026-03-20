@@ -51,8 +51,12 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/detailPointsOverride=\{selectionDetailDataset\.renderTimestamps\}/);
     expect(shellSource).toMatch(/tickLabelStrategy="span-aware"/);
     expect(shellSource).toMatch(/computeMaps\(timestamps, \[baseDomainStartSec, baseDomainEndSec\], \{ binningMode: selectedStrategy \}\)/);
-    expect(shellSource).not.toMatch(/buildAdaptiveBinDiagnostics/);
-    expect(shellSource).not.toMatch(/AdaptiveBinDiagnosticsPanel/);
+    expect(shellSource).toMatch(/buildAdaptiveBinDiagnostics/);
+    expect(shellSource).toMatch(/Bin characterization/);
+    expect(shellSource).toMatch(/timeslicing-algos-bin-characterization/);
+    expect(shellSource).toMatch(/weekday-heavy/);
+    expect(shellSource).toMatch(/weekend-heavy/);
+    expect(shellSource).toMatch(/night-heavy/);
     expect(shellSource).toMatch(/serializeTimeslicingAlgosSelection/);
     expect(shellSource).toMatch(/TimeslicingAlgosStrategyStats/);
     expect(shellSource).toMatch(/Timeline: \{dataDomainLabel\}/);
@@ -81,13 +85,14 @@ describe('/timeslicing-algos route intent', () => {
     expect(statsSource).toMatch(/strategy-stats-widget/);
   });
 
-  test('hides adaptive diagnostics panel from timeslicing algos route shell', () => {
+  test('keeps comparison-first summary while rendering detail-only bin characterization', () => {
     const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
-    expect(shellSource).not.toMatch(/rows=\{adaptiveDiagnosticsRows\}/);
-    expect(shellSource).not.toMatch(/diagnosticsSource=\{diagnosticsSource\}/);
-    expect(shellSource).not.toMatch(/selectionUsed=\{diagnosticsSelectionUsed\}/);
-    expect(shellSource).not.toMatch(/fallbackToContextReason=\{diagnosticsFallbackReason\}/);
-    expect(shellSource).not.toMatch(/Diagnostics source preference:/);
+    const statsSource = readFileSync(new URL('./lib/TimeslicingAlgosStrategyStats.tsx', import.meta.url), 'utf8');
+    expect(statsSource).toMatch(/What changes when you switch/);
+    expect(shellSource).toMatch(/showRouteDiagnosticsDetails \? 'Hide data diagnostics' : 'Show data diagnostics'/);
+    expect(shellSource).toMatch(/\{showRouteDiagnosticsDetails && \(/);
+    expect(shellSource).toMatch(/Bin characterization/);
+    expect(shellSource).toMatch(/adaptiveBinDiagnosticsRows\.slice\(0, 8\)/);
 
     const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
     expect(timeslicingPageSource).not.toMatch(/AdaptiveBinDiagnosticsPanel/);

@@ -25,6 +25,7 @@ import {
   selectionDetailLimit,
   type SelectionDetailFallbackReason,
 } from './selection-detail-dataset';
+import { buildAdaptiveBinDiagnostics } from './adaptive-bin-diagnostics';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -35,6 +36,24 @@ const selectionFallbackReasonLabel: Record<SelectionDetailFallbackReason, string
   'selection-empty': 'selection returned no records',
   'selection-exceeded-safety-threshold': 'selection exceeded safety threshold',
 };
+
+const BIN_TRAIT_LABEL_TEXT: Record<string, string> = {
+  'weekday-heavy': 'weekday-heavy',
+  'weekend-heavy': 'weekend-heavy',
+  'night-heavy': 'night-heavy',
+  'daytime-heavy': 'daytime-heavy',
+  'mixed-pattern': 'mixed-pattern',
+  'no-events': 'no-events',
+};
+
+const BIN_TRAIT_ORDER = [
+  'weekday-heavy',
+  'weekend-heavy',
+  'night-heavy',
+  'daytime-heavy',
+  'mixed-pattern',
+  'no-events',
+] as const;
 
 export function TimeslicingAlgosRouteShell() {
   const router = useRouter();
@@ -49,6 +68,9 @@ export function TimeslicingAlgosRouteShell() {
   const setTimeScaleMode = useTimeStore((state) => state.setTimeScaleMode);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const setWarpFactor = useAdaptiveStore((state) => state.setWarpFactor);
+  const countMap = useAdaptiveStore((state) => state.countMap);
+  const densityMap = useAdaptiveStore((state) => state.densityMap);
+  const warpMap = useAdaptiveStore((state) => state.warpMap);
 
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -296,6 +318,33 @@ export function TimeslicingAlgosRouteShell() {
 
   const hasEmptyData = !isLoading && !error && crimes.length === 0;
 
+  const adaptiveBinDiagnosticsRows = useMemo(() => {
+    const rows = buildAdaptiveBinDiagnostics({
+      selectedStrategy,
+      domain: [baseDomainStartSec, baseDomainEndSec],
+      timestamps: selectionDetailDataset.diagnosticsTimestamps,
+      countMap,
+      densityMap,
+      warpMap,
+    });
+
+    return rows.map((row) => {
+      const orderedLabels = BIN_TRAIT_ORDER.filter((label) => row.characterizationLabels.includes(label));
+      return {
+        ...row,
+        orderedLabels,
+      };
+    });
+  }, [
+    baseDomainEndSec,
+    baseDomainStartSec,
+    countMap,
+    densityMap,
+    selectedStrategy,
+    selectionDetailDataset.diagnosticsTimestamps,
+    warpMap,
+  ]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -325,22 +374,51 @@ export function TimeslicingAlgosRouteShell() {
           </div>
 
           {showRouteDiagnosticsDetails && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                Fetched: {fetchedDomainLabel}
-              </span>
-              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-                Selection detail: {selectionPopulationLabel}
-              </span>
-              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-                Detail render: {selectionRenderLabel}
-              </span>
-              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-                {selectionFallbackLabel}
-              </span>
-              <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
-                Selection fetch: {isSelectionLoading ? 'loading' : selectionError ? 'error' : 'ready'} • limit {selectionDetailLimit.toLocaleString()} • buffer 0d
-              </span>
+            <div className="mt-3 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                  Fetched: {fetchedDomainLabel}
+                </span>
+                <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                  Selection detail: {selectionPopulationLabel}
+                </span>
+                <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                  Detail render: {selectionRenderLabel}
+                </span>
+                <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                  {selectionFallbackLabel}
+                </span>
+                <span className="rounded-full border border-indigo-500/40 bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-100">
+                  Selection fetch: {isSelectionLoading ? 'loading' : selectionError ? 'error' : 'ready'} • limit {selectionDetailLimit.toLocaleString()} • buffer 0d
+                </span>
+              </div>
+
+              <div className="rounded-md border border-slate-700/70 bg-slate-900/60 p-3" data-testid="timeslicing-algos-bin-characterization">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Bin characterization</h3>
+                  <span className="text-[11px] text-slate-500">
+                    Strategy: {selectedStrategy === 'uniform-events' ? 'uniform-events' : 'uniform-time'}
+                  </span>
+                </div>
+
+                {adaptiveBinDiagnosticsRows.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-400">No bin diagnostics available for the active context.</p>
+                ) : (
+                  <ul className="mt-2 space-y-1 text-xs text-slate-200">
+                    {adaptiveBinDiagnosticsRows.slice(0, 8).map((row) => (
+                      <li key={`bin-${row.binIndex}`} className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-200">
+                          Bin {row.binIndex + 1}
+                        </span>
+                        <span className="text-slate-400">{new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}</span>
+                        <span className="text-indigo-200">
+                          {row.orderedLabels.map((label) => BIN_TRAIT_LABEL_TEXT[label]).join(', ')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
 
