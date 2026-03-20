@@ -255,6 +255,7 @@ Plans:
 | 52 | v2.2 | 4/4 | Complete | 2026-03-11 |
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
 | 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
+| 58 | v2.3 | 0/3 | Planned | - |
 | 54 | v2.3 | 3/9 | In progress | - |
 | 55 | v2.4 | 0/2 | Planned | - |
 | 56 | v2.5 | 0/3 | Planned | - |
@@ -282,6 +283,18 @@ Plans:
 - [x] 57-03-PLAN.md — Surface compact diagnostics UI with collapsed comparison, confidence toggle, and partial-failure notices
 - [x] 57-04-PLAN.md — Make `/timeslicing-algos` strategy-comparison effects explicit and human-verifiable in default diagnostics
 - [x] 57-05-PLAN.md — Add deterministic per-bin characterization labels in `/timeslicing-algos` details while preserving comparison-first default readability
+
+### Phase 58: enrich the with neighbourhood data poi events that happened on the day anything useful
+
+**Goal:** Add neighbourhood context enrichment to timeslicing by fetching Points of Interest (POI) data from OpenStreetMap and Chicago Open Data Portal. Integrate neighbourhood diagnostics into `/timeslicing-algos` with on-demand fetching and graceful fallback.
+**Requirements**: None (new phase)
+**Depends on:** Phase 57
+**Plans:** 3 plans
+
+Plans:
+- [ ] 58-01-PLAN.md — Build neighbourhood lib module with OSM Overpass API client, Chicago Data Portal client, and summary builder
+- [ ] 58-02-PLAN.md — Create /api/neighbourhood/poi server-side route with caching and integrate neighbourhood into context diagnostics
+- [ ] 58-03-PLAN.md — Add neighbourhood diagnostics panel to /timeslicing-algos with compact/expandable UI
 
 ---
 
