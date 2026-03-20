@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 58-01 neighbourhood lib foundation
-last_updated: "2026-03-20T15:01:51Z"
-last_activity: 2026-03-20 - Completed 58-01 neighbourhood lib with OSM/Chicago API clients and summary builder
+stopped_at: Completed 58-02 neighbourhood API and diagnostics integration
+last_updated: "2026-03-20T15:11:44Z"
+last_activity: 2026-03-20 - Completed 58-02 neighbourhood API route and context diagnostics integration
 progress:
   total_phases: 16
   completed_phases: 13
@@ -26,11 +26,11 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 ## Current Position
 
 Phase: **58 of 58** (Enrich with neighbourhood data, POI, events that happened on the day, anything useful)
-Plan: **1 of 3** completed in current phase
+Plan: **2 of 3** completed in current phase
 Status: **In progress**
-Last activity: 2026-03-20 - Completed 58-01 neighbourhood lib with OSM/Chicago API clients and summary builder
+Last activity: 2026-03-20 - Completed 58-02 neighbourhood API route and context diagnostics integration
 
-Progress: **████████████████████** 209/219 plans complete (95.4%)
+Progress: **████████████████████** 210/219 plans complete (95.9%)
 
 ## Milestone Status
 
@@ -170,9 +170,12 @@ Progress: **████████████████████** 209/2
 - [Phase 58]: Accepted dateEpoch parameter for future-proofing, documented that current data reflects present state not historical dates. — This keeps the API flexible for future historical queries while being honest about current limitations.
 - [Phase 58]: Chicago business data treated as supplementary 'other' category alongside OSM POI counts. — OSM is primary POI source; Chicago enriches with business activity context.
 - [Phase 58]: Parallel Promise.all for OSM and Chicago fetches for optimal performance. — Both sources are independent and can be fetched concurrently.
+- [Phase 58-02]: Made buildContextDiagnostics async to support on-demand neighbourhood fetching via dynamic import. — Neighbourhood enrichment is non-blocking and degrades gracefully when bounds unavailable.
+- [Phase 58-02]: Derived bounds from crime data with 10% padding for neighbourhood enrichment area. — Ensures neighbourhood coverage extends beyond exact crime locations.
+- [Phase 58-02]: Implemented 24-hour in-memory cache for /api/neighbourhood/poi route. — Avoids rate limiting on repeated neighbourhood data requests.
 
 ## Session Continuity
 
-Last session: 2026-03-20T15:00:51Z
-Stopped at: Completed 58-01 neighbourhood lib foundation (4/4 tasks)
-Resume file: .planning/phases/58-enrich-the-with-neighbourhood-data-poi-events-that-happened-on-the-day-anything-useful/58-02-PLAN.md
+Last session: 2026-03-20T15:11:44Z
+Stopped at: Completed 58-02 neighbourhood API route and context diagnostics integration (6/6 tasks)
+Resume file: .planning/phases/58-enrich-the-with-neighbourhood-data-poi-events-that-happened-on-the-day-anything-useful/58-03-PLAN.md
