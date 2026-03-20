@@ -28,9 +28,9 @@ const contextFixture: FilterContext = {
 };
 
 describe('useSuggestionGenerator diagnostics metadata integration', () => {
-  test('persists dynamic profile and backward-compatible profileName fields', () => {
+  test('persists dynamic profile and backward-compatible profileName fields', async () => {
     const staticProfile = detectSmartProfile(contextFixture);
-    const diagnostics = buildContextDiagnostics({
+    const diagnostics = await buildContextDiagnostics({
       timestamps: crimesFixture.map((crime) => crime.timestamp),
       crimes: crimesFixture,
       staticProfileName: staticProfile?.name,
@@ -47,13 +47,13 @@ describe('useSuggestionGenerator diagnostics metadata integration', () => {
     expect(metadata.contextDiagnostics?.profileComparison.reason).toBe(diagnostics.comparison.reason);
   });
 
-  test('encodes weak-signal and no-strong semantics explicitly', () => {
-    const weakDiagnostics = buildContextDiagnostics({
+  test('encodes weak-signal and no-strong semantics explicitly', async () => {
+    const weakDiagnostics = await buildContextDiagnostics({
       timestamps: [1_700_000_000, 1_700_000_100, 1_700_000_200, 1_700_000_400],
       crimes: [],
       staticProfileName: 'All Crimes',
     });
-    const noStrongDiagnostics = buildContextDiagnostics({
+    const noStrongDiagnostics = await buildContextDiagnostics({
       timestamps: [],
       crimes: [],
       staticProfileName: 'Violent Crime',
@@ -73,8 +73,8 @@ describe('useSuggestionGenerator diagnostics metadata integration', () => {
     expect(noStrong.profileComparison.outcome).toBe('no-strong');
   });
 
-  test('marks partial diagnostics sections as missing with explicit notices', () => {
-    const partialDiagnostics = buildContextDiagnostics({
+  test('marks partial diagnostics sections as missing with explicit notices', async () => {
+    const partialDiagnostics = await buildContextDiagnostics({
       timestamps: crimesFixture.map((crime) => crime.timestamp),
       crimes: [],
       staticProfileName: 'All Crimes',
@@ -87,8 +87,8 @@ describe('useSuggestionGenerator diagnostics metadata integration', () => {
     expect(metadata.sections.spatial.notice).toContain('Spatial diagnostics missing');
   });
 
-  test('keeps section keys present when temporal diagnostics are missing', () => {
-    const temporalMissingDiagnostics = buildContextDiagnostics({
+  test('keeps section keys present when temporal diagnostics are missing', async () => {
+    const temporalMissingDiagnostics = await buildContextDiagnostics({
       timestamps: [],
       crimes: crimesFixture,
       staticProfileName: 'All Crimes',
@@ -96,13 +96,13 @@ describe('useSuggestionGenerator diagnostics metadata integration', () => {
 
     const metadata = buildSuggestionDiagnosticsMetadata(temporalMissingDiagnostics);
 
-    expect(Object.keys(metadata.sections).sort()).toEqual(['spatial', 'temporal']);
+    expect(Object.keys(metadata.sections).sort()).toEqual(['neighbourhood', 'spatial', 'temporal']);
     expect(metadata.sections.temporal.status).toBe('missing');
     expect(metadata.sections.temporal.notice).toContain('Temporal diagnostics missing');
     expect(metadata.sections.spatial.status).toBe('available');
   });
 
-  test('keeps ranking/order parity for identical inputs with diagnostics wiring', () => {
+  test('keeps ranking/order parity for identical inputs with diagnostics wiring', async () => {
     const staticProfile = detectSmartProfile(contextFixture);
 
     const baseline = generateRankedAutoProposalSets({
@@ -116,7 +116,7 @@ describe('useSuggestionGenerator diagnostics metadata integration', () => {
       params: { warpCount: 3, snapToUnit: 'none' },
     });
 
-    const diagnostics = buildContextDiagnostics({
+    const diagnostics = await buildContextDiagnostics({
       timestamps: crimesFixture.map((crime) => crime.timestamp),
       crimes: crimesFixture,
       staticProfileName: staticProfile?.name,

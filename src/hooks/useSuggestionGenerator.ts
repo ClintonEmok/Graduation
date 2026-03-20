@@ -16,7 +16,8 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useContextExtractor } from '@/hooks/useContextExtractor';
 import { detectSmartProfile } from '@/hooks/useSmartProfiles';
 import type { RankedAutoProposalSets } from '@/types/autoProposalSet';
-import { buildContextDiagnostics } from '@/lib/context-diagnostics';
+import type { CrimeRecord } from '@/types/crime';
+import { buildContextDiagnostics, type ContextDiagnosticsResult } from '@/lib/context-diagnostics';
 
 export type TriggerMode = 'manual' | 'automatic' | 'on-demand';
 export type AutoRunStatus = 'idle' | 'running' | 'fresh' | 'error';
@@ -25,7 +26,7 @@ export type AutoRunSource = 'auto' | 'manual' | null;
 type DiagnosticsMetadata = NonNullable<SuggestionContextMetadata['contextDiagnostics']>;
 
 export function buildSuggestionDiagnosticsMetadata(
-  diagnostics: ReturnType<typeof buildContextDiagnostics>
+  diagnostics: ContextDiagnosticsResult
 ): DiagnosticsMetadata {
   const profileComparisonOutcome: DiagnosticsMetadata['profileComparison']['outcome'] = diagnostics
     .comparison.matches
@@ -50,6 +51,10 @@ export function buildSuggestionDiagnosticsMetadata(
       diagnostics.spatial.status === 'available'
         ? diagnostics.spatial.summary
         : undefined,
+    neighbourhoodSummary:
+      diagnostics.neighbourhood.status === 'available'
+        ? diagnostics.neighbourhood.summary
+        : undefined,
     spatialHotspots:
       diagnostics.spatial.status === 'available'
         ? diagnostics.spatial.hotspots.map((hotspot, index) => ({
@@ -73,13 +78,17 @@ export function buildSuggestionDiagnosticsMetadata(
         diagnostics.spatial.status === 'available'
           ? { status: 'available' }
           : { status: 'missing', notice: diagnostics.spatial.notice },
+      neighbourhood:
+        diagnostics.neighbourhood.status === 'available'
+          ? { status: 'available' }
+          : { status: 'missing', notice: diagnostics.neighbourhood.notice },
     },
   };
 }
 
 export function buildSuggestionContextMetadata(input: {
   context: ReturnType<ReturnType<typeof useContextExtractor>['getCurrentContext']>;
-  diagnostics: ReturnType<typeof buildContextDiagnostics>;
+  diagnostics: ContextDiagnosticsResult;
 }): SuggestionContextMetadata {
   return {
     crimeTypes: input.context.crimeTypes,
@@ -148,6 +157,30 @@ function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debouncedValue;
+}
+
+function deriveBoundsFromCrimes(crimes: ArrayLike<CrimeRecord>): { minLat: number; maxLat: number; minLon: number; maxLon: number } | undefined {
+  const validCrimes = Array.from(crimes).filter(
+    (c) => Number.isFinite(c.lat) && Number.isFinite(c.lon)
+  );
+  if (validCrimes.length === 0) return undefined;
+
+  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+  for (const crime of validCrimes) {
+    minLat = Math.min(minLat, crime.lat);
+    maxLat = Math.max(maxLat, crime.lat);
+    minLon = Math.min(minLon, crime.lon);
+    maxLon = Math.max(maxLon, crime.lon);
+  }
+  // Add small padding
+  const padLat = (maxLat - minLat) * 0.1 || 0.01;
+  const padLon = (maxLon - minLon) * 0.1 || 0.01;
+  return {
+    minLat: minLat - padLat,
+    maxLat: maxLat + padLat,
+    minLon: minLon - padLon,
+    maxLon: maxLon + padLon,
+  };
 }
 
 export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
@@ -323,10 +356,11 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
       
       const context = getCurrentContext(params.contextMode);
       const smartProfile = detectSmartProfile(context);
-      const diagnostics = buildContextDiagnostics({
+      const diagnostics = await buildContextDiagnostics({
         timestamps: crimes.map((crime) => crime.timestamp),
         crimes,
         staticProfileName: smartProfile?.name,
+        bounds: deriveBoundsFromCrimes(crimes),
       });
       const diagnosticsMetadata = buildSuggestionDiagnosticsMetadata(diagnostics);
       const suggestionContextMetadata = buildSuggestionContextMetadata({

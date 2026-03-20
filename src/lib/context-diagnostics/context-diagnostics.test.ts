@@ -184,15 +184,15 @@ describe('context diagnostics engine', () => {
     );
   });
 
-  test('returns byte-for-byte stable diagnostics for identical input', () => {
+  test('returns byte-for-byte stable diagnostics for identical input', async () => {
     const input = {
       timestamps: baseCrimes.map((crime) => crime.timestamp),
       crimes: baseCrimes,
       staticProfileName: 'Violent Crime',
     };
 
-    const runOne = buildContextDiagnostics(input);
-    const runTwo = buildContextDiagnostics(input);
+    const runOne = await buildContextDiagnostics(input);
+    const runTwo = await buildContextDiagnostics(input);
 
     expect(JSON.stringify(runOne)).toBe(JSON.stringify(runTwo));
   });

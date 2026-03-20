@@ -51,6 +51,7 @@ export interface SuggestionContextMetadata {
     confidence?: number;
     temporalSummary?: string;
     spatialSummary?: string;
+    neighbourhoodSummary?: string;
     spatialHotspots?: Array<{
       label: string;
       supportCount: number;
@@ -68,6 +69,10 @@ export interface SuggestionContextMetadata {
         notice?: string;
       };
       spatial: {
+        status: 'available' | 'missing';
+        notice?: string;
+      };
+      neighbourhood: {
         status: 'available' | 'missing';
         notice?: string;
       };
