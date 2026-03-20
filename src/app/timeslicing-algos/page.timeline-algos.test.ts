@@ -93,10 +93,15 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/\{showRouteDiagnosticsDetails && \(/);
     expect(shellSource).toMatch(/Bin characterization/);
     expect(shellSource).toMatch(/timeslicing-algos-bin-characterization-table/);
-    expect(shellSource).toMatch(/adaptiveBinDiagnosticsRows\.slice\(0, 12\)/);
+    expect(shellSource).toMatch(/pagedAdaptiveBinDiagnosticsRows\.map/);
     expect(shellSource).toMatch(/<table/);
     expect(shellSource).toMatch(/Traits/);
     expect(shellSource).toMatch(/Events/);
+    expect(shellSource).toMatch(/timeslicing-algos-bin-characterization-pagination/);
+    expect(shellSource).toMatch(/Page \{clampedBinTablePage\} of \{binTableTotalPages\}/);
+    expect(shellSource).toMatch(/Previous/);
+    expect(shellSource).toMatch(/Next/);
+    expect(shellSource).toMatch(/BIN_TABLE_PAGE_SIZE = 8/);
 
     const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
     expect(timeslicingPageSource).not.toMatch(/AdaptiveBinDiagnosticsPanel/);

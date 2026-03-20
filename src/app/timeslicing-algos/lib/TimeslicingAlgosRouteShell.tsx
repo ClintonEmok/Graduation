@@ -61,6 +61,9 @@ export function TimeslicingAlgosRouteShell() {
   const searchParams = useSearchParams();
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
   const [showRouteDiagnosticsDetails, setShowRouteDiagnosticsDetails] = useState(false);
+  const [binTablePage, setBinTablePage] = useState(1);
+
+  const BIN_TABLE_PAGE_SIZE = 8;
 
   const selection = useMemo(() => resolveTimeslicingAlgosSelection(searchParams), [searchParams]);
   const selectedStrategy = selection.strategy;
@@ -345,6 +348,25 @@ export function TimeslicingAlgosRouteShell() {
     warpMap,
   ]);
 
+  const binTableTotalPages = Math.max(1, Math.ceil(adaptiveBinDiagnosticsRows.length / BIN_TABLE_PAGE_SIZE));
+  const clampedBinTablePage = Math.min(binTablePage, binTableTotalPages);
+
+  const pagedAdaptiveBinDiagnosticsRows = useMemo(() => {
+    const startIndex = (clampedBinTablePage - 1) * BIN_TABLE_PAGE_SIZE;
+    const endIndex = startIndex + BIN_TABLE_PAGE_SIZE;
+    return adaptiveBinDiagnosticsRows.slice(startIndex, endIndex);
+  }, [BIN_TABLE_PAGE_SIZE, adaptiveBinDiagnosticsRows, clampedBinTablePage]);
+
+  useEffect(() => {
+    if (!showRouteDiagnosticsDetails) {
+      setBinTablePage(1);
+      return;
+    }
+    if (binTablePage > binTableTotalPages) {
+      setBinTablePage(binTableTotalPages);
+    }
+  }, [binTablePage, binTableTotalPages, showRouteDiagnosticsDetails]);
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
       <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -404,32 +426,58 @@ export function TimeslicingAlgosRouteShell() {
                 {adaptiveBinDiagnosticsRows.length === 0 ? (
                   <p className="mt-2 text-xs text-slate-400">No bin diagnostics available for the active context.</p>
                 ) : (
-                  <div className="mt-2 overflow-x-auto">
-                    <table className="min-w-full border-collapse text-xs text-slate-200" data-testid="timeslicing-algos-bin-characterization-table">
-                      <thead>
-                        <tr className="border-b border-slate-700/80 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                          <th className="px-2 py-1 font-medium">Bin</th>
-                          <th className="px-2 py-1 font-medium">Range</th>
-                          <th className="px-2 py-1 font-medium">Traits</th>
-                          <th className="px-2 py-1 font-medium">Events</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adaptiveBinDiagnosticsRows.slice(0, 12).map((row) => (
-                          <tr key={`bin-${row.binIndex}`} className="border-b border-slate-800/80 align-top last:border-b-0">
-                            <td className="px-2 py-1.5 text-slate-100">Bin {row.binIndex + 1}</td>
-                            <td className="px-2 py-1.5 text-slate-400">
-                              {new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}
-                            </td>
-                            <td className="px-2 py-1.5 text-indigo-200">
-                              {row.orderedLabels.map((label) => BIN_TRAIT_LABEL_TEXT[label]).join(', ')}
-                            </td>
-                            <td className="px-2 py-1.5 text-slate-300">{row.rawCount.toLocaleString()}</td>
+                  <>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="min-w-full border-collapse text-xs text-slate-200" data-testid="timeslicing-algos-bin-characterization-table">
+                        <thead>
+                          <tr className="border-b border-slate-700/80 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                            <th className="px-2 py-1 font-medium">Bin</th>
+                            <th className="px-2 py-1 font-medium">Range</th>
+                            <th className="px-2 py-1 font-medium">Traits</th>
+                            <th className="px-2 py-1 font-medium">Events</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {pagedAdaptiveBinDiagnosticsRows.map((row) => (
+                            <tr key={`bin-${row.binIndex}`} className="border-b border-slate-800/80 align-top last:border-b-0">
+                              <td className="px-2 py-1.5 text-slate-100">Bin {row.binIndex + 1}</td>
+                              <td className="px-2 py-1.5 text-slate-400">
+                                {new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}
+                              </td>
+                              <td className="px-2 py-1.5 text-indigo-200">
+                                {row.orderedLabels.map((label) => BIN_TRAIT_LABEL_TEXT[label]).join(', ')}
+                              </td>
+                              <td className="px-2 py-1.5 text-slate-300">{row.rawCount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-3" data-testid="timeslicing-algos-bin-characterization-pagination">
+                      <p className="text-[11px] text-slate-400">
+                        Page {clampedBinTablePage} of {binTableTotalPages}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => setBinTablePage((current) => Math.max(1, current - 1))}
+                          disabled={clampedBinTablePage <= 1}
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => setBinTablePage((current) => Math.min(binTableTotalPages, current + 1))}
+                          disabled={clampedBinTablePage >= binTableTotalPages}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
