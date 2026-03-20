@@ -255,7 +255,7 @@ Plans:
 | 52 | v2.2 | 4/4 | Complete | 2026-03-11 |
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
 | 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
-| 58 | v2.3 | 1/3 | In progress | - |
+| 58 | v2.3 | 2/3 | In progress | - |
 | 54 | v2.3 | 3/9 | In progress | - |
 | 55 | v2.4 | 0/2 | Planned | - |
 | 56 | v2.5 | 0/3 | Planned | - |
@@ -293,7 +293,7 @@ Plans:
 
 Plans:
 - [x] 58-01-PLAN.md — Build neighbourhood lib module with OSM Overpass API client, Chicago Data Portal client, and summary builder
-- [ ] 58-02-PLAN.md — Create /api/neighbourhood/poi server-side route with caching and integrate neighbourhood into context diagnostics
+- [x] 58-02-PLAN.md — Create /api/neighbourhood/poi server-side route with caching and integrate neighbourhood into context diagnostics
 - [ ] 58-03-PLAN.md — Add neighbourhood diagnostics panel to /timeslicing-algos with compact/expandable UI
 
 ---
