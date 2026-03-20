@@ -2,6 +2,22 @@ import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
 
 const EPSILON = 1e-6;
 
+export const WEEKEND_HEAVY_THRESHOLD = 0.6;
+export const WEEKDAY_HEAVY_THRESHOLD = 0.6;
+export const NIGHT_HEAVY_THRESHOLD = 0.55;
+export const DAYTIME_HEAVY_THRESHOLD = 0.55;
+
+const NIGHT_START_HOUR = 22;
+const NIGHT_END_HOUR = 6;
+
+export type AdaptiveBinTraitLabel =
+  | 'weekend-heavy'
+  | 'weekday-heavy'
+  | 'night-heavy'
+  | 'daytime-heavy'
+  | 'mixed-pattern'
+  | 'no-events';
+
 export interface AdaptiveBinDiagnosticRow {
   binIndex: number;
   startSec: number;
@@ -17,6 +33,7 @@ export interface AdaptiveBinDiagnosticRow {
   warpedSpanSec: number;
   warpedSpanShare: number;
   cumulativeWarpOffsetSec: number;
+  characterizationLabels: AdaptiveBinTraitLabel[];
 }
 
 interface BuildAdaptiveBinDiagnosticsOptions {
@@ -133,6 +150,100 @@ const buildBoundaries = (
   return buildUniformTimeBoundaries(domain, binCount);
 };
 
+const isWeekendDay = (day: number): boolean => day === 0 || day === 6;
+
+const isNightHour = (hour: number): boolean => hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR;
+
+const resolveBinTimestampTraits = (
+  timestamps: number[],
+  startSec: number,
+  endSec: number,
+  includeEnd: boolean,
+): AdaptiveBinTraitLabel[] => {
+  const inBin = timestamps.filter((timestamp) => {
+    if (!Number.isFinite(timestamp)) return false;
+    if (timestamp < startSec) return false;
+    if (includeEnd) return timestamp <= endSec;
+    return timestamp < endSec;
+  });
+
+  if (inBin.length === 0) {
+    return ['no-events'];
+  }
+
+  let weekendCount = 0;
+  let weekdayCount = 0;
+  let nightCount = 0;
+  let daytimeCount = 0;
+
+  for (const timestamp of inBin) {
+    const date = new Date(timestamp * 1000);
+    const day = date.getUTCDay();
+    const hour = date.getUTCHours();
+
+    if (isWeekendDay(day)) {
+      weekendCount += 1;
+    } else {
+      weekdayCount += 1;
+    }
+
+    if (isNightHour(hour)) {
+      nightCount += 1;
+    } else {
+      daytimeCount += 1;
+    }
+  }
+
+  const total = inBin.length;
+  const weekendShare = weekendCount / total;
+  const weekdayShare = weekdayCount / total;
+  const nightShare = nightCount / total;
+  const daytimeShare = daytimeCount / total;
+
+  const labels: AdaptiveBinTraitLabel[] = [];
+
+  if (weekendShare >= WEEKEND_HEAVY_THRESHOLD) {
+    labels.push('weekend-heavy');
+  } else if (weekdayShare >= WEEKDAY_HEAVY_THRESHOLD) {
+    labels.push('weekday-heavy');
+  }
+
+  if (nightShare >= NIGHT_HEAVY_THRESHOLD) {
+    labels.push('night-heavy');
+  } else if (daytimeShare >= DAYTIME_HEAVY_THRESHOLD) {
+    labels.push('daytime-heavy');
+  }
+
+  return labels.length > 0 ? labels : ['mixed-pattern'];
+};
+
+const buildFallbackCountMap = (timestamps: number[], boundaries: Float64Array, binCount: number): Float32Array => {
+  const counts = new Float32Array(binCount);
+  for (const timestamp of timestamps) {
+    const boundaryIndex = findBoundaryBin(timestamp, boundaries);
+    const idx = clampToBin(boundaryIndex, binCount);
+    counts[idx] += 1;
+  }
+  return counts;
+};
+
+const buildFallbackDensityMap = (counts: Float32Array, boundaries: Float64Array): Float32Array => {
+  const density = new Float32Array(counts.length);
+  for (let i = 0; i < counts.length; i += 1) {
+    const width = Math.max(EPSILON, (boundaries[i + 1] ?? boundaries[i] ?? 0) - (boundaries[i] ?? 0));
+    density[i] = counts[i] / width;
+  }
+  return density;
+};
+
+const buildFallbackWarpMap = (boundaries: Float64Array, binCount: number): Float32Array => {
+  const warp = new Float32Array(binCount);
+  for (let i = 0; i < binCount; i += 1) {
+    warp[i] = boundaries[i] ?? 0;
+  }
+  return warp;
+};
+
 export const assignUniformEventsCounts = (
   timestamps: ArrayLike<number>,
   domain: [number, number],
@@ -160,42 +271,58 @@ export const buildAdaptiveBinDiagnostics = ({
   densityMap,
   warpMap,
 }: BuildAdaptiveBinDiagnosticsOptions): AdaptiveBinDiagnosticRow[] => {
-  if (!countMap || !densityMap || !warpMap) {
-    return [];
-  }
-
-  const binCount = countMap.length;
-  if (binCount === 0 || densityMap.length !== binCount || warpMap.length !== binCount) {
+  const baseBinCount = countMap?.length ?? densityMap?.length ?? warpMap?.length ?? 0;
+  if (baseBinCount === 0) {
     return [];
   }
 
   const [start, end] = toFiniteDomain(domain);
   const span = end - start;
-  const boundaries = buildBoundaries(selectedStrategy, timestamps, [start, end], binCount);
+  const timestampsInDomain = filterToDomain(timestamps, [start, end]);
+  const boundaries = buildBoundaries(selectedStrategy, timestampsInDomain, [start, end], baseBinCount);
 
-  const weights = Array.from({ length: binCount }, (_, index) => 1 + normalizeDensity(densityMap[index]) * 5);
+  const resolvedCountMap =
+    countMap && countMap.length === baseBinCount
+      ? Float32Array.from(countMap)
+      : buildFallbackCountMap(timestampsInDomain, boundaries, baseBinCount);
+  const resolvedDensityMap =
+    densityMap && densityMap.length === baseBinCount
+      ? Float32Array.from(densityMap)
+      : buildFallbackDensityMap(resolvedCountMap, boundaries);
+  const resolvedWarpMap =
+    warpMap && warpMap.length === baseBinCount
+      ? Float32Array.from(warpMap)
+      : buildFallbackWarpMap(boundaries, baseBinCount);
+
+  const weights = Array.from({ length: baseBinCount }, (_, index) => 1 + normalizeDensity(resolvedDensityMap[index]) * 5);
   let totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
   if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
-    totalWeight = binCount;
+    totalWeight = baseBinCount;
     weights.fill(1);
   }
 
-  return Array.from({ length: binCount }, (_, binIndex) => {
+  return Array.from({ length: baseBinCount }, (_, binIndex) => {
     const startSec = boundaries[binIndex] ?? start;
     const endSec = boundaries[binIndex + 1] ?? end;
     const widthSec = Math.max(0, endSec - startSec);
-    const rawCount = Number(countMap[binIndex] ?? 0);
-    const normalizedDensity = normalizeDensity(densityMap[binIndex]);
+    const rawCount = Number(resolvedCountMap[binIndex] ?? 0);
+    const normalizedDensity = normalizeDensity(resolvedDensityMap[binIndex]);
     const adaptiveMultiplier = weights[binIndex] ?? 1;
     const weightShare = adaptiveMultiplier / totalWeight;
-    const warpedStartSec = Number.isFinite(warpMap[binIndex]) ? Number(warpMap[binIndex]) : startSec;
+    const warpedStartSec = Number.isFinite(resolvedWarpMap[binIndex]) ? Number(resolvedWarpMap[binIndex]) : startSec;
     const warpedEndSec =
-      binIndex === binCount - 1
+      binIndex === baseBinCount - 1
         ? end
-        : Number.isFinite(warpMap[binIndex + 1])
-          ? Number(warpMap[binIndex + 1])
+        : Number.isFinite(resolvedWarpMap[binIndex + 1])
+          ? Number(resolvedWarpMap[binIndex + 1])
           : Math.min(end, warpedStartSec + weightShare * span);
     const warpedSpanSec = Math.max(0, warpedEndSec - warpedStartSec);
+    const characterizationLabels = resolveBinTimestampTraits(
+      timestampsInDomain,
+      startSec,
+      endSec,
+      binIndex === baseBinCount - 1,
+    );
 
     return {
       binIndex,
@@ -212,6 +339,7 @@ export const buildAdaptiveBinDiagnostics = ({
       warpedSpanSec,
       warpedSpanShare: span > 0 ? warpedSpanSec / span : 0,
       cumulativeWarpOffsetSec: warpedStartSec - startSec,
+      characterizationLabels,
     };
   });
 };
