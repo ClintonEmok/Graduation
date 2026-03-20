@@ -12,6 +12,7 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { ALGORITHM_OPTIONS } from './algorithm-options';
 import { TimeslicingAlgosStrategyStats } from './TimeslicingAlgosStrategyStats';
+import { NeighbourhoodDiagnosticsPanel } from './NeighbourhoodDiagnosticsPanel';
 import {
   resolveTimeslicingAlgosSelection,
   serializeTimeslicingAlgosSelection,
@@ -25,7 +26,7 @@ import {
   selectionDetailLimit,
   type SelectionDetailFallbackReason,
 } from './selection-detail-dataset';
-import { buildAdaptiveBinDiagnostics } from './adaptive-bin-diagnostics';
+import { buildAdaptiveBinDiagnostics, type AdaptiveBinTraitLabel } from './adaptive-bin-diagnostics';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -42,6 +43,9 @@ const BIN_TRAIT_LABEL_TEXT: Record<string, string> = {
   'weekend-heavy': 'weekend-heavy',
   'night-heavy': 'night-heavy',
   'daytime-heavy': 'daytime-heavy',
+  'commute-heavy': 'commute-heavy',
+  'late-night-heavy': 'late-night-heavy',
+  'burst-pattern': 'burst-pattern',
   'mixed-pattern': 'mixed-pattern',
   'no-events': 'no-events',
 };
@@ -51,9 +55,12 @@ const BIN_TRAIT_ORDER = [
   'weekend-heavy',
   'night-heavy',
   'daytime-heavy',
+  'commute-heavy',
+  'late-night-heavy',
+  'burst-pattern',
   'mixed-pattern',
   'no-events',
-] as const;
+] as const satisfies readonly AdaptiveBinTraitLabel[];
 
 export function TimeslicingAlgosRouteShell() {
   const router = useRouter();
@@ -62,6 +69,7 @@ export function TimeslicingAlgosRouteShell() {
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
   const [showRouteDiagnosticsDetails, setShowRouteDiagnosticsDetails] = useState(false);
   const [binTablePage, setBinTablePage] = useState(1);
+  const [selectedBinTraitFilters, setSelectedBinTraitFilters] = useState<AdaptiveBinTraitLabel[]>([]);
 
   const BIN_TABLE_PAGE_SIZE = 8;
 
@@ -325,37 +333,56 @@ export function TimeslicingAlgosRouteShell() {
     const rows = buildAdaptiveBinDiagnostics({
       selectedStrategy,
       domain: [baseDomainStartSec, baseDomainEndSec],
-      timestamps: selectionDetailDataset.diagnosticsTimestamps,
+      timestamps: contextTimestamps,
       countMap,
       densityMap,
       warpMap,
     });
 
     return rows.map((row) => {
-      const orderedLabels = BIN_TRAIT_ORDER.filter((label) => row.characterizationLabels.includes(label));
+      const orderedTraitPercents = row.traitPercents.filter((tp) => tp.label !== 'mixed-pattern');
       return {
         ...row,
-        orderedLabels,
+        orderedTraitPercents,
       };
     });
   }, [
     baseDomainEndSec,
     baseDomainStartSec,
     countMap,
+    contextTimestamps,
     densityMap,
     selectedStrategy,
-    selectionDetailDataset.diagnosticsTimestamps,
     warpMap,
   ]);
 
-  const binTableTotalPages = Math.max(1, Math.ceil(adaptiveBinDiagnosticsRows.length / BIN_TABLE_PAGE_SIZE));
+  const binTraitFilterCounts = useMemo(
+    () =>
+      BIN_TRAIT_ORDER.map((label) => ({
+        label,
+        count: adaptiveBinDiagnosticsRows.filter((row) => row.characterizationLabels.includes(label)).length,
+      })),
+    [adaptiveBinDiagnosticsRows],
+  );
+
+  const filteredAdaptiveBinDiagnosticsRows = useMemo(() => {
+    if (selectedBinTraitFilters.length === 0) {
+      return adaptiveBinDiagnosticsRows;
+    }
+
+    return adaptiveBinDiagnosticsRows.filter((row) =>
+      selectedBinTraitFilters.every((label) => row.characterizationLabels.includes(label)),
+    );
+  }, [adaptiveBinDiagnosticsRows, selectedBinTraitFilters]);
+
+  const binTableTotalPages = Math.max(1, Math.ceil(filteredAdaptiveBinDiagnosticsRows.length / BIN_TABLE_PAGE_SIZE));
   const clampedBinTablePage = Math.min(binTablePage, binTableTotalPages);
 
   const pagedAdaptiveBinDiagnosticsRows = useMemo(() => {
     const startIndex = (clampedBinTablePage - 1) * BIN_TABLE_PAGE_SIZE;
     const endIndex = startIndex + BIN_TABLE_PAGE_SIZE;
-    return adaptiveBinDiagnosticsRows.slice(startIndex, endIndex);
-  }, [BIN_TABLE_PAGE_SIZE, adaptiveBinDiagnosticsRows, clampedBinTablePage]);
+    return filteredAdaptiveBinDiagnosticsRows.slice(startIndex, endIndex);
+  }, [BIN_TABLE_PAGE_SIZE, clampedBinTablePage, filteredAdaptiveBinDiagnosticsRows]);
 
   useEffect(() => {
     if (!showRouteDiagnosticsDetails) {
@@ -366,6 +393,10 @@ export function TimeslicingAlgosRouteShell() {
       setBinTablePage(binTableTotalPages);
     }
   }, [binTablePage, binTableTotalPages, showRouteDiagnosticsDetails]);
+
+  useEffect(() => {
+    setBinTablePage(1);
+  }, [selectedBinTraitFilters]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
@@ -427,6 +458,36 @@ export function TimeslicingAlgosRouteShell() {
                   <p className="mt-2 text-xs text-slate-400">No bin diagnostics available for the active context.</p>
                 ) : (
                   <>
+                    <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="timeslicing-algos-bin-characterization-filters">
+                      <button
+                        type="button"
+                        className={`rounded-full border px-2 py-1 text-[11px] ${selectedBinTraitFilters.length === 0 ? 'border-indigo-400/70 bg-indigo-500/15 text-indigo-100' : 'border-slate-700 bg-slate-800 text-slate-300'}`}
+                        onClick={() => setSelectedBinTraitFilters([])}
+                      >
+                        All bins ({adaptiveBinDiagnosticsRows.length})
+                      </button>
+                      {binTraitFilterCounts.map(({ label, count }) => {
+                        const isActive = selectedBinTraitFilters.includes(label);
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            className={`rounded-full border px-2 py-1 text-[11px] ${isActive ? 'border-indigo-400/70 bg-indigo-500/15 text-indigo-100' : 'border-slate-700 bg-slate-800 text-slate-300'}`}
+                            onClick={() =>
+                              setSelectedBinTraitFilters((current) =>
+                                current.includes(label) ? current.filter((item) => item !== label) : [...current, label],
+                              )
+                            }
+                          >
+                            {BIN_TRAIT_LABEL_TEXT[label]} ({count})
+                          </button>
+                        );
+                      })}
+                      <span className="text-[11px] text-slate-500">
+                        Showing {filteredAdaptiveBinDiagnosticsRows.length} of {adaptiveBinDiagnosticsRows.length} bins
+                      </span>
+                    </div>
+
                     <div className="mt-2 overflow-x-auto">
                       <table className="min-w-full border-collapse text-xs text-slate-200" data-testid="timeslicing-algos-bin-characterization-table">
                         <thead>
@@ -434,22 +495,32 @@ export function TimeslicingAlgosRouteShell() {
                             <th className="px-2 py-1 font-medium">Bin</th>
                             <th className="px-2 py-1 font-medium">Range</th>
                             <th className="px-2 py-1 font-medium">Traits</th>
-                            <th className="px-2 py-1 font-medium">Events</th>
+                            <th className="px-2 py-1 font-medium text-right">Events</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {pagedAdaptiveBinDiagnosticsRows.map((row) => (
-                            <tr key={`bin-${row.binIndex}`} className="border-b border-slate-800/80 align-top last:border-b-0">
-                              <td className="px-2 py-1.5 text-slate-100">Bin {row.binIndex + 1}</td>
-                              <td className="px-2 py-1.5 text-slate-400">
-                                {new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}
+                          {pagedAdaptiveBinDiagnosticsRows.length > 0 ? (
+                            pagedAdaptiveBinDiagnosticsRows.map((row) => (
+                              <tr key={`bin-${row.binIndex}`} className="border-b border-slate-800/80 align-top last:border-b-0">
+                                <td className="px-2 py-1.5 text-slate-100">Bin {row.binIndex + 1}</td>
+                                <td className="px-2 py-1.5 text-slate-400">
+                                  {new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}
+                                </td>
+                                <td className="px-2 py-1.5 text-indigo-200">
+                                  {row.orderedTraitPercents.length > 0
+                                    ? row.orderedTraitPercents.map((tp) => `${BIN_TRAIT_LABEL_TEXT[tp.label]} ${tp.percent.toFixed(1)}%`).join(', ')
+                                    : row.characterizationLabels.includes('no-events') ? 'no-events' : 'mixed-pattern'}
+                                </td>
+                                <td className="px-2 py-1.5 text-slate-300 text-right">{row.rawCount.toLocaleString()}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={4} className="px-2 py-3 text-slate-400">
+                                No bins match the active trait filters.
                               </td>
-                              <td className="px-2 py-1.5 text-indigo-200">
-                                {row.orderedLabels.map((label) => BIN_TRAIT_LABEL_TEXT[label]).join(', ')}
-                              </td>
-                              <td className="px-2 py-1.5 text-slate-300">{row.rawCount.toLocaleString()}</td>
                             </tr>
-                          ))}
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -498,6 +569,8 @@ export function TimeslicingAlgosRouteShell() {
           <div className="mt-4">
             <TimelineQaContextCard model={timelineQaModel} />
           </div>
+
+          <NeighbourhoodDiagnosticsPanel />
 
           <div className="mt-4">
             <TimeslicingAlgosInteractionControls
