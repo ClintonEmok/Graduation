@@ -84,7 +84,20 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking] Fallback to manual STATE/ROADMAP updates after gsd-tools parse failures**
+- **Found during:** Post-task artifact finalization
+- **Issue:** `gsd-tools state advance-plan` and `state record-metric` failed because STATE.md format did not match expected parser sections.
+- **Fix:** Applied required plan/state/roadmap updates directly in `.planning/STATE.md` and `.planning/ROADMAP.md` to preserve completion bookkeeping.
+- **Files modified:** `.planning/STATE.md`, `.planning/ROADMAP.md`
+- **Verification:** Re-read files to confirm phase 57 plan 4 completion markers and roadmap checklist updates.
+- **Committed in:** `87db93c`
+
+---
+
+**Total deviations:** 1 auto-fixed (1 blocking)
+**Impact on plan:** Completion bookkeeping remained accurate despite tooling parser mismatch; no scope or behavior changes to product code.
 
 ## Issues Encountered
 None.
