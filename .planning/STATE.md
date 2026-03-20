@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 58 planned (3 plans)
-last_updated: "2026-03-20T14:42:50.431Z"
-last_activity: 2026-03-20 - Completed 57-05 per-bin trait labeling with pagination and comparison-first default
+status: in_progress
+stopped_at: Completed 58-01 neighbourhood lib foundation
+last_updated: "2026-03-20T15:01:51Z"
+last_activity: 2026-03-20 - Completed 58-01 neighbourhood lib with OSM/Chicago API clients and summary builder
 progress:
   total_phases: 16
   completed_phases: 13
   total_plans: 58
-  completed_plans: 48
+  completed_plans: 49
   percent: 7
 ---
 
@@ -25,12 +25,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 ## Current Position
 
-Phase: **57 of 57** (Context-aware timeslicing core temporal spatial data-driven diagnostics)
-Plan: **5 of 5** completed in current phase
-Status: **Phase complete**
-Last activity: 2026-03-20 - Completed 57-05 per-bin trait labeling with pagination and comparison-first default
+Phase: **58 of 58** (Enrich with neighbourhood data, POI, events that happened on the day, anything useful)
+Plan: **1 of 3** completed in current phase
+Status: **In progress**
+Last activity: 2026-03-20 - Completed 58-01 neighbourhood lib with OSM/Chicago API clients and summary builder
 
-Progress: **████████████████████** 208/215 plans complete (96.7%)
+Progress: **████████████████████** 209/219 plans complete (95.4%)
 
 ## Milestone Status
 
@@ -166,8 +166,13 @@ Progress: **████████████████████** 208/2
 - Phase 57 added: Context-aware timeslicing core (temporal + spatial, data-driven diagnostics)
 - Phase 58 added: enrich the with neighbourhood data poi events that happened on the day anything useful
 
+### Phase 58 Decisions
+- [Phase 58]: Accepted dateEpoch parameter for future-proofing, documented that current data reflects present state not historical dates. — This keeps the API flexible for future historical queries while being honest about current limitations.
+- [Phase 58]: Chicago business data treated as supplementary 'other' category alongside OSM POI counts. — OSM is primary POI source; Chicago enriches with business activity context.
+- [Phase 58]: Parallel Promise.all for OSM and Chicago fetches for optimal performance. — Both sources are independent and can be fetched concurrently.
+
 ## Session Continuity
 
-Last session: 2026-03-20T14:42:50.416Z
-Stopped at: Phase 58 planned (3 plans)
-Resume file: .planning/phases/58-enrich-the-with-neighbourhood-data-poi-events-that-happened-on-the-day-anything-useful/58-01-PLAN.md
+Last session: 2026-03-20T15:00:51Z
+Stopped at: Completed 58-01 neighbourhood lib foundation (4/4 tasks)
+Resume file: .planning/phases/58-enrich-the-with-neighbourhood-data-poi-events-that-happened-on-the-day-anything-useful/58-02-PLAN.md
