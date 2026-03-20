@@ -92,7 +92,11 @@ describe('/timeslicing-algos route intent', () => {
     expect(shellSource).toMatch(/showRouteDiagnosticsDetails \? 'Hide data diagnostics' : 'Show data diagnostics'/);
     expect(shellSource).toMatch(/\{showRouteDiagnosticsDetails && \(/);
     expect(shellSource).toMatch(/Bin characterization/);
-    expect(shellSource).toMatch(/adaptiveBinDiagnosticsRows\.slice\(0, 8\)/);
+    expect(shellSource).toMatch(/timeslicing-algos-bin-characterization-table/);
+    expect(shellSource).toMatch(/adaptiveBinDiagnosticsRows\.slice\(0, 12\)/);
+    expect(shellSource).toMatch(/<table/);
+    expect(shellSource).toMatch(/Traits/);
+    expect(shellSource).toMatch(/Events/);
 
     const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
     expect(timeslicingPageSource).not.toMatch(/AdaptiveBinDiagnosticsPanel/);

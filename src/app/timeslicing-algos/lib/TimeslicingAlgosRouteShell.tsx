@@ -404,19 +404,32 @@ export function TimeslicingAlgosRouteShell() {
                 {adaptiveBinDiagnosticsRows.length === 0 ? (
                   <p className="mt-2 text-xs text-slate-400">No bin diagnostics available for the active context.</p>
                 ) : (
-                  <ul className="mt-2 space-y-1 text-xs text-slate-200">
-                    {adaptiveBinDiagnosticsRows.slice(0, 8).map((row) => (
-                      <li key={`bin-${row.binIndex}`} className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-200">
-                          Bin {row.binIndex + 1}
-                        </span>
-                        <span className="text-slate-400">{new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}</span>
-                        <span className="text-indigo-200">
-                          {row.orderedLabels.map((label) => BIN_TRAIT_LABEL_TEXT[label]).join(', ')}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="min-w-full border-collapse text-xs text-slate-200" data-testid="timeslicing-algos-bin-characterization-table">
+                      <thead>
+                        <tr className="border-b border-slate-700/80 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                          <th className="px-2 py-1 font-medium">Bin</th>
+                          <th className="px-2 py-1 font-medium">Range</th>
+                          <th className="px-2 py-1 font-medium">Traits</th>
+                          <th className="px-2 py-1 font-medium">Events</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adaptiveBinDiagnosticsRows.slice(0, 12).map((row) => (
+                          <tr key={`bin-${row.binIndex}`} className="border-b border-slate-800/80 align-top last:border-b-0">
+                            <td className="px-2 py-1.5 text-slate-100">Bin {row.binIndex + 1}</td>
+                            <td className="px-2 py-1.5 text-slate-400">
+                              {new Date(row.startSec * 1000).toLocaleDateString()} - {new Date(row.endSec * 1000).toLocaleDateString()}
+                            </td>
+                            <td className="px-2 py-1.5 text-indigo-200">
+                              {row.orderedLabels.map((label) => BIN_TRAIT_LABEL_TEXT[label]).join(', ')}
+                            </td>
+                            <td className="px-2 py-1.5 text-slate-300">{row.rawCount.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
