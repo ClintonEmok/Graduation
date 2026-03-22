@@ -5,6 +5,9 @@ import { CrimeTypeBreakdown } from './components/CrimeTypeBreakdown';
 import { TemporalPatternChart } from './components/TemporalPatternChart';
 import { NeighborhoodSelector } from './components/NeighborhoodSelector';
 import { TimeRangeSelector } from './components/TimeRangeSelector';
+import { SpatialHotspotMap } from './components/SpatialHotspotMap';
+import { NeighborhoodContext } from './components/NeighborhoodContext';
+import { StatsSectionLayout } from './components/StatsSectionLayout';
 import { useNeighborhoodStats } from '../hooks/useNeighborhoodStats';
 
 export function StatsRouteShell() {
@@ -44,31 +47,9 @@ export function StatsRouteShell() {
               <TemporalPatternChart />
             </div>
 
-            {!isLoading && !isFetching && stats && (
-              <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
-                <h3 className="text-sm font-medium text-slate-300 mb-4">District Breakdown</h3>
-                {stats.byDistrict.length > 0 ? (
-                  <div className="space-y-2">
-                    {stats.byDistrict.slice(0, 10).map((d) => (
-                      <div key={d.name} className="flex items-center gap-3">
-                        <span className="w-12 text-sm text-slate-400">D{d.name}</span>
-                        <div className="flex-1 h-6 bg-slate-800 rounded overflow-hidden">
-                          <div
-                            className="h-full bg-blue-600 rounded"
-                            style={{ width: `${d.percentage}%` }}
-                          />
-                        </div>
-                        <span className="w-20 text-right text-sm text-slate-400">
-                          {d.count.toLocaleString()} ({d.percentage}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500">No district data available</p>
-                )}
-              </div>
-            )}
+            <SpatialHotspotMap />
+
+            <NeighborhoodContext />
 
             {(isLoading || isFetching) && (
               <div className="flex items-center justify-center py-12">
