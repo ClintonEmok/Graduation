@@ -33,7 +33,7 @@ Planned next focuses are v2.4 (STKDE exploratory route) and v2.5 (`/api/crimes/r
 - [x] **Phase 51: Store Consolidation** - Consolidate slice-domain stores and remove deprecated data store paths. (completed 2026-03-10)
 - [x] **Phase 52: Uniform-Events Binning for Timeslicing** - Add quantile-style event-balanced binning alongside existing uniform-time bins. (completed 2026-03-11)
 - [x] **Phase 53: Add dedicated timeslicing algos route** - Add `/timeslicing-algos` for algorithm-focused timeline testing with mode comparison and centralized route-mode wiring. (completed 2026-03-11)
-- [ ] **Phase 54: Adaptive timeslicing in algos route with verbose diagnostics** - Add adaptive-mode controls and high-signal runtime diagnostics for `/timeslicing-algos` validation workflows.
+- [x] **Phase 54: Adaptive timeslicing in algos route with verbose diagnostics** - Add adaptive-mode controls and high-signal runtime diagnostics for `/timeslicing-algos` validation workflows. (5/9 plans — 4 incomplete: tech debt)
 - [ ] **Phase 55: STKDE exploration route with Chicago heatmap and hotspots panel** - Add a dedicated STKDE QA route with spatiotemporal hotspot heatmap rendering and interactive hotspot list linked to map selection.
 - [ ] **Phase 56: Variable sampling API support for high-fidelity selection detail** - Upgrade `/api/crimes/range` with intent-aware sampling semantics and wire `/timeslicing-algos` selection-detail requests to preserve explicit provenance under dense selections.
 
@@ -195,14 +195,16 @@ Plans:
 **Plans**: 9 plans
 Plans:
 - [x] 54-01-PLAN.md — Add adaptive mode option and route wiring in `/timeslicing-algos`
-- [ ] 54-02-PLAN.md — Add verbose route-scoped diagnostics panel/logging for mode/payload/cache context
-- [ ] 54-03-PLAN.md — Add regression coverage for adaptive mode selection, fallback behavior, and diagnostics visibility
+- [ ] 54-02-PLAN.md — Add verbose route-scoped diagnostics panel/logging for mode/payload/cache context *(tech debt)*
+- [ ] 54-03-PLAN.md — Add regression coverage for adaptive mode selection, fallback behavior, and diagnostics visibility *(tech debt)*
 - [x] 54-04-PLAN.md — Separate strategy/time-scale controls and timeline-test parity wiring for `/timeslicing-algos`
 - [x] 54-05-PLAN.md — Rewire `/timeslicing-algos` timeline domain/fetch lifecycle to match `/timeslicing`
-- [ ] 54-06-PLAN.md — Improve span-aware DualTimeline tick UX and guarded dashboard rollout
-- [ ] 54-07-PLAN.md — Add deep per-bin adaptive diagnostics for `/timeslicing-algos` QA
-- [ ] 54-08-PLAN.md — Clarify QA/exploration timeline semantics across `/timeslicing` and `/timeslicing-algos`
-- [ ] 54-09-PLAN.md — Add selection-specific high-capacity detail fetch with explicit provenance, diagnostics source control, and guardrailed fallback
+- [ ] 54-06-PLAN.md — Improve span-aware DualTimeline tick UX and guarded dashboard rollout *(tech debt)*
+- [x] 54-07-PLAN.md — Add deep per-bin adaptive diagnostics for `/timeslicing-algos` QA
+- [ ] 54-08-PLAN.md — Clarify QA/exploration timeline semantics across `/timeslicing` and `/timeslicing-algos` *(tech debt)*
+- [x] 54-09-PLAN.md — Add selection-specific high-capacity detail fetch with explicit provenance, diagnostics source control, and guardrailed fallback
+
+> **Tech Debt Note**: Plans 54-02, 54-03, 54-06, and 54-08 were not executed. They remain as known tech debt and can be revisited as future refinements. Phase 57 delivered the diagnostics infrastructure that superseded 54-02. Phase 58 delivered neighbourhood enrichment. Phases 55 and 56 can proceed independently.
 
 ### Phase 55: STKDE exploration route with Chicago heatmap and hotspots panel
 **Goal**: Provide a dedicated STKDE exploration surface for QA to inspect spatial-temporal hotspots on Chicago map + timeline context, without changing general-user dashboard flows.
@@ -256,7 +258,7 @@ Plans:
 | 53 | v2.2 | 2/2 | Complete | 2026-03-11 |
 | 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
 | 58 | v2.3 | 3/3 | Complete | 2026-03-22 |
-| 54 | v2.3 | 3/9 | In progress | - |
+| 54 | v2.3 | 5/9 | Complete (tech debt) | - |
 | 55 | v2.4 | 0/2 | Planned | - |
 | 56 | v2.5 | 0/3 | Planned | - |
 

@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: milestone
 status: in_progress
 stopped_at: Completed 58-02 neighbourhood API and diagnostics integration
-last_updated: "2026-03-20T15:11:44Z"
-last_activity: 2026-03-20 - Completed 58-02 neighbourhood API route and context diagnostics integration
+last_updated: "2026-03-22T23:35:00Z"
+last_activity: 2026-03-22 - Phase 58 complete (3/3 plans); Phase 54 marked complete with tech debt (4 incomplete plans)
 progress:
   total_phases: 16
   completed_phases: 13
@@ -21,13 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-04)
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Prepare Phase 56 variable sampling/fidelity work on top of mode-aware `/stkde` sampled/full-population provenance and guardrails.
+**Current focus:** Phase 58 complete. Ready to plan Phase 55 (STKDE exploration route) and Phase 56 (variable sampling API).
 
 ## Current Position
 
-Phase: **58 of 58** (Enrich with neighbourhood data, POI, events that happened on the day, anything useful)
-Plan: **3 of 3** completed in current phase
-Status: **Phase complete**
+Phase: **58 of 58 — Complete** (Enrich with neighbourhood data, POI, events that happened on the day, anything useful)
+Plan: **3 of 3** completed
+Phase 54: **5/9 plans — Marked complete with tech debt** (54-02, 54-03, 54-06, 54-08 incomplete)
+Status: **Phase 58 complete. v2.3 milestones satisfied. Next: Phase 55 (STKDE route).**
 Last activity: 2026-03-22 - Completed 58-03 neighbourhood diagnostics panel integration
 
 Progress: **████████████████████** 211/219 plans complete (96.3%)
@@ -41,10 +42,13 @@ Progress: **████████████████████** 211/2
 - v2.0: 3/3 phases complete
 - v2.1: 6/6 phases complete
 - v2.2: 2/2 phases complete
-- v2.3: 0/1 phases complete (planned)
+- v2.3: 3/4 phases complete (Phase 54: 5/9 plans — tech debt on 54-02, 54-03, 54-06, 54-08)
 
 ## Decisions
 
+- [Phase 54 — Tech Debt]: Plans 54-02, 54-03, 54-06, 54-08 were not executed. Remaining as known tech debt. Phase 57's diagnostics infrastructure superseded 54-02's verbose diagnostics goal. Phases 55 and 56 can proceed independently.
+- [Phase 58]: Used existing contextDiagnostics from useSuggestionStore to surface neighbourhood data — no new store state needed.
+- [Phase 58]: Followed Phase 57 compact/expandable UI pattern for NeighbourhoodDiagnosticsPanel — maintains consistency.
 - [Phase 57]: Keep `profileName` backward-compatible by mapping it to the dynamic profile label while adding nested `contextDiagnostics` metadata. — Existing consumers continue reading profileName without schema break while diagnostics gains full audit context.
 - [Phase 57]: Preserve full-auto ranking inputs by keeping static profile context for orchestrator scoring and treating diagnostics as metadata-only. — This guarantees diagnostics wiring does not change ordered proposal IDs/scores for identical inputs.
 - [Phase 57]: Use weighted deterministic dynamic profile scoring (concentration + hotspot dominance + section coverage) with explicit strong/weak/no-strong states. — This guarantees repeatable profile outcomes and clear low-signal behavior.
