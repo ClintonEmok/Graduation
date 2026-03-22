@@ -16,9 +16,10 @@ Planned next focuses are v2.4 (STKDE exploratory route) and v2.5 (`/api/crimes/r
 - ✅ **v2.0 3D Timeline-Test Parity** - Phases 43-45 (shipped 2026-03-06)
 - ✅ **v2.1 Refactoring and Decomposition** - Phases 46-51 (shipped 2026-03-10)
 - ✅ **v2.2 Timeslicing Fidelity Improvements** - Phases 52-53 (shipped 2026-03-11)
-- 📋 **v2.3 Adaptive Timeslicing Algos Hardening** - Phase 54 (planned)
-- 📋 **v2.4 STKDE Exploration Surface** - Phase 55 (planned)
-- 📋 **v2.5 Variable Sampling API Fidelity** - Phase 56 (planned)
+- ✅ **v2.3 Adaptive Timeslicing Algos Hardening** - Phase 54 (shipped with tech debt)
+- ✅ **v2.4 STKDE Exploration Surface** - Phase 55 (shipped 2026-03-16)
+- ✅ **v2.3 Neighbourhood Diagnostics** - Phases 57-58 (shipped 2026-03-22)
+- 📋 **v2.6 Stats Dashboard** - Phase 59 (planned)
 
 ## Phases
 
@@ -259,8 +260,12 @@ Plans:
 | 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
 | 58 | v2.3 | 3/3 | Complete | 2026-03-22 |
 | 54 | v2.3 | 5/9 | Complete (tech debt) | - |
-| 55 | v2.4 | 0/2 | Planned | - |
+| 54 | v2.3 | 5/9 | Complete (tech debt) | - |
+| 55 | v2.4 | 2/2 | Complete | 2026-03-16 |
 | 56 | v2.5 | 0/3 | Planned | - |
+| 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
+| 58 | v2.3 | 3/3 | Complete | 2026-03-22 |
+| 59 | v2.6 | 0/3 | Planned | - |
 
 ### Phase 53: Add dedicated timeslicing algos route
 
@@ -297,6 +302,17 @@ Plans:
 - [x] 58-01-PLAN.md — Build neighbourhood lib module with OSM Overpass API client, Chicago Data Portal client, and summary builder
 - [x] 58-02-PLAN.md — Create /api/neighbourhood/poi server-side route with caching and integrate neighbourhood into context diagnostics
 - [x] 58-03-PLAN.md — Add neighbourhood diagnostics panel to /timeslicing-algos with compact/expandable UI
+
+### Phase 59: Add stats page for neighborhoods
+
+**Goal:** Create a dedicated `/stats` route for neighborhood crime statistics with district-level breakdowns, crime type distribution, temporal patterns, spatial hotspots, and neighbourhood context integration.
+**Depends on:** Phase 58
+**Plans:** 3 plans
+
+Plans:
+- [ ] 59-01-PLAN.md — Create stats route shell, district selector, aggregation helpers, and useNeighborhoodStats hook
+- [ ] 59-02-PLAN.md — Add crime type breakdown charts, temporal heatmap/trend, and overview stat cards
+- [ ] 59-03-PLAN.md — Add spatial hotspot map, neighbourhood context cards, and finalize responsive dashboard layout
 
 ---
 
