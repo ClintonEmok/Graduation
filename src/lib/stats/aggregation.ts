@@ -15,6 +15,16 @@ export function normalizeDistrict(district: string | undefined | null): string {
 }
 
 /**
+ * Pad district code with leading zeros for API requests.
+ * '1' -> '001', '8' -> '008', '12' -> '012'
+ */
+export function padDistrict(district: string | number): string {
+  const num = typeof district === 'string' ? parseInt(district, 10) : district;
+  if (isNaN(num)) return String(district);
+  return num.toString().padStart(3, '0');
+}
+
+/**
  * Aggregate crime counts by district.
  * Missing/null districts are counted as 'Unknown'.
  * District codes are normalized (001 -> 1, 012 -> 12).
