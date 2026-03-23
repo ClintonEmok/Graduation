@@ -11,10 +11,38 @@ import type { CrimeRecord } from '@/types/crime';
 
 const MAX_POINTS = 10000;
 
+const CHICAGO_DISTRICT_BOUNDS: Record<string, { minLat: number; maxLat: number; minLon: number; maxLon: number }> = {
+  '1': { minLat: 41.88, maxLat: 41.92, minLon: -87.68, maxLon: -87.62 },
+  '2': { minLat: 41.85, maxLat: 41.91, minLon: -87.70, maxLon: -87.63 },
+  '3': { minLat: 41.80, maxLat: 41.87, minLon: -87.67, maxLon: -87.59 },
+  '4': { minLat: 41.79, maxLat: 41.85, minLon: -87.58, maxLon: -87.52 },
+  '5': { minLat: 41.73, maxLat: 41.82, minLon: -87.68, maxLon: -87.55 },
+  '6': { minLat: 41.73, maxLat: 41.80, minLon: -87.77, maxLon: -87.62 },
+  '7': { minLat: 41.73, maxLat: 41.79, minLon: -87.80, maxLon: -87.68 },
+  '8': { minLat: 41.72, maxLat: 41.77, minLon: -87.75, maxLon: -87.65 },
+  '9': { minLat: 41.78, maxLat: 41.85, minLon: -87.68, maxLon: -87.59 },
+  '10': { minLat: 41.68, maxLat: 41.77, minLon: -87.72, maxLon: -87.59 },
+  '11': { minLat: 41.65, maxLat: 41.73, minLon: -87.75, maxLon: -87.63 },
+  '12': { minLat: 41.67, maxLat: 41.74, minLon: -87.68, maxLon: -87.57 },
+  '14': { minLat: 41.89, maxLat: 41.95, minLon: -87.67, maxLon: -87.58 },
+  '15': { minLat: 41.65, maxLat: 41.73, minLon: -87.77, maxLon: -87.67 },
+  '16': { minLat: 41.60, maxLat: 41.68, minLon: -87.78, maxLon: -87.65 },
+  '17': { minLat: 41.88, maxLat: 41.96, minLon: -87.75, maxLon: -87.62 },
+  '18': { minLat: 41.87, maxLat: 41.96, minLon: -87.82, maxLon: -87.72 },
+  '19': { minLat: 41.78, maxLat: 41.87, minLon: -87.76, maxLon: -87.65 },
+  '20': { minLat: 41.72, maxLat: 41.79, minLon: -87.77, maxLon: -87.68 },
+  '21': { minLat: 41.65, maxLat: 41.73, minLon: -87.68, maxLon: -87.55 },
+  '22': { minLat: 41.60, maxLat: 41.69, minLon: -87.72, maxLon: -87.58 },
+  '23': { minLat: 41.57, maxLat: 41.66, minLon: -87.78, maxLon: -87.62 },
+  '24': { minLat: 41.50, maxLat: 41.60, minLon: -87.75, maxLon: -87.55 },
+  '25': { minLat: 41.65, maxLat: 41.76, minLon: -87.58, maxLon: -87.45 },
+};
+
 export function SpatialHotspotMap() {
   const mapRef = useRef<MapRef>(null);
   const { crimes, stats, isLoading, isFetching, error } = useNeighborhoodStats();
   const selectedDistricts = useStatsStore((s) => s.selectedDistricts);
+  const timeRange = useStatsStore((s) => s.timeRange);
   const [viewMode, setViewMode] = useState<'heatmap' | 'points'>('heatmap');
 
   const geoJsonData = useMemo((): FeatureCollection<Point> => {
@@ -44,6 +72,37 @@ export function SpatialHotspotMap() {
   }, [crimes]);
 
   const pointCount = geoJsonData.features.length;
+
+  const { bounds, dateRange } = useMemo(() => {
+    if (selectedDistricts.length === 0) {
+      return { bounds: null, dateRange: '' };
+    }
+
+    let minLat = Infinity, maxLat = -Infinity;
+    let minLon = Infinity, maxLon = -Infinity;
+
+    for (const district of selectedDistricts) {
+      const bounds = CHICAGO_DISTRICT_BOUNDS[district];
+      if (bounds) {
+        minLat = Math.min(minLat, bounds.minLat);
+        maxLat = Math.max(maxLat, bounds.maxLat);
+        minLon = Math.min(minLon, bounds.minLon);
+        maxLon = Math.max(maxLon, bounds.maxLon);
+      }
+    }
+
+    if (minLat === Infinity) {
+      return { bounds: null, dateRange: '' };
+    }
+
+    const boundsStr = `${minLat.toFixed(3)},${maxLat.toFixed(3)},${minLon.toFixed(3)},${maxLon.toFixed(3)}`;
+    
+    const startDate = new Date(timeRange.startEpoch * 1000).toLocaleDateString();
+    const endDate = new Date(timeRange.endEpoch * 1000).toLocaleDateString();
+    const dateRangeStr = `${startDate} - ${endDate}`;
+
+    return { bounds: boundsStr, dateRange: dateRangeStr };
+  }, [selectedDistricts, timeRange]);
 
   if (isLoading || isFetching) {
     return (
@@ -166,8 +225,10 @@ export function SpatialHotspotMap() {
           </Source>
         </MapBase>
 
-        <div className="absolute bottom-2 right-2 bg-slate-900/95 border border-slate-700 rounded px-2 py-1 text-[10px] text-slate-400">
-          {pointCount.toLocaleString()} points
+        <div className="absolute bottom-2 right-2 bg-slate-900/95 border border-slate-700 rounded px-2 py-1 text-[10px] text-slate-400 space-y-1">
+          <div>{pointCount.toLocaleString()} points</div>
+          {dateRange && <div className="text-slate-500">{dateRange}</div>}
+          {bounds && <div className="text-slate-500 font-mono">{bounds}</div>}
         </div>
       </div>
     </div>
