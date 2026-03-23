@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: milestone
+milestone: v3.0
+milestone_name: integration
 status: in_progress
-stopped_at: Completed 58-02 neighbourhood API and diagnostics integration
-last_updated: "2026-03-22T23:35:00Z"
-last_activity: 2026-03-23 - Completed quick task 260323-47t: access to 8M datapoints
+stopped_at: Completed 03-01 dynamic binning, timeslicing controls, map layers, and dashboard integration
+last_updated: "2026-03-23T16:00:00Z"
+last_activity: 2026-03-23 - Completed Phase 03-01: Integration milestone (binning, timeslicing, map, dashboard)
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 13
-  total_plans: 58
-  completed_plans: 49
+  total_plans: 59
+  completed_plans: 50
   percent: 7
 ---
 
