@@ -1,26 +1,49 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { MapRef } from 'react-map-gl/maplibre';
 import MapBase from '@/components/map/MapBase';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import type { FeatureCollection, Point } from 'geojson';
 import { useNeighborhoodStats } from '../../hooks/useNeighborhoodStats';
 import { useStatsStore } from '@/store/useStatsStore';
+import type { CrimeRecord } from '@/types/crime';
+
+const MAX_POINTS = 10000;
 
 export function SpatialHotspotMap() {
   const mapRef = useRef<MapRef>(null);
-  const { stats, isLoading, isFetching, error } = useNeighborhoodStats();
+  const { crimes, stats, isLoading, isFetching, error } = useNeighborhoodStats();
   const selectedDistricts = useStatsStore((s) => s.selectedDistricts);
   const [viewMode, setViewMode] = useState<'heatmap' | 'points'>('heatmap');
 
-  const handleClick = useCallback((lng: number, lat: number) => {
-    mapRef.current?.flyTo({
-      center: [lng, lat],
-      zoom: 14,
-      duration: 500,
-    });
-  }, []);
+  const geoJsonData = useMemo((): FeatureCollection<Point> => {
+    if (!crimes || crimes.length === 0) {
+      return { type: 'FeatureCollection', features: [] };
+    }
+
+    const features = crimes
+      .filter((crime): crime is CrimeRecord & { lat: number; lon: number } => 
+        typeof crime.lat === 'number' && typeof crime.lon === 'number' &&
+        !isNaN(crime.lat) && !isNaN(crime.lon)
+      )
+      .slice(0, MAX_POINTS)
+      .map((crime) => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [crime.lon, crime.lat],
+        },
+        properties: {
+          type: crime.type,
+          district: crime.district,
+        },
+      }));
+
+    return { type: 'FeatureCollection', features };
+  }, [crimes]);
+
+  const pointCount = geoJsonData.features.length;
 
   if (isLoading || isFetching) {
     return (
@@ -62,22 +85,6 @@ export function SpatialHotspotMap() {
       </div>
     );
   }
-
-  if (!stats || !stats.byDistrict || stats.byDistrict.length === 0) {
-    return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
-        <h3 className="text-sm font-medium text-slate-300 mb-4">Spatial Distribution</h3>
-        <div className="flex items-center justify-center h-[300px] rounded-lg bg-slate-800/50">
-          <p className="text-sm text-slate-500">No crime data for selected districts</p>
-        </div>
-      </div>
-    );
-  }
-
-  const geoJsonData: FeatureCollection<Point> = {
-    type: 'FeatureCollection',
-    features: [],
-  };
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
@@ -147,7 +154,7 @@ export function SpatialHotspotMap() {
                 id="crime-points"
                 type="circle"
                 paint={{
-                  'circle-radius': 5,
+                  'circle-radius': 4,
                   'circle-color': '#3b82f6',
                   'circle-opacity': 0.7,
                   'circle-stroke-width': 1,
@@ -160,7 +167,7 @@ export function SpatialHotspotMap() {
         </MapBase>
 
         <div className="absolute bottom-2 right-2 bg-slate-900/95 border border-slate-700 rounded px-2 py-1 text-[10px] text-slate-400">
-          {stats.byDistrict.length} districts
+          {pointCount.toLocaleString()} points
         </div>
       </div>
     </div>

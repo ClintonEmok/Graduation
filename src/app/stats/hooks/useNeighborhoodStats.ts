@@ -10,9 +10,11 @@ import {
   type NeighborhoodStats,
 } from '@/lib/stats/aggregation';
 import { useStatsStore } from '@/store/useStatsStore';
+import type { CrimeRecord } from '@/types/crime';
 
 export interface UseNeighborhoodStatsResult {
   stats: NeighborhoodStats | null;
+  crimes: CrimeRecord[];
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
@@ -50,6 +52,7 @@ export function useNeighborhoodStats(): UseNeighborhoodStatsResult {
 
   return {
     stats,
+    crimes,
     isLoading,
     isFetching,
     error,
