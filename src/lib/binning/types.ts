@@ -2,6 +2,10 @@
  * Binning Types
  */
 
+import type { BinningConfig, BinningStrategy, BinningConstraint, BinningRule, BinningRuleParams, BinningResult } from './rules';
+
+export type { BinningStrategy, BinningConstraint, BinningRule, BinningRuleParams, BinningResult };
+
 export interface TimeBin {
   /** Unique identifier */
   id: string;
@@ -54,4 +58,5 @@ export interface SavedConfiguration {
   modifiedAt: number;
 }
 
-import { BinningConfig } from './rules';
+// Export BinningConfig type for convenience
+export type { BinningConfig };
