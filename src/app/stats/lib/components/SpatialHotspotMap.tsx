@@ -4,9 +4,10 @@ import React, { useRef, useState, useMemo } from 'react';
 import { MapRef } from 'react-map-gl/maplibre';
 import MapBase from '@/components/map/MapBase';
 import { Source, Layer } from 'react-map-gl/maplibre';
-import type { FeatureCollection, Point } from 'geojson';
+import type { FeatureCollection, Point, Polygon } from 'geojson';
 import { useNeighborhoodStats } from '../../hooks/useNeighborhoodStats';
 import { useStatsStore } from '@/store/useStatsStore';
+import { getDistrictDisplayName } from '../stats-view-model';
 import type { CrimeRecord } from '@/types/crime';
 
 const MAX_POINTS = 10000;
@@ -72,6 +73,32 @@ export function SpatialHotspotMap() {
   }, [crimes]);
 
   const pointCount = geoJsonData.features.length;
+
+  const districtBoundaries = useMemo((): FeatureCollection<Polygon> => {
+    const features = selectedDistricts
+      .filter((d) => CHICAGO_DISTRICT_BOUNDS[d])
+      .map((district) => {
+        const b = CHICAGO_DISTRICT_BOUNDS[district];
+        return {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Polygon' as const,
+            coordinates: [[
+              [b.minLon, b.minLat],
+              [b.maxLon, b.minLat],
+              [b.maxLon, b.maxLat],
+              [b.minLon, b.maxLat],
+              [b.minLon, b.minLat],
+            ]],
+          },
+          properties: {
+            district,
+            name: getDistrictDisplayName(district),
+          },
+        };
+      });
+    return { type: 'FeatureCollection', features };
+  }, [selectedDistricts]);
 
   const { bounds, dateRange } = useMemo(() => {
     if (selectedDistricts.length === 0) {
@@ -178,6 +205,43 @@ export function SpatialHotspotMap() {
           ref={mapRef}
           dragPan={true}
         >
+          <Source id="district-boundaries" type="geojson" data={districtBoundaries}>
+            <Layer
+              id="district-fill"
+              type="fill"
+              paint={{
+                'fill-color': [
+                  'case',
+                  ['boolean', ['feature-state', 'hover'], false],
+                  'rgba(59, 130, 246, 0.3)',
+                  'rgba(59, 130, 246, 0.1)',
+                ],
+              }}
+            />
+            <Layer
+              id="district-outline"
+              type="line"
+              paint={{
+                'line-color': '#3b82f6',
+                'line-width': 2,
+                'line-opacity': 0.8,
+              }}
+            />
+            <Layer
+              id="district-label"
+              type="symbol"
+              layout={{
+                'text-field': ['get', 'name'],
+                'text-size': 10,
+                'text-anchor': 'center',
+              }}
+              paint={{
+                'text-color': '#94a3b8',
+                'text-halo-color': '#0f172a',
+                'text-halo-width': 1,
+              }}
+            />
+          </Source>
           <Source id="crime-points" type="geojson" data={geoJsonData}>
             {viewMode === 'heatmap' ? (
               <Layer
