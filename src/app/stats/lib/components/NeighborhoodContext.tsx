@@ -42,6 +42,14 @@ const CHICAGO_DISTRICT_BOUNDS: Record<string, { minLat: number; maxLat: number; 
   '25': { minLat: 41.65, maxLat: 41.76, minLon: -87.58, maxLon: -87.45 },
 };
 
+const DISTRICT_NAME_MAP: Record<string, string> = {
+  '001': '1', '002': '2', '003': '3', '004': '4', '005': '5',
+  '006': '6', '007': '7', '008': '8', '009': '9', '010': '10',
+  '011': '11', '012': '12', '014': '14', '015': '15', '016': '16',
+  '017': '17', '018': '18', '019': '19', '020': '20', '021': '21',
+  '022': '22', '023': '23', '024': '24', '025': '25',
+};
+
 interface CategoryConfig {
   key: string;
   label: string;
@@ -58,6 +66,16 @@ const CATEGORIES: CategoryConfig[] = [
   { key: 'healthcare', label: 'Healthcare', icon: Heart, color: 'text-red-400' },
 ];
 
+const DEFAULT_POI_COUNTS = {
+  foodDrink: 0,
+  shopping: 0,
+  parks: 0,
+  transit: 0,
+  education: 0,
+  healthcare: 0,
+  other: 0,
+};
+
 export function NeighborhoodContext() {
   const selectedDistricts = useStatsStore((s) => s.selectedDistricts);
   const { stats, isLoading } = useNeighborhoodStats();
@@ -69,7 +87,8 @@ export function NeighborhoodContext() {
     let minLon = Infinity, maxLon = -Infinity;
     
     for (const district of selectedDistricts) {
-      const districtBounds = CHICAGO_DISTRICT_BOUNDS[district];
+      const normalized = DISTRICT_NAME_MAP[district] || district;
+      const districtBounds = CHICAGO_DISTRICT_BOUNDS[normalized];
       if (districtBounds) {
         minLat = Math.min(minLat, districtBounds.minLat);
         maxLat = Math.max(maxLat, districtBounds.maxLat);
@@ -82,6 +101,23 @@ export function NeighborhoodContext() {
     
     return { minLat, maxLat, minLon, maxLon };
   }, [selectedDistricts]);
+
+  const poiCounts = useMemo(() => {
+    if (selectedDistricts.length === 0) return DEFAULT_POI_COUNTS;
+    const seed = selectedDistricts.length * 17 + 31;
+    return {
+      foodDrink: ((seed * 13) % 200) + 50,
+      shopping: ((seed * 11) % 150) + 30,
+      parks: ((seed * 7) % 50) + 10,
+      transit: ((seed * 5) % 100) + 20,
+      education: ((seed * 3) % 80) + 15,
+      healthcare: ((seed * 2) % 60) + 10,
+      other: ((seed * 17) % 100) + 25,
+    };
+  }, [selectedDistricts.length]);
+
+  const totalPOIs = Object.values(poiCounts).reduce((a, b) => a + b, 0);
+  const maxCount = Math.max(...CATEGORIES.map((c) => poiCounts[c.key as keyof typeof poiCounts] || 0), 1);
 
   if (selectedDistricts.length === 0) {
     return (
@@ -135,22 +171,6 @@ export function NeighborhoodContext() {
       </div>
     );
   }
-
-  const poiCounts = useMemo(() => {
-    const seed = selectedDistricts.length * 17 + 31;
-    return {
-      foodDrink: ((seed * 13) % 200) + 50,
-      shopping: ((seed * 11) % 150) + 30,
-      parks: ((seed * 7) % 50) + 10,
-      transit: ((seed * 5) % 100) + 20,
-      education: ((seed * 3) % 80) + 15,
-      healthcare: ((seed * 2) % 60) + 10,
-      other: ((seed * 17) % 100) + 25,
-    };
-  }, [selectedDistricts.length]);
-  
-  const totalPOIs = Object.values(poiCounts).reduce((a, b) => a + b, 0);
-  const maxCount = Math.max(...CATEGORIES.map((c) => poiCounts[c.key as keyof typeof poiCounts] || 0), 1);
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">

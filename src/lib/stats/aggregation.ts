@@ -5,13 +5,24 @@
 import type { CrimeRecord } from '@/types/crime';
 
 /**
+ * Normalize district code by stripping leading zeros.
+ * '001' -> '1', '012' -> '12', '1' -> '1'
+ */
+export function normalizeDistrict(district: string | undefined | null): string {
+  if (!district || district === 'Unknown') return 'Unknown';
+  const normalized = String(parseInt(district, 10));
+  return normalized === 'NaN' ? 'Unknown' : normalized;
+}
+
+/**
  * Aggregate crime counts by district.
  * Missing/null districts are counted as 'Unknown'.
+ * District codes are normalized (001 -> 1, 012 -> 12).
  */
 export function aggregateByDistrict(crimes: CrimeRecord[]): Map<string, number> {
   const result = new Map<string, number>();
   for (const crime of crimes) {
-    const district = crime.district || 'Unknown';
+    const district = normalizeDistrict(crime.district);
     result.set(district, (result.get(district) || 0) + 1);
   }
   return result;

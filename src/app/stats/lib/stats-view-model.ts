@@ -4,6 +4,12 @@
 import type { CrimeRecord } from '@/types/crime';
 import type { NeighborhoodStats } from '@/lib/stats/aggregation';
 
+export function formatDistrictName(district: string | number): string {
+  const num = typeof district === 'string' ? parseInt(district, 10) : district;
+  if (isNaN(num)) return String(district);
+  return num.toString().padStart(3, '0');
+}
+
 export interface StatsSummary {
   totalCrimes: number;
   avgPerDay: number;

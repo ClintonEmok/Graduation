@@ -6,17 +6,34 @@ export const WEEKEND_HEAVY_THRESHOLD = 0.6;
 export const WEEKDAY_HEAVY_THRESHOLD = 0.6;
 export const NIGHT_HEAVY_THRESHOLD = 0.55;
 export const DAYTIME_HEAVY_THRESHOLD = 0.55;
+export const COMMUTE_HEAVY_THRESHOLD = 0.55;
+export const LATE_NIGHT_HEAVY_THRESHOLD = 0.55;
+export const BURST_PATTERN_RATIO = 2.0;
+export const BURST_PATTERN_MIN_EVENTS = 4;
 
 const NIGHT_START_HOUR = 22;
 const NIGHT_END_HOUR = 6;
+const COMMUTE_MORNING_START = 7;
+const COMMUTE_MORNING_END = 10;
+const COMMUTE_EVENING_START = 17;
+const COMMUTE_EVENING_END = 20;
+const LATE_NIGHT_END = 5;
 
 export type AdaptiveBinTraitLabel =
   | 'weekend-heavy'
   | 'weekday-heavy'
   | 'night-heavy'
   | 'daytime-heavy'
+  | 'commute-heavy'
+  | 'late-night-heavy'
+  | 'burst-pattern'
   | 'mixed-pattern'
   | 'no-events';
+
+export interface AdaptiveBinTraitPercent {
+  label: AdaptiveBinTraitLabel;
+  percent: number;
+}
 
 export interface AdaptiveBinDiagnosticRow {
   binIndex: number;
@@ -34,6 +51,7 @@ export interface AdaptiveBinDiagnosticRow {
   warpedSpanShare: number;
   cumulativeWarpOffsetSec: number;
   characterizationLabels: AdaptiveBinTraitLabel[];
+  traitPercents: AdaptiveBinTraitPercent[];
 }
 
 interface BuildAdaptiveBinDiagnosticsOptions {
@@ -74,7 +92,7 @@ const findBoundaryBin = (value: number, boundaries: Float64Array): number => {
   let high = boundaries.length - 1;
   while (low < high) {
     const mid = Math.floor((low + high + 1) / 2);
-    if ((boundaries[mid] ?? Number.POSITIVE_INFINITY) <= value) {
+    if ((boundaries[mid] ?? Number.POSITIVE_INFINITY) < value) {
       low = mid;
     } else {
       high = mid - 1;
@@ -154,12 +172,18 @@ const isWeekendDay = (day: number): boolean => day === 0 || day === 6;
 
 const isNightHour = (hour: number): boolean => hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR;
 
+const isCommuteHour = (hour: number): boolean =>
+  (hour >= COMMUTE_MORNING_START && hour < COMMUTE_MORNING_END) ||
+  (hour >= COMMUTE_EVENING_START && hour < COMMUTE_EVENING_END);
+
+const isLateNightHour = (hour: number): boolean => hour < LATE_NIGHT_END;
+
 const resolveBinTimestampTraits = (
   timestamps: number[],
   startSec: number,
   endSec: number,
   includeEnd: boolean,
-): AdaptiveBinTraitLabel[] => {
+): { labels: AdaptiveBinTraitLabel[]; traitPercents: AdaptiveBinTraitPercent[] } => {
   const inBin = timestamps.filter((timestamp) => {
     if (!Number.isFinite(timestamp)) return false;
     if (timestamp < startSec) return false;
@@ -168,29 +192,43 @@ const resolveBinTimestampTraits = (
   });
 
   if (inBin.length === 0) {
-    return ['no-events'];
+    return {
+      labels: ['no-events'],
+      traitPercents: [{ label: 'no-events', percent: 100 }],
+    };
   }
 
   let weekendCount = 0;
   let weekdayCount = 0;
   let nightCount = 0;
   let daytimeCount = 0;
+  let commuteCount = 0;
+  let lateNightCount = 0;
 
   for (const timestamp of inBin) {
     const date = new Date(timestamp * 1000);
     const day = date.getUTCDay();
     const hour = date.getUTCHours();
+    const isWeekday = !isWeekendDay(day);
 
-    if (isWeekendDay(day)) {
-      weekendCount += 1;
-    } else {
+    if (isWeekday) {
       weekdayCount += 1;
+    } else {
+      weekendCount += 1;
     }
 
     if (isNightHour(hour)) {
       nightCount += 1;
     } else {
       daytimeCount += 1;
+    }
+
+    if (isWeekday && isCommuteHour(hour)) {
+      commuteCount += 1;
+    }
+
+    if (isLateNightHour(hour)) {
+      lateNightCount += 1;
     }
   }
 
@@ -199,6 +237,17 @@ const resolveBinTimestampTraits = (
   const weekdayShare = weekdayCount / total;
   const nightShare = nightCount / total;
   const daytimeShare = daytimeCount / total;
+  const commuteShare = commuteCount / total;
+  const lateNightShare = lateNightCount / total;
+
+  const traitPercents: AdaptiveBinTraitPercent[] = [
+    { label: 'weekend-heavy', percent: weekendShare * 100 },
+    { label: 'weekday-heavy', percent: weekdayShare * 100 },
+    { label: 'night-heavy', percent: nightShare * 100 },
+    { label: 'daytime-heavy', percent: daytimeShare * 100 },
+    { label: 'commute-heavy', percent: commuteShare * 100 },
+    { label: 'late-night-heavy', percent: lateNightShare * 100 },
+  ];
 
   const labels: AdaptiveBinTraitLabel[] = [];
 
@@ -214,7 +263,19 @@ const resolveBinTimestampTraits = (
     labels.push('daytime-heavy');
   }
 
-  return labels.length > 0 ? labels : ['mixed-pattern'];
+  if (commuteShare >= COMMUTE_HEAVY_THRESHOLD) {
+    labels.push('commute-heavy');
+  }
+
+  if (lateNightShare >= LATE_NIGHT_HEAVY_THRESHOLD) {
+    labels.push('late-night-heavy');
+  }
+
+  if (labels.length === 0) {
+    labels.push('mixed-pattern');
+  }
+
+  return { labels, traitPercents };
 };
 
 const buildFallbackCountMap = (timestamps: number[], boundaries: Float64Array, binCount: number): Float32Array => {
@@ -301,6 +362,8 @@ export const buildAdaptiveBinDiagnostics = ({
     weights.fill(1);
   }
 
+  const totalEvents = timestampsInDomain.length;
+
   return Array.from({ length: baseBinCount }, (_, binIndex) => {
     const startSec = boundaries[binIndex] ?? start;
     const endSec = boundaries[binIndex + 1] ?? end;
@@ -317,12 +380,23 @@ export const buildAdaptiveBinDiagnostics = ({
           ? Number(resolvedWarpMap[binIndex + 1])
           : Math.min(end, warpedStartSec + weightShare * span);
     const warpedSpanSec = Math.max(0, warpedEndSec - warpedStartSec);
-    const characterizationLabels = resolveBinTimestampTraits(
+    const { labels, traitPercents } = resolveBinTimestampTraits(
       timestampsInDomain,
       startSec,
       endSec,
       binIndex === baseBinCount - 1,
     );
+
+    const characterizationLabels = [...labels];
+
+    if (rawCount >= BURST_PATTERN_MIN_EVENTS && totalEvents > 0 && span > 0) {
+      const eventShare = rawCount / totalEvents;
+      const timeShare = Math.max(EPSILON, widthSec) / span;
+      if (eventShare / timeShare >= BURST_PATTERN_RATIO) {
+        characterizationLabels.push('burst-pattern');
+        traitPercents.push({ label: 'burst-pattern', percent: (eventShare / timeShare) * 100 });
+      }
+    }
 
     return {
       binIndex,
@@ -340,6 +414,7 @@ export const buildAdaptiveBinDiagnostics = ({
       warpedSpanShare: span > 0 ? warpedSpanSec / span : 0,
       cumulativeWarpOffsetSec: warpedStartSec - startSec,
       characterizationLabels,
+      traitPercents,
     };
   });
 };

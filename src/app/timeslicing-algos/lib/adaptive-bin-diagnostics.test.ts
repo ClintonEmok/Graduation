@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import { computeAdaptiveMaps } from '@/workers/adaptiveTime.worker';
 import {
+  BURST_PATTERN_MIN_EVENTS,
+  BURST_PATTERN_RATIO,
+  COMMUTE_HEAVY_THRESHOLD,
   DAYTIME_HEAVY_THRESHOLD,
+  LATE_NIGHT_HEAVY_THRESHOLD,
   NIGHT_HEAVY_THRESHOLD,
   WEEKDAY_HEAVY_THRESHOLD,
   WEEKEND_HEAVY_THRESHOLD,
@@ -89,6 +93,29 @@ describe('buildAdaptiveBinDiagnostics', () => {
     expect(rows.every((row) => row.endSec > row.startSec)).toBe(true);
     expect(rows.every((row) => Number.isFinite(row.densityPerSecond))).toBe(true);
     expect(rows.every((row) => Number.isFinite(row.cumulativeWarpOffsetSec))).toBe(true);
+  });
+
+  test('keeps rawCount and no-events labels consistent on exact bin boundaries', () => {
+    const maps = computeAdaptiveMaps(Float32Array.from([0, 2, 4]), [0, 4], {
+      binCount: 2,
+      kernelWidth: 1,
+      binningMode: 'uniform-time',
+    });
+
+    const rows = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain: [0, 4],
+      timestamps: [0, 2, 4],
+      countMap: maps.countMap,
+      densityMap: maps.densityMap,
+      warpMap: maps.warpMap,
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.rawCount).toBe(1);
+    expect(rows[1]?.rawCount).toBe(2);
+    expect(rows[0]?.characterizationLabels).not.toContain('no-events');
+    expect(rows[1]?.characterizationLabels).not.toContain('no-events');
   });
 
   test('pins threshold edge behavior for weekend-heavy and night-heavy labels', () => {
@@ -205,6 +232,151 @@ describe('buildAdaptiveBinDiagnostics', () => {
     expect(WEEKDAY_HEAVY_THRESHOLD).toBe(0.6);
     expect(NIGHT_HEAVY_THRESHOLD).toBe(0.55);
     expect(DAYTIME_HEAVY_THRESHOLD).toBe(0.55);
+    expect(COMMUTE_HEAVY_THRESHOLD).toBe(0.55);
+    expect(LATE_NIGHT_HEAVY_THRESHOLD).toBe(0.55);
+    expect(BURST_PATTERN_RATIO).toBe(2.0);
+    expect(BURST_PATTERN_MIN_EVENTS).toBe(4);
+  });
+
+  test('pins threshold edge behavior for commute-heavy and late-night-heavy labels', () => {
+    const domainStart = toEpoch('2026-03-21T00:00:00Z');
+    const domainEnd = toEpoch('2026-03-28T00:00:00Z');
+
+    const weekdayCommute = toEpoch('2026-03-23T08:00:00Z'); // Mon 8am
+    const weekdayNonCommute = toEpoch('2026-03-23T13:00:00Z'); // Mon 1pm
+    const weekendHour = toEpoch('2026-03-22T08:00:00Z'); // Sun 8am
+    const lateNight = toEpoch('2026-03-23T02:00:00Z'); // Mon 2am
+    const midday = toEpoch('2026-03-23T12:00:00Z'); // Mon noon
+
+    const buildSingleBinLabels = (timestamps: number[]) => {
+      const maps = computeAdaptiveMaps(Float32Array.from(timestamps), [domainStart, domainEnd], {
+        binCount: 1,
+        kernelWidth: 1,
+        binningMode: 'uniform-time',
+      });
+      const rows = buildAdaptiveBinDiagnostics({
+        selectedStrategy: 'uniform-time',
+        domain: [domainStart, domainEnd],
+        timestamps,
+        countMap: maps.countMap,
+        densityMap: maps.densityMap,
+        warpMap: maps.warpMap,
+      });
+      return rows[0]?.characterizationLabels ?? [];
+    };
+
+    const commuteAt = buildSingleBinLabels([
+      weekdayCommute,
+      weekdayCommute,
+      weekdayCommute,
+      weekdayCommute,
+      weekdayCommute,
+      weekdayCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+    ]); // 6/10 commute → 60% ≥ 55%
+
+    const commuteBelow = buildSingleBinLabels([
+      weekdayCommute,
+      weekdayCommute,
+      weekdayCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+      weekdayNonCommute,
+    ]); // 3/10 commute → 30% < 55%
+
+    const lateNightAt = buildSingleBinLabels([
+      lateNight,
+      lateNight,
+      lateNight,
+      lateNight,
+      lateNight,
+      lateNight,
+      midday,
+      midday,
+      midday,
+      midday,
+    ]); // 6/10 late-night → 60% ≥ 55%
+
+    const lateNightBelow = buildSingleBinLabels([
+      lateNight,
+      lateNight,
+      lateNight,
+      midday,
+      midday,
+      midday,
+      midday,
+      midday,
+      midday,
+      midday,
+    ]); // 3/10 late-night → 30% < 55%
+
+    expect(commuteAt).toContain('commute-heavy');
+    expect(commuteBelow).not.toContain('commute-heavy');
+    expect(commuteAt).toContain('weekday-heavy'); // Mon–Fri dominates
+    expect(commuteAt).not.toContain('weekend-heavy');
+
+    expect(lateNightAt).toContain('late-night-heavy');
+    expect(lateNightBelow).not.toContain('late-night-heavy');
+  });
+
+  test('pins burst-pattern threshold at 2x concentration ratio with minimum 4 events', () => {
+    const domainStart = 0;
+    const domainEnd = 100;
+    const binCount = 5;
+
+    const burstEvents = [
+      1, 2, 3, 4, 5, 6,
+      55, 66, 77, 88,
+    ];
+
+    const noBurstEvents = [
+      1, 2, 3, 4,
+      55, 66, 77, 88,
+    ];
+
+    const buildRows = (timestamps: number[]) => {
+      const maps = computeAdaptiveMaps(Float32Array.from(timestamps), [domainStart, domainEnd], {
+        binCount,
+        kernelWidth: 1,
+        binningMode: 'uniform-time',
+      });
+      return buildAdaptiveBinDiagnostics({
+        selectedStrategy: 'uniform-time',
+        domain: [domainStart, domainEnd],
+        timestamps,
+        countMap: maps.countMap,
+        densityMap: maps.densityMap,
+        warpMap: maps.warpMap,
+      });
+    };
+
+    const burstRows = buildRows(burstEvents);
+    const noBurstRows = buildRows(noBurstEvents);
+
+    // Bin 0: 6 events, 20% of time, 60% of events → 6/20 / 0.2 = 3.0x
+    const burstBin = burstRows[0];
+    expect(burstBin).toBeDefined();
+    expect(burstBin!.rawCount).toBe(6);
+    expect(burstBin!.characterizationLabels).toContain('burst-pattern');
+
+    // Other bins: 1 event each → 10% event share / 20% time share = 0.5x → no burst
+    const otherBinsWithBurst = burstRows.filter((r) => r.binIndex > 0 && r.characterizationLabels.includes('burst-pattern'));
+    expect(otherBinsWithBurst).toHaveLength(0);
+
+    // 4 events exactly at minimum: 4/10 = 40% event share / 20% time share = 2.0x → threshold is ≥
+    const fourEventRows = buildRows(noBurstEvents);
+    expect(fourEventRows[0]!.characterizationLabels).toContain('burst-pattern');
+
+    // 3 events: 3/10 = 30% event share / 20% time share = 1.5x < 2.0x → no burst
+    const threeEventRows = buildRows([1, 2, 3, 55, 66, 77, 88]);
+    expect(threeEventRows[0]!.characterizationLabels).not.toContain('burst-pattern');
   });
 
   test('remains deterministic across repeated runs and supports fallback maps', () => {
@@ -239,5 +411,84 @@ describe('buildAdaptiveBinDiagnostics', () => {
     expect(runA).toEqual(runB);
     expect(runA[0]?.characterizationLabels.length).toBeGreaterThan(0);
     expect(runA[0]?.rawCount).toBe(5);
+  });
+
+  test('traitPercents sums all temporal percentages and excludes mixed-pattern', () => {
+    const domainStart = toEpoch('2026-03-21T00:00:00Z');
+    const domainEnd = toEpoch('2026-03-28T00:00:00Z');
+
+    const weekdayNight = toEpoch('2026-03-23T23:00:00Z'); // Mon 11pm
+    const weekdayDay = toEpoch('2026-03-23T14:00:00Z'); // Mon 2pm
+
+    const timestamps = [
+      weekdayNight,
+      weekdayNight,
+      weekdayNight,
+      weekdayDay,
+    ];
+
+    const maps = computeAdaptiveMaps(Float32Array.from(timestamps), [domainStart, domainEnd], {
+      binCount: 1,
+      kernelWidth: 1,
+      binningMode: 'uniform-time',
+    });
+
+    const rows = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain: [domainStart, domainEnd],
+      timestamps,
+      countMap: maps.countMap,
+      densityMap: maps.densityMap,
+      warpMap: maps.warpMap,
+    });
+
+    const row = rows[0];
+    expect(row).toBeDefined();
+
+    const weekday = row!.traitPercents.find((tp) => tp.label === 'weekday-heavy');
+    expect(weekday?.percent).toBe(100);
+
+    const night = row!.traitPercents.find((tp) => tp.label === 'night-heavy');
+    expect(night?.percent).toBe(75);
+
+    const daytime = row!.traitPercents.find((tp) => tp.label === 'daytime-heavy');
+    expect(daytime?.percent).toBe(25);
+
+    const mixedPattern = row!.traitPercents.find((tp) => tp.label === 'mixed-pattern');
+    expect(mixedPattern).toBeUndefined();
+
+    const noEvents = row!.traitPercents.find((tp) => tp.label === 'no-events');
+    expect(noEvents).toBeUndefined();
+
+    expect(row!.characterizationLabels).toContain('weekday-heavy');
+    expect(row!.characterizationLabels).toContain('night-heavy');
+  });
+
+  test('traitPercents shows no-events at 100 percent for empty bins', () => {
+    const domainStart = 0;
+    const domainEnd = 100;
+    const timestamps: number[] = [];
+
+    const maps = computeAdaptiveMaps(Float32Array.from(timestamps), [domainStart, domainEnd], {
+      binCount: 3,
+      kernelWidth: 1,
+      binningMode: 'uniform-time',
+    });
+
+    const rows = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain: [domainStart, domainEnd],
+      timestamps,
+      countMap: maps.countMap,
+      densityMap: maps.densityMap,
+      warpMap: maps.warpMap,
+    });
+
+    expect(rows).toHaveLength(3);
+    rows.forEach((row) => {
+      expect(row.characterizationLabels).toContain('no-events');
+      const noEvents = row.traitPercents.find((tp) => tp.label === 'no-events');
+      expect(noEvents?.percent).toBe(100);
+    });
   });
 });

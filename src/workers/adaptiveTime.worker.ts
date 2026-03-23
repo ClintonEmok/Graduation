@@ -50,7 +50,7 @@ const findBoundaryBin = (value: number, boundaries: Float32Array) => {
   let high = boundaries.length - 1;
   while (low < high) {
     const mid = Math.floor((low + high + 1) / 2);
-    if (boundaries[mid] <= value) {
+    if (boundaries[mid] < value) {
       low = mid;
     } else {
       high = mid - 1;

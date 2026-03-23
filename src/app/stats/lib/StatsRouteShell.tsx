@@ -7,6 +7,7 @@ import { NeighborhoodSelector } from './components/NeighborhoodSelector';
 import { TimeRangeSelector } from './components/TimeRangeSelector';
 import { SpatialHotspotMap } from './components/SpatialHotspotMap';
 import { NeighborhoodContext } from './components/NeighborhoodContext';
+import { DistrictBreakdown } from './components/DistrictBreakdown';
 import { StatsSectionLayout } from './components/StatsSectionLayout';
 import { useNeighborhoodStats } from '../hooks/useNeighborhoodStats';
 
@@ -48,6 +49,8 @@ export function StatsRouteShell() {
             </div>
 
             <SpatialHotspotMap />
+
+            <DistrictBreakdown />
 
             <NeighborhoodContext />
 
