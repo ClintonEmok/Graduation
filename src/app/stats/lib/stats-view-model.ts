@@ -3,6 +3,9 @@
  */
 import type { CrimeRecord } from '@/types/crime';
 import type { NeighborhoodStats } from '@/lib/stats/aggregation';
+import { getDistrictDisplayName } from '@/lib/category-maps';
+
+export { getDistrictDisplayName };
 
 export function formatDistrictName(district: string | number): string {
   const num = typeof district === 'string' ? parseInt(district, 10) : district;

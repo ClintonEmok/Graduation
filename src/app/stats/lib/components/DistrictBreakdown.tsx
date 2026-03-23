@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useNeighborhoodStats } from '../../hooks/useNeighborhoodStats';
-import { formatDistrictName } from '../stats-view-model';
+import { getDistrictDisplayName } from '../stats-view-model';
 
 export function DistrictBreakdown() {
   const { stats, isLoading, isFetching } = useNeighborhoodStats();
@@ -40,10 +40,11 @@ export function DistrictBreakdown() {
       <div className="space-y-2">
         {stats.byDistrict.slice(0, 15).map((d) => {
           const barWidth = (d.count / maxCount) * 100;
+          const districtName = getDistrictDisplayName(d.name);
           return (
             <div key={d.name} className="flex items-center gap-3">
-              <span className="w-12 text-sm text-slate-400 font-mono" title={`District ${formatDistrictName(d.name)}`}>
-                D{formatDistrictName(d.name)}
+              <span className="w-28 text-sm text-slate-400 truncate" title={districtName}>
+                {districtName}
               </span>
               <div className="flex-1 h-6 bg-slate-800 rounded overflow-hidden">
                 <div

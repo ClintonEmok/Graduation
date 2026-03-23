@@ -42,6 +42,39 @@ export const CRIME_TYPE_MAP: Record<string, number> = {
   'Other': 6
 };
 
+// Chicago Police Department District Names
+export const CHICAGO_DISTRICT_NAMES: Record<string, string> = {
+  '1': 'Central',
+  '2': 'Wentworth',
+  '3': 'Grand Crossing',
+  '4': 'South Chicago',
+  '5': 'Calumet',
+  '6': 'Gresham',
+  '7': 'Englewood',
+  '8': 'Chicago Lawn',
+  '9': 'Deering',
+  '10': 'Oakley',
+  '11': 'Near West',
+  '12': 'Near North',
+  '14': 'Shakespeare',
+  '15': 'Morgan Park',
+  '16': 'Rogers Park',
+  '17': '17th',
+  '18': 'Lincoln',
+  '19': 'Town Hall',
+  '20': 'Grand Central',
+  '21': 'Lower West Side',
+  '22': 'Marquette',
+  '23': 'Burnham',
+  '24': '24th',
+  '25': 'Midlothian',
+};
+
+export function getDistrictDisplayName(district: string | number): string {
+  const key = String(typeof district === 'number' ? district : parseInt(String(district), 10) || district);
+  return CHICAGO_DISTRICT_NAMES[key] || `District ${key}`;
+}
+
 // Generate District Map 1-31
 // Chicago districts are numbered 1-25, 31.
 export const DISTRICT_MAP: Record<string, number> = {};
