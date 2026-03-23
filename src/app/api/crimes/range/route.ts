@@ -130,7 +130,7 @@ export async function GET(request: Request) {
     const districts = parseCsvFilterParam(districtsParam);
 
     if (isMockDataEnabled()) {
-      const mockCount = Math.min(limit, 2000);
+      const mockCount = Math.min(limit, 100000);
       const crimes = generateMockCrimes(mockCount, bufferedStart, bufferedEnd, crimeTypes, districts);
 
       return NextResponse.json(

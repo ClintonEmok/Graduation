@@ -5,7 +5,7 @@ milestone_name: milestone
 status: in_progress
 stopped_at: Completed 58-02 neighbourhood API and diagnostics integration
 last_updated: "2026-03-22T23:35:00Z"
-last_activity: 2026-03-22 - Phase 58 complete (3/3 plans); Phase 54 marked complete with tech debt (4 incomplete plans)
+last_activity: 2026-03-23 - Completed quick task 260323-47t: access to 8M datapoints
 progress:
   total_phases: 16
   completed_phases: 13
@@ -161,6 +161,12 @@ Progress: **████████████████████** 211/2
 ## Blockers/Concerns
 
 - Targeted lint command for timeline/map/viz surfaces still reports pre-existing repo lint errors outside the 51-12 deletion change set.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260323-47t | we need access to the full 8M datapoints | 2026-03-23 | [68a5b04](https://github.com/opencodeai/neon-tiger/commit/68a5b04) | [260323-47t](./quick/260323-47t-we-need-access-to-the-full-8m-datapoints/) |
 
 ## Accumulated Context
 

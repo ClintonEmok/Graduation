@@ -42,7 +42,7 @@ export function useNeighborhoodStats(): UseNeighborhoodStatsResult {
     endEpoch: timeRange.endEpoch,
     districts: paddedDistricts,
     bufferDays: 0,
-    limit: 100000,
+    limit: 1000000,
   });
 
   const stats = useMemo(() => {
