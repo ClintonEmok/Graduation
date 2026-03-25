@@ -17,13 +17,25 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - v1.3 Fully Automated Timeslicing Workflows (2026-03-04)
 
 **Current status:** Milestone complete, post-audit (non-blocking tech debt only)
-**Next focus:** Define v2.0 scope for spatially-constrained 3D timeslicing and cross-view diagnostics
+**Next focus:** v3.0 — Making everything click for user-facing usage
 
 **v1.3 delivered:**
 - Full-auto ranked proposal generation from active context
 - Four-dimension scoring and recommendation rationale
 - Package acceptance flow aligned to apply reviewed artifacts consistently
 - Safeguards and manual rerun behaviors preserved after contract alignment
+
+## Current Milestone: v3.0 — Making Everything Click
+
+**Goal:** Complete the adaptive timeslicing system into a cohesive, usable experience for end users.
+
+**Target features:**
+- Phase 61: Dynamic binning system (13 strategies, CRUD operations) ✓
+- Phase 62: User-driven timeslicing / manual mode
+- Phase 63: Map visualization improvements
+- Phase 64: Dashboard redesign
+- Phase 65: STKDE integration
+- Phase 66: Full integration testing
 
 ## Requirements
 
@@ -135,5 +147,22 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - Clean up orphaned feature flags or implement gating
 - Consider removing unused `/api/crime/facets` endpoint
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-04 - v1.3 milestone completed and archived for v2.0 planning*
+*Last updated: 2026-03-25 - v3.0 milestone started (phases 61-66)*
