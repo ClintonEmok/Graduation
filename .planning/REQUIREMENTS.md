@@ -1,53 +1,87 @@
-# Requirements: v2.0 3D Timeline-Test Parity
+# Requirements: Adaptive Space-Time Cube v3.0
 
-**Milestone:** v2.0  
-**Defined:** 2026-03-05  
-**Core Value:** Users can perform timeline-test workflows in a dedicated 3D experience with equivalent behavior and outcomes.
+**Defined:** 2026-03-25
+**Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 
-## v2.0 Requirements
+## v1 Requirements (v3.0)
 
-### 3D Foundation
+### Binning (Phase 61 — Complete)
 
-- [ ] **CUBE-01**: A dedicated 3D test route exists and loads with the same time domain/state context as timeline-test.
-- [ ] **CUBE-02**: Core controls (time scale mode, warp source, generation triggers) are available and connected in 3D test.
-- [ ] **CUBE-09**: v2.0 uses 3D-specific logic copies for parity-critical flows (no shared refactor required during this milestone).
+- [x] **BIN-01**: User can select from 13 binning strategies (daytime-heavy, nighttime-heavy, crime-type-specific, burstiness, uniform-distribution, uniform-time, weekday-weekend, quarter-hourly, hourly, daily, weekly, custom, auto-adaptive)
+- [x] **BIN-02**: User can merge adjacent bins
+- [x] **BIN-03**: User can split bins
+- [x] **BIN-04**: User can delete bins
+- [x] **BIN-05**: User can resize bins
+- [x] **BIN-06**: User can save/load binning configurations
+- [x] **BIN-07**: User can undo/reset binning changes
+- [x] **BIN-08**: Constraints validated (minEvents, maxEvents, maxBins, contiguous)
 
-### 3D Interaction Parity
+### Manual Timeslicing (Phase 62)
 
-- [ ] **CUBE-03**: Users can create/select/edit time slices and warp slices from the 3D test workflow.
-- [ ] **CUBE-04**: Slice and warp changes in 3D stay synchronized with timeline state and adaptive rendering behavior.
-- [ ] **CUBE-05**: Interaction feedback parity exists (active selection, preview cues, overlap/selection clarity).
+- [ ] **MANU-01**: User can manually create time slices via drag on timeline
+- [ ] **MANU-02**: User can adjust slice boundaries with precision controls
+- [ ] **MANU-03**: User can preview slice effects before applying
+- [ ] **MANU-04**: User can delete individual slices
+- [ ] **MANU-05**: User can reorder slices
+- [ ] **MANU-06**: Manual mode clearly distinguished from auto modes
 
-### Suggestion + Acceptance Parity
+### Map Visualization (Phase 63)
 
-- [ ] **CUBE-06**: Suggestion generation and review (manual and auto) are usable in 3D test.
-- [ ] **CUBE-07**: Ranked package rationale (`whyRecommended`) and score breakdown are visible in 3D test review flow.
-- [ ] **CUBE-08**: Accepting reviewed packages in 3D applies artifacts consistently and preserves safeguards/rerun behavior.
+- [ ] **MAP-01**: Time slices visible on 2D map view
+- [ ] **MAP-02**: Slice boundaries clearly rendered
+- [ ] **MAP-03**: Cross-view sync: selecting slice on map highlights in timeline/cube
+- [ ] **MAP-04**: Map supports current zoom/pan levels without performance degradation
+- [ ] **MAP-05**: Spatial filters integrate with slice selection
 
-## Out of Scope (v2.0)
+### Dashboard (Phase 64)
+
+- [ ] **DASH-01**: Unified control panel for all timeslicing operations
+- [ ] **DASH-02**: Current binning strategy and status visible
+- [ ] **DASH-03**: Active slices displayed with quick actions
+- [ ] **DASH-04**: Workflow status (manual/auto) clearly indicated
+- [ ] **DASH-05**: Quick access to switch between modes
+
+### STKDE Integration (Phase 65)
+
+- [ ] **STKD-01**: Kernel density estimation overlay available
+- [ ] **STKD-02**: Hotspot detection panel shows high-density areas
+- [ ] **STKD-03**: Chicago heatmap integration functional
+- [ ] **STKD-04**: STKDE results visible in 3D cube view
+- [ ] **STKD-05**: Toggle between standard and STKDE visualization
+
+### Integration Testing (Phase 66)
+
+- [ ] **TEST-01**: End-to-end workflow tests pass
+- [ ] **TEST-02**: Cross-route navigation works correctly
+- [ ] **TEST-03**: State persists across route changes
+- [ ] **TEST-04**: Performance benchmarks meet targets
+- [ ] **TEST-05**: Edge cases handled gracefully
+
+## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| New spatial constraint algorithms | Milestone is parity-focused, not new generation science |
-| Consolidating duplicated 2D/3D logic | Explicitly deferred to potential v2.1 cleanup/consolidation milestone |
-| Multi-dataset support | Keep scope aligned to existing thesis dataset |
-| Collaboration and multi-user review | Single-user analysis workflow remains primary |
-| Mobile-first UX | Analysis workflows remain desktop-oriented |
+| Mobile responsiveness | Desktop-focused research tool |
+| User accounts | Session-based ID tracking sufficient |
+| Real-time streaming | Static dataset sufficient for thesis |
+| Multiple datasets | Architecture extensible, Chicago only for thesis |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CUBE-01 | Phase 43 | Pending |
-| CUBE-02 | Phase 43 | Pending |
-| CUBE-09 | Phase 43 | Pending |
-| CUBE-03 | Phase 44 | Pending |
-| CUBE-04 | Phase 44 | Pending |
-| CUBE-05 | Phase 44 | Pending |
-| CUBE-06 | Phase 45 | Pending |
-| CUBE-07 | Phase 45 | Pending |
-| CUBE-08 | Phase 45 | Pending |
+| BIN-01 to BIN-08 | Phase 61 | Complete |
+| MANU-01 to MANU-06 | Phase 62 | Pending |
+| MAP-01 to MAP-05 | Phase 63 | Pending |
+| DASH-01 to DASH-05 | Phase 64 | Pending |
+| STKD-01 to STKD-05 | Phase 65 | Pending |
+| TEST-01 to TEST-05 | Phase 66 | Pending |
+
+**Coverage:**
+- v1 requirements: 28 total
+- Mapped to phases: 28
+- Unmapped: 0 ✓
 
 ---
-
-*Requirements for v2.0 3D Timeline-Test Parity milestone*
+*Requirements defined: 2026-03-25*
+*Last updated: 2026-03-25 after v3.0 milestone initialization*
