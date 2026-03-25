@@ -2,10 +2,9 @@
 
 ## Overview
 
-v2.0 delivered a **3D version of timeline-test functionality** with interaction, suggestion, and acceptance parity.
+v3.0 is about **making everything click for user-facing usage** — completing the adaptive timeslicing system into a cohesive, usable experience.
 
-Most recent shipped scope is v2.2 (uniform-events + dedicated `/timeslicing-algos`). Current focus is v2.3: adaptive-mode integration and route-level observability for `/timeslicing-algos`.
-Planned next focuses are v2.4 (STKDE exploratory route) and v2.5 (`/api/crimes/range` variable-sampling fidelity hardening for `/timeslicing-algos`).
+Current focus: v3.0 milestone — Making Everything Click (phases 61-66)
 
 ## Milestones
 
@@ -19,7 +18,8 @@ Planned next focuses are v2.4 (STKDE exploratory route) and v2.5 (`/api/crimes/r
 - ✅ **v2.3 Adaptive Timeslicing Algos Hardening** - Phase 54 (shipped with tech debt)
 - ✅ **v2.4 STKDE Exploration Surface** - Phase 55 (shipped 2026-03-16)
 - ✅ **v2.3 Neighbourhood Diagnostics** - Phases 57-58 (shipped 2026-03-22)
-- 📋 **v2.6 Stats Dashboard** - Phase 59 (planned)
+- ✅ **v2.5 Stats Dashboard** - Phase 59 (shipped 2026-03-23)
+- 📋 **v3.0 Making Everything Click** - Phases 61-66 (in progress)
 
 ## Phases
 
@@ -260,12 +260,17 @@ Plans:
 | 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
 | 58 | v2.3 | 3/3 | Complete | 2026-03-22 |
 | 54 | v2.3 | 5/9 | Complete (tech debt) | - |
-| 54 | v2.3 | 5/9 | Complete (tech debt) | - |
 | 55 | v2.4 | 2/2 | Complete | 2026-03-16 |
 | 56 | v2.5 | 0/3 | Planned | - |
 | 57 | v2.3 | 5/5 | Complete | 2026-03-20 |
 | 58 | v2.3 | 3/3 | Complete | 2026-03-22 |
-| 59 | v2.6 | 0/3 | Planned | - |
+| 59 | v2.5 | 3/3 | Complete | 2026-03-23 |
+| 61 | v3.0 | 1/1 | Complete | 2026-03-25 |
+| 62 | v3.0 | 0/1 | Planned | - |
+| 63 | v3.0 | 0/1 | Planned | - |
+| 64 | v3.0 | 0/1 | Planned | - |
+| 65 | v3.0 | 0/1 | Planned | - |
+| 66 | v3.0 | 0/1 | Planned | - |
 
 ### Phase 53: Add dedicated timeslicing algos route
 
@@ -313,6 +318,108 @@ Plans:
 - [ ] 59-01-PLAN.md — Create stats route shell, district selector, aggregation helpers, and useNeighborhoodStats hook
 - [ ] 59-02-PLAN.md — Add crime type breakdown charts, temporal heatmap/trend, and overview stat cards
 - [ ] 59-03-PLAN.md — Add spatial hotspot map, neighbourhood context cards, and finalize responsive dashboard layout
+
+## v3.0 Making Everything Click Milestone
+
+### Phase 61: Dynamic Rule-Based Binning System ✓ Complete
+
+**Goal:** Build dynamic rule-based binning system with merge/split/delete/resize operations and constraint validation.
+**Depends on:** Phase 58
+**Requirements:** BIN-01, BIN-02, BIN-03, BIN-04, BIN-05, BIN-06, BIN-07, BIN-08
+**Success Criteria** (what must be TRUE):
+  1. User can select from 13 binning strategies.
+  2. User can merge adjacent bins into single bin.
+  3. User can split bin at midpoint or custom timestamp.
+  4. User can delete individual bins.
+  5. User can resize bin by adjusting start/end times.
+  6. User can save/load binning configurations.
+  7. User can undo/reset binning changes.
+  8. Constraints prevent invalid bin configurations (minEvents, maxEvents, maxBins, contiguous).
+**Plans:** 1 plan
+
+Plans:
+- [x] 61-01-PLAN.md — Build binning types, rules, engine, and store operations
+
+### Phase 62: User-Driven Timeslicing (Manual Mode)
+
+**Goal:** Implement user-driven timeslicing with manual mode, presets, and templates.
+**Depends on:** Phase 61
+**Requirements:** MANU-01, MANU-02, MANU-03, MANU-04, MANU-05, MANU-06
+**Success Criteria** (what must be TRUE):
+  1. User can toggle between auto and manual timeslicing modes.
+  2. User can create slices manually via click-drag on timeline.
+  3. User can adjust slice boundaries by dragging handles.
+  4. User can preview slice effects before applying.
+  5. User can delete individual slices.
+  6. User can reorder slices.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 62-01-PLAN.md — Extend timeslicing mode store, build toolbar and manual editor
+
+### Phase 63: Map Visualization
+
+**Goal:** Enhance 2D map with slice visualization and cross-view sync.
+**Depends on:** Phase 62
+**Requirements:** MAP-01, MAP-02, MAP-03, MAP-04, MAP-05
+**Success Criteria** (what must be TRUE):
+  1. Time slices visible on 2D map view.
+  2. Slice boundaries clearly rendered.
+  3. Cross-view sync: selecting slice on map highlights in timeline/cube.
+  4. Map supports current zoom/pan levels without performance degradation.
+  5. Spatial filters integrate with slice selection.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 63-01-PLAN.md — Add slice visualization to map, implement cross-view sync, optimize performance
+
+### Phase 64: Dashboard Redesign
+
+**Goal:** Redesign dashboard with unified header, integrated controls, and proper layout.
+**Depends on:** Phase 63
+**Requirements:** DASH-01, DASH-02, DASH-03, DASH-04, DASH-05
+**Success Criteria** (what must be TRUE):
+  1. Unified control panel for all timeslicing operations.
+  2. Current binning strategy and status visible.
+  3. Active slices displayed with quick actions.
+  4. Workflow status (manual/auto) clearly indicated.
+  5. Quick access to switch between modes.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 64-01-PLAN.md — Build DashboardHeader, update dashboard layout, add layout store, wire cross-panel sync
+
+### Phase 65: STKDE Integration
+
+**Goal:** Integrate STKDE computation and visualization into dashboard with heatmap and controls.
+**Depends on:** Phase 64
+**Requirements:** STKD-01, STKD-02, STKD-03, STKD-04, STKD-05
+**Success Criteria** (what must be TRUE):
+  1. Kernel density estimation overlay available.
+  2. Hotspot detection panel shows high-density areas.
+  3. Chicago heatmap integration functional.
+  4. STKDE results visible in 3D cube view.
+  5. Toggle between standard and STKDE visualization.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 65-01-PLAN.md — Extend STKDE store, implement heatmap layer, create STKDE route, connect to dashboard
+
+### Phase 66: Full Integration and Testing
+
+**Goal:** Complete full integration and testing - connect all pieces and verify all routes work.
+**Depends on:** Phase 65
+**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
+**Success Criteria** (what must be TRUE):
+  1. End-to-end workflow tests pass.
+  2. Cross-route navigation works correctly.
+  3. State persists across route changes.
+  4. Performance benchmarks meet targets.
+  5. Edge cases handled gracefully.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 66-01-PLAN.md — Verify all routes, implement cross-route state sync, add feature flags, write integration tests
 
 ---
 
