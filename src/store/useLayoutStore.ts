@@ -7,6 +7,7 @@ interface PanelVisibility {
   refinement: boolean;
   layers: boolean;
   cube: boolean;
+  stkde: boolean;
 }
 
 interface LayoutState {
@@ -36,6 +37,7 @@ export const useLayoutStore = create<LayoutState>()(
         refinement: true,
         layers: true,
         cube: true,
+        stkde: true,
       },
       setPanel: (panel, visible) =>
         set((state) => ({

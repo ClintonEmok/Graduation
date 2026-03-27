@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo } from 'react';
 import { CheckCircle2, Clock3, Cuboid, Layers3, Sparkles, X } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
@@ -18,6 +19,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useLayoutStore } from '@/store/useLayoutStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { MapLayerManager } from '@/components/map/MapLayerManager';
+import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -66,10 +68,8 @@ export default function DashboardV2Page() {
   const applyGeneratedBins = useTimeslicingModeStore((state) => state.applyGeneratedBins);
   const setGenerationInputs = useTimeslicingModeStore((state) => state.setGenerationInputs);
 
-  const slices = useSliceDomainStore((state) => state.slices);
-  const appliedSlices = useMemo(
-    () => slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible),
-    [slices]
+  const appliedSlices = useSliceDomainStore(
+    useShallow((state) => state.slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible))
   );
 
   const setWorkflowPhase = useCoordinationStore((state) => state.setWorkflowPhase);
@@ -235,6 +235,14 @@ export default function DashboardV2Page() {
           <Layers3 className="mr-1 inline size-3" />
           Layers
         </button>
+        <button
+          onClick={() => togglePanel('stkde')}
+          className={`rounded border px-2 py-1 transition ${
+            panels.stkde ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
+          }`}
+        >
+          STKDE
+        </button>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -317,15 +325,33 @@ export default function DashboardV2Page() {
           )}
         </section>
 
-        {panels.layers && (
-          <aside className="w-64 overflow-y-auto border-l border-slate-800 bg-slate-950/80 p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xs font-medium text-slate-300">Layer Manager</h2>
-              <button onClick={() => togglePanel('layers')} className="rounded p-0.5 text-slate-500 hover:text-slate-300">
-                <X className="size-3.5" />
-              </button>
+        {(panels.layers || panels.stkde) && (
+          <aside className="w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/80 p-3">
+            <div className="space-y-3">
+              {panels.layers ? (
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-xs font-medium text-slate-300">Layer Manager</h2>
+                    <button onClick={() => togglePanel('layers')} className="rounded p-0.5 text-slate-500 hover:text-slate-300">
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                  <MapLayerManager />
+                </div>
+              ) : null}
+
+              {panels.stkde ? (
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-xs font-medium text-slate-300">STKDE</h2>
+                    <button onClick={() => togglePanel('stkde')} className="rounded p-0.5 text-slate-500 hover:text-slate-300">
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                  <DashboardStkdePanel />
+                </div>
+              ) : null}
             </div>
-            <MapLayerManager />
           </aside>
         )}
       </div>
