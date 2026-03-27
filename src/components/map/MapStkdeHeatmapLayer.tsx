@@ -8,9 +8,15 @@ interface MapStkdeHeatmapLayerProps {
   cells: StkdeHeatmapCell[];
   activeHotspotId: string | null;
   activeHotspotCentroid?: [number, number] | null;
+  opacity?: number;
 }
 
-export function MapStkdeHeatmapLayer({ cells, activeHotspotId, activeHotspotCentroid }: MapStkdeHeatmapLayerProps) {
+export function MapStkdeHeatmapLayer({
+  cells,
+  activeHotspotId,
+  activeHotspotCentroid,
+  opacity = 0.85,
+}: MapStkdeHeatmapLayerProps) {
   if (!cells.length) return null;
 
   const data: FeatureCollection<Point, { intensity: number; support: number }> = {
@@ -67,7 +73,7 @@ export function MapStkdeHeatmapLayer({ cells, activeHotspotId, activeHotspotCent
               15,
               35,
             ],
-            'heatmap-opacity': 0.85,
+            'heatmap-opacity': opacity,
             'heatmap-color': [
               'interpolate',
               ['linear'],

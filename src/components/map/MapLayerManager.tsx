@@ -1,57 +1,21 @@
 "use client";
 
 import React, { useState } from 'react';
-import { MapPoiLayer, MapPoiLegend } from './MapPoiLayer';
+import { MapPoiLegend } from './MapPoiLayer';
 import { MapDistrictLayer, MapDistrictLegend } from './MapDistrictLayer';
+import { useMapLayerStore } from '@/store/useMapLayerStore';
 
 interface MapLayerManagerProps {
   className?: string;
 }
 
-interface LayerVisibility {
-  poi: boolean;
-  districts: boolean;
-  stkde: boolean;
-  heatmap: boolean;
-  clusters: boolean;
-  trajectories: boolean;
-  events: boolean;
-}
-
-interface LayerOpacity {
-  poi: number;
-  districts: number;
-  stkde: number;
-  heatmap: number;
-}
-
 export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
-  const [visibility, setVisibility] = useState<LayerVisibility>({
-    poi: true,
-    districts: true,
-    stkde: false,
-    heatmap: false,
-    clusters: false,
-    trajectories: false,
-    events: true,
-  });
-
-  const [opacity, setOpacity] = useState<LayerOpacity>({
-    poi: 1,
-    districts: 0.3,
-    stkde: 0.6,
-    heatmap: 0.5,
-  });
+  const visibility = useMapLayerStore((state) => state.visibility);
+  const opacity = useMapLayerStore((state) => state.opacity);
+  const toggleVisibility = useMapLayerStore((state) => state.toggleVisibility);
+  const setOpacity = useMapLayerStore((state) => state.setOpacity);
 
   const [expanded, setExpanded] = useState(false);
-
-  const toggleLayer = (layer: keyof LayerVisibility) => {
-    setVisibility(prev => ({ ...prev, [layer]: !prev[layer] }));
-  };
-
-  const setLayerOpacity = (layer: keyof LayerOpacity, value: number) => {
-    setOpacity(prev => ({ ...prev, [layer]: value }));
-  };
 
   const layers = [
     { id: 'events' as const, label: 'Crime Events', visible: visibility.events, color: '#3b82f6' },
@@ -93,7 +57,7 @@ export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
                   <input
                     type="checkbox"
                     checked={layer.visible}
-                    onChange={() => toggleLayer(layer.id)}
+                    onChange={() => toggleVisibility(layer.id)}
                     className="w-4 h-4 rounded border-input"
                   />
                   <div className="flex items-center gap-1.5">
@@ -122,13 +86,13 @@ export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
                     </div>
                     <input
                       type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={opacity.poi}
-                      onChange={(e) => setLayerOpacity('poi', parseFloat(e.target.value))}
-                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
+                       min="0"
+                       max="1"
+                       step="0.1"
+                       value={opacity.poi}
+                       onChange={(e) => setOpacity('poi', parseFloat(e.target.value))}
+                       className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                     />
                   </div>
                 )}
                 
@@ -140,13 +104,13 @@ export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
                     </div>
                     <input
                       type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={opacity.districts}
-                      onChange={(e) => setLayerOpacity('districts', parseFloat(e.target.value))}
-                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
+                       min="0"
+                       max="1"
+                       step="0.1"
+                       value={opacity.districts}
+                       onChange={(e) => setOpacity('districts', parseFloat(e.target.value))}
+                       className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                     />
                   </div>
                 )}
                 
@@ -158,13 +122,13 @@ export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
                     </div>
                     <input
                       type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={opacity.stkde}
-                      onChange={(e) => setLayerOpacity('stkde', parseFloat(e.target.value))}
-                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
+                       min="0"
+                       max="1"
+                       step="0.1"
+                       value={opacity.stkde}
+                       onChange={(e) => setOpacity('stkde', parseFloat(e.target.value))}
+                       className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                     />
                   </div>
                 )}
                 
@@ -176,13 +140,13 @@ export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
                     </div>
                     <input
                       type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={opacity.heatmap}
-                      onChange={(e) => setLayerOpacity('heatmap', parseFloat(e.target.value))}
-                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
+                       min="0"
+                       max="1"
+                       step="0.1"
+                       value={opacity.heatmap}
+                       onChange={(e) => setOpacity('heatmap', parseFloat(e.target.value))}
+                       className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                     />
                   </div>
                 )}
               </>
@@ -198,28 +162,4 @@ export function MapLayerManager({ className = '' }: MapLayerManagerProps) {
       )}
     </div>
   );
-}
-
-/**
- * Export layer visibility for use in map rendering
- */
-export function useLayerVisibility() {
-  const [visibility] = useState<LayerVisibility>({
-    poi: true,
-    districts: true,
-    stkde: false,
-    heatmap: false,
-    clusters: false,
-    trajectories: false,
-    events: true,
-  });
-
-  const [opacity] = useState<LayerOpacity>({
-    poi: 1,
-    districts: 0.3,
-    stkde: 0.6,
-    heatmap: 0.5,
-  });
-
-  return { visibility, opacity };
 }
