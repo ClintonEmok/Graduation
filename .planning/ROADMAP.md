@@ -67,7 +67,12 @@ Plans:
 3. Burst periods can be emphasized by narrower generated bins where warranted.
 4. Adaptive time allocation expands burst-heavy periods more aggressively in visual space.
 5. Phase 63 ships on `dashboard-v2` as the dedicated single-route surface for the rest of v3.0.
-**Plans:** milestone replan pending
+**Plans:** 3 plans
+
+Plans:
+- [ ] 65-01-PLAN.md — Build dashboard STKDE orchestration foundation (state, run lifecycle, stale semantics)
+- [ ] 65-02-PLAN.md — Integrate STKDE panel + map overlay + shared layer state into dashboard-v2
+- [ ] 65-03-PLAN.md — Wire hotspot commit cross-view focus, cube STKDE context, and regression tests
 
 ---
 
