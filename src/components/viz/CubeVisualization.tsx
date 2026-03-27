@@ -8,6 +8,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
 import { useLogger } from '@/hooks/useLogger';
+import { useStkdeStore } from '@/store/useStkdeStore';
 
 export default function CubeVisualization() {
   const { triggerReset } = useUIStore();
@@ -16,7 +17,12 @@ export default function CubeVisualization() {
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const stkdeResponse = useStkdeStore((state) => state.response);
+  const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
+  const runMeta = useStkdeStore((state) => state.runMeta);
   const { log } = useLogger();
+
+  const selectedHotspot = stkdeResponse?.hotspots.find((hotspot) => hotspot.id === selectedHotspotId) ?? null;
 
   useEffect(() => {
     if (!columns && !isLoading) {
@@ -61,6 +67,32 @@ export default function CubeVisualization() {
               .join(' · ')}
           </div>
         )}
+
+        {stkdeResponse ? (
+          <div className="absolute top-4 left-4 z-10 max-w-sm rounded-md border bg-background/85 px-3 py-2 text-[10px] text-muted-foreground shadow-sm backdrop-blur">
+            <div className="text-xs font-semibold text-foreground">STKDE Context</div>
+            {selectedHotspot ? (
+              <>
+                <div className="mt-1 text-foreground">Hotspot {selectedHotspot.id}</div>
+                <div className="mt-1">Intensity: {selectedHotspot.intensityScore.toFixed(3)}</div>
+                <div className="mt-1">Support: {selectedHotspot.supportCount}</div>
+                <div className="mt-1">
+                  Time window: {new Date(selectedHotspot.peakStartEpochSec * 1000).toLocaleString()} →{' '}
+                  {new Date(selectedHotspot.peakEndEpochSec * 1000).toLocaleString()}
+                </div>
+              </>
+            ) : (
+              <div className="mt-1">No hotspot selected</div>
+            )}
+            {runMeta ? (
+              <div className="mt-1 text-sky-700 dark:text-sky-300">
+                requested={runMeta.requestedComputeMode} effective={runMeta.effectiveComputeMode}
+                {runMeta.truncated ? ' • truncated' : ''}
+                {runMeta.fallbackApplied ? ` • fallback=${runMeta.fallbackApplied}` : ''}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

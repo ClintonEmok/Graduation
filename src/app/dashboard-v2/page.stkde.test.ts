@@ -7,6 +7,10 @@ describe('dashboard-v2 STKDE integration wiring', () => {
     expect(pageSource).toMatch(/DashboardStkdePanel/);
     expect(pageSource).toMatch(/togglePanel\('stkde'\)/);
     expect(pageSource).toMatch(/>\s*STKDE\s*</);
+    expect(pageSource).toMatch(/setTimeRange\(/);
+    expect(pageSource).toMatch(/setSpatialBounds\(/);
+    expect(pageSource).toMatch(/commitSelection\(/);
+    expect(pageSource).toMatch(/investigative overlay/);
   });
 
   test('wires map STKDE mode and layer integration', () => {
