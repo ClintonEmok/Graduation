@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { CheckCircle2, Clock3, Cuboid, Layers3, Sparkles, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
@@ -20,6 +20,8 @@ import { useLayoutStore } from '@/store/useLayoutStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { MapLayerManager } from '@/components/map/MapLayerManager';
 import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
+import { useStkdeStore } from '@/store/useStkdeStore';
+import { project } from '@/lib/projection';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -74,7 +76,14 @@ export default function DashboardV2Page() {
 
   const setWorkflowPhase = useCoordinationStore((state) => state.setWorkflowPhase);
   const setSyncStatus = useCoordinationStore((state) => state.setSyncStatus);
+  const commitSelection = useCoordinationStore((state) => state.commitSelection);
   const panelNoMatch = useCoordinationStore((state) => state.panelNoMatch);
+  const setTimeRange = useFilterStore((state) => state.setTimeRange);
+  const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
+
+  const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
+  const response = useStkdeStore((state) => state.response);
+  const lastCommittedHotspotRef = useRef<string | null>(null);
 
   useEffect(() => {
     setGenerationInputs({
@@ -124,6 +133,69 @@ export default function DashboardV2Page() {
 
     setSyncStatus('synchronized');
   }, [generationError, generationStatus, panelNoMatch, setSyncStatus]);
+
+  useEffect(() => {
+    if (!selectedHotspotId || !response) {
+      lastCommittedHotspotRef.current = null;
+      return;
+    }
+
+    if (lastCommittedHotspotRef.current === selectedHotspotId) {
+      return;
+    }
+
+    const hotspotIndex = response.hotspots.findIndex((hotspot) => hotspot.id === selectedHotspotId);
+    if (hotspotIndex < 0) {
+      return;
+    }
+
+    const hotspot = response.hotspots[hotspotIndex];
+    lastCommittedHotspotRef.current = selectedHotspotId;
+
+    setTimeRange([hotspot.peakStartEpochSec, hotspot.peakEndEpochSec]);
+
+    const latDelta = hotspot.radiusMeters / 111_320;
+    const lonDelta = hotspot.radiusMeters / Math.max(1, 111_320 * Math.cos((hotspot.centroidLat * Math.PI) / 180));
+    const minLat = hotspot.centroidLat - latDelta;
+    const maxLat = hotspot.centroidLat + latDelta;
+    const minLon = hotspot.centroidLng - lonDelta;
+    const maxLon = hotspot.centroidLng + lonDelta;
+    const [x1, z1] = project(minLat, minLon);
+    const [x2, z2] = project(maxLat, maxLon);
+
+    setSpatialBounds({
+      minX: Math.min(x1, x2),
+      maxX: Math.max(x1, x2),
+      minZ: Math.min(z1, z2),
+      maxZ: Math.max(z1, z2),
+      minLat,
+      maxLat,
+      minLon,
+      maxLon,
+    });
+
+    commitSelection(hotspotIndex, 'map');
+
+    if (appliedSlices.length > 0) {
+      const overlapsAppliedSlice = appliedSlices.some((slice) => {
+        if (slice.type === 'range' && slice.range) {
+          const start = Math.floor(Math.min(slice.range[0], slice.range[1]) / 1000);
+          const end = Math.floor(Math.max(slice.range[0], slice.range[1]) / 1000);
+          return hotspot.peakEndEpochSec >= start && hotspot.peakStartEpochSec <= end;
+        }
+        const pointSec = Math.floor(slice.time / 1000);
+        return pointSec >= hotspot.peakStartEpochSec && pointSec <= hotspot.peakEndEpochSec;
+      });
+
+      if (!overlapsAppliedSlice) {
+        setSyncStatus(
+          'partial',
+          'Hotspot time window is an investigative overlay; applied slices remain the workflow source of truth.',
+          'map'
+        );
+      }
+    }
+  }, [appliedSlices, commitSelection, response, selectedHotspotId, setSpatialBounds, setSyncStatus, setTimeRange]);
 
   useEffect(() => {
     if (!crimes || crimes.length === 0) {
