@@ -258,6 +258,25 @@ describe('useCrimeData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('skips fetch when epoch range is invalid to avoid 400 errors', async () => {
+    const harness = createRenderer();
+    cleanup = harness.cleanup;
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await harness.renderAndWait({
+      startEpoch: 5000,
+      endEpoch: 5000,
+      bufferDays: 0,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.data).toEqual([]);
+    expect(result.error).toBeNull();
+    expect(result.bufferedRange).toEqual({ start: 5000, end: 5001 });
+  });
+
   it('propagates API failures through query error state', async () => {
     const harness = createRenderer();
     cleanup = harness.cleanup;

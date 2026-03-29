@@ -14,7 +14,7 @@ describe('/timeslicing QA labeling', () => {
     const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
     expect(pageSource).toMatch(/SuggestionToolbar/);
-    expect(pageSource).toMatch(/SuggestionPanel/);
+    expect(pageSource).toMatch(/BinningControls/);
     expect(pageSource).toMatch(/hasActiveSelection/);
     expect(pageSource).toMatch(/detailDomainSec:\s*\[rangeStart, rangeEnd\]/);
   });
