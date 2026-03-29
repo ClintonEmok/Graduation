@@ -4,7 +4,7 @@
 
 v3.0 is about turning the prototype into a coherent investigative workflow inside one unified route: `dashboard-v2`. Users define slicing intent, the system generates flexible bins, users review and apply those bins, all views update together inside that route, and adaptive/STKDE analysis makes bursts and hotspots easier to inspect without splitting the experience across separate surfaces.
 
-Current focus: v3.0 milestone - Integrated Adaptive Timeslicing Workflow in `dashboard-v2` (phases 61-66)
+Current focus: v3.0 milestone - Integrated Adaptive Timeslicing Workflow in `dashboard-v2` (phases 61-71)
 
 ## Milestones
 
@@ -19,7 +19,7 @@ Current focus: v3.0 milestone - Integrated Adaptive Timeslicing Workflow in `das
 - ✅ **v2.4 STKDE Exploration Surface** - Phase 55 (shipped 2026-03-16)
 - ✅ **v2.3 Neighbourhood Diagnostics** - Phases 57-58 (shipped 2026-03-22)
 - ✅ **v2.5 Stats Dashboard** - Phase 59 (shipped 2026-03-23)
-- 📋 **v3.0 Integrated Adaptive Timeslicing Workflow** - Phases 61-66 (in progress)
+- 📋 **v3.0 Integrated Adaptive Timeslicing Workflow** - Phases 61-71 (in progress)
 
 ## v3.0 Phases (Replanned)
 
@@ -122,7 +122,96 @@ Plans:
 4. Performance is good enough for interactive use on the thesis dataset.
 5. Empty, low-confidence, and error states are understandable.
 6. Legacy route split no longer blocks the unified v3.0 experience.
-**Plans:** milestone replan pending
+**Plans:** 2 plans
+
+Plans:
+- [ ] 66-01-PLAN.md — Add deterministic blocker-journey regression hardening for dashboard-v2 workflow contracts
+- [ ] 66-02-PLAN.md — Run sign-off gate with validation evidence, performance checks, and two consecutive clean runs
+
+---
+
+### Phase 67: Burst Taxonomy and Metrics
+
+**Goal:** Define explicit burst behavior taxonomy (prolonged peaks, isolated spikes, valleys) and expose deterministic burst metrics directly in review and timeline workflows.
+**Depends on:** Phase 66
+**Requirements:** BQ-01, BQ-02, BQ-03, BQ-04 (proposed)
+**Success Criteria** (what must be TRUE):
+1. Burst class labels are deterministic and reproducible for the same input.
+2. Burst class and confidence metadata are visible during slice review.
+3. Peaks/spikes/valleys are distinguishable in both data and UI representation.
+4. Edge-case behavior is covered by tests.
+**Plans:** 1 stub plan ready
+
+Plans:
+- [ ] 67-01-PLAN.md - Implement burst taxonomy contracts, metrics, and UI indicators
+
+---
+
+### Phase 68: Advanced User-Defined Timeslices
+
+**Goal:** Extend manual slice operations into analyst-grade editing (resize + precision adjustment + reliable edit history) while preserving synchronization.
+**Depends on:** Phase 67
+**Requirements:** MAN-ADV-01, MAN-ADV-02, MAN-ADV-03, MAN-ADV-04 (proposed)
+**Success Criteria** (what must be TRUE):
+1. Users can resize and precisely adjust draft slices.
+2. Split/merge behavior is predictable and reversible.
+3. Post-apply edits stay synchronized across timeline/map/cube.
+4. Edit history supports undo/redo reliability.
+**Plans:** 1 stub plan ready
+
+Plans:
+- [ ] 68-01-PLAN.md - Add advanced manual timeslice editing and synchronization guarantees
+
+---
+
+### Phase 69: Full-Range Generation Pipeline
+
+**Goal:** Add generation path that can use full in-range populations (not only sampled UI fetches) with explicit provenance and progress controls.
+**Depends on:** Phase 68
+**Requirements:** GEN-FULL-01, GEN-FULL-02, GEN-FULL-03, GEN-FULL-04 (proposed)
+**Success Criteria** (what must be TRUE):
+1. Full-range generation mode is available for long/high-volume windows.
+2. Provenance clearly distinguishes raw total, returned, sampled, and used counts.
+3. Generation supports progress and cancel behavior.
+4. UI responsiveness remains acceptable during long jobs.
+**Plans:** 1 stub plan ready
+
+Plans:
+- [ ] 69-01-PLAN.md - Build full-range generation pipeline and provenance UX
+
+---
+
+### Phase 70: Validation and Research Readiness
+
+**Goal:** Convert workflow and quality expectations into reproducible validation scenarios suitable for thesis/research evaluation.
+**Depends on:** Phase 69
+**Requirements:** VAL-01, VAL-02, VAL-03, VAL-04 (proposed)
+**Success Criteria** (what must be TRUE):
+1. Acceptance matrix has deterministic pass/fail criteria.
+2. Long-range, sparse-range, and burst-heavy scenarios are covered.
+3. Performance and quality baselines are documented.
+4. Evidence artifacts are ready for milestone sign-off.
+**Plans:** 1 stub plan ready
+
+Plans:
+- [ ] 70-01-PLAN.md - Build reproducible validation suite and evidence pack
+
+---
+
+### Phase 71: Dashboard-v2 Flow Consolidation
+
+**Goal:** Consolidate all core investigation tasks into one less-is-more `dashboard-v2` design driven by explicit user flows and scenarios.
+**Depends on:** Phase 70
+**Requirements:** FLOW-CONS-01, FLOW-CONS-02, FLOW-CONS-03, FLOW-CONS-04 (proposed)
+**Success Criteria** (what must be TRUE):
+1. Core investigation tasks complete end-to-end without route hopping.
+2. Main workflow has one primary action per step.
+3. Duplicate controls are removed and advanced options are progressively disclosed.
+4. Flow/scenario coverage is documented and testable.
+**Plans:** 1 stub plan ready
+
+Plans:
+- [ ] 71-01-PLAN.md - Design and implement scenario-driven dashboard-v2 consolidation
 
 ---
 
@@ -157,6 +246,11 @@ Plans:
 | 64 | v3.0 | Replan needed | Planned | - |
 | 65 | v3.0 | Replan needed | Planned | - |
 | 66 | v3.0 | Replan needed | Planned | - |
+| 67 | v3.0 | 0/1 | Planned | - |
+| 68 | v3.0 | 0/1 | Planned | - |
+| 69 | v3.0 | 0/1 | Planned | - |
+| 70 | v3.0 | 0/1 | Planned | - |
+| 71 | v3.0 | 0/1 | Planned | - |
 
 ---
 
@@ -233,6 +327,6 @@ Plans:
 
 ---
 
-*Last updated: 2026-03-26 after aligning all v3.0 work to dashboard-v2 as the single unified route*
+*Last updated: 2026-03-30 after replanning Phase 66 as a gate-first hardening + sign-off workflow and keeping stubs 67-71 for future work*
 
 *For milestone history, see `.planning/MILESTONES.md`*
