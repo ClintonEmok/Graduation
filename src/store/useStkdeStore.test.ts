@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { useStkdeStore } from './useStkdeStore';
+import { STKDE_PARAM_LIMITS, useStkdeStore } from './useStkdeStore';
 
 beforeEach(() => {
   useStkdeStore.setState({
@@ -103,5 +103,40 @@ describe('useStkdeStore', () => {
     expect(useStkdeStore.getState().runStatus).toBe('success');
     expect(useStkdeStore.getState().isStale).toBe(true);
     expect(useStkdeStore.getState().staleReason).toBe('applied-slices-updated');
+    expect(useStkdeStore.getState().response).not.toBeNull();
+  });
+
+  test('clamps params to supported bounds and ignores invalid numeric input', () => {
+    const store = useStkdeStore.getState();
+
+    store.setParams({
+      spatialBandwidthMeters: -100,
+      temporalBandwidthHours: 999,
+      gridCellMeters: Number.NaN,
+      topK: 0,
+      minSupport: -5,
+      timeWindowHours: 0,
+    });
+
+    const params = useStkdeStore.getState().params;
+    expect(params.spatialBandwidthMeters).toBe(STKDE_PARAM_LIMITS.spatialBandwidthMeters.min);
+    expect(params.temporalBandwidthHours).toBe(STKDE_PARAM_LIMITS.temporalBandwidthHours.max);
+    expect(params.gridCellMeters).toBe(500);
+    expect(params.topK).toBe(STKDE_PARAM_LIMITS.topK.min);
+    expect(params.minSupport).toBe(STKDE_PARAM_LIMITS.minSupport.min);
+    expect(params.timeWindowHours).toBe(STKDE_PARAM_LIMITS.timeWindowHours.min);
+  });
+
+  test('floors non-integer numeric params after clamping', () => {
+    const store = useStkdeStore.getState();
+
+    store.setParams({
+      spatialBandwidthMeters: 305.9,
+      temporalBandwidthHours: 12.7,
+    });
+
+    const params = useStkdeStore.getState().params;
+    expect(params.spatialBandwidthMeters).toBe(305);
+    expect(params.temporalBandwidthHours).toBe(12);
   });
 });

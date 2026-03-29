@@ -65,6 +65,28 @@ describe('useCoordinationStore', () => {
     expect(state.selectedSource).toBeNull();
     expect(state.syncStatus.status).toBe('partial');
     expect(state.syncStatus.reason).toContain('globally invalid');
+    expect(state.panelNoMatch).toEqual({});
+  });
+
+  test('reconcileSelection valid path clears panel no-match and returns synchronized status', () => {
+    const store = useCoordinationStore.getState();
+
+    store.reconcileSelection({
+      isValid: false,
+      reason: 'Map panel cannot find selected item',
+      panel: 'map',
+    });
+    expect(useCoordinationStore.getState().syncStatus.status).toBe('partial');
+
+    store.reconcileSelection({
+      isValid: true,
+      reason: 'Map recovered selected item',
+      panel: 'map',
+    });
+
+    const state = useCoordinationStore.getState();
+    expect(state.panelNoMatch.map).toBeUndefined();
+    expect(state.syncStatus).toEqual({ status: 'synchronized' });
   });
 
   test('workflow phase transitions persist generate review applied refine', () => {
