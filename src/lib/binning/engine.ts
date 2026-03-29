@@ -339,6 +339,7 @@ function generateIntervalBins(
   intervalMs: number
 ): TimeBin[] {
   const bins: Map<number, CrimeEventData[]> = new Map();
+  const [domainStart, domainEnd] = domain[0] <= domain[1] ? domain : [domain[1], domain[0]];
   
   for (const event of data) {
     const binStart = Math.floor(event.timestamp / intervalMs) * intervalMs;
@@ -351,7 +352,20 @@ function generateIntervalBins(
   let index = 0;
   
   for (const [startTime, events] of Array.from(bins.entries())) {
-    result.push(createBinFromEvents(events, index++));
+    const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
+    const avgTimestamp = sorted.reduce((sum, event) => sum + event.timestamp, 0) / sorted.length;
+    const boundedStart = Math.max(startTime, domainStart);
+    const boundedEnd = Math.min(startTime + intervalMs, domainEnd);
+
+    result.push({
+      id: `bin-${index++}`,
+      startTime: boundedStart,
+      endTime: Math.max(boundedStart, boundedEnd),
+      count: sorted.length,
+      crimeTypes: Array.from(new Set(sorted.map((event) => event.type))),
+      districts: Array.from(new Set(sorted.map((event) => event.district).filter(Boolean))) as string[],
+      avgTimestamp,
+    });
   }
   
   return result.sort((a, b) => a.startTime - b.startTime);
