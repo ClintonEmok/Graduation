@@ -41,8 +41,8 @@ created: 2026-03-30
 | 66-01-01 | 01 | 1 | FLOW-01, FLOW-02 | integration | `pnpm vitest src/app/dashboard-v2/page.stkde.test.ts --run` | ✅ | ✅ green |
 | 66-01-02 | 01 | 1 | FLOW-03, FLOW-05 | unit/integration | `pnpm vitest src/store/useCoordinationStore.test.ts src/store/useStkdeStore.test.ts --run` | ✅ | ✅ green |
 | 66-01-03 | 01 | 1 | FLOW-01..FLOW-05 | type + suite | `pnpm -s tsc --noEmit && pnpm vitest --run` | ✅ | ✅ green |
-| 66-02-01 | 02 | 2 | FLOW-04 | benchmark/regression | `pnpm -s tsc --noEmit && pnpm vitest src/app/timeslicing/page.timeline-qa.test.ts src/app/timeslicing/page.binning-mode.test.ts --run` | ✅ | ⬜ pending |
-| 66-02-02 | 02 | 2 | FLOW-06 | integration | `pnpm vitest src/app/dashboard-v2/page.stkde.test.ts --run` | ✅ | ⬜ pending |
+| 66-02-01 | 02 | 2 | FLOW-04 | benchmark/regression | `pnpm -s tsc --noEmit && pnpm vitest src/app/timeslicing/page.timeline-qa.test.ts src/app/timeslicing/page.binning-mode.test.ts --run` | ✅ | ✅ green |
+| 66-02-02 | 02 | 2 | FLOW-06 | integration | `pnpm vitest src/app/dashboard-v2/page.stkde.test.ts --run` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
