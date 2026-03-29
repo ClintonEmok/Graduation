@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: making-everything-click
 status: in_progress
-stopped_at: completed Phase 65 plans 65-01 through 65-03 STKDE integration
-last_updated: "2026-03-27T21:30:01Z"
-last_activity: 2026-03-27 - completed Phase 65 STKDE integration plans
+stopped_at: Phase 66 context gathered and ready for planning
+last_updated: "2026-03-30T00:00:00Z"
+last_activity: 2026-03-30 - captured Phase 66 hardening/validation decisions
 progress:
   total_phases: 6
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Phase 65 complete; preparing Phase 66 integration testing
+**Current focus:** Phase 66 context complete; ready to plan validation gate execution
 
 ## Current Position
 
-Phase: **65 of 66** (v3.0 milestone: Making Everything Click)
-Plan: 65-01-PLAN.md, 65-02-PLAN.md, 65-03-PLAN.md complete
-Status: **In progress — STKDE is integrated in dashboard-v2 with map/cube synchronization and regression coverage**
-Last activity: 2026-03-27 - Completed 65-03-PLAN.md
+Phase: **66 of 71** (v3.0 milestone: Making Everything Click)
+Plan: 66-CONTEXT captured; 66-01-PLAN pending replan
+Status: **In progress — Phase 66 defined as a lightweight sign-off gate for unified workflow validation**
+Last activity: 2026-03-30 - Completed Phase 66 discuss/context capture
 
 Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/232 plans complete (96%)
 
@@ -44,7 +44,7 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/2
 - v2.3: 3/4 phases complete (Phase 54: 5/9 plans — tech debt on 54-02, 54-03, 54-06, 54-08)
 - v2.4: Complete (Phase 55: 2/2)
 - v2.5: Complete (Phases 56, 59)
-- v3.0: 4/6 phases complete (Phase 65 complete; Phase 64-02 still pending, Phase 66 pending)
+- v3.0: context progression includes phases 61-71 (Phase 65 complete; Phase 66 ready for planning)
 
 ## v3.0 Roadmap Summary
 
@@ -73,7 +73,7 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/2
 - [Phase 65]: Map layer visibility/opacity (including `stkde`) now uses shared persisted `useMapLayerStore` state.
 - [Phase 65]: Hotspot click commits global time/spatial focus via filter + coordination stores; hover remains preview-only.
 - [Phase 65]: Cube now exposes `STKDE Context` with hotspot details, provenance (`requested=`/`effective=`), and `No hotspot selected` fallback.
-- [Phase 66]: Integration testing validates all routes and cross-route state management.
+- [Phase 66]: Operate as a lightweight gate phase with blocker journeys, 2 clean runs, first-time analyst lens, and blocked sign-off on failure.
 
 ## Previous Decisions (Preserved)
 
@@ -84,6 +84,6 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/2
 
 ## Session Continuity
 
-Last session: 2026-03-27T21:30:01Z
-Stopped at: Completed 65-03-PLAN.md
-Resume: 66-01-PLAN.md
+Last session: 2026-03-30T00:00:00Z
+Stopped at: Captured Phase 66 context decisions
+Resume: .planning/phases/66-full-integration-testing/66-CONTEXT.md
