@@ -21,6 +21,8 @@ const DEFAULT_GUARDRAILS = {
   fullPopulationTimeoutMs: 20000,
 } as const;
 
+const WORKER_TIMEOUT_MS = 8000;
+
 const toSliceRangeSec = (slice: TimeSlice): [number, number] => {
   if (slice.type === 'range' && slice.range) {
     const start = Math.min(slice.range[0], slice.range[1]);
@@ -32,6 +34,9 @@ const toSliceRangeSec = (slice: TimeSlice): [number, number] => {
 };
 
 const buildSliceSignature = (sliceIds: string[]) => sliceIds.join('|');
+
+export const selectAppliedGeneratedSlices = (slices: TimeSlice[]) =>
+  slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible);
 
 const sanitizeResponseSize = (response: StkdeResponse): StkdeResponse => {
   const payloadBytes = new TextEncoder().encode(JSON.stringify(response)).length;
@@ -58,23 +63,60 @@ const sanitizeResponseSize = (response: StkdeResponse): StkdeResponse => {
 };
 
 const projectHotspotsWithWorker = async (hotspots: StkdeWorkerHotspot[]) => {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof Worker === 'undefined') {
     return hotspots;
   }
 
   const requestId = Date.now();
+  const runFallback = () =>
+    projectHotspots({
+      requestId,
+      hotspots,
+      filters: {
+        minIntensity: 0,
+        minSupport: 0,
+        temporalWindow: null,
+        spatialBbox: null,
+      },
+    }).rows;
 
   try {
     const worker = new Worker(new URL('../../../workers/stkdeHotspot.worker.ts', import.meta.url));
-    const rows = await new Promise<StkdeWorkerOutput['rows']>((resolve) => {
+    const rows = await new Promise<StkdeWorkerOutput['rows']>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        worker.terminate();
+        reject(new Error('worker-timeout'));
+      }, WORKER_TIMEOUT_MS);
+
+      const cleanup = () => {
+        clearTimeout(timeoutId);
+        worker.removeEventListener('message', handleMessage);
+        worker.removeEventListener('error', handleError);
+        worker.removeEventListener('messageerror', handleMessageError);
+      };
+
       const handleMessage = (event: MessageEvent<StkdeWorkerOutput>) => {
         if (event.data.requestId !== requestId) return;
-        worker.removeEventListener('message', handleMessage);
+        cleanup();
         worker.terminate();
         resolve(event.data.rows);
       };
 
+      const handleError = () => {
+        cleanup();
+        worker.terminate();
+        reject(new Error('worker-error'));
+      };
+
+      const handleMessageError = () => {
+        cleanup();
+        worker.terminate();
+        reject(new Error('worker-message-error'));
+      };
+
       worker.addEventListener('message', handleMessage);
+      worker.addEventListener('error', handleError);
+      worker.addEventListener('messageerror', handleMessageError);
       worker.postMessage({
         requestId,
         hotspots,
@@ -88,16 +130,7 @@ const projectHotspotsWithWorker = async (hotspots: StkdeWorkerHotspot[]) => {
     });
     return rows;
   } catch {
-    return projectHotspots({
-      requestId,
-      hotspots,
-      filters: {
-        minIntensity: 0,
-        minSupport: 0,
-        temporalWindow: null,
-        spatialBbox: null,
-      },
-    }).rows;
+    return runFallback();
   }
 };
 
@@ -112,11 +145,7 @@ export function useDashboardStkde() {
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
 
   const appliedSlices = useSliceDomainStore(
-    useShallow((state) =>
-      state.slices
-        .filter((slice) => slice.source === 'generated-applied' && slice.isVisible)
-        .map((slice) => ({ ...slice }))
-    )
+    useShallow((state) => selectAppliedGeneratedSlices(state.slices))
   );
 
   const {

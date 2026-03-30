@@ -1,91 +1,189 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-03-30
 
 ## Naming Patterns
 
 **Files:**
-- Hooks are `use*.ts` (for example `src/hooks/useCrimeData.ts`)
-- Zustand stores are `use*Store.ts` (for example `src/store/useAdaptiveStore.ts`)
-- Store slice factories use `create*Slice.ts` in `src/store/slice-domain/`
-- Components are PascalCase `.tsx` files (for example `src/components/timeline/DualTimeline.tsx`)
+- Hooks: `use*.ts` / `use*.tsx` - e.g., `useSliceStore.ts`, `useCrimeData.ts`
+- Stores: `use*Store.ts` - e.g., `useSliceStore.ts`, `useFilterStore.ts`
+- Utilities: `camelCase.ts` - e.g., `constants.ts`, `time-domain.ts`
+- Components: `PascalCase.tsx` - e.g., `DualTimeline.tsx`, `TimelinePanel.tsx`
+- Types: `camelCase.ts` or `PascalCase.ts` - e.g., `types/crime.ts`
+- Tests: Same name with `.test.ts` or `.test.tsx` suffix - e.g., `useSliceStore.test.ts`
 
 **Functions:**
-- Utilities use camelCase (`buildBufferedRange`, `resolveNearestSelectionIndex`, `generateRankedAutoProposalSets`)
-- Store actions are verb-first (`setTimeRange`, `toggleType`, `clearSlices`)
+- Hooks: `use*` prefix - e.g., `useCrimeData()`, `useAutoBurstSlices()`
+- Store actions: camelCase - e.g., `addSlice()`, `updateSlice()`, `removeSlice()`
+- Utility functions: camelCase - e.g., `normalizeEpochRange()`, `hasValidEpochRange()`
+- Component functions: PascalCase - e.g., `function DualTimeline() {}`
 
 **Variables:**
-- camelCase by default; constants use UPPER_SNAKE_CASE (`ADAPTIVE_BIN_COUNT`, `DEFAULT_START_EPOCH`)
+- camelCase - e.g., `normalizedRange`, `currentOptions`, `fetchMock`
+- Boolean flags: `is*`, `has*`, `can*` - e.g., `isLoading`, `hasValidRange`, `canCreate`
+- Refs: `*Ref` suffix - e.g., `isSyncingRef`, `processedRef`
 
 **Types:**
-- `interface` and `type` names are PascalCase (`CrimeRecord`, `UseCrimeDataOptions`, `AdaptiveState`)
+- PascalCase - e.g., `TimeSlice`, `CrimeRecord`, `UseCrimeDataOptions`
+- Interfaces preferred over type aliases for public APIs
+- Export types explicitly: `export type { TimeSlice }`
 
 ## Code Style
 
 **Formatting:**
-- No Prettier config detected; formatting is maintained by contributor habits + linting
-- Mixed quote/semicolon style exists across modules (for example `src/components/ui/button.tsx` vs `src/hooks/useCrimeData.ts`); preserve local style in touched files
+- No Prettier config found - defaults to ESLint/editor formatting
+- 2-space indentation
+- Single quotes for strings (consistent with ESLint defaults)
 
 **Linting:**
-- ESLint (`eslint.config.mjs`) with Next core-web-vitals + TypeScript presets
-- Use `npm run lint` / `pnpm lint` before merge
+- Tool: ESLint 9 with `eslint-config-next`
+- Config file: `eslint.config.mjs`
+- Extends: `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`
+- Run: `npm run lint`
+
+**TypeScript:**
+- Strict mode enabled in `tsconfig.json`
+- Target: ES2017
+- Module resolution: bundler
+- Path alias: `@/*` maps to `./src/*`
 
 ## Import Organization
 
 **Order:**
-1. React/external packages
-2. Internal alias imports (`@/...`)
-3. Local relative imports
+1. External React/Next imports - e.g., `import { useEffect, useRef } from 'react'`
+2. External library imports - e.g., `import { useQuery } from '@tanstack/react-query'`
+3. Internal path alias imports - e.g., `import { CrimeRecord } from '@/types/crime'`
+4. Relative imports from project - e.g., `import { useTimelineDataStore } from './useTimelineDataStore'`
+
+**Example from `src/store/useSliceStore.ts`:**
+```typescript
+import { useEffect, useRef } from 'react';
+import { useAdaptiveStore } from './useAdaptiveStore';
+import { useTimelineDataStore } from './useTimelineDataStore';
+import { epochSecondsToNormalized, toEpochSeconds } from '../lib/time-domain';
+import { useSliceDomainStore } from './useSliceDomainStore';
+```
+
+**Example from `src/hooks/useCrimeData.ts`:**
+```typescript
+import { useQuery } from '@tanstack/react-query'
+import { 
+  CrimeDataMeta,
+  CrimeRecord, 
+  UseCrimeDataOptions, 
+  UseCrimeDataResult 
+} from '@/types/crime'
+```
 
 **Path Aliases:**
-- Use `@/*` alias from `tsconfig.json` for cross-module imports
+- `@/*` - maps to `./src/*`
+- Configured in both `tsconfig.json` and `vitest.config.mts`
 
 ## Error Handling
 
 **Patterns:**
-- API routes validate early and return explicit 4xx JSON for invalid params (`src/app/api/crimes/range/route.ts`)
-- Runtime failures usually catch/log and return fallback mock payloads (`src/app/api/crime/meta/route.ts`, `src/app/api/crime/bins/route.ts`)
-- Hooks surface errors through React Query instead of swallowing (`src/hooks/useCrimeData.ts`)
+- Try/catch for async operations with re-throwing
+- Console error logging with context prefix: `console.error('[useCrimeData] Error fetching crimes:', error)`
+- Custom error messages with context: `throw new Error('Network error while fetching crimes from ${requestPath}')`
+- Validation returns result objects: `{ ok: boolean; error?: string; value?: T }`
+
+**Example from `src/hooks/useCrimeData.ts`:**
+```typescript
+try {
+  const response = await fetch(requestPath)
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`)
+  }
+  // ...
+} catch (error) {
+  console.error('[useCrimeData] Error fetching crimes:', error)
+  if (error instanceof TypeError) {
+    throw new Error(`Network error while fetching crimes from ${requestPath}`)
+  }
+  throw error
+}
+```
 
 ## Logging
 
-**Framework:** console + lightweight buffered logger service
+**Framework:** `console` (no external logger)
 
 **Patterns:**
-- `console.error` for backend failures and critical fetch/query errors
-- `console.warn` for fallback mode transitions
-- study interactions use `useLogger` -> `logger.log()` in `src/hooks/useLogger.ts` and `src/lib/logger.ts`
+- Debug-style logs with component/hook prefix: `console.log('[useCrimeData] queryKey (visible range):', queryKey)`
+- Error logs with context: `console.error('[useCrimeData] Error fetching crimes:', error)`
 
 ## Comments
 
 **When to Comment:**
-- Comments are used heavily for intent and behavior contracts in stores/hooks/routes; keep them when they explain non-obvious constraints (for example buffer/range semantics)
+- JSDoc for public API functions and hooks
+- Inline comments for complex logic or workarounds
+- Explain "why" not "what"
 
 **JSDoc/TSDoc:**
-- Used on shared hooks/utilities and API contracts (`src/hooks/useCrimeData.ts`, `src/lib/db.ts`, `src/lib/stores/viewportStore.ts`)
+- Use for exported functions with parameters
+- Include @param and @returns tags
+
+**Example from `src/hooks/useCrimeData.ts`:**
+```typescript
+/**
+ * Unified hook for crime data fetching.
+ * 
+ * @param options - Query options including viewport bounds and filters
+ * 
+ * @example
+ * const { data, isLoading, error } = useCrimeData({
+ *   startEpoch: 978307200,
+ *   endEpoch: 1767571200,
+ *   bufferDays: 30,
+ *   limit: 50000
+ * })
+ */
+export function useCrimeData(options: UseCrimeDataOptions): UseCrimeDataResult {
+```
 
 ## Function Design
 
-**Size:**
-- Small pure helper functions are preferred in `src/lib/*`
-- Some feature functions/components are large orchestration blocks (for example `src/components/timeline/DualTimeline.tsx`)
+**Size:** No strict limit, but prefer single responsibility
 
 **Parameters:**
-- Structured options objects are common for complex APIs (`UseCrimeDataOptions`, `GenerationParams`, query builder options)
+- Use options objects for multiple parameters: `useCrimeData({ startEpoch, endEpoch, bufferDays })`
+- Destructure with defaults: `const { startEpoch, endEpoch, crimeTypes, districts, bufferDays = 30, limit = 50000 } = options`
 
 **Return Values:**
-- Hooks return typed result envelopes (data/meta/loading/error)
-- API handlers return JSON objects with top-level `data` + `meta` where applicable
+- Explicit return types for hooks
+- Consistent object shapes for results
 
 ## Module Design
 
 **Exports:**
-- Use named exports for helpers/types; default export for route/page components is common
-- Store modules typically export `useXStore` plus related selectors/types
+- Named exports preferred
+- Export types separately: `export type { TimeSlice }`
+- Re-export from index files for public APIs
 
 **Barrel Files:**
-- Minimal barrel usage; `src/lib/queries/index.ts` is a notable barrel for query builders/types
+- Use `index.ts` for module exports when needed
+- Selective re-exports from stores: `export { select, selectActiveSlice } from './slice-domain/selectors'`
+
+## Zustand Store Patterns
+
+**Store Creation:**
+```typescript
+export const useSliceDomainStore = create<SliceDomainState>()(
+  persist(
+    (...args) => ({
+      ...createSliceCoreSlice(...args),
+      ...createSliceSelectionSlice(...args),
+      // ...
+    }),
+    { name: 'slice-domain-v1', partially: (state) => ({ slices: state.slices }) }
+  )
+);
+```
+
+**Slice Pattern:**
+- Separate slice creators in `slice-domain/` folder
+- Each slice in separate file: `createSliceCoreSlice.ts`, `createSliceSelectionSlice.ts`
 
 ---
 
-*Convention analysis: 2026-03-11*
+*Convention analysis: 2026-03-30*

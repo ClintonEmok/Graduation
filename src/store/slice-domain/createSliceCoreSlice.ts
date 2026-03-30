@@ -2,6 +2,7 @@ import { useAdaptiveStore } from '../useAdaptiveStore';
 import { useTimelineDataStore } from '../useTimelineDataStore';
 import { calculateRangeTolerance, rangesMatch } from '../../lib/slice-utils';
 import { epochSecondsToNormalized, toEpochSeconds } from '../../lib/time-domain';
+import type { TimeBin } from '@/lib/binning/types';
 import type { SliceCoreState, SliceDomainStateCreator, TimeSlice } from './types';
 
 const BURST_TOLERANCE_RATIO = 0.005;
@@ -69,6 +70,14 @@ const sortSlices = (slices: TimeSlice[]): TimeSlice[] =>
 const buildBurstSliceId = (start: number, end: number): string => {
   const [normalizedStart, normalizedEnd] = normalizeRange(start, end);
   return `burst-${normalizedStart}-${normalizedEnd}`;
+};
+
+const toNormalizedBinRange = (bin: TimeBin, domain: [number, number]): [number, number] => {
+  const [domainStart, domainEnd] = normalizeRange(domain[0], domain[1]);
+  const span = Math.max(1, domainEnd - domainStart);
+  const start = ((bin.startTime - domainStart) / span) * 100;
+  const end = ((bin.endTime - domainStart) / span) * 100;
+  return normalizeRange(clampNormalized(start), clampNormalized(end));
 };
 
 export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (set, get) => ({
@@ -254,6 +263,34 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         slice.id === id ? { ...slice, isVisible: !slice.isVisible } : slice
       ),
     })),
+  replaceSlicesFromBins: (bins, domain) => {
+    const nextSlices = bins
+      .map<TimeSlice | null>((bin, index) => {
+        const [start, end] = toNormalizedBinRange(bin, domain);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+          return null;
+        }
+
+        return {
+          id: crypto.randomUUID(),
+          name: `Slice ${index + 1}`,
+          source: 'generated-applied' as const,
+          type: 'range' as const,
+          time: (start + end) / 2,
+          range: [start, end] as [number, number],
+          notes: `${bin.count} events`,
+          isLocked: false,
+          isVisible: true,
+        };
+      })
+      .filter((slice): slice is TimeSlice => slice !== null);
+
+    set({
+      slices: sortSlices(nextSlices),
+      activeSliceId: nextSlices[0]?.id ?? null,
+      activeSliceUpdatedAt: Date.now(),
+    });
+  },
   clearSlices: () => set({ slices: [], activeSliceId: null, activeSliceUpdatedAt: Date.now() }),
   setActiveSlice: (id) => set({ activeSliceId: id, activeSliceUpdatedAt: Date.now() }),
 });

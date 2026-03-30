@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useDashboardStkde } from '@/app/dashboard-v2/hooks/useDashboardStkde';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
-import { useStkdeStore } from '@/store/useStkdeStore';
+import { STKDE_PARAM_LIMITS, useStkdeStore } from '@/store/useStkdeStore';
 
 const formatTimeWindow = (startEpochSec: number, endEpochSec: number) => {
   const start = new Date(startEpochSec * 1000).toLocaleString();
@@ -29,6 +29,11 @@ export function DashboardStkdePanel() {
   );
 
   const hotspots = response?.hotspots ?? [];
+
+  const parseNumericInput = (rawValue: string): number | undefined => {
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
 
   const statusText = useMemo(() => {
     if (runStatus === 'running') return 'computing…';
@@ -84,8 +89,13 @@ export function DashboardStkdePanel() {
             spatialBandwidthMeters
             <input
               type="number"
+              min={STKDE_PARAM_LIMITS.spatialBandwidthMeters.min}
+              max={STKDE_PARAM_LIMITS.spatialBandwidthMeters.max}
+              step={50}
               value={params.spatialBandwidthMeters}
-              onChange={(event) => setParams({ spatialBandwidthMeters: Number(event.target.value) || 0 })}
+              onChange={(event) =>
+                setParams({ spatialBandwidthMeters: parseNumericInput(event.target.value) })
+              }
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1"
             />
           </label>
@@ -93,8 +103,12 @@ export function DashboardStkdePanel() {
             temporalBandwidthHours
             <input
               type="number"
+              min={STKDE_PARAM_LIMITS.temporalBandwidthHours.min}
+              max={STKDE_PARAM_LIMITS.temporalBandwidthHours.max}
               value={params.temporalBandwidthHours}
-              onChange={(event) => setParams({ temporalBandwidthHours: Number(event.target.value) || 0 })}
+              onChange={(event) =>
+                setParams({ temporalBandwidthHours: parseNumericInput(event.target.value) })
+              }
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1"
             />
           </label>
@@ -102,8 +116,11 @@ export function DashboardStkdePanel() {
             gridCellMeters
             <input
               type="number"
+              min={STKDE_PARAM_LIMITS.gridCellMeters.min}
+              max={STKDE_PARAM_LIMITS.gridCellMeters.max}
+              step={50}
               value={params.gridCellMeters}
-              onChange={(event) => setParams({ gridCellMeters: Number(event.target.value) || 0 })}
+              onChange={(event) => setParams({ gridCellMeters: parseNumericInput(event.target.value) })}
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1"
             />
           </label>
@@ -111,8 +128,10 @@ export function DashboardStkdePanel() {
             topK
             <input
               type="number"
+              min={STKDE_PARAM_LIMITS.topK.min}
+              max={STKDE_PARAM_LIMITS.topK.max}
               value={params.topK}
-              onChange={(event) => setParams({ topK: Number(event.target.value) || 0 })}
+              onChange={(event) => setParams({ topK: parseNumericInput(event.target.value) })}
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1"
             />
           </label>
@@ -120,8 +139,10 @@ export function DashboardStkdePanel() {
             minSupport
             <input
               type="number"
+              min={STKDE_PARAM_LIMITS.minSupport.min}
+              max={STKDE_PARAM_LIMITS.minSupport.max}
               value={params.minSupport}
-              onChange={(event) => setParams({ minSupport: Number(event.target.value) || 0 })}
+              onChange={(event) => setParams({ minSupport: parseNumericInput(event.target.value) })}
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1"
             />
           </label>
@@ -129,8 +150,10 @@ export function DashboardStkdePanel() {
             timeWindowHours
             <input
               type="number"
+              min={STKDE_PARAM_LIMITS.timeWindowHours.min}
+              max={STKDE_PARAM_LIMITS.timeWindowHours.max}
               value={params.timeWindowHours}
-              onChange={(event) => setParams({ timeWindowHours: Number(event.target.value) || 0 })}
+              onChange={(event) => setParams({ timeWindowHours: parseNumericInput(event.target.value) })}
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1"
             />
           </label>

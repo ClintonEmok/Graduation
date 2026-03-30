@@ -1,87 +1,192 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-03-30
 
 ## Tech Debt
 
-**Duplicate slice-authored warp-map logic across routes:**
-- Issue: Equivalent `buildSliceAuthoredWarpMap` logic exists in both `src/app/timeslicing/page.tsx` and `src/app/timeline-test/page.tsx`
-- Files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/lib/route-orchestration.ts`
-- Impact: Drift risk when changing warp behavior; inconsistent adaptive results across routes
-- Fix approach: Extract a single shared utility in `src/lib/` and consume it from all routes
+**Massive DualTimeline Component:**
+- Issue: `src/components/timeline/DualTimeline.tsx` is 1245 lines - extremely large single file component
+- Files: `src/components/timeline/DualTimeline.tsx`
+- Impact: Hard to maintain, test, and understand. Any change risks breaking multiple unrelated features
+- Fix approach: Split into smaller, focused sub-components (OverviewTimeline, DetailTimeline, Axis, Brush, etc.)
 
-**Large all-in-one UI modules:**
-- Issue: Several high-complexity files exceed 700-1100 LOC
-- Files: `src/components/timeline/DualTimeline.tsx`, `src/app/timeslicing/components/SuggestionToolbar.tsx`, `src/app/timeslicing/page.tsx`, `src/store/useSuggestionStore.ts`
-- Impact: Slower onboarding, fragile edits, and higher regression probability
-- Fix approach: Split by concern (data derivation hooks, render layers, action handlers) and add focused tests per extracted module
+**Massive Suggestion Stores:**
+- Issue: `src/store/useSuggestionStore.ts` is 768 lines, handling too many responsibilities
+- Files: `src/store/useSuggestionStore.ts`, `src/app/timeslicing/components/SuggestionPanel.tsx` (767 lines)
+- Impact: Store is difficult to test and reason about
+- Fix approach: Split into focused stores (suggestion generation, suggestion UI state, suggestion selection)
+
+**Large Page Components:**
+- Issue: Multiple page components exceed 600+ lines
+- Files: `src/app/timeline-test/page.tsx` (672 lines), `src/app/timeline-test-3d/components/SuggestionPanel.tsx` (643 lines)
+- Impact: Bundle size concerns, longer parse times
+- Fix approach: Extract visualization logic into custom hooks, extract UI into components
+
+**Unused/Missing Index Exports:**
+- Issue: Many lib files lack barrel exports, forcing deep imports
+- Files: `src/lib/` directory
+- Impact: Brittle import paths, harder refactoring
+- Fix approach: Add index.ts barrel files to all lib directories
 
 ## Known Bugs
 
-**Facets API references parquet path not created by default flow:**
-- Symptoms: Facet requests can fail in real-data mode when `data/crime.parquet` is absent
-- Files: `src/app/api/crime/facets/route.ts`, `scripts/setup-data.js`, `src/lib/db.ts`
-- Trigger: Running app with DuckDB enabled but only CSV-based dataset setup
-- Workaround: Generate `data/crime.parquet` via `scripts/setup-data.js` or keep mock mode enabled
+**Silent Error Swallowing in Catch Blocks:**
+- Issue: Multiple catch blocks with empty bodies that silently fail
+- Files: 
+  - `src/store/useSuggestionStore.ts` (line 236 - empty catch returns empty array)
+  - `src/store/useFilterStore.ts` (lines 29, 43 - empty catch)
+  - `src/app/timeline-test-3d/page.tsx` (line 269 - empty catch)
+  - `src/app/timeline-test-3d/components/TimeSlices3D.tsx` (lines 306, 364 - empty catch)
+  - `src/hooks/useURLFeatureFlags.ts` (line 105 - empty catch)
+- Impact: Errors are hidden from users and logs, making debugging extremely difficult
+- Fix approach: Add proper error logging in all catch blocks, surface errors to user when appropriate
+
+**Debug Console Statements:**
+- Issue: 100+ console.log/console.warn/console.error statements throughout codebase
+- Files: Scattered across components, hooks, stores, and API routes
+- Impact: Clutters browser console, potential performance impact in development, security risk if sensitive data logged
+- Fix approach: Remove all console.log statements, keep only critical console.error for actual errors with proper context
+
+## Type Safety Issues
+
+**Excessive `any` Type Usage:**
+- Issue: 28+ instances of `any` type scattered throughout codebase
+- Files:
+  - `src/lib/db.ts` (line 4: `let db: any = null`)
+  - `src/hooks/useCrimeStream.ts` (lines 8, 11: arrays and callbacks typed as `any`)
+  - `src/components/viz/TrajectoryLayer.tsx` (line 38: `const points: any[] = []`)
+  - `src/components/timeline/Timeline.tsx` (line 20: index signature with `any`)
+  - API routes in `src/app/api/` (multiple instances)
+- Impact: TypeScript cannot catch type errors in these areas, runtime errors more likely
+- Fix approach: Replace with proper types, use `unknown` where type is truly unknown, create proper interfaces
 
 ## Security Considerations
 
-**SQL string interpolation with user-provided filters:**
-- Risk: Injection surface via unsanitized `types`, `districts`, and date filter interpolation
-- Files: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`
-- Current mitigation: Partial helper use (some routes parameterize via query builders in `src/lib/queries.ts`)
-- Recommendations: Route all SQL generation through parameterized builders; avoid concatenating filter values into SQL strings
+**Environment Variable Validation:**
+- Issue: Raw environment variables used without validation
+- Files: 
+  - `src/app/api/stkde/hotspots/route.ts` (line 11)
+  - `src/lib/db.ts` (lines 9, 25)
+- Impact: Could accept invalid values leading to unexpected behavior
+- Fix approach: Add validation/schema for environment variables at startup
 
-**Local environment file committed in repository:**
-- Risk: Accidental credential leakage and environment drift
-- Files: `.env`, `.gitignore`
-- Current mitigation: None in code
-- Recommendations: Remove tracked `.env` from version control and enforce `.env.example` pattern
+**Console Logging of Sensitive Data:**
+- Issue: Potential for sensitive data to be logged via console.log statements
+- Files: `src/components/viz/DataPoints.tsx` (debug raycasting logs), various hooks
+- Impact: Data exposure in browser console
+- Fix approach: Remove debug logging, use proper debug tooling
 
 ## Performance Bottlenecks
 
-**Repeated `read_csv_auto(...)` scans in metadata/facet/stream endpoints:**
-- Problem: Hot API paths re-scan raw CSV instead of querying persisted sorted table/cache
-- Files: `src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`
-- Cause: Multiple endpoints bypass `ensureSortedCrimesTable` and query builders in `src/lib/queries.ts`
-- Improvement path: Consolidate onto shared query layer/table and leverage persisted cache tables for repeated domain operations
+**Heavy Computation in Render Path:**
+- Issue: Large component render calculations happening synchronously
+- Files:
+  - `src/components/timeline/DualTimeline.tsx` (1245 lines of render logic)
+  - `src/components/viz/DataPoints.tsx` (687 lines)
+  - `src/lib/stkde/compute.ts` (461 lines)
+- Impact: UI jank, slow interactions with large datasets
+- Fix approach: Memoize computations, use web workers for heavy calculations, implement virtualization
+
+**No Virtualization for Large Lists:**
+- Issue: Rendering potentially large arrays without virtualization
+- Files: Suggestion panels, slice lists
+- Impact: Performance degrades linearly with data size
+- Fix approach: Implement react-window or similar for long lists
+
+**DuckDB Initialization:**
+- Issue: Synchronous database initialization can block
+- Files: `src/lib/db.ts`
+- Impact: Initial load time, potential UI blocking
+- Fix approach: Lazy initialization, worker-based initialization
 
 ## Fragile Areas
 
-**Cross-store timeline synchronization contract:**
-- Files: `src/components/timeline/DualTimeline.tsx`, `src/components/timeline/hooks/useBrushZoomSync.ts`, `src/components/timeline/hooks/usePointSelection.ts`, `src/store/useTimeStore.ts`, `src/store/useFilterStore.ts`, `src/lib/stores/viewportStore.ts`
-- Why fragile: Behavior depends on synchronized updates across multiple stores and D3 event loops
-- Safe modification: Preserve `applyRangeToStoresContract` semantics and update related hook tests together (`src/components/timeline/hooks/*.test.ts`)
-- Test coverage: Moderate for helper hooks; limited direct tests for full `DualTimeline` integration
+**Slice Domain Store Complexity:**
+- Issue: Complex slice domain with multiple slice types (core, adjustment, creation, selection)
+- Files: `src/store/slice-domain/` directory
+- Why fragile: Multiple store slices interacting, state sync issues between slices
+- Safe modification: Always test multi-slice interactions, use selectors
+- Test coverage: Partial - some slice-specific tests exist but integration tests limited
+
+**Timeline State Synchronization:**
+- Issue: Multiple stores managing timeline state with potential race conditions
+- Files: `src/store/useTimeStore.ts`, `src/store/useTimelineDataStore.ts`, `src/store/useSliceStore.ts`
+- Why fragile: Brush zoom, time range selection, slice creation all modify overlapping state
+- Safe modification: Use transactions or batched updates
+- Test coverage: Gaps in concurrent state modification testing
+
+**Web Worker Communication:**
+- Issue: Workers for STKDE and adaptive time computations with message passing
+- Files: `src/workers/stkdeHotspot.worker.ts`, `src/workers/adaptiveTime.worker.ts`
+- Why fragile: No type-safe message contracts, worker crashes are silent
+- Safe modification: Add error boundaries around worker calls, implement retry logic
+- Test coverage: Limited - worker tests exist but error scenarios not fully covered
 
 ## Scaling Limits
 
-**Client payload and render ceiling for viewport data:**
-- Current capacity: API limits return payload to ~50k records (`limit` defaults in `src/hooks/useCrimeData.ts` and `src/app/api/crimes/range/route.ts`)
-- Limit: Large ranges can still trigger heavy network/CPU cost and UI degradation
-- Scaling path: Add server-side tiling/aggregation for map/timeline views and progressive chunked loading
+**In-Memory Data:**
+- Current capacity: Large datasets loaded into memory via DuckDB WASM
+- Limit: Browser memory (~2GB typical), dataset size ~10M records
+- Scaling path: Implement streaming/chunking, server-side aggregation
+
+**Client-Side State:**
+- Current capacity: Zustand stores hold significant application state
+- Limit: Serialization costs on navigation, memory pressure
+- Scaling path: Implement store persistence strategies, lazy load state
+
+**Maplibre GL Rendering:**
+- Current capacity: Large point datasets rendered via GPU
+- Limit: ~100K visible points before frame drops
+- Scaling path: Clustering, level-of-detail rendering, viewport culling
 
 ## Dependencies at Risk
 
-**Patched native DuckDB integration:**
-- Risk: Postinstall symlink + patch-package workaround can break on dependency updates/platform differences
-- Impact: Install/runtime failures for local and CI environments
-- Migration plan: Pin supported DuckDB version and replace patch with upstream-compatible install strategy
+**DuckDB WASM:**
+- Risk: Heavy dependency (megabytes), complex initialization
+- Impact: Slow cold start, large bundle size
+- Migration plan: Consider server-side DuckDB for initial queries, lighter client for streaming
 
-## Missing Critical Features
+**React 19:**
+- Risk: Relatively new version, potential compatibility issues
+- Impact: Bug fixes may require updates, ecosystem compatibility
+- Migration plan: Monitor, test thoroughly on updates
 
-**No CI enforcement for lint/type/test gates:**
-- Problem: Quality checks are manual only
-- Blocks: Reliable regression prevention across contributors
+**Three.js / React Three Fiber:**
+- Risk: Large 3D library bundle
+- Impact: Significant bundle size increase for 3D features
+- Migration plan: Lazy load 3D components, consider lighter alternatives for simple visualizations
+
+**Next.js 16:**
+- Risk: Very new version (16.1.6)
+- Impact: Potential breaking changes, less community knowledge
+- Migration plan: Test thoroughly on updates, monitor Next.js releases
 
 ## Test Coverage Gaps
 
-**Major route/page orchestration not directly tested:**
-- What's not tested: End-to-end behavior of `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, and map/cube integration
-- Files: `src/app/timeslicing/page.tsx`, `src/app/timeline-test/page.tsx`, `src/components/map/MapVisualization.tsx`, `src/components/viz/CubeVisualization.tsx`
-- Risk: Regressions in cross-panel synchronization and feature workflows can ship unnoticed
+**Integration Tests:**
+- What's not tested: End-to-end user workflows across multiple pages/stores
+- Files: Integration between timeline, suggestion generation, and STKDE
+- Risk: Store interactions can break silently
+- Priority: High
+
+**Error Boundary Tests:**
+- What's not tested: Component error boundaries, worker failure recovery
+- Files: UI components with error potential
+- Risk: Full app crashes on component errors
+- Priority: Medium
+
+**API Route Tests:**
+- What's not tested: Most API routes lack comprehensive error case testing
+- Files: `src/app/api/` routes
+- Risk: API failures not handled gracefully
+- Priority: Medium
+
+**Store Concurrency Tests:**
+- What's not tested: Concurrent store updates from multiple sources
+- Files: Slice domain stores
+- Risk: Race conditions in production
 - Priority: High
 
 ---
 
-*Concerns audit: 2026-03-11*
+*Concerns audit: 2026-03-30*

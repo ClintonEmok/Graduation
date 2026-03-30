@@ -16,6 +16,7 @@ import {
   selectSlices,
   useSliceDomainStore,
 } from '@/store/useSliceDomainStore';
+import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
 import { resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -121,6 +122,8 @@ interface TimelineSliceGeometry {
   isBurst: boolean;
   isPoint: boolean;
   isSuggestion: boolean;
+  isGeneratedDraft: boolean;
+  isGeneratedApplied: boolean;
   overlapCount: number;
   color: string | undefined;
 }
@@ -184,6 +187,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const activeSliceId = useSliceDomainStore(selectActiveSliceId);
   const activeSliceUpdatedAt = useSliceDomainStore(selectActiveSliceUpdatedAt);
   const getSliceOverlapCounts = useSliceDomainStore(select((state) => state.getOverlapCounts));
+  const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const warpSlices = useWarpSliceStore((state) => state.slices);
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
@@ -662,6 +666,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             isBurst: !!slice.isBurst,
             isPoint: false,
             isSuggestion: (slice as { source?: string }).source === 'suggestion',
+            isGeneratedDraft: false,
+            isGeneratedApplied: slice.source === 'generated-applied',
             overlapCount: sliceOverlapCounts[slice.id] ?? 1,
             color: slice.color,
           };
@@ -683,6 +689,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           isBurst: !!slice.isBurst,
           isPoint: true,
           isSuggestion: (slice as { source?: string }).source === 'suggestion',
+          isGeneratedDraft: false,
+          isGeneratedApplied: slice.source === 'generated-applied',
           overlapCount: 1,
           color: slice.color,
         };
@@ -720,6 +728,42 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
     return [...sliceGeometries].sort((a, b) => stackWeight(a) - stackWeight(b));
   }, [sliceGeometries]);
+
+  const pendingGeneratedGeometries = useMemo<TimelineSliceGeometry[]>(() => {
+    if (!pendingGeneratedBins.length || detailInnerWidth <= 0) {
+      return [];
+    }
+
+    return pendingGeneratedBins
+      .map<TimelineSliceGeometry | null>((bin) => {
+        const startX = detailScale(new Date(bin.startTime));
+        const endX = detailScale(new Date(bin.endTime));
+        if (!Number.isFinite(startX) || !Number.isFinite(endX)) {
+          return null;
+        }
+
+        const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
+        const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
+        if (right <= 0 || left >= detailInnerWidth || right <= left) {
+          return null;
+        }
+
+        return {
+          id: `pending-${bin.id}`,
+          left,
+          width: Math.max(2, right - left),
+          isActive: false,
+          isBurst: false,
+          isPoint: false,
+          isSuggestion: false,
+          isGeneratedDraft: true,
+          isGeneratedApplied: false,
+          overlapCount: 1,
+          color: 'purple',
+        };
+      })
+      .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
+  }, [detailInnerWidth, detailScale, pendingGeneratedBins]);
 
   const isTimelineLoading = isViewportLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
@@ -988,6 +1032,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
               // Suggestion slices get a distinct violet styling
               const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
+              const isGeneratedAppliedSlice = geometry.isGeneratedApplied;
               const suggestionFill = 'rgba(139, 92, 246, 0.2)';
               const suggestionStroke = 'rgba(167, 139, 250, 0.85)';
 
@@ -999,10 +1044,18 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                     width={Math.max(2, geometry.width)}
                     height={DETAIL_HEIGHT - 6}
                     rx={3}
-                    fill={isSuggestionSlice ? suggestionFill : (geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill)}
-                    stroke={isSuggestionSlice ? suggestionStroke : (geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke)}
+                    fill={isGeneratedAppliedSlice
+                      ? 'rgba(16, 185, 129, 0.18)'
+                      : isSuggestionSlice
+                        ? suggestionFill
+                        : (geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill)}
+                    stroke={isGeneratedAppliedSlice
+                      ? 'rgba(74, 222, 128, 0.92)'
+                      : isSuggestionSlice
+                        ? suggestionStroke
+                        : (geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke)}
                     strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1}
-                    strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : undefined}
+                    strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : isGeneratedAppliedSlice ? '8 2' : undefined}
                     opacity={baseOpacity}
                   />
                   {geometry.overlapCount >= 2 && !geometry.isActive && (
@@ -1034,6 +1087,22 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                 </g>
               );
             })}
+
+            {pendingGeneratedGeometries.map((geometry) => (
+              <g key={geometry.id}>
+                <rect
+                  x={geometry.left}
+                  y={8}
+                  width={Math.max(2, geometry.width)}
+                  height={DETAIL_HEIGHT - 16}
+                  rx={3}
+                  fill="rgba(245, 158, 11, 0.16)"
+                  stroke="rgba(251, 191, 36, 0.92)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                />
+              </g>
+            ))}
 
             {maxSliceOverlap >= 3 && (
               <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}>

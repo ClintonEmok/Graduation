@@ -1,11 +1,15 @@
 import type { StateCreator } from 'zustand';
+import type { TimeBin } from '@/lib/binning/types';
 import type { AdjustmentHandle, LimitCue, SnapMode } from '@/app/timeline-test/lib/slice-adjustment';
+
+export type TimeSliceSource = 'manual' | 'generated-applied' | 'suggestion';
 
 export interface TimeSlice {
   id: string;
   name?: string;
   color?: string;
   notes?: string;
+  source?: TimeSliceSource;
   type: 'point' | 'range';
   time: number;
   range?: [number, number];
@@ -33,6 +37,7 @@ export type SliceCoreState = {
   updateSlice: (id: string, updates: Partial<TimeSlice> & { color?: string; notes?: string }) => void;
   toggleLock: (id: string) => void;
   toggleVisibility: (id: string) => void;
+  replaceSlicesFromBins: (bins: TimeBin[], domain: [number, number]) => void;
   clearSlices: () => void;
   setActiveSlice: (id: string | null) => void;
 };

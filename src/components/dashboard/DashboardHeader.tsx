@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
+import { useShallow } from 'zustand/react/shallow';
 import { useBinningStore } from '@/store/useBinningStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
@@ -39,8 +40,8 @@ export function DashboardHeader({ className = '' }: DashboardHeaderProps) {
   const granularity = useTimeslicingModeStore((state) => state.generationInputs.granularity);
   const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
 
-  const appliedSlices = useSliceDomainStore((state) =>
-    state.slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible)
+  const appliedSlices = useSliceDomainStore(
+    useShallow((state) => state.slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible))
   );
 
   const workflowTone =

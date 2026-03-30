@@ -1,80 +1,113 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-03-30
 
 ## Languages
 
 **Primary:**
-- TypeScript (strict mode) - frontend, hooks, stores, API routes, and tests in `src/**/*.ts` and `src/**/*.tsx`
+- TypeScript 5.9.3 - All source code (frontend, backend APIs, utilities)
+- JavaScript - Test files and configuration
 
 **Secondary:**
-- JavaScript (Node scripts) - data/bootstrap scripts in `scripts/setup-data.js`, `scripts/capture-refactor-baseline.mjs`, and `scripts/test-*.ts`
-- Python (data preprocessing) - offline ETL notebook/script workflow in `datapreprocessing/pipeline.py` and `datapreprocessing/*.ipynb`
+- Python - Data preprocessing scripts (in `datapreprocessing/` directory)
 
 ## Runtime
 
 **Environment:**
-- Node.js runtime (required for DuckDB-backed routes) in `src/app/api/**/route.ts` with `export const runtime = 'nodejs'`
+- Node.js 20+ (as specified in `@types/node: ^20`)
+- Browser runtime (React 19 client-side)
 
 **Package Manager:**
-- pnpm lockfile present (`pnpm-lock.yaml`), workspace metadata present (`pnpm-workspace.yaml`)
-- npm-compatible scripts declared in `package.json`
-- Lockfile: present (`pnpm-lock.yaml`)
+- pnpm 9.x (pnpm-lock.yaml present)
+- Lockfile: `pnpm-lock.yaml` (present)
 
 ## Frameworks
 
 **Core:**
-- Next.js 16 (`next`) - App Router web application in `src/app/*`
-- React 19 (`react`, `react-dom`) - client UI and hooks across `src/components/*` and `src/hooks/*`
-- Zustand 5 (`zustand`) - client state layers in `src/store/*` and `src/lib/stores/viewportStore.ts`
+- Next.js 16.1.6 - Full-stack React framework with App Router
+- React 19.2.3 - UI library
+- React DOM 19.2.3 - React rendering for DOM
 
-**Testing:**
-- Vitest 4 (`vitest`) - unit/integration tests in `src/**/*.test.ts` and `src/**/*.test.tsx`
-- react-test-renderer - hook/component harness tests in `src/hooks/useCrimeData.test.ts`
+**3D Visualization:**
+- Three.js 0.182.0 - 3D graphics engine
+- @react-three/fiber 9.5.0 - React renderer for Three.js
+- @react-three/drei 10.7.7 - Useful helpers for react-three-fiber
 
-**Build/Dev:**
-- Next build/dev server via `package.json` scripts (`dev`, `build`, `start`)
-- ESLint 9 + `eslint-config-next` in `eslint.config.mjs`
-- Tailwind CSS v4 via PostCSS in `postcss.config.mjs` and `src/app/globals.css`
-- patch-package for third-party patching in `patches/duckdb+1.4.4.patch`
+**Mapping:**
+- maplibre-gl 5.17.0 - Open-source map rendering (MapLibre GL JS)
+- react-map-gl 8.1.0 - React wrapper for maplibre-gl
+- @math.gl/web-mercator 4.1.0 - Web Mercator projection utilities
+- @visx 3.x - D3-based chart/scales library for data visualization
+
+**Data Processing:**
+- DuckDB 1.4.4 - In-memory/embedded analytical SQL database
+- Apache Arrow 21.1.0 - Columnar data format
+- @loaders.gl/arrow 4.3.4 - Arrow loader for loaders.gl
+
+**State Management:**
+- Zustand 5.0.10 - Lightweight state management
+- @tanstack/react-query 5.90.21 - Server state management/caching
+
+**UI Components:**
+- Radix UI 1.4.3 - Unstyled accessible component primitives
+- Lucide React 0.563.0 - Icon library
+- Tailwind CSS 4 - Utility-first CSS framework
 
 ## Key Dependencies
 
 **Critical:**
-- `duckdb` - local analytical query engine used by API routes and query layer in `src/lib/db.ts`, `src/lib/queries.ts`, and `src/app/api/crime/*/route.ts`
-- `apache-arrow` - Arrow stream serialization/deserialization in `src/app/api/crime/stream/route.ts` and `src/store/useTimelineDataStore.ts`
-- `@tanstack/react-query` - client query caching in `src/providers/QueryProvider.tsx` and `src/hooks/useCrimeData.ts`
+- `next` 16.1.6 - Framework
+- `react` 19.2.3 - UI library
+- `three` 0.182.0 - 3D graphics
+- `duckdb` 1.4.4 - Database (configured as external package in next.config.ts)
 
-**Infrastructure:**
-- `react-map-gl` + `maplibre-gl` - map rendering in `src/components/map/MapBase.tsx` and map layer components under `src/components/map/*`
-- `@react-three/fiber` + `@react-three/drei` + `three` - 3D scene and controls in `src/components/viz/*`
-- D3 packages (`d3-array`, `d3-scale`, `d3-time`, `d3-brush`, `d3-zoom`) - timeline interactions in `src/components/timeline/*`
+**Data Visualization:**
+- `@visx/axis` 3.12.0 - Chart axes
+- `@visx/brush` 3.12.0 - Brush selection
+- `@visx/scale` 3.12.0 - D3 scales
+- `@visx/shape` 3.12.0 - Chart shapes
+- `d3-array`, `d3-brush`, `d3-scale`, `d3-selection`, `d3-time`, `d3-zoom` - D3 utilities
+
+**Maps & Geospatial:**
+- `maplibre-gl` 5.17.0 - Map rendering
+- `react-map-gl` 8.1.0 - React map wrapper
+- `@types/geojson` - GeoJSON type definitions
+
+**Utilities:**
+- `date-fns` 4.1.0 - Date manipulation
+- `lodash.debounce` 4.0.8 - Debounce utility
+- `clsx`, `tailwind-merge` - Class name utilities
+- `class-variance-authority` - CVA for component variants
+- `sonner` 2.0.7 - Toast notifications
 
 ## Configuration
 
 **Environment:**
-- Runtime toggles and DB path are read from `process.env.USE_MOCK_DATA`, `process.env.DISABLE_DUCKDB`, and `process.env.DUCKDB_PATH` in `src/lib/db.ts`
-- `process.env.NODE_ENV` gates dev-only behavior in `src/app/timeslicing/page.tsx` and `src/app/timeslicing/components/SuggestionToolbar.tsx`
-- Required local data paths are hardcoded in `src/lib/db.ts` (`data/sources/*.csv` and `data/cache/crime.duckdb`)
+- `.env` file with `USE_MOCK_DATA=false` flag
+- DuckDB path configurable via `DUCKDB_PATH` env var
+- Mock data toggle via `USE_MOCK_DATA` or `DISABLE_DUCKDB` env vars
 
 **Build:**
-- Next config in `next.config.ts` (`serverExternalPackages: ["duckdb"]`)
-- TypeScript path alias (`@/*`) in `tsconfig.json`
-- ESLint ruleset and ignore policy in `eslint.config.mjs`
-- Vitest config and alias mirroring in `vitest.config.mts`
-- Tailwind/PostCSS config in `src/app/globals.css` and `postcss.config.mjs`
+- `next.config.ts` - Next.js configuration (serverExternalPackages: ["duckdb"])
+- `tsconfig.json` - TypeScript configuration
+- `eslint.config.mjs` - ESLint configuration
+- `postcss.config.mjs` - PostCSS for Tailwind CSS
+- `tailwind.config` - Tailwind CSS (v4 uses CSS-based config)
+- `vitest.config.mts` - Vitest testing configuration
+- `components.json` - shadcn/ui component registry config
 
 ## Platform Requirements
 
 **Development:**
-- Node.js environment that can load native DuckDB binaries (plus postinstall symlink workaround in `package.json`)
-- Writable local filesystem for `data/cache/` and `logs/` paths used by `src/lib/db.ts` and `src/app/api/study/log/route.ts`
-- Local datasets expected in `data/sources/` for full-data mode (`src/lib/db.ts`)
+- Node.js 20+
+- pnpm 9.x
+- 8GB+ RAM (for DuckDB operations on large datasets)
 
 **Production:**
-- Node-based Next.js deployment target (Edge runtime is not suitable for DuckDB-dependent routes)
-- Deployment must include local data artifacts or run with mock-data mode via env toggles in `src/lib/db.ts`
+- Next.js compatible hosting (Vercel, Node.js server, Docker)
+- File system access for DuckDB data cache
+- ~2GB storage for crime data CSV (~8.5M rows)
 
 ---
 
-*Stack analysis: 2026-03-11*
+*Stack analysis: 2026-03-30*

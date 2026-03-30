@@ -8,7 +8,7 @@ An interactive web prototype that redesigns the Space-Time Cube visualization to
 
 Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 
-## Current State (v1.3 Shipped)
+## Current State (v2.5 Shipped)
 
 **Shipped milestones:**
 - v1.0 Thesis Prototype (2026-02-07)
@@ -16,8 +16,8 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - v1.2 Semi-Automated Timeslicing Workflows (2026-02-27)
 - v1.3 Fully Automated Timeslicing Workflows (2026-03-04)
 
-**Current status:** Milestone complete, post-audit (non-blocking tech debt only)
-**Next focus:** v3.0 — Making everything click for user-facing usage
+**Current status:** Post-v2.5 prototype with major timeslicing foundations shipped, but end-to-end user workflow still fragmented
+**Next focus:** v3.0 - turn flexible timeslicing, cross-view sync, and analysis into one clear user-facing workflow
 
 **v1.3 delivered:**
 - Full-auto ranked proposal generation from active context
@@ -25,17 +25,26 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - Package acceptance flow aligned to apply reviewed artifacts consistently
 - Safeguards and manual rerun behaviors preserved after contract alignment
 
-## Current Milestone: v3.0 — Making Everything Click
+## Current Milestone: v3.0 - Integrated Adaptive Timeslicing Workflow
 
-**Goal:** Complete the adaptive timeslicing system into a cohesive, usable experience for end users.
+**Goal:** Build a fully integrated workflow where users generate time slices from domain constraints, review them, apply them across all views, manually refine them when needed, and investigate bursty spatiotemporal patterns with adaptive scaling and STKDE support.
+
+**What must feel different in v3.0:**
+- Bin generation is driven by user intent, not a fixed bin count
+- Users can request slices using crime type, neighbourhood, time window, and granularity
+- Generated bins are the default starting point, with manual editing available afterward
+- v3.0 work converges into one unified route surface: `dashboard-v2`
+- Apply updates the timeline, 2D map, heatmap, 3D cube, and dashboard together inside `dashboard-v2`
+- Bursts become more prominent in both generated bins and adaptive visual spacing
+- Workflow status is obvious: generate, review, apply, refine, investigate
 
 **Target features:**
-- Phase 61: Dynamic binning system (13 strategies, CRUD operations) ✓
-- Phase 62: User-driven timeslicing / manual mode
-- Phase 63: Map visualization improvements
-- Phase 64: Dashboard redesign
-- Phase 65: STKDE integration
-- Phase 66: Full integration testing
+- Phase 61: Flexible binning engine and constraint-driven generation core ✓
+- Phase 62: Review/apply workflow foundation to be unified into `dashboard-v2`
+- Phase 63: `dashboard-v2` route shell plus manual refinement and adaptive burst emphasis
+- Phase 64: Full cross-view synchronization inside `dashboard-v2`
+- Phase 65: STKDE hotspot analysis integrated into `dashboard-v2`
+- Phase 66: Unified `dashboard-v2` workflow hardening, migration cleanup, and validation
 
 ## Requirements
 
@@ -64,17 +73,16 @@ Users can visually compare uniform vs adaptive time mapping to understand how lo
 - [x] **Semi-automated workflows**: Suggest/review/accept/modify/reject loop
 - [x] **Fully automated workflows**: Ranked package generation + acceptance
 
-### Planned (Future Milestones)
+### Active v3.0 outcomes
 
-**v2.0 Spatially constrained timeslicing:**
-- [ ] Spatially-aware warp and interval generation
-- [ ] Cross-view validation (timeline/map/cube)
-- [ ] Spatial diagnostics for review
-
-**v1.2+ Cross-View:**
-- [ ] 2D/3D slice visualization
-- [ ] Cross-view synchronization
-- [ ] Slice statistics/analytics
+- [ ] Constraint-driven slice generation supports crime type, neighbourhood, time window, and granularity
+- [ ] Generated bins default to suggestion-first workflow with explicit review and apply steps
+- [ ] Manual refinement works after generation without breaking the generated workflow
+- [ ] `dashboard-v2` becomes the single unified v3.0 experience
+- [ ] Timeline, map, heatmap, dashboard, and 3D cube stay synchronized on apply inside `dashboard-v2`
+- [ ] Adaptive mode expands burst periods more aggressively for investigation
+- [ ] STKDE hotspots are usable alongside slice-based exploration
+- [ ] Full workflow is stable enough for evaluation and further research
 
 ### Out of Scope
 
@@ -165,4 +173,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 - v3.0 milestone started (phases 61-66)*
+*Last updated: 2026-03-26 - v3.0 unified around dashboard-v2 as the single user-facing route*

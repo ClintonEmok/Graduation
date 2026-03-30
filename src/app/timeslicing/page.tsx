@@ -67,6 +67,7 @@ export default function TimeslicingPage() {
   const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
   const generationError = useTimeslicingModeStore((state) => state.generationError);
   const lastGeneratedMetadata = useTimeslicingModeStore((state) => state.lastGeneratedMetadata);
+  const generationInputs = useTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useTimeslicingModeStore((state) => state.setGenerationInputs);
   const mergePendingGeneratedBins = useTimeslicingModeStore((state) => state.mergePendingGeneratedBins);
   const splitPendingGeneratedBin = useTimeslicingModeStore((state) => state.splitPendingGeneratedBin);
@@ -185,10 +186,59 @@ export default function TimeslicingPage() {
     [crimes]
   );
 
+  const [generationStartSec, generationEndSec] = useMemo(() => {
+    const rawStartMs = generationInputs.timeWindow.start;
+    const rawEndMs = generationInputs.timeWindow.end;
+    const fallbackStartMs = rangeStart * 1000;
+    const fallbackEndMs = rangeEnd * 1000;
+    const startMs = typeof rawStartMs === 'number' && Number.isFinite(rawStartMs) ? rawStartMs : fallbackStartMs;
+    const endMs = typeof rawEndMs === 'number' && Number.isFinite(rawEndMs) ? rawEndMs : fallbackEndMs;
+    const startSec = Math.floor(Math.min(startMs, endMs) / 1000);
+    const endSec = Math.floor(Math.max(startMs, endMs) / 1000);
+    return [startSec, endSec];
+  }, [generationInputs.timeWindow.end, generationInputs.timeWindow.start, rangeEnd, rangeStart]);
+
+  const { data: generationCrimes, meta: generationCrimeMeta } = useCrimeData({
+    startEpoch: generationStartSec,
+    endEpoch: generationEndSec,
+    bufferDays: 0,
+    limit: 50000,
+    crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : undefined,
+    districts: generationInputs.neighbourhood ? [generationInputs.neighbourhood] : undefined,
+  });
+
+  const { meta: generationRawRangeMeta } = useCrimeData({
+    startEpoch: generationStartSec,
+    endEpoch: generationEndSec,
+    bufferDays: 0,
+    limit: 1,
+  });
+
   const generationEvents = useMemo(
-    () => selectionCrimes.map((crime) => ({ timestamp: crime.timestamp * 1000, type: crime.type, district: crime.district })),
-    [selectionCrimes]
+    () => generationCrimes.map((crime) => ({ timestamp: crime.timestamp * 1000, type: crime.type, district: crime.district })),
+    [generationCrimes]
   );
+
+  useEffect(() => {
+    if (!generationCrimeMeta) return;
+
+    console.info('[timeslicing] generation range event totals', {
+      startEpoch: generationStartSec,
+      endEpoch: generationEndSec,
+      totalMatchesRawRange: generationRawRangeMeta?.totalMatches ?? null,
+      returnedRawRange: generationRawRangeMeta?.returned ?? null,
+      sampledRawRange: generationRawRangeMeta ? Boolean(generationRawRangeMeta.sampled) : null,
+      totalMatchesFilteredGeneration: generationCrimeMeta.totalMatches ?? generationCrimes.length,
+      returnedFilteredGeneration: generationCrimeMeta.returned ?? generationCrimes.length,
+      sampledFilteredGeneration: Boolean(generationCrimeMeta.sampled),
+    });
+  }, [
+    generationCrimeMeta,
+    generationCrimes.length,
+    generationEndSec,
+    generationRawRangeMeta,
+    generationStartSec,
+  ]);
 
   const workflowState = useMemo(() => {
     if (generationError) {

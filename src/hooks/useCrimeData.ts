@@ -22,6 +22,31 @@ interface CrimeRangeResponse {
   meta?: CrimeDataMeta
 }
 
+interface NormalizedEpochRange {
+  start: number
+  end: number
+}
+
+const FALLBACK_EPOCH_RANGE: NormalizedEpochRange = {
+  start: 978307200,
+  end: 1011878400,
+}
+
+function normalizeEpochRange(startEpoch: number, endEpoch: number): NormalizedEpochRange {
+  if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch)) {
+    return FALLBACK_EPOCH_RANGE
+  }
+
+  const start = Math.floor(Math.min(startEpoch, endEpoch))
+  let end = Math.floor(Math.max(startEpoch, endEpoch))
+
+  if (start === end) {
+    end = start + 1
+  }
+
+  return { start, end }
+}
+
 /**
  * Fetch crime data for a date range from the API
  */
@@ -33,9 +58,10 @@ async function fetchCrimesInRange(
   districts?: string[],
   limit?: number
 ): Promise<CrimeRangeResponse> {
+  const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
   const requestPath = `/api/crimes/range?${new URLSearchParams({
-    startEpoch: startEpoch.toString(),
-    endEpoch: endEpoch.toString(),
+    startEpoch: normalizedRange.start.toString(),
+    endEpoch: normalizedRange.end.toString(),
     bufferDays: bufferDays.toString(),
     ...(crimeTypes?.length ? { crimeTypes: crimeTypes.join(',') } : {}),
     ...(districts?.length ? { districts: districts.join(',') } : {}),
@@ -65,6 +91,10 @@ async function fetchCrimesInRange(
   }
 }
 
+function hasValidEpochRange(startEpoch: number, endEpoch: number): boolean {
+  return Number.isFinite(startEpoch) && Number.isFinite(endEpoch) && endEpoch > startEpoch
+}
+
 /**
  * Unified hook for crime data fetching.
  * 
@@ -89,12 +119,16 @@ export function useCrimeData(
     bufferDays = 30,
     limit = 50000 
   } = options
+
+  const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
+
+  const hasValidRange = hasValidEpochRange(startEpoch, endEpoch)
   
   const queryKey = [
     'crimes', 
     'viewport', 
-    startEpoch,
-    endEpoch,
+    normalizedRange.start,
+    normalizedRange.end,
     bufferDays,
     limit,
     crimeTypes,
@@ -106,13 +140,14 @@ export function useCrimeData(
   const query = useQuery({
     queryKey,
     queryFn: () => fetchCrimesInRange(
-      startEpoch,
-      endEpoch,
+      normalizedRange.start,
+      normalizedRange.end,
       bufferDays,
       crimeTypes,
       districts,
       limit
     ),
+    enabled: hasValidRange,
     // Keep old data while fetching new to prevent UI flash
     placeholderData: (previousData) => previousData,
     // Don't refetch on window focus - viewport changes should trigger refetch
@@ -128,8 +163,8 @@ export function useCrimeData(
     isFetching: query.isFetching,
     error: query.error as Error | null,
     bufferedRange: {
-      start: query.data?.meta?.buffer?.applied.start ?? startEpoch,
-      end: query.data?.meta?.buffer?.applied.end ?? endEpoch,
+      start: query.data?.meta?.buffer?.applied.start ?? normalizedRange.start,
+      end: query.data?.meta?.buffer?.applied.end ?? normalizedRange.end,
     },
   }
 }

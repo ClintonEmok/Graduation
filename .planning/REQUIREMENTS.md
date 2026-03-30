@@ -3,7 +3,7 @@
 **Defined:** 2026-03-25
 **Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 
-## v1 Requirements (v3.0)
+## v3.0 Requirements
 
 ### Binning (Phase 61 — Complete)
 
@@ -16,46 +16,47 @@
 - [x] **BIN-07**: User can undo/reset binning changes
 - [x] **BIN-08**: Constraints validated (minEvents, maxEvents, maxBins, contiguous)
 
-### Manual Timeslicing (Phase 62)
+### Constraint-Driven Generation and Review-to-Apply (Phase 62)
 
-- [ ] **MANU-01**: User can manually create time slices via drag on timeline
-- [ ] **MANU-02**: User can adjust slice boundaries with precision controls
-- [ ] **MANU-03**: User can preview slice effects before applying
-- [ ] **MANU-04**: User can delete individual slices
-- [ ] **MANU-05**: User can reorder slices
-- [ ] **MANU-06**: Manual mode clearly distinguished from auto modes
+- [ ] **GEN-01**: User can generate bins from selected crime type filters
+- [ ] **GEN-02**: User can generate bins using neighbourhood context
+- [ ] **GEN-03**: User can generate bins within a user-defined time window
+- [ ] **GEN-04**: User can choose granularity such as hourly or daily without relying on a fixed bin count
+- [ ] **GEN-05**: Generated bins are the default first result shown to the user
+- [ ] **GEN-06**: User can review generated bins and apply them into the unified `dashboard-v2` workflow in one clear step
 
-### Map Visualization (Phase 63)
+### Manual Refinement and Adaptive Burst Emphasis (Phase 63)
 
-- [ ] **MAP-01**: Time slices visible on 2D map view
-- [ ] **MAP-02**: Slice boundaries clearly rendered
-- [ ] **MAP-03**: Cross-view sync: selecting slice on map highlights in timeline/cube
-- [ ] **MAP-04**: Map supports current zoom/pan levels without performance degradation
-- [ ] **MAP-05**: Spatial filters integrate with slice selection
+- [ ] **MAN-01**: User can manually adjust generated slices after generation
+- [ ] **MAN-02**: Manual editing supports precise boundary changes without breaking the main workflow
+- [ ] **MAN-03**: Burst periods can be represented with narrower or more focused generated slices when appropriate
+- [ ] **MAN-04**: Adaptive mode visually expands burst-heavy periods more aggressively for investigation
+- [ ] **MAN-05**: Manual refinement is delivered inside `dashboard-v2` while remaining synchronized with the generated/apply workflow
 
-### Dashboard (Phase 64)
+### Cross-View Synchronization and Workflow Dashboard (Phase 64)
 
-- [ ] **DASH-01**: Unified control panel for all timeslicing operations
-- [ ] **DASH-02**: Current binning strategy and status visible
-- [ ] **DASH-03**: Active slices displayed with quick actions
-- [ ] **DASH-04**: Workflow status (manual/auto) clearly indicated
-- [ ] **DASH-05**: Quick access to switch between modes
+- [ ] **SYNC-01**: Applied slices appear clearly on the `dashboard-v2` timeline
+- [ ] **SYNC-02**: Applied slices drive the `dashboard-v2` 2D map and heatmap views coherently
+- [ ] **SYNC-03**: Applied slices are visible and synchronized in the `dashboard-v2` 3D cube
+- [ ] **SYNC-04**: `dashboard-v2` clearly communicates current workflow state (generate, review, applied, refine)
+- [ ] **SYNC-05**: Current strategy, granularity, and active slice set are easy to understand at a glance in `dashboard-v2`
 
 ### STKDE Integration (Phase 65)
 
-- [ ] **STKD-01**: Kernel density estimation overlay available
-- [ ] **STKD-02**: Hotspot detection panel shows high-density areas
-- [ ] **STKD-03**: Chicago heatmap integration functional
-- [ ] **STKD-04**: STKDE results visible in 3D cube view
-- [ ] **STKD-05**: Toggle between standard and STKDE visualization
+- [ ] **STKD-01**: Kernel density estimation overlay available during slice-based investigation
+- [ ] **STKD-02**: Hotspot detection panel shows high-density areas with useful investigation context
+- [ ] **STKD-03**: Heatmap integration works inside the unified `dashboard-v2` workflow
+- [ ] **STKD-04**: STKDE results are visible in the 3D cube view
+- [ ] **STKD-05**: User can switch between standard slice views and STKDE-enhanced analysis
 
-### Integration Testing (Phase 66)
+### Full Workflow Hardening and Validation (Phase 66)
 
-- [ ] **TEST-01**: End-to-end workflow tests pass
-- [ ] **TEST-02**: Cross-route navigation works correctly
-- [ ] **TEST-03**: State persists across route changes
-- [ ] **TEST-04**: Performance benchmarks meet targets
-- [ ] **TEST-05**: Edge cases handled gracefully
+- [ ] **FLOW-01**: End-to-end generate-review-apply workflow tests pass for `dashboard-v2`
+- [ ] **FLOW-02**: Manual refinement after generation works correctly
+- [ ] **FLOW-03**: State stays synchronized across the `dashboard-v2` timeline, map, heatmap, dashboard panels, and cube
+- [ ] **FLOW-04**: Performance benchmarks meet interactive-use targets
+- [ ] **FLOW-05**: Empty, low-confidence, and error states are handled clearly
+- [ ] **FLOW-06**: The unified `dashboard-v2` prototype is stable enough for evaluation and further research use
 
 ## Out of Scope
 
@@ -70,18 +71,47 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BIN-01 to BIN-08 | Phase 61 | Complete |
-| MANU-01 to MANU-06 | Phase 62 | Pending |
-| MAP-01 to MAP-05 | Phase 63 | Pending |
-| DASH-01 to DASH-05 | Phase 64 | Pending |
-| STKD-01 to STKD-05 | Phase 65 | Pending |
-| TEST-01 to TEST-05 | Phase 66 | Pending |
+| BIN-01 | Phase 61 | Complete |
+| BIN-02 | Phase 61 | Complete |
+| BIN-03 | Phase 61 | Complete |
+| BIN-04 | Phase 61 | Complete |
+| BIN-05 | Phase 61 | Complete |
+| BIN-06 | Phase 61 | Complete |
+| BIN-07 | Phase 61 | Complete |
+| BIN-08 | Phase 61 | Complete |
+| GEN-01 | Phase 62 | Pending |
+| GEN-02 | Phase 62 | Pending |
+| GEN-03 | Phase 62 | Pending |
+| GEN-04 | Phase 62 | Pending |
+| GEN-05 | Phase 62 | Pending |
+| GEN-06 | Phase 62 | Pending |
+| MAN-01 | Phase 63 | Pending |
+| MAN-02 | Phase 63 | Pending |
+| MAN-03 | Phase 63 | Pending |
+| MAN-04 | Phase 63 | Pending |
+| MAN-05 | Phase 63 | Pending |
+| SYNC-01 | Phase 64 | Pending |
+| SYNC-02 | Phase 64 | Pending |
+| SYNC-03 | Phase 64 | Pending |
+| SYNC-04 | Phase 64 | Pending |
+| SYNC-05 | Phase 64 | Pending |
+| STKD-01 | Phase 65 | Pending |
+| STKD-02 | Phase 65 | Pending |
+| STKD-03 | Phase 65 | Pending |
+| STKD-04 | Phase 65 | Pending |
+| STKD-05 | Phase 65 | Pending |
+| FLOW-01 | Phase 66 | Pending |
+| FLOW-02 | Phase 66 | Pending |
+| FLOW-03 | Phase 66 | Pending |
+| FLOW-04 | Phase 66 | Pending |
+| FLOW-05 | Phase 66 | Pending |
+| FLOW-06 | Phase 66 | Pending |
 
 **Coverage:**
-- v1 requirements: 28 total
-- Mapped to phases: 28
+- v3.0 requirements: 35 total (8 + 6 + 5 + 5 + 5 + 6)
+- Mapped to phases: 35
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after v3.0 milestone initialization*
+*Last updated: 2026-03-26 after aligning v3.0 requirements to dashboard-v2 as the single unified route*

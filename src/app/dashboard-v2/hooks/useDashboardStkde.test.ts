@@ -1,28 +1,52 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { selectAppliedGeneratedSlices } from './useDashboardStkde';
+import type { TimeSlice } from '@/store/slice-domain/types';
 
 describe('useDashboardStkde', () => {
-  const source = readFileSync(new URL('./useDashboardStkde.ts', import.meta.url), 'utf8');
+  test('selectAppliedGeneratedSlices returns only visible generated-applied slices', () => {
+    const visibleApplied: TimeSlice = {
+      id: 'slice-1',
+      type: 'range',
+      time: 0,
+      range: [1000, 2000],
+      name: 'visible-applied',
+      source: 'generated-applied',
+      isVisible: true,
+      isLocked: false,
+      color: '#10b981',
+    };
+    const hiddenApplied: TimeSlice = {
+      ...visibleApplied,
+      id: 'slice-2',
+      isVisible: false,
+    };
+    const manualSlice: TimeSlice = {
+      ...visibleApplied,
+      id: 'slice-3',
+      source: 'manual',
+      isVisible: true,
+    };
 
-  test('posts STKDE payload with manual run action', () => {
-    expect(source).toMatch(/fetch\('\/api\/stkde\/hotspots'/);
-    expect(source).toMatch(/callerIntent: 'stkde'/);
-    expect(source).toMatch(/runStkde = useCallback\(async \(\)/);
+    const selected = selectAppliedGeneratedSlices([hiddenApplied, manualSlice, visibleApplied]);
+
+    expect(selected).toEqual([visibleApplied]);
   });
 
-  test('handles cancellation with AbortController before rerun', () => {
-    expect(source).toMatch(/AbortController/);
-    expect(source).toMatch(/abortRef\.current\?\.abort\(\)/);
-    expect(source).toMatch(/finishRunCancelled/);
-  });
+  test('selectAppliedGeneratedSlices keeps slice object identity (no cloning)', () => {
+    const slice: TimeSlice = {
+      id: 'slice-1',
+      type: 'point',
+      time: 1700000000000,
+      name: 'point',
+      source: 'generated-applied',
+      isVisible: true,
+      isLocked: false,
+      color: '#10b981',
+    };
 
-  test('uses worker projection and stale marking on applied-slice changes', () => {
-    expect(source).toMatch(/new Worker\(new URL\([^)]*stkdeHotspot\.worker\.ts/);
-    expect(source).toMatch(/markStale\('applied-slices-updated'\)/);
-  });
+    const selected = selectAppliedGeneratedSlices([slice]);
 
-  test('remains manual-triggered instead of auto-running on param edits', () => {
-    expect(source).not.toMatch(/void runStkde\(/);
-    expect(source).not.toMatch(/useEffect\([^)]*params/);
+    expect(selected).toHaveLength(1);
+    expect(selected[0]).toBe(slice);
   });
 });

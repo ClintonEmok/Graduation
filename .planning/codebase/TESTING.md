@@ -1,128 +1,290 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-03-30
 
 ## Test Framework
 
 **Runner:**
-- Vitest 4 (`vitest`)
-- Config: `vitest.config.mts`
+- Vitest 4.0.18
+- Config file: `vitest.config.mts`
 
 **Assertion Library:**
-- Vitest built-in `expect` + matchers (`describe`, `it`, `test`, `vi`)
+- Vitest built-in `expect`
 
 **Run Commands:**
 ```bash
-npm run test             # Run tests (watch by default in Vitest CLI)
-npx vitest --watch       # Explicit watch mode
-npx vitest --coverage    # Coverage report (not wired as npm script)
+npm test                 # Run all tests
+npm test -- --watch      # Watch mode (via vitest)
 ```
+
+**Environment:**
+- Default: `node` (set in `vitest.config.mts`)
+- Override per-file with `/* @vitest-environment node */` directive
 
 ## Test File Organization
 
 **Location:**
-- Co-located with implementation under `src/` (for example `src/hooks/useCrimeData.test.ts`, `src/app/api/crimes/range/route.test.ts`)
+- Co-located with source files
+- Same directory as implementation
 
 **Naming:**
-- `*.test.ts` and `*.test.tsx`
+- `.test.ts` for TypeScript files
+- `.test.tsx` for React components/hooks
 
-**Structure:**
-```
-src/
-  <feature>/
-    module.ts
-    module.test.ts
+**Examples:**
+- `src/store/useSliceStore.test.ts` - tests for `src/store/useSliceStore.ts`
+- `src/hooks/useCrimeData.test.ts` - tests for `src/hooks/useCrimeData.ts`
+- `src/workers/adaptiveTime.worker.test.ts` - tests for `src/workers/adaptiveTime.worker.ts`
+
+**Config:**
+```typescript
+// vitest.config.mts
+export default defineConfig({
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});
 ```
 
 ## Test Structure
 
 **Suite Organization:**
 ```typescript
-describe('module/behavior', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
+import { beforeEach, describe, expect, test } from 'vitest';
+import { useSliceStore } from './useSliceStore';
 
-  it('validates contract', async () => {
-    // arrange
-    // act
-    // assert
+beforeEach(() => {
+  useSliceStore.getState().clearSlices();
+});
+
+describe('slice store actions', () => {
+  test('supports CRUD operations for point and range slices', () => {
+    const store = useSliceStore.getState();
+    // test implementation
   });
 });
 ```
 
 **Patterns:**
-- Setup pattern: reset mocks with `vi.restoreAllMocks()` + `mockReset()` in `beforeEach`
-- Teardown pattern: explicit cleanup callbacks for rendered hook harnesses in `afterEach` (`src/hooks/useCrimeData.test.ts`)
-- Assertion pattern: contract-focused checks for status codes, response shape, and parameter forwarding
+- `describe` blocks for grouping related tests
+- `test` or `it` for individual test cases
+- `beforeEach` for setup/reset
+- `afterEach` for cleanup (e.g., `vi.restoreAllMocks()`)
+
+**Zustand Store Testing:**
+```typescript
+// Direct state manipulation via getState()
+const store = useSliceStore.getState();
+store.addSlice({ time: 50 });
+expect(useSliceStore.getState().slices.length).toBe(1);
+
+// Reset between tests
+beforeEach(() => {
+  useSliceStore.getState().clearSlices();
+});
+```
 
 ## Mocking
 
-**Framework:** Vitest mocking (`vi.mock`, `vi.hoisted`, `vi.fn`, `vi.stubGlobal`)
+**Framework:** Vitest (`vi`)
 
 **Patterns:**
-```typescript
-const { dependencyMock } = vi.hoisted(() => ({ dependencyMock: vi.fn() }));
 
-vi.mock('@/lib/dependency', () => ({
-  dependency: dependencyMock,
-}));
+**1. Function Mocks (`vi.fn()`):**
+```typescript
+const setTimeRange = vi.fn();
+const setRange = vi.fn();
+const applyRangeToStores = (startSec: number, endSec: number) => {
+  applyRangeToStoresContract({
+    interactive: true,
+    startSec,
+    endSec,
+    domainStart: 0,
+    domainEnd: 100,
+    currentTime: 50,
+    setTimeRange,
+    setRange,
+    // ...
+  });
+};
 ```
 
-**What to Mock:**
-- DB/query dependencies for API tests (`src/app/api/crimes/range/route.test.ts`)
-- Browser globals/fetch for hook tests (`src/hooks/useCrimeData.test.ts`)
-- Worker/side-effect boundaries for store logic tests (`src/store/useAdaptiveStore.test.ts`)
+**2. Global Stubbing (`vi.stubGlobal()`):**
+```typescript
+// Stub fetch
+const fetchMock = vi.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ data: [], meta: { returned: 0 } }),
+});
+vi.stubGlobal('fetch', fetchMock);
 
-**What NOT to Mock:**
-- Pure computation helpers; test these directly (for example timeline hook helper tests and query builder tests in `src/lib/queries.test.ts`)
+// Stub localStorage
+const localStorageMock = {
+  getItem: vi.fn((key: string) => store[key] ?? null),
+  setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
+  // ...
+};
+vi.stubGlobal('localStorage', localStorageMock);
+```
+
+**3. Restore Mocks:**
+```typescript
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+```
+
+**4. Mock Timers:**
+```typescript
+vi.useFakeTimers();
+// ... test code
+vi.useRealTimers();
+```
 
 ## Fixtures and Factories
 
 **Test Data:**
-```typescript
-const makeRequest = (query: string) =>
-  new Request(`http://localhost/api/crimes/range?${query}`);
-```
+- Inline fixtures in test files for simple data
+- Separate factory functions for complex objects
 
-**Location:**
-- Inline fixture objects are preferred per test file; no centralized fixtures directory detected
+**Example from `src/lib/stkde/compute.test.ts`:**
+```typescript
+const baseCrimes: CrimeRecord[] = [
+  { timestamp: 1_700_010_000, type: 'THEFT', lat: 41.88, lon: -87.63, x: 0, z: 0, district: '1', year: 2023, iucr: '0820' },
+  { timestamp: 1_700_011_000, type: 'THEFT', lat: 41.8805, lon: -87.631, x: 0, z: 0, district: '1', year: 2023, iucr: '0820' },
+  // ...
+];
+```
 
 ## Coverage
 
-**Requirements:** None enforced in config
+**Requirements:** None explicitly enforced
 
 **View Coverage:**
 ```bash
-npx vitest --coverage
+npm test -- --coverage
 ```
 
 ## Test Types
 
 **Unit Tests:**
-- Dominant test style; pure utility/store/hook logic coverage (`src/lib/*.test.ts`, `src/components/timeline/hooks/*.test.ts`)
+- Store logic: Direct state manipulation via `getState()`
+- Pure functions: Direct function calls with assertions
+- Worker functions: Direct imports and function calls
 
 **Integration Tests:**
-- API route handler tests with mocked dependencies (`src/app/api/crimes/range/route.test.ts`)
-
-**E2E Tests:**
-- Not used (no Playwright/Cypress config detected)
+- Hooks with React Query: Custom test renderer with QueryClient
+- Store persistence: LocalStorage mocking
 
 ## Common Patterns
 
-**Async Testing:**
+### Hook Testing with React Query
+
+**Example from `src/hooks/useCrimeData.test.ts`:**
+
 ```typescript
-const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000'));
-expect(response.status).toBe(200);
-await expect(response.json()).resolves.toMatchObject({ meta: expect.any(Object) });
+import TestRenderer, { act } from 'react-test-renderer';
+import { useCrimeData } from '@/hooks/useCrimeData';
+
+const createRenderer = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  // Custom render and wait pattern
+  const renderer = TestRenderer.create(React.createElement(App));
+
+  const renderAndWait = async (options) => {
+    const done = new Promise((resolve, reject) => {
+      // pendingResolve/pendingReject setup
+      timeoutId = setTimeout(() => reject(new Error('Timed out')), 3000);
+    });
+
+    await act(async () => {
+      renderer.update(React.createElement(App));
+      await Promise.resolve();
+    });
+
+    return await done;
+  };
+
+  return { renderAndWait, cleanup: () => { renderer.unmount(); queryClient.clear(); } };
+};
+
+it('applies default 30-day buffering', async () => {
+  const harness = createRenderer();
+  const fetchMock = vi.fn().mockResolvedValue({ /* mock response */ });
+  vi.stubGlobal('fetch', fetchMock);
+
+  const result = await harness.renderAndWait({ startEpoch: 978307200, endEpoch: 978393600 });
+  
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(result.bufferedRange).toEqual({ start: 975715200, end: 980985600 });
+});
 ```
 
-**Error Testing:**
+### Store Testing Pattern
+
 ```typescript
-const result = await harness.renderAndWait({ startEpoch: 1, endEpoch: 2 });
-expect(result.error?.message).toContain('HTTP error');
+beforeEach(() => {
+  useSliceStore.getState().clearSlices();
+});
+
+test('adds slice correctly', () => {
+  const store = useSliceStore.getState();
+  store.addSlice({ time: 50 });
+  
+  expect(useSliceStore.getState().slices).toHaveLength(1);
+  expect(useSliceStore.getState().slices[0].time).toBe(50);
+});
+```
+
+### LocalStorage Mocking Pattern
+
+```typescript
+/* @vitest-environment node */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const createLocalStorageMock = () => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
+    removeItem: vi.fn((key: string) => { delete store[key]; }),
+    clear: vi.fn(() => { store = {}; }),
+    get length() { return Object.keys(store).length; },
+    key: vi.fn((i: number) => Object.keys(store)[i] ?? null),
+  };
+};
+
+vi.stubGlobal('localStorage', createLocalStorageMock());
+
+import { useFilterStore } from './useFilterStore';
+```
+
+### Parametrized Tests
+
+```typescript
+test.each(['uniform-time', 'uniform-events'] as const)(
+  'uses density-derived warp weights in %s mode',
+  (binningMode) => {
+    const timestamps = Float32Array.from([0, 1, 2, 10, 11, 12, 13, 20, 30, 31]);
+    const maps = computeAdaptiveMaps(timestamps, [0, 40], {
+      binCount: 4,
+      kernelWidth: 1,
+      binningMode,
+    });
+    // assertions
+  },
+);
 ```
 
 ---
 
-*Testing analysis: 2026-03-11*
+*Testing analysis: 2026-03-30*

@@ -1,118 +1,209 @@
 # Architecture
 
-**Analysis Date:** 2026-03-11
+**Analysis Date:** 2026-03-30
 
 ## Pattern Overview
 
-**Overall:** Client-heavy modular monolith (Next App Router + local analytics backend)
+**Overall:** Next.js 14 App Router with layered architecture and Zustand state management
 
 **Key Characteristics:**
-- UI composition is route-driven (`src/app/*`) with most interaction/state on the client (`"use client"` pages and components)
-- Data access is internal API first (`src/app/api/*`) with a shared query core (`src/lib/queries.ts`)
-- Cross-view coordination is centralized in Zustand stores (`src/store/*`, `src/lib/stores/viewportStore.ts`)
+- Server-side API routes with Node.js runtime for DuckDB operations
+- Client-side React components with TanStack Query for data fetching
+- Zustand stores for reactive state management across domains
+- Web Workers for computationally intensive operations (STKDE hotspot detection)
+- 3D visualization layer using React-Three-Fiber
 
 ## Layers
 
-**Route/UI Layer:**
-- Purpose: Define user-facing pages and compose feature modules
-- Location: `src/app/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/page.tsx`, `src/app/timeslicing/page.tsx`
-- Contains: Next route components, feature shells, layout wrappers
-- Depends on: `src/components/*`, `src/hooks/*`, `src/store/*`
-- Used by: Next.js App Router runtime
+### Routes Layer (src/app)
+- **Purpose:** Next.js App Router pages and API endpoints
+- Location: `src/app/`
+- Contains: Route pages, layouts, API route handlers
+- Depends on: Components, hooks, stores
+- Used by: Browser navigation
 
-**Component Layer:**
-- Purpose: Render map, timeline, 3D scene, controls, and local UI flows
-- Location: `src/components/*`
-- Contains: Domain components (`map`, `timeline`, `viz`) and UI primitives (`ui`)
-- Depends on: Zustand stores, hooks, and utility/lib modules
-- Used by: Route pages under `src/app/*`
+**Key Routes:**
+- `src/app/dashboard/page.tsx` - Main dashboard with map, cube visualization, timeline
+- `src/app/stkde/page.tsx` - STKDE hotspot analysis view
+- `src/app/stats/page.tsx` - Statistics view
+- `src/app/timeslicing/page.tsx` - Time slicing interface
+- `src/app/api/crimes/range/route.ts` - Crime data API endpoint
+- `src/app/api/stkde/hotspots/route.ts` - STKDE computation endpoint
+- `src/app/api/adaptive/global/route.ts` - Adaptive binning endpoint
 
-**State/Domain Layer:**
-- Purpose: Manage shared state and cross-panel interaction contracts
-- Location: `src/store/*` and `src/store/slice-domain/*`
-- Contains: Feature stores (adaptive, filters, timeline data, slices, suggestion state)
-- Depends on: Utility modules from `src/lib/*` and worker output contracts
-- Used by: Components and hooks across map/timeline/3D views
+### Components Layer (src/components)
+- **Purpose:** Reusable UI components organized by feature
+- Location: `src/components/`
+- Contains: React components for map, timeline, visualization, UI
+- Depends on: Hooks, stores, types
+- Used by: Routes, other components
 
-**Data/Service Layer:**
-- Purpose: Fetch and transform data from internal APIs and local DB/query APIs
-- Location: `src/hooks/useCrimeData.ts`, `src/hooks/useViewportCrimeData.ts`, `src/lib/queries.ts`, `src/lib/db.ts`
-- Contains: Query key logic, data normalization, SQL builder orchestration, DB setup
-- Depends on: Next API routes (`/api/*`), DuckDB package, Apache Arrow serialization
-- Used by: Store hydration and UI components
+**Component Groups:**
+- `src/components/map/` - Map visualization (MapVisualization, MapBase, MapLayerManager)
+- `src/components/viz/` - 3D cube visualization (CubeVisualization, Scene, MainScene)
+- `src/components/timeline/` - Timeline components (DualTimeline, TimelinePanel, TimelineBrush)
+- `src/components/layout/` - Layout components (DashboardLayout, TopBar)
+- `src/components/ui/` - Shared UI primitives (shadcn/ui components)
+- `src/components/study/` - Study/analysis controls
 
-**Backend API Layer:**
-- Purpose: Expose data/compute endpoints to the client
-- Location: `src/app/api/**/route.ts`
-- Contains: Parameter validation, range buffering, fallback behavior, response contracts
-- Depends on: `src/lib/db.ts`, `src/lib/queries.ts`, `src/lib/duckdb-aggregator.ts`
-- Used by: `fetch()` calls in `src/hooks/*` and `src/components/*`
+### Hooks Layer (src/hooks)
+- **Purpose:** Custom React hooks for data fetching and state interactions
+- Location: `src/hooks/`
+- Contains: Data hooks (useCrimeData), UI hooks (useDraggable, useMeasure)
+- Depends on: Stores, types, lib utilities
+- Used by: Components
+
+**Key Hooks:**
+- `src/hooks/useCrimeData.ts` - Unified crime data fetching with React Query
+- `src/hooks/useSliceStats.ts` - Slice statistics computation
+- `src/hooks/useDebouncedDensity.ts` - Debounced density calculations
+- `src/hooks/useSmartProfiles.ts` - Context profile management
+
+### Store Layer (src/store)
+- **Purpose:** Zustand stores for application state management
+- Location: `src/store/`
+- Contains: State slices for slices, selection, coordination, filters
+- Depends on: Types, lib utilities
+- Used by: Components, hooks
+
+**Key Stores:**
+- `src/store/useSliceDomainStore.ts` - Time slice management (core, selection, creation, adjustment slices)
+- `src/store/useCoordinationStore.ts` - Cross-component coordination (selection sync, workflow phase)
+- `src/store/useAdaptiveStore.ts` - Adaptive binning state
+- `src/store/useTimeStore.ts` - Time range and viewport state
+- `src/store/useFilterStore.ts` - Crime type/district filters
+- `src/store/slice-domain/` - Slice sub-domain implementations
+
+### Library Layer (src/lib)
+- **Purpose:** Business logic, database access, utilities
+- Location: `src/lib/`
+- Contains: Query builders, DuckDB integration, data transformations
+- Used by: API routes, hooks, stores
+
+**Key Modules:**
+- `src/lib/db.ts` - DuckDB initialization and connection management
+- `src/lib/queries.ts` - Crime data queries with mock fallback
+- `src/lib/queries/` - Query builders (aggregations, filters, builders)
+- `src/lib/binning/` - Time binning logic and rules
+- `src/lib/context-diagnostics/` - Context comparison diagnostics
+- `src/lib/stkde/` - STKDE computation pipelines
+- `src/lib/adaptive/` - Adaptive binning algorithms
+- `src/lib/time-domain.ts` - Time domain conversions
+
+### Types Layer (src/types)
+- **Purpose:** TypeScript type definitions
+- Location: `src/types/`
+- Contains: Domain types, API response types
+
+**Key Types:**
+- `src/types/crime.ts` - CrimeRecord, CrimeDataMeta, UseCrimeDataOptions
+- `src/types/autoProposalSet.ts` - Auto-proposal types
+- `src/types/index.ts` - Re-exports
+
+### Workers Layer (src/workers)
+- **Purpose:** Web Workers for off-main-thread computation
+- Location: `src/workers/`
+- Contains: STKDE hotspot worker, adaptive time worker
 
 ## Data Flow
 
-**Viewport Data Flow (primary hot path):**
+**Crime Data Flow:**
 
-1. UI updates range/filters in stores (`src/lib/stores/viewportStore.ts`, `src/store/useFilterStore.ts`)
-2. `useCrimeData` builds request and calls `/api/crimes/range` (`src/hooks/useCrimeData.ts`, `src/app/api/crimes/range/route.ts`)
-3. API queries DuckDB or mock path via `queryCrimeCount`/`queryCrimesInRange` (`src/lib/queries.ts`) and returns `{ data, meta }`
-4. Components/stores consume results and sync map/timeline/3D interactions (`src/components/map/MapVisualization.tsx`, `src/components/timeline/DualTimeline.tsx`, `src/store/useTimelineDataStore.ts`)
+1. User navigates to dashboard
+2. Component calls `useCrimeData(startEpoch, endEpoch)` hook
+3. Hook triggers React Query to fetch from `/api/crimes/range`
+4. API route (`src/app/api/crimes/range/route.ts`):
+   - Validates viewport parameters
+   - Calls `queryCrimesInRange()` from `src/lib/queries.ts`
+   - Queries DuckDB or returns mock data
+5. Data flows back through React Query cache
+6. Components consume crime data for visualization
 
-**State Management:**
-- Use feature-scoped Zustand stores; sync across stores through explicit helper contracts (for example `applyRangeToStoresContract` in `src/components/timeline/DualTimeline.tsx`)
+**State Management Flow:**
+
+1. User interaction triggers store action
+2. Zustand store updates state
+3. Components re-render via selectors
+4. `useCoordinationStore` handles cross-component sync:
+   - Tracks `selectedSource` (cube|timeline|map)
+   - Manages `workflowPhase` (generate|review|applied|refine)
+   - Maintains `syncStatus` (syncing|synchronized|partial)
+
+**STKDE Computation Flow:**
+
+1. User requests hotspot detection
+2. API route `src/app/api/stkde/hotspots/route.ts` receives request
+3. Calls STKDE pipeline in `src/lib/stkde/full-population-pipeline.ts`
+4. Heavy computation runs server-side (Node.js runtime)
+5. Results cached in DuckDB for future requests
 
 ## Key Abstractions
 
-**Unified Crime Query Hook:**
-- Purpose: Canonical client data-fetch API with buffering/filter support
-- Examples: `src/hooks/useCrimeData.ts`, `src/hooks/useViewportCrimeData.ts`
-- Pattern: Wrapper hook over TanStack Query with typed response metadata
+**CrimeRecord (canonical data model):**
+- Purpose: Unified format for crime data across all components
+- Examples: `src/types/crime.ts`, `src/lib/queries.ts`
+- Pattern: TypeScript interface with normalized spatial coordinates
 
-**Adaptive Time Maps:**
-- Purpose: Compute density/burst/warp maps for timeline scaling
-- Examples: `src/store/useAdaptiveStore.ts`, `src/workers/adaptiveTime.worker.ts`, `src/app/api/adaptive/global/route.ts`
-- Pattern: Dual compute mode (client worker for local/viewport, server precompute for global)
+**TimeSlice (domain model):**
+- Purpose: Represents time ranges selected by users
+- Examples: `src/store/slice-domain/types.ts`
+- Pattern: Zustand-managed with sub-slices (core, selection, creation, adjustment)
 
-**Slice Domain Store Composition:**
-- Purpose: Combine slice core/creation/selection/adjustment into one persistent domain store
-- Examples: `src/store/useSliceDomainStore.ts`, `src/store/slice-domain/createSliceCoreSlice.ts`, `src/store/slice-domain/createSliceCreationSlice.ts`
-- Pattern: Slice factory composition with exported selectors
+**Query Builders:**
+- Purpose: SQL query construction with parameterization
+- Examples: `src/lib/queries/builders.ts`, `src/lib/queries/filters.ts`
+- Pattern: Builder pattern returning { sql, params }
 
 ## Entry Points
 
-**Root App Layout:**
-- Location: `src/app/layout.tsx`
-- Triggers: Every app route render
-- Responsibilities: Global providers, theme, query client, toaster, onboarding bootstrap
+**Client Entry:**
+- `src/app/dashboard/page.tsx` - Main application view
+- Triggers: Browser navigation to /dashboard
+- Responsibilities: Layout composition, component orchestration
 
-**Dashboard Route:**
-- Location: `src/app/dashboard/page.tsx`
-- Triggers: `/dashboard`
-- Responsibilities: Compose map + cube + timeline panels and study controls
+**API Entry:**
+- `src/app/api/crimes/range/route.ts` - Crime data endpoint
+- Triggers: HTTP GET /api/crimes/range?startEpoch=X&endEpoch=Y
+- Responsibilities: Viewport-based query, buffering, sampling
 
-**Timeslicing Route:**
-- Location: `src/app/timeslicing/page.tsx`
-- Triggers: `/timeslicing`
-- Responsibilities: Fetch/sync timeline data, generate suggestions, drive adaptive + slice workflows
-
-**API Entry Points:**
-- Location: `src/app/api/crimes/range/route.ts`, `src/app/api/crime/meta/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/adaptive/global/route.ts`
-- Triggers: Browser fetches from hooks/components
-- Responsibilities: Validate params, execute query layer, return response contracts, provide mock fallback headers
+**Worker Entry:**
+- `src/workers/stkdeHotspot.worker.ts` - STKDE filtering
+- Triggers: postMessage from main thread
+- Responsibilities: Hotspot filtering, sorting by intensity
 
 ## Error Handling
 
-**Strategy:** Defensive fallback over fail-fast
+**Strategy:** Try-catch with typed error responses
 
 **Patterns:**
-- Try/catch at API boundary with JSON error or mock fallback payloads (`src/app/api/crime/*/route.ts`)
-- Client hooks throw on non-OK and expose error through query state (`src/hooks/useCrimeData.ts`)
+- API routes return JSON error with status codes
+- React Query provides error state via useCrimeData hook
+- Zustand actions are synchronous with no error boundary
+- DuckDB errors logged and re-thrown as descriptive errors
+
+**Example from `src/app/api/crimes/range/route.ts`:**
+```typescript
+try {
+  // ... query logic
+} catch (error) {
+  console.error('API Error (/api/crimes/range):', error);
+  return NextResponse.json(
+    { error: 'Failed to fetch crime data', details: error.message },
+    { status: 500 }
+  );
+}
+```
 
 ## Cross-Cutting Concerns
 
-**Logging:** Console-based diagnostics and optional study event buffering (`src/lib/logger.ts`, `src/app/api/study/log/route.ts`)
-**Validation:** Route-level parameter guards in API handlers (`src/app/api/crimes/range/route.ts`, `src/app/api/crime/facets/route.ts`)
-**Authentication:** Not detected; endpoints are open within app context
+**Logging:** Custom logger in `src/lib/logger.ts`
+
+**Validation:** Input validation in API routes (epoch ranges, parameters)
+
+**Authentication:** Not implemented (local data only)
+
+**Feature Flags:** URL-based feature flags via `src/hooks/useURLFeatureFlags.ts`
 
 ---
 
-*Architecture analysis: 2026-03-11*
+*Architecture analysis: 2026-03-30*

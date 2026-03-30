@@ -1,35 +1,86 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { TimeBin } from '@/lib/binning/types';
-import { BinningStrategy, PRESET_RULES } from '@/lib/binning/rules';
+import { BinningStrategy } from '@/lib/binning/rules';
+import { generateBins } from '@/lib/binning/engine';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useBinningStore } from '@/store/useBinningStore';
+import {
+  useTimeslicingModeStore,
+  type TimeslicingGranularity,
+} from '@/store/useTimeslicingModeStore';
+import { getDistrictDisplayName } from '@/lib/category-maps';
+
+type CrimeEventData = {
+  timestamp: number;
+  type: string;
+  district?: string;
+};
 
 interface BinningControlsProps {
-  /** Current bins */
   bins: TimeBin[];
-  /** Current strategy */
   strategy: BinningStrategy;
-  /** On strategy change */
   onStrategyChange: (strategy: BinningStrategy) => void;
-  /** On bin selection */
   onBinSelect?: (binId: string | null) => void;
-  /** Selected bin ID */
   selectedBinId?: string | null;
-  /** On merge bins */
   onMerge?: (binIds: string[]) => void;
-  /** On split bin */
   onSplit?: (binId: string, splitPoint: number) => void;
-  /** On delete bin */
   onDelete?: (binId: string) => void;
-  /** On resize bin */
   onResize?: (binId: string, newStartTime: number, newEndTime: number) => void;
-  /** On save configuration */
   onSaveConfig?: (name: string) => void;
-  /** On load configuration */
   onLoadConfig?: (configId: string) => void;
-  /** Available saved configurations */
   savedConfigs?: Array<{ id: string; name: string }>;
+  generationData?: CrimeEventData[];
+  generationDomain?: [number, number];
+  availableCrimeTypes?: string[];
+  availableNeighbourhoods?: string[];
 }
+
+const GENERATION_GRANULARITIES: Array<{
+  value: TimeslicingGranularity;
+  label: string;
+  helper: string;
+  strategy: BinningStrategy;
+}> = [
+  { value: 'hourly', label: 'Hourly', helper: 'Focus on bursts within a day', strategy: 'hourly' },
+  { value: 'daily', label: 'Daily', helper: 'Compare day-to-day activity', strategy: 'daily' },
+  { value: 'weekly', label: 'Weekly', helper: 'Broader investigation windows', strategy: 'weekly' },
+];
+
+const STRATEGIES: Array<{ value: BinningStrategy; label: string; description: string }> = [
+  { value: 'auto-adaptive', label: 'Auto adaptive', description: 'Pick burst-aware bins automatically' },
+  { value: 'burstiness', label: 'Burst emphasis', description: 'Narrow dense periods more aggressively' },
+  { value: 'crime-type-specific', label: 'Crime-specific', description: 'Bias toward crime-type clustering' },
+  { value: 'hourly', label: 'Hourly', description: 'Fixed hourly slices' },
+  { value: 'daily', label: 'Daily', description: 'Fixed daily slices' },
+  { value: 'weekly', label: 'Weekly', description: 'Fixed weekly slices' },
+  { value: 'uniform-time', label: 'Uniform time', description: 'Even time spans across the window' },
+  { value: 'uniform-distribution', label: 'Uniform events', description: 'Balance event counts per bin' },
+];
+
+const isFixedIntervalStrategy = (strategy: BinningStrategy) =>
+  strategy === 'hourly' || strategy === 'daily' || strategy === 'weekly';
+
+const toDateTimeLocalValue = (timestampMs: number | null) => {
+  if (!timestampMs || !Number.isFinite(timestampMs)) return '';
+  const date = new Date(timestampMs);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const parseDateTimeLocalValue = (value: string) => {
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatRange = (start: number, end: number) => {
+  const startDate = new Date(start).toLocaleString();
+  const endDate = new Date(end).toLocaleString();
+  return `${startDate} → ${endDate}`;
+};
 
 export function BinningControls({
   bins,
@@ -40,205 +91,445 @@ export function BinningControls({
   onMerge,
   onSplit,
   onDelete,
-  onResize,
   onSaveConfig,
   onLoadConfig,
   savedConfigs = [],
+  generationData,
+  generationDomain,
+  availableCrimeTypes = [],
+  availableNeighbourhoods = [],
 }: BinningControlsProps) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [configName, setConfigName] = useState('');
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState<{ binId: string; edge: 'start' | 'end' } | null>(null);
 
-  const strategies: { value: BinningStrategy; label: string; description: string }[] = [
-    { value: 'auto-adaptive', label: 'Auto Adaptive', description: 'Automatically detect best strategy' },
-    { value: 'daytime-heavy', label: 'Daytime Heavy', description: 'Focus on 6am-6pm patterns' },
-    { value: 'nighttime-heavy', label: 'Nighttime Heavy', description: 'Focus on 6pm-6am patterns' },
-    { value: 'crime-type-specific', label: 'Crime Type', description: 'Group by crime type clusters' },
-    { value: 'burstiness', label: 'Burstiness', description: 'Split by inter-arrival times' },
-    { value: 'uniform-distribution', label: 'Uniform Events', description: 'Equal events per bin' },
-    { value: 'uniform-time', label: 'Uniform Time', description: 'Equal time spans' },
-    { value: 'weekday-weekend', label: 'Weekday/Weekend', description: 'Separate weekday from weekend' },
-    { value: 'quarter-hourly', label: '15 Min', description: '15-minute intervals' },
-    { value: 'hourly', label: 'Hourly', description: 'Hourly intervals' },
-    { value: 'daily', label: 'Daily', description: 'Daily intervals' },
-    { value: 'weekly', label: 'Weekly', description: 'Weekly intervals' },
-  ];
+  const generationInputs = useTimeslicingModeStore((state) => state.generationInputs);
+  const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
+  const generationError = useTimeslicingModeStore((state) => state.generationError);
+  const lastGeneratedMetadata = useTimeslicingModeStore((state) => state.lastGeneratedMetadata);
+  const setGenerationInputs = useTimeslicingModeStore((state) => state.setGenerationInputs);
+  const setGenerationStatus = useTimeslicingModeStore((state) => state.setGenerationStatus);
+  const setPendingGeneratedBins = useTimeslicingModeStore((state) => state.setPendingGeneratedBins);
+  const setGenerationError = useTimeslicingModeStore((state) => state.setGenerationError);
+  const clearPendingGeneratedBins = useTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
+
+  useEffect(() => {
+    if (!generationDomain) return;
+    const { start, end } = generationInputs.timeWindow;
+    if (start === null || end === null || start === end) {
+      setGenerationInputs({
+        timeWindow: {
+          start: generationDomain[0],
+          end: generationDomain[1],
+        },
+      });
+    }
+  }, [generationDomain, generationInputs.timeWindow, setGenerationInputs]);
+
+  const stats = useMemo(() => {
+    const totalEvents = bins.reduce((sum, bin) => sum + bin.count, 0);
+    return {
+      totalEvents,
+      average: bins.length > 0 ? totalEvents / bins.length : 0,
+    };
+  }, [bins]);
 
   const handleMerge = useCallback(() => {
     if (!selectedBinId || !onMerge) return;
-    // Find adjacent bins to merge
-    const selectedIndex = bins.findIndex(b => b.id === selectedBinId);
+    const selectedIndex = bins.findIndex((bin) => bin.id === selectedBinId);
     if (selectedIndex > 0) {
       onMerge([bins[selectedIndex - 1].id, selectedBinId]);
     } else if (selectedIndex < bins.length - 1) {
       onMerge([selectedBinId, bins[selectedIndex + 1].id]);
     }
-  }, [bins, selectedBinId, onMerge]);
+  }, [bins, onMerge, selectedBinId]);
 
   const handleSplit = useCallback(() => {
     if (!selectedBinId || !onSplit) return;
-    const bin = bins.find(b => b.id === selectedBinId);
-    if (bin) {
-      // Split at midpoint
-      const midpoint = (bin.startTime + bin.endTime) / 2;
-      onSplit(selectedBinId, midpoint);
-    }
-  }, [bins, selectedBinId, onSplit]);
+    const bin = bins.find((entry) => entry.id === selectedBinId);
+    if (!bin) return;
+    onSplit(selectedBinId, (bin.startTime + bin.endTime) / 2);
+  }, [bins, onSplit, selectedBinId]);
 
   const handleDelete = useCallback(() => {
     if (!selectedBinId || !onDelete) return;
     onDelete(selectedBinId);
-  }, [selectedBinId, onDelete]);
+  }, [onDelete, selectedBinId]);
 
   const handleSaveConfig = useCallback(() => {
-    if (configName.trim() && onSaveConfig) {
-      onSaveConfig(configName.trim());
-      setConfigName('');
-      setShowSaveDialog(false);
-    }
+    if (!configName.trim() || !onSaveConfig) return;
+    onSaveConfig(configName.trim());
+    setConfigName('');
+    setShowSaveDialog(false);
   }, [configName, onSaveConfig]);
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const handleCrimeTypeToggle = (crimeType: string) => {
+    const isSelected = generationInputs.crimeTypes.includes(crimeType);
+    setGenerationInputs({
+      crimeTypes: isSelected
+        ? generationInputs.crimeTypes.filter((entry) => entry !== crimeType)
+        : [...generationInputs.crimeTypes, crimeType],
+    });
   };
 
+  const handleGenerate = useCallback(() => {
+    if (!generationData?.length || !generationDomain) {
+      setGenerationError('Load crime data before generating slices.');
+      return;
+    }
+
+    const windowStart = generationInputs.timeWindow.start ?? generationDomain[0];
+    const windowEnd = generationInputs.timeWindow.end ?? generationDomain[1];
+    const start = Math.min(windowStart, windowEnd);
+    const end = Math.max(windowStart, windowEnd);
+
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      setGenerationError('Choose a valid time window before generating.');
+      return;
+    }
+
+    setGenerationStatus('generating');
+    setGenerationError(null);
+
+    const filteredEvents = generationData.filter((event) => {
+      if (event.timestamp < start || event.timestamp > end) return false;
+      if (generationInputs.crimeTypes.length > 0 && !generationInputs.crimeTypes.includes(event.type)) {
+        return false;
+      }
+      if (generationInputs.neighbourhood && event.district !== generationInputs.neighbourhood) {
+        return false;
+      }
+      return true;
+    });
+
+    if (filteredEvents.length === 0) {
+      clearPendingGeneratedBins();
+      setGenerationError('No crimes match the selected crime type, neighbourhood, and time window.');
+      return;
+    }
+
+    const resolvedStrategy = strategy === 'auto-adaptive'
+      ? GENERATION_GRANULARITIES.find((entry) => entry.value === generationInputs.granularity)?.strategy ?? strategy
+      : strategy;
+
+    const baseConstraints = useBinningStore.getState().constraints;
+    const constraints = isFixedIntervalStrategy(resolvedStrategy)
+      ? {
+          ...baseConstraints,
+          minEvents: 1,
+          maxBins: undefined,
+          minTimeSpan: undefined,
+          maxTimeSpan: undefined,
+        }
+      : baseConstraints;
+    const result = generateBins(filteredEvents, {
+      strategy: resolvedStrategy,
+      constraints,
+      domain: [start, end],
+    });
+
+    useBinningStore.setState({
+      strategy: resolvedStrategy,
+      bins: result.bins,
+      metadata: result.metadata,
+      isComputing: false,
+      data: filteredEvents,
+      domain: [start, end],
+      selectedBinId: result.bins[0]?.id ?? null,
+    });
+
+    const warning = result.bins.length <= 1
+      ? 'The current constraints only produced one slice. Review whether a broader window or different strategy would help.'
+      : filteredEvents.length < 10
+        ? 'Very little data matched these constraints, so the generated slices may be unstable.'
+        : null;
+
+    setPendingGeneratedBins(result.bins, {
+      binCount: result.metadata.binCount,
+      eventCount: filteredEvents.length,
+      warning,
+      inputs: {
+        ...generationInputs,
+        timeWindow: { start, end },
+      },
+    });
+
+    if (result.bins[0]) {
+      onBinSelect?.(result.bins[0].id);
+    }
+  }, [
+    clearPendingGeneratedBins,
+    generationData,
+    generationDomain,
+    generationInputs,
+    onBinSelect,
+    setGenerationError,
+    setGenerationStatus,
+    setPendingGeneratedBins,
+    strategy,
+  ]);
+
   return (
-    <div className="flex flex-col gap-4 p-4 bg-background/80 backdrop-blur-sm rounded-lg border">
-      {/* Strategy Selector */}
+    <div className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Binning Strategy</label>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {strategies.map(s => (
-            <button
-              key={s.value}
-              onClick={() => onStrategyChange(s.value)}
-              className={`p-2 rounded-md text-left text-xs transition ${
-                strategy === s.value
-                  ? 'bg-primary/20 border-primary text-primary'
-                  : 'bg-background border-border hover:bg-muted'
-              }`}
-              title={s.description}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-100">Generate slices from investigation intent</h3>
+            <p className="text-xs text-slate-400">
+              Choose what happened, where, when, and at what granularity. Generation creates reviewable draft bins first.
+            </p>
+          </div>
+          {lastGeneratedMetadata && (
+            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200">
+              Last run: {new Date(lastGeneratedMetadata.generatedAt).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-1 text-xs text-slate-300">
+            <span>Neighbourhood</span>
+            <select
+              value={generationInputs.neighbourhood ?? ''}
+              onChange={(event) => setGenerationInputs({ neighbourhood: event.target.value || null })}
+              className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
             >
-              <div className="font-medium">{s.label}</div>
-              <div className="text-muted-foreground text-[10px] line-clamp-1">{s.description}</div>
+              <option value="">All neighbourhoods</option>
+              {availableNeighbourhoods.map((district) => (
+                <option key={district} value={district}>
+                  {getDistrictDisplayName(district)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-xs text-slate-300">
+            <span>Time window start</span>
+            <Input
+              type="datetime-local"
+              value={toDateTimeLocalValue(generationInputs.timeWindow.start)}
+              onChange={(event) => setGenerationInputs({
+                timeWindow: {
+                  start: parseDateTimeLocalValue(event.target.value),
+                  end: generationInputs.timeWindow.end,
+                },
+              })}
+              className="border-slate-700 bg-slate-900 text-slate-100"
+            />
+          </label>
+
+          <label className="space-y-1 text-xs text-slate-300">
+            <span>Time window end</span>
+            <Input
+              type="datetime-local"
+              value={toDateTimeLocalValue(generationInputs.timeWindow.end)}
+              onChange={(event) => setGenerationInputs({
+                timeWindow: {
+                  start: generationInputs.timeWindow.start,
+                  end: parseDateTimeLocalValue(event.target.value),
+                },
+              })}
+              className="border-slate-700 bg-slate-900 text-slate-100"
+            />
+          </label>
+
+          <div className="space-y-1 text-xs text-slate-300">
+            <span>Generation strategy</span>
+            <select
+              value={strategy}
+              onChange={(event) => onStrategyChange(event.target.value as BinningStrategy)}
+              className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
+            >
+              {STRATEGIES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-xs text-slate-300">Granularity</span>
+          <div className="grid gap-2 md:grid-cols-3">
+            {GENERATION_GRANULARITIES.map((option) => {
+              const isActive = generationInputs.granularity === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setGenerationInputs({ granularity: option.value })}
+                  className={`rounded-lg border px-3 py-2 text-left transition ${
+                    isActive
+                      ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-100'
+                      : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'
+                  }`}
+                >
+                  <div className="text-sm font-medium">{option.label}</div>
+                  <div className="text-[11px] text-slate-400">{option.helper}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-slate-300">Crime types</span>
+            <button
+              type="button"
+              onClick={() => setGenerationInputs({ crimeTypes: [] })}
+              className="text-[11px] text-slate-400 hover:text-slate-200"
+            >
+              Include all
             </button>
-          ))}
+          </div>
+          <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto rounded-lg border border-slate-800 bg-slate-900/60 p-2">
+            {availableCrimeTypes.map((crimeType) => {
+              const isActive = generationInputs.crimeTypes.includes(crimeType);
+              return (
+                <button
+                  key={crimeType}
+                  type="button"
+                  onClick={() => handleCrimeTypeToggle(crimeType)}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] transition ${
+                    isActive
+                      ? 'border-violet-400/60 bg-violet-500/15 text-violet-100'
+                      : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
+                  }`}
+                >
+                  {crimeType}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Stats */}
-      <div className="flex gap-4 text-xs text-muted-foreground">
-        <span>Bins: {bins.length}</span>
-        <span>Total Events: {bins.reduce((sum, b) => sum + b.count, 0)}</span>
-        <span>Avg/Bin: {(bins.reduce((sum, b) => sum + b.count, 0) / bins.length).toFixed(1)}</span>
-      </div>
-
-      {/* Bin Operations (when bin selected) */}
-      {selectedBinId && (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={handleMerge}
-            disabled={!onMerge}
-            className="px-3 py-1.5 text-xs rounded-md bg-background border hover:bg-muted disabled:opacity-50"
-          >
-            Merge with Neighbor
-          </button>
-          <button
-            onClick={handleSplit}
-            disabled={!onSplit}
-            className="px-3 py-1.5 text-xs rounded-md bg-background border hover:bg-muted disabled:opacity-50"
-          >
-            Split at Midpoint
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={!onDelete}
-            className="px-3 py-1.5 text-xs rounded-md bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 disabled:opacity-50"
-          >
-            Delete Bin
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={handleGenerate} disabled={generationStatus === 'generating'} className="gap-2">
+            {generationStatus === 'generating' ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {generationStatus === 'generating' ? 'Generating draft bins…' : 'Generate draft bins'}
+          </Button>
+          {generationInputs.timeWindow.start && generationInputs.timeWindow.end && (
+            <span className="text-xs text-slate-400">
+              Window: {formatRange(generationInputs.timeWindow.start, generationInputs.timeWindow.end)}
+            </span>
+          )}
         </div>
-      )}
 
-      {/* Configuration Save/Load */}
-      <div className="flex gap-2 items-center">
-        <button
-          onClick={() => setShowSaveDialog(true)}
-          className="px-3 py-1.5 text-xs rounded-md bg-background border hover:bg-muted"
-        >
-          Save Config
-        </button>
-        {savedConfigs.length > 0 && (
-          <select
-            onChange={(e) => onLoadConfig?.(e.target.value)}
-            className="px-2 py-1.5 text-xs rounded-md bg-background border"
-            defaultValue=""
-          >
-            <option value="" disabled>Load Config</option>
-            {savedConfigs.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+        {(generationError || lastGeneratedMetadata?.warning) && (
+          <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+            generationError
+              ? 'border-red-500/40 bg-red-500/10 text-red-100'
+              : 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+          }`}>
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{generationError ?? lastGeneratedMetadata?.warning}</span>
+          </div>
         )}
       </div>
 
-      {/* Save Dialog */}
-      {showSaveDialog && (
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={configName}
-            onChange={(e) => setConfigName(e.target.value)}
-            placeholder="Config name..."
-            className="flex-1 px-2 py-1 text-xs rounded-md bg-background border"
-            onKeyDown={(e) => e.key === 'Enter' && handleSaveConfig()}
-          />
-          <button
-            onClick={handleSaveConfig}
-            className="px-3 py-1 text-xs rounded-md bg-primary text-primary-foreground"
-          >
-            Save
-          </button>
-          <button
-            onClick={() => setShowSaveDialog(false)}
-            className="px-3 py-1 text-xs rounded-md bg-background border"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Bin List */}
-      <div className="max-h-48 overflow-y-auto space-y-1">
-        <div className="text-xs font-medium text-muted-foreground mb-2">Bins ({bins.length})</div>
-        {bins.map(bin => (
-          <div
-            key={bin.id}
-            onClick={() => onBinSelect?.(bin.id)}
-            className={`flex items-center justify-between p-2 rounded-md cursor-pointer text-xs transition ${
-              selectedBinId === bin.id
-                ? 'bg-primary/20 border border-primary'
-                : 'hover:bg-muted border border-transparent'
-            }`}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex gap-2">
-                <span className="font-mono">{formatTime(bin.startTime)}</span>
-                <span className="text-muted-foreground">→</span>
-                <span className="font-mono">{formatTime(bin.endTime)}</span>
-              </div>
-              <div className="text-muted-foreground text-[10px]">
-                {bin.crimeTypes.slice(0, 3).join(', ')}{bin.crimeTypes.length > 3 ? '...' : ''}
-              </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-slate-100">Generated draft bins</div>
+              <div className="text-xs text-slate-400">These are the slices users review before apply.</div>
             </div>
-            <div className="text-right">
-              <div className="font-medium">{bin.count}</div>
-              <div className="text-[10px] text-muted-foreground">events</div>
+            <span className="rounded-full border border-slate-700 px-2 py-1 text-[11px] text-slate-300">
+              {bins.length} bins
+            </span>
+          </div>
+
+          {bins.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-700 px-3 py-6 text-center text-xs text-slate-500">
+              No generated bins yet. Run generation to create the first reviewable result.
+            </div>
+          ) : (
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {bins.map((bin, index) => (
+                <button
+                  key={bin.id}
+                  type="button"
+                  onClick={() => onBinSelect?.(bin.id)}
+                  className={`w-full rounded-lg border px-3 py-2 text-left text-xs transition ${
+                    selectedBinId === bin.id
+                      ? 'border-violet-400/60 bg-violet-500/10 text-violet-50'
+                      : 'border-slate-800 bg-slate-950/70 text-slate-200 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">Draft slice {index + 1}</span>
+                    <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] text-slate-300">
+                      {bin.count} events
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-400">{formatRange(bin.startTime, bin.endTime)}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3 text-xs text-slate-300">
+          <div className="font-medium text-slate-100">Review stats</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-md border border-slate-800 bg-slate-950/70 p-2">
+              <div className="text-[11px] text-slate-500">Draft bins</div>
+              <div className="mt-1 text-lg font-semibold text-slate-100">{bins.length}</div>
+            </div>
+            <div className="rounded-md border border-slate-800 bg-slate-950/70 p-2">
+              <div className="text-[11px] text-slate-500">Events covered</div>
+              <div className="mt-1 text-lg font-semibold text-slate-100">{stats.totalEvents}</div>
             </div>
           </div>
-        ))}
+          <div className="rounded-md border border-slate-800 bg-slate-950/70 p-2 text-[11px] text-slate-400">
+            Average events per draft slice: <span className="font-medium text-slate-200">{stats.average.toFixed(1)}</span>
+          </div>
+
+          {!!selectedBinId && (
+            <div className="space-y-2 border-t border-slate-800 pt-3">
+              <div className="font-medium text-slate-100">Optional Phase 61 bin tools</div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={handleMerge} disabled={!onMerge}>Merge</Button>
+                <Button variant="outline" size="sm" onClick={handleSplit} disabled={!onSplit}>Split</Button>
+                <Button variant="outline" size="sm" onClick={handleDelete} disabled={!onDelete}>Delete</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 border-t border-slate-800 pt-3">
+            <div className="font-medium text-slate-100">Save / load strategy setup</div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowSaveDialog(true)} disabled={!onSaveConfig}>
+                Save config
+              </Button>
+              {savedConfigs.length > 0 && (
+                <select
+                  onChange={(event) => onLoadConfig?.(event.target.value)}
+                  className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100"
+                  defaultValue=""
+                >
+                  <option value="" disabled>Load config</option>
+                  {savedConfigs.map((config) => (
+                    <option key={config.id} value={config.id}>{config.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {showSaveDialog && (
+              <div className="flex gap-2">
+                <Input
+                  value={configName}
+                  onChange={(event) => setConfigName(event.target.value)}
+                  placeholder="Config name"
+                  className="border-slate-700 bg-slate-950 text-slate-100"
+                />
+                <Button size="sm" onClick={handleSaveConfig}>Save</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

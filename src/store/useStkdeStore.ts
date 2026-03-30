@@ -1,6 +1,24 @@
 import { create } from 'zustand';
 import type { StkdeComputeMode, StkdeResponse } from '@/lib/stkde/contracts';
 
+export interface StkdeParams {
+  spatialBandwidthMeters: number;
+  temporalBandwidthHours: number;
+  gridCellMeters: number;
+  topK: number;
+  minSupport: number;
+  timeWindowHours: number;
+}
+
+export const STKDE_PARAM_LIMITS = {
+  spatialBandwidthMeters: { min: 100, max: 5000 },
+  temporalBandwidthHours: { min: 1, max: 168 },
+  gridCellMeters: { min: 100, max: 5000 },
+  topK: { min: 1, max: 100 },
+  minSupport: { min: 1, max: 1000 },
+  timeWindowHours: { min: 1, max: 168 },
+} as const;
+
 export interface StkdeSpatialFilter {
   minLng: number;
   minLat: number;
@@ -15,14 +33,7 @@ export interface StkdeTemporalFilter {
 
 interface StkdeStoreState {
   scopeMode: 'applied-slices' | 'full-viewport';
-  params: {
-    spatialBandwidthMeters: number;
-    temporalBandwidthHours: number;
-    gridCellMeters: number;
-    topK: number;
-    minSupport: number;
-    timeWindowHours: number;
-  };
+  params: StkdeParams;
   runStatus: 'idle' | 'running' | 'success' | 'error' | 'cancelled';
   staleReason: string | null;
   isStale: boolean;
@@ -41,7 +52,7 @@ interface StkdeStoreState {
   spatialFilter: StkdeSpatialFilter | null;
   temporalFilter: StkdeTemporalFilter | null;
   setScopeMode: (mode: 'applied-slices' | 'full-viewport') => void;
-  setParams: (patch: Partial<StkdeStoreState['params']>) => void;
+  setParams: (patch: Partial<StkdeParams>) => void;
   markStale: (reason: string) => void;
   startRun: () => void;
   finishRunSuccess: (response: StkdeResponse) => void;
@@ -78,7 +89,47 @@ export const useStkdeStore = create<StkdeStoreState>((set) => ({
   spatialFilter: null,
   temporalFilter: null,
   setScopeMode: (scopeMode) => set({ scopeMode }),
-  setParams: (patch) => set((state) => ({ params: { ...state.params, ...patch } })),
+  setParams: (patch) =>
+    set((state) => ({
+      params: {
+        spatialBandwidthMeters: coerceClampedParam(
+          patch.spatialBandwidthMeters,
+          state.params.spatialBandwidthMeters,
+          STKDE_PARAM_LIMITS.spatialBandwidthMeters.min,
+          STKDE_PARAM_LIMITS.spatialBandwidthMeters.max
+        ),
+        temporalBandwidthHours: coerceClampedParam(
+          patch.temporalBandwidthHours,
+          state.params.temporalBandwidthHours,
+          STKDE_PARAM_LIMITS.temporalBandwidthHours.min,
+          STKDE_PARAM_LIMITS.temporalBandwidthHours.max
+        ),
+        gridCellMeters: coerceClampedParam(
+          patch.gridCellMeters,
+          state.params.gridCellMeters,
+          STKDE_PARAM_LIMITS.gridCellMeters.min,
+          STKDE_PARAM_LIMITS.gridCellMeters.max
+        ),
+        topK: coerceClampedParam(
+          patch.topK,
+          state.params.topK,
+          STKDE_PARAM_LIMITS.topK.min,
+          STKDE_PARAM_LIMITS.topK.max
+        ),
+        minSupport: coerceClampedParam(
+          patch.minSupport,
+          state.params.minSupport,
+          STKDE_PARAM_LIMITS.minSupport.min,
+          STKDE_PARAM_LIMITS.minSupport.max
+        ),
+        timeWindowHours: coerceClampedParam(
+          patch.timeWindowHours,
+          state.params.timeWindowHours,
+          STKDE_PARAM_LIMITS.timeWindowHours.min,
+          STKDE_PARAM_LIMITS.timeWindowHours.max
+        ),
+      },
+    })),
   markStale: (reason) => set({ isStale: true, staleReason: reason }),
   startRun: () =>
     set({
@@ -134,3 +185,8 @@ export const useStkdeStore = create<StkdeStoreState>((set) => ({
   setTemporalFilter: (temporalFilter) => set({ temporalFilter }),
   clearFilters: () => set({ spatialFilter: null, temporalFilter: null }),
 }));
+
+function coerceClampedParam(input: number | undefined, fallback: number, min: number, max: number): number {
+  const candidate = typeof input === 'number' && Number.isFinite(input) ? input : fallback;
+  return Math.floor(Math.min(max, Math.max(min, candidate)));
+}
