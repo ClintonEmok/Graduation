@@ -1,8 +1,13 @@
 import { useMemo, type MouseEvent } from 'react';
 import type { ScaleTime } from 'd3-scale';
-import { useSliceStore } from '@/store/useSliceStore';
-import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
-import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
+import {
+  select,
+  selectActiveSliceId,
+  selectDraggingSliceId,
+  selectSelectedIds,
+  selectSlices,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 
 interface CommittedSliceLayerProps {
   scale: ScaleTime<number, number>;
@@ -40,15 +45,15 @@ const getColorClasses = (color?: string): { bg: string; border: string } => {
 };
 
 export function CommittedSliceLayer({ scale, height, domainSec }: CommittedSliceLayerProps) {
-  const slices = useSliceStore((state) => state.slices);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
-  const draggingSliceId = useSliceAdjustmentStore((state) => state.draggingSliceId);
-  const setHover = useSliceAdjustmentStore((state) => state.setHover);
-  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
-  const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
-  const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
-  const clearSelection = useSliceSelectionStore((state) => state.clearSelection);
+  const slices = useSliceDomainStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const setActiveSlice = useSliceDomainStore(select((state) => state.setActiveSlice));
+  const draggingSliceId = useSliceDomainStore(selectDraggingSliceId);
+  const setHover = useSliceDomainStore(select((state) => state.setHover));
+  const selectedIds = useSliceDomainStore(selectSelectedIds);
+  const selectSlice = useSliceDomainStore(select((state) => state.selectSlice));
+  const toggleSlice = useSliceDomainStore(select((state) => state.toggleSlice));
+  const clearSelection = useSliceDomainStore(select((state) => state.clearSelection));
   const isAdjustmentDragActive = draggingSliceId !== null;
 
   const geometries = useMemo<SliceGeometry[]>(() => {

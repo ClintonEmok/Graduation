@@ -1,26 +1,45 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { bin, max } from 'd3-array';
-import { brushX } from 'd3-brush';
-import { select } from 'd3-selection';
-import { scaleUtc, type ScaleTime } from 'd3-scale';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
-import { zoom, zoomIdentity } from 'd3-zoom';
 import { useMeasure } from '@/hooks/useMeasure';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { useSliceStore } from '@/store/useSliceStore';
-import { findNearestIndexByTime, resolvePointByIndex } from '@/lib/selection';
+import {
+  select,
+  selectActiveSliceId,
+  selectActiveSliceUpdatedAt,
+  selectSlices,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
+import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
+import { resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
+import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import { useDensityStripDerivation, DETAIL_DENSITY_RECOMPUTE_MAX_DAYS } from './hooks/useDensityStripDerivation';
+import { useScaleTransforms } from './hooks/useScaleTransforms';
+import { useBrushZoomSync } from './hooks/useBrushZoomSync';
+import { usePointSelection } from './hooks/usePointSelection';
+import {
+  clampToRange,
+  computeRangeUpdate,
+  resolveSelectionX,
+} from './lib/interaction-guards';
+import {
+  buildSpanAwareTicks,
+  formatSpanAwareTickLabel,
+  type TickLabelStrategy,
+} from './lib/tick-ux';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -29,40 +48,148 @@ const AXIS_HEIGHT = 28;
 const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
+const TIME_CURSOR_COLOR = '#10b981';
+
+const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
+  amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
+  blue: { fill: 'rgba(59, 130, 246, 0.24)', stroke: 'rgba(96, 165, 250, 0.9)' },
+  green: { fill: 'rgba(34, 197, 94, 0.26)', stroke: 'rgba(74, 222, 128, 0.9)' },
+  red: { fill: 'rgba(248, 113, 113, 0.26)', stroke: 'rgba(252, 165, 165, 0.9)' },
+  purple: { fill: 'rgba(167, 139, 250, 0.24)', stroke: 'rgba(196, 181, 253, 0.9)' },
+  cyan: { fill: 'rgba(34, 211, 238, 0.24)', stroke: 'rgba(103, 232, 249, 0.9)' },
+  pink: { fill: 'rgba(244, 114, 182, 0.26)', stroke: 'rgba(251, 207, 232, 0.9)' },
+  gray: { fill: 'rgba(148, 163, 184, 0.24)', stroke: 'rgba(203, 213, 225, 0.9)' },
+};
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
+const DEBUG_PREVIEW_WARP_PROFILE_ID = '__debug-full-auto-preview__';
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-type StrictTimelineScale = ScaleTime<number, number>;
+const clamp = clampToRange;
+
+interface ApplyRangeToStoresContractParams {
+  interactive: boolean;
+  startSec: number;
+  endSec: number;
+  domainStart: number;
+  domainEnd: number;
+  currentTime: number;
+  setTimeRange: (range: [number, number]) => void;
+  setRange: (range: [number, number]) => void;
+  setBrushRange: (range: [number, number] | null) => void;
+  setViewport: (startDate: number, endDate: number) => void;
+  setTime: (time: number) => void;
+}
+
+export const applyRangeToStoresContract = ({
+  interactive,
+  startSec,
+  endSec,
+  domainStart,
+  domainEnd,
+  currentTime,
+  setTimeRange,
+  setRange,
+  setBrushRange,
+  setViewport,
+  setTime,
+}: ApplyRangeToStoresContractParams): void => {
+  if (!interactive) {
+    return;
+  }
+
+  const {
+    safeStartSec: safeStart,
+    safeEndSec: safeEnd,
+    normalizedRange: nextRange,
+  } = computeRangeUpdate(startSec, endSec, domainStart, domainEnd);
+
+  setTimeRange([safeStart, safeEnd]);
+  setRange(nextRange);
+  setBrushRange(nextRange);
+  setViewport(safeStart, safeEnd);
+
+  const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
+  if (clampedTime !== currentTime) {
+    setTime(clampedTime);
+  }
+};
+
+interface TimelineSliceGeometry {
+  id: string;
+  left: number;
+  width: number;
+  isActive: boolean;
+  isBurst: boolean;
+  isPoint: boolean;
+  isSuggestion: boolean;
+  isGeneratedDraft: boolean;
+  isGeneratedApplied: boolean;
+  overlapCount: number;
+  color: string | undefined;
+}
+
+const resolveSliceColor = (color?: string): { fill: string; stroke: string } => {
+  if (!color) {
+    return { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+  }
+  return SLICE_COLOR_PALETTE[color] ?? { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+};
 
 interface DualTimelineProps {
   adaptiveWarpMapOverride?: Float32Array | null;
   adaptiveWarpDomainOverride?: [number, number];
+  domainOverride?: [number, number];
+  detailRangeOverride?: [number, number];
+  interactive?: boolean;
+  timestampSecondsOverride?: number[];
+  detailPointsOverride?: number[];
+  detailRenderMode?: 'auto' | 'points' | 'bins';
+  detailBinCount?: number;
+  disableAutoBurstSlices?: boolean;
+  tickLabelStrategy?: TickLabelStrategy;
 }
 
 export const DualTimeline: React.FC<DualTimelineProps> = ({
   adaptiveWarpMapOverride,
   adaptiveWarpDomainOverride,
+  domainOverride,
+  detailRangeOverride,
+  interactive = true,
+  timestampSecondsOverride,
+  detailPointsOverride,
+  detailRenderMode = 'auto',
+  detailBinCount = 60,
+  disableAutoBurstSlices = false,
+  tickLabelStrategy = 'legacy',
 }) => {
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const data = useTimelineDataStore((state) => state.data);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
-  const { currentTime, setTime, setRange, timeResolution } = useTimeStore();
+  const currentTime = useTimeStore((state) => state.currentTime);
+  const setTime = useTimeStore((state) => state.setTime);
+  const setRange = useTimeStore((state) => state.setRange);
+  const timeResolution = useTimeStore((state) => state.timeResolution);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
+  const brushRange = useCoordinationStore((state) => state.brushRange);
   const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
   const warpFactor = useAdaptiveStore((state) => state.warpFactor);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const isComputing = useAdaptiveStore((state) => state.isComputing);
-  const dataCount = useDataStore((state) => (state.columns ? state.columns.length : state.data.length));
+  const slices = useSliceDomainStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const activeSliceUpdatedAt = useSliceDomainStore(selectActiveSliceUpdatedAt);
+  const getSliceOverlapCounts = useSliceDomainStore(select((state) => state.getOverlapCounts));
+  const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
+  const warpSlices = useWarpSliceStore((state) => state.slices);
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
 
@@ -85,7 +212,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const zoomRef = useRef<SVGRectElement | null>(null);
   const isSyncingRef = useRef(false);
   const isScrubbingRef = useRef(false);
-  const [hoveredDetail, setHoveredDetail] = useState<{ x: number; label: string } | null>(null);
 
   const width = Math.max(0, bounds.width ?? 0);
   const overviewInnerWidth = Math.max(0, width - OVERVIEW_MARGIN.left - OVERVIEW_MARGIN.right);
@@ -93,18 +219,32 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   // Full data range for timeline scale
   const [domainStart, domainEnd] = useMemo<[number, number]>(() => {
+    if (domainOverride && Number.isFinite(domainOverride[0]) && Number.isFinite(domainOverride[1])) {
+      const start = Math.min(domainOverride[0], domainOverride[1]);
+      const end = Math.max(domainOverride[0], domainOverride[1]);
+      if (end > start) {
+        return [start, end];
+      }
+    }
     if (minTimestampSec !== null && maxTimestampSec !== null) {
       return [minTimestampSec, maxTimestampSec];
     }
     return [0, 100];
-  }, [minTimestampSec, maxTimestampSec]);
+  }, [domainOverride, minTimestampSec, maxTimestampSec]);
 
   // Viewport bounds for initial selection (first year)
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
 
-  // Detail range: use selectedTimeRange if set, otherwise use viewport bounds (first year)
+  // Detail range: override > selectedTimeRange > viewport bounds (first year)
   const detailRangeSec = useMemo<[number, number]>(() => {
+    if (detailRangeOverride && Number.isFinite(detailRangeOverride[0]) && Number.isFinite(detailRangeOverride[1])) {
+      const start = Math.min(detailRangeOverride[0], detailRangeOverride[1]);
+      const end = Math.max(detailRangeOverride[0], detailRangeOverride[1]);
+      if (end > start) {
+        return [start, end];
+      }
+    }
     if (selectedTimeRange) {
       const [rawStart, rawEnd] = selectedTimeRange;
       const start = Math.min(rawStart, rawEnd);
@@ -116,7 +256,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     }
     // Default to viewport bounds (first year) instead of full domain
     return [viewportStart, viewportEnd];
-  }, [selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
+  }, [detailRangeOverride, selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
 
   const timestampSeconds = useMemo<number[]>(() => {
     if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
@@ -133,18 +273,22 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [columns, data, minTimestampSec, maxTimestampSec]);
 
   const overviewBins = useMemo(() => {
-    if (!timestampSeconds.length) return [];
+    const values = timestampSecondsOverride ?? timestampSeconds;
+    if (!values.length) return [];
     const binner = bin<number, number>()
       .value((d) => d)
       .domain([domainStart, domainEnd])
       .thresholds(50);
-    return binner(timestampSeconds);
-  }, [timestampSeconds, domainStart, domainEnd]);
+    return binner(values);
+  }, [timestampSecondsOverride, timestampSeconds, domainStart, domainEnd]);
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
   
   // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
+    if (detailPointsOverride) {
+      return detailPointsOverride;
+    }
     // If we have viewport crime data, use it directly
     if (viewportCrimes && viewportCrimes.length > 0) {
       const [start, end] = detailRangeSec;
@@ -165,225 +309,72 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     if (points.length <= maxPoints) return points;
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0);
-  }, [viewportCrimes, timestampSeconds, detailRangeSec]);
+  }, [detailPointsOverride, viewportCrimes, timestampSeconds, detailRangeSec]);
 
-  const detailDensityMap = useMemo(() => {
-    if (!densityMap || densityMap.length === 0) return densityMap;
-    const span = domainEnd - domainStart || 1;
-    const startRatio = clamp((detailRangeSec[0] - domainStart) / span, 0, 1);
-    const endRatio = clamp((detailRangeSec[1] - domainStart) / span, 0, 1);
-    const rangeStart = Math.min(startRatio, endRatio);
-    const rangeEnd = Math.max(startRatio, endRatio);
-    const lastIndex = Math.max(0, densityMap.length - 1);
-    const startIndex = clamp(Math.floor(rangeStart * lastIndex), 0, lastIndex);
-    const endIndex = clamp(Math.ceil(rangeEnd * lastIndex), startIndex, lastIndex);
-    return densityMap.subarray(startIndex, Math.min(densityMap.length, endIndex + 1));
-  }, [densityMap, detailRangeSec, domainEnd, domainStart]);
+  const { detailSpanDays, detailDensityMap } = useDensityStripDerivation({
+    detailPoints,
+    detailRangeSec,
+    densityMap,
+    domainStart,
+    domainEnd,
+  });
 
-  const sampleWarpSeconds = useCallback(
-    (linearSec: number, warpMapVal: Float32Array, warpDomain: [number, number]) => {
-      if (warpMapVal.length === 0) return linearSec;
-      const [warpStartSec, warpEndSec] = warpDomain;
-      const warpSpan = Math.max(1e-9, warpEndSec - warpStartSec);
-      const normalized = clamp((linearSec - warpStartSec) / warpSpan, 0, 1);
-      const rawIndex = normalized * (warpMapVal.length - 1);
-      const low = Math.floor(rawIndex);
-      const high = Math.min(low + 1, warpMapVal.length - 1);
-      const frac = rawIndex - low;
-      const lowVal = warpMapVal[Math.max(0, low)] ?? linearSec;
-      const highVal = warpMapVal[Math.max(0, high)] ?? lowVal;
-      return lowVal * (1 - frac) + highVal * frac;
-    },
-    []
+  const resolvedDetailRenderMode = useMemo(() => {
+    if (detailRenderMode === 'auto') {
+      return detailSpanDays > DETAIL_DENSITY_RECOMPUTE_MAX_DAYS ? 'bins' : 'points';
+    }
+    return detailRenderMode;
+  }, [detailRenderMode, detailSpanDays]);
+
+  const detailBins = useMemo(() => {
+    if (resolvedDetailRenderMode !== 'bins') return [];
+    if (!detailPoints.length) return [];
+    const binner = bin<number, number>()
+      .value((d) => d)
+      .domain([detailRangeSec[0], detailRangeSec[1]])
+      .thresholds(detailBinCount);
+    return binner(detailPoints);
+  }, [detailBinCount, detailPoints, detailRangeSec, resolvedDetailRenderMode]);
+
+  const detailMax = useMemo(
+    () => (detailBins.length ? max(detailBins, (d) => d.length) || 1 : 1),
+    [detailBins]
   );
 
-  const toDisplaySeconds = useCallback(
-    (
-      linearSec: number,
-      warpFactorVal: number,
-      warpMapVal: Float32Array,
-      warpDomain: [number, number]
-    ) => {
-      const warpedSec = sampleWarpSeconds(linearSec, warpMapVal, warpDomain);
-      return linearSec * (1 - warpFactorVal) + warpedSec * warpFactorVal;
-    },
-    [sampleWarpSeconds]
-  );
-
-  const toLinearSeconds = useCallback(
-    (
-      displaySec: number,
-      linearDomain: [number, number],
-      warpFactorVal: number,
-      warpMapVal: Float32Array,
-      warpDomain: [number, number]
-    ) => {
-      const [domainMin, domainMax] = linearDomain;
-      let low = domainMin;
-      let high = domainMax;
-
-      for (let i = 0; i < 24; i += 1) {
-        const mid = (low + high) / 2;
-        const mapped = toDisplaySeconds(mid, warpFactorVal, warpMapVal, warpDomain);
-        if (mapped < displaySec) {
-          low = mid;
-        } else {
-          high = mid;
-        }
-      }
-
-      return (low + high) / 2;
-    },
-    [toDisplaySeconds]
-  );
-
-  const applyAdaptiveWarping = useCallback(
-    (
-      linearScale: StrictTimelineScale,
-      warpFactorVal: number,
-      warpMapVal: Float32Array | null,
-      innerWidth: number,
-      warpDomain: [number, number]
-    ): StrictTimelineScale => {
-      if (
-        timeScaleMode !== 'adaptive' ||
-        warpFactorVal <= 0 ||
-        !warpMapVal ||
-        warpMapVal.length < 2 ||
-        innerWidth <= 0
-      ) {
-        return linearScale;
-      }
-
-      const [domainStartDate, domainEndDate] = linearScale.domain();
-      const linearStartSec = domainStartDate.getTime() / 1000;
-      const linearEndSec = domainEndDate.getTime() / 1000;
-      const safeDomain: [number, number] =
-        linearStartSec <= linearEndSec
-          ? [linearStartSec, linearEndSec]
-          : [linearEndSec, linearStartSec];
-
-      const displayStartSec = toDisplaySeconds(safeDomain[0], warpFactorVal, warpMapVal, warpDomain);
-      const displayEndSec = toDisplaySeconds(safeDomain[1], warpFactorVal, warpMapVal, warpDomain);
-      const displaySpan = Math.max(1e-9, displayEndSec - displayStartSec);
-
-      const adaptiveScale = ((value: Date | number) => {
-        const date = value instanceof Date ? value : new Date(value);
-        const linearSec = date.getTime() / 1000;
-        const displaySec = toDisplaySeconds(linearSec, warpFactorVal, warpMapVal, warpDomain);
-        const t = clamp((displaySec - displayStartSec) / displaySpan, 0, 1);
-        return t * innerWidth;
-      }) as StrictTimelineScale;
-
-      Object.assign(adaptiveScale, linearScale);
-
-      adaptiveScale.invert = (x: number) => {
-        const t = clamp(innerWidth <= 0 ? 0 : x / innerWidth, 0, 1);
-        const displaySec = displayStartSec + t * displaySpan;
-        const linearSec = toLinearSeconds(
-          displaySec,
-          safeDomain,
-          warpFactorVal,
-          warpMapVal,
-          warpDomain
-        );
-        return new Date(linearSec * 1000);
-      };
-
-      return adaptiveScale;
-    },
-    [timeScaleMode, toDisplaySeconds, toLinearSeconds]
-  );
-
-  const overviewInteractionScale = useMemo(
-    () =>
-      scaleUtc()
-        .domain([new Date(domainStart * 1000), new Date(domainEnd * 1000)])
-        .range([0, overviewInnerWidth]),
-    [domainStart, domainEnd, overviewInnerWidth]
-  );
-
-  const detailInteractionScale = useMemo(
-    () =>
-      scaleUtc()
-        .domain([new Date(detailRangeSec[0] * 1000), new Date(detailRangeSec[1] * 1000)])
-        .range([0, detailInnerWidth]),
-    [detailRangeSec, detailInnerWidth]
-  );
-
-  const overviewScale = useMemo(
-    () =>
-      applyAdaptiveWarping(
-        overviewInteractionScale.copy(),
-        warpFactor,
-        effectiveWarpMap,
-        overviewInnerWidth,
-        effectiveWarpDomain
-      ),
-    [
-      applyAdaptiveWarping,
-      effectiveWarpDomain,
-      effectiveWarpMap,
+  const { overviewInteractionScale, overviewScale, detailScale } =
+    useScaleTransforms({
+      domainStart,
+      domainEnd,
+      detailRangeSec,
       overviewInnerWidth,
-      overviewInteractionScale,
-      warpFactor,
-    ]
-  );
-
-  const detailScale = useMemo(
-    () =>
-      applyAdaptiveWarping(
-        detailInteractionScale.copy(),
-        warpFactor,
-        effectiveWarpMap,
-        detailInnerWidth,
-        effectiveWarpDomain
-      ),
-    [
-      applyAdaptiveWarping,
       detailInnerWidth,
-      detailInteractionScale,
-      effectiveWarpDomain,
-      effectiveWarpMap,
+      timeScaleMode,
       warpFactor,
-    ]
-  );
+      warpMap: effectiveWarpMap,
+      warpDomain: effectiveWarpDomain,
+    });
 
   const applyRangeToStores = useCallback(
     (startSec: number, endSec: number) => {
-      const safeStart = clamp(startSec, domainStart, domainEnd);
-      const safeEnd = clamp(endSec, domainStart, domainEnd);
-      const normalizedStart = clamp(
-        epochSecondsToNormalized(safeStart, domainStart, domainEnd),
-        0,
-        100
-      );
-      const normalizedEnd = clamp(
-        epochSecondsToNormalized(safeEnd, domainStart, domainEnd),
-        0,
-        100
-      );
-      const nextRange: [number, number] =
-        normalizedStart <= normalizedEnd
-          ? [normalizedStart, normalizedEnd]
-          : [normalizedEnd, normalizedStart];
-
-      setTimeRange([safeStart, safeEnd]);
-      setRange(nextRange);
-      setBrushRange(nextRange);
-      
-      // Sync viewport store for viewport-based data loading
-      setViewport(safeStart, safeEnd);
-
-      const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
-      if (clampedTime !== currentTime) {
-        setTime(clampedTime);
-      }
+      applyRangeToStoresContract({
+        interactive,
+        startSec,
+        endSec,
+        domainStart,
+        domainEnd,
+        currentTime,
+        setTimeRange,
+        setRange,
+        setBrushRange,
+        setViewport,
+        setTime,
+      });
     },
-    [currentTime, domainEnd, domainStart, setRange, setTime, setTimeRange, setBrushRange, setViewport]
+    [currentTime, domainEnd, domainStart, interactive, setRange, setTime, setTimeRange, setBrushRange, setViewport]
   );
 
   useEffect(() => {
+    if (!interactive) return;
     if (!selectedTimeRange) return;
     const [rawStart, rawEnd] = selectedTimeRange;
     const start = Math.min(rawStart, rawEnd);
@@ -394,9 +385,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       applyRangeToStores(domainStart, domainEnd);
       isSyncingRef.current = false;
     }
-  }, [applyRangeToStores, domainEnd, domainStart, selectedTimeRange]);
+  }, [applyRangeToStores, domainEnd, domainStart, interactive, selectedTimeRange]);
 
   useEffect(() => {
+    if (!interactive) return;
     const resolutionSeconds: Record<typeof timeResolution, number> = {
       seconds: 1,
       minutes: 60,
@@ -422,194 +414,112 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     isSyncingRef.current = true;
     applyRangeToStores(centerSec - span / 2, centerSec + span / 2);
     isSyncingRef.current = false;
-  }, [applyRangeToStores, currentTime, domainEnd, domainStart, timeResolution]);
+  }, [applyRangeToStores, currentTime, domainEnd, domainStart, interactive, timeResolution]);
 
-  useEffect(() => {
-    if (!overviewInnerWidth || !detailInnerWidth) return;
-    if (!brushRef.current || !overviewSvgRef.current || !detailSvgRef.current || !zoomRef.current) return;
-
-    const brushNode = brushRef.current;
-    const zoomNode = zoomRef.current;
-
-    const brushSelection: [number, number] = [
-      overviewInteractionScale(new Date(detailRangeSec[0] * 1000)),
-      overviewInteractionScale(new Date(detailRangeSec[1] * 1000))
-    ];
-
-    const brushBehavior = brushX()
-      .extent([[0, 0], [overviewInnerWidth, OVERVIEW_HEIGHT]])
-      .on('brush end', (event) => {
-        if (isSyncingRef.current) return;
-        if (!event.selection) return;
-        const [x0, x1] = event.selection as [number, number];
-        const startSec = overviewInteractionScale.invert(x0).getTime() / 1000;
-        const endSec = overviewInteractionScale.invert(x1).getTime() / 1000;
-        applyRangeToStores(startSec, endSec);
-
-        const scale = overviewInnerWidth / Math.max(1, x1 - x0);
-        const translateX = -x0;
-        isSyncingRef.current = true;
-        select(zoomNode as SVGRectElement).call(
-          zoomBehavior.transform,
-          zoomIdentity.scale(scale).translate(translateX, 0)
-        );
-        isSyncingRef.current = false;
-      });
-
-    const zoomBehavior = zoom<SVGRectElement, unknown>()
-      .scaleExtent([1, 50])
-      .translateExtent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
-      .extent([[0, 0], [detailInnerWidth, DETAIL_HEIGHT]])
-      .on('zoom', (event) => {
-        if (isSyncingRef.current) return;
-        const rescaled = event.transform.rescaleX(overviewInteractionScale);
-        const newDomain = rescaled.domain();
-        const startSec = newDomain[0].getTime() / 1000;
-        const endSec = newDomain[1].getTime() / 1000;
-        applyRangeToStores(startSec, endSec);
-
-        isSyncingRef.current = true;
-        select(brushNode as SVGGElement).call(
-          brushBehavior.move,
-          [overviewInteractionScale(newDomain[0]), overviewInteractionScale(newDomain[1])]
-        );
-        isSyncingRef.current = false;
-      });
-
-    select(brushNode as SVGGElement)
-      .call(brushBehavior)
-      .call(brushBehavior.move, brushSelection as [number, number]);
-    select(zoomNode as SVGRectElement).call(zoomBehavior);
-
-    return () => {
-      select(brushNode as SVGGElement).on('.brush', null);
-      select(zoomNode as SVGRectElement).on('.zoom', null);
-    };
-  }, [
-    applyRangeToStores,
+  useBrushZoomSync({
+    interactive,
     detailInnerWidth,
     detailRangeSec,
     overviewInnerWidth,
-    overviewInteractionScale
-  ]);
+    overviewInteractionScale,
+    isSyncingRef,
+    brushRef,
+    overviewSvgRef,
+    detailSvgRef,
+    zoomRef,
+    setBrushRange,
+    applyRangeToStores,
+  });
 
-  const scrubFromEvent = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!detailInnerWidth) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
-      const epochSeconds = detailScale.invert(x).getTime() / 1000;
-      const normalized = clamp(
-        epochSecondsToNormalized(epochSeconds, domainStart, domainEnd),
-        0,
-        100
-      );
-      setTime(normalized);
-    },
-    [detailInnerWidth, detailScale, domainEnd, domainStart, setTime]
-  );
-
-  const handlePointerDown = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      isScrubbingRef.current = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
-      scrubFromEvent(event);
-    },
-    [scrubFromEvent]
-  );
-
-  const handlePointerMove = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!detailInnerWidth) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
-      const epochSeconds = detailScale.invert(x).getTime() / 1000;
-
-      const nearest = findNearestIndexByTime(epochSeconds);
-      if (nearest) {
-        const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
-        const maxDistance = Math.max(rangeSpan * 0.01, 60);
-        if (nearest.distance <= maxDistance) {
-          const ts = nearest.point.timestampSec ?? epochSeconds;
-          const label =
-            minTimestampSec !== null && maxTimestampSec !== null
-              ? new Date(ts * 1000).toLocaleString()
-              : `t=${ts.toFixed(2)}`;
-          setHoveredDetail({ x, label });
-        } else {
-          setHoveredDetail(null);
-        }
-      } else {
-        setHoveredDetail(null);
-      }
-
-      if (!isScrubbingRef.current) return;
-      scrubFromEvent(event);
-    },
-    [detailInnerWidth, detailScale, detailRangeSec, minTimestampSec, maxTimestampSec, scrubFromEvent]
-  );
-
-  const handlePointerCancel = useCallback((event: React.PointerEvent<SVGRectElement>) => {
-    isScrubbingRef.current = false;
-    setHoveredDetail(null);
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }, []);
+  const {
+    hoveredDetail,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUpWithSelection,
+    handlePointerCancel,
+  } = usePointSelection({
+    interactive,
+    detailInnerWidth,
+    detailScale,
+    detailRangeSec,
+    domainStart,
+    domainEnd,
+    minTimestampSec,
+    maxTimestampSec,
+    resolvedDetailRenderMode,
+    isScrubbingRef,
+    setTime,
+    setSelectedIndex,
+    clearSelection,
+  });
 
   const cursorEpochSeconds = useMemo(() => {
-    return normalizedToEpochSeconds(currentTime, domainStart, domainEnd);
+    if (!Number.isFinite(currentTime) || !Number.isFinite(domainStart) || !Number.isFinite(domainEnd)) {
+      return null;
+    }
+    return normalizedToEpochSeconds(clamp(currentTime, 0, 100), domainStart, domainEnd);
   }, [currentTime, domainStart, domainEnd]);
 
-  const cursorX = detailScale(new Date(cursorEpochSeconds * 1000));
+  const cursorX = useMemo(() => {
+    return resolveSelectionX(cursorEpochSeconds, (date) => detailScale(date), detailInnerWidth);
+  }, [cursorEpochSeconds, detailInnerWidth, detailScale]);
 
   const selectionPoint = useMemo(() => {
     if (selectedIndex === null) return null;
     return resolvePointByIndex(selectedIndex);
-  }, [selectedIndex, dataCount]);
+  }, [selectedIndex]);
 
   const selectionX = useMemo(() => {
-    if (!selectionPoint || selectionPoint.timestampSec === null) return null;
-    return detailScale(new Date(selectionPoint.timestampSec * 1000));
-  }, [detailScale, selectionPoint]);
+    return resolveSelectionX(selectionPoint?.timestampSec, (date) => detailScale(date), detailInnerWidth);
+  }, [detailInnerWidth, detailScale, selectionPoint]);
 
   const burstWindows = useBurstWindows();
-  
-  // Auto-create burst slices when burst data becomes available
-  useAutoBurstSlices(burstWindows);
-  
+  const burstWindowsForAutoSlices = disableAutoBurstSlices ? [] : burstWindows;
+  const burstTaxonomySummary = useMemo(() => {
+    const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
+      'prolonged-peak': 0,
+      'isolated-spike': 0,
+      valley: 0,
+      neutral: 0,
+    };
 
-  const handleSelectFromEvent = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      if (!detailInnerWidth) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(event.clientX - rect.left, 0, detailInnerWidth);
-      const epochSeconds = detailScale.invert(x).getTime() / 1000;
-      const nearest = findNearestIndexByTime(epochSeconds);
-      if (!nearest) {
-        clearSelection();
-        return;
-      }
-      const rangeSpan = Math.abs(detailRangeSec[1] - detailRangeSec[0]) || 1;
-      const maxDistance = Math.max(rangeSpan * 0.01, 60);
-      if (nearest.distance <= maxDistance) {
-        setSelectedIndex(nearest.index, 'timeline');
-      } else {
-        clearSelection();
-      }
-    },
-    [clearSelection, detailInnerWidth, detailRangeSec, detailScale, setSelectedIndex]
-  );
+    for (const [index, window] of burstWindows.entries()) {
+      const taxonomy = classifyBurstWindow({
+        value: window.peak,
+        count: window.count,
+        durationSec: window.duration,
+        neighborhood: [burstWindows[index - 1], burstWindows[index + 1]]
+          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
+          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
+      });
+      counts[taxonomy.burstClass] += 1;
+    }
 
-  const handlePointerUpWithSelection = useCallback(
-    (event: React.PointerEvent<SVGRectElement>) => {
-      isScrubbingRef.current = false;
-      event.currentTarget.releasePointerCapture(event.pointerId);
-      handleSelectFromEvent(event);
-    },
-    [handleSelectFromEvent]
-  );
+    return counts;
+  }, [burstWindows]);
 
-  const overviewTicks = overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
+  // Auto-create burst slices when burst data becomes available (unless disabled)
+  useAutoBurstSlices(burstWindowsForAutoSlices);
+  const overviewTicks = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return buildSpanAwareTicks(overviewScale, {
+        rangeStartSec: domainStart,
+        rangeEndSec: domainEnd,
+        axisWidth: overviewInnerWidth,
+      });
+    }
+
+    return overviewScale.ticks(Math.max(2, Math.floor(overviewInnerWidth / 120)));
+  }, [domainEnd, domainStart, overviewInnerWidth, overviewScale, tickLabelStrategy]);
   const detailTicks = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return buildSpanAwareTicks(detailScale, {
+        rangeStartSec: detailRangeSec[0],
+        rangeEndSec: detailRangeSec[1],
+        axisWidth: detailInnerWidth,
+      });
+    }
+
     const spanSeconds = Math.max(1, detailRangeSec[1] - detailRangeSec[0]);
     const maxTicks = Math.max(2, Math.floor(detailInnerWidth / 140));
     const pickStep = (unitSeconds: number, steps: number[]) => {
@@ -651,8 +561,17 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       default:
         return detailScale.ticks(Math.max(2, Math.floor(detailInnerWidth / 100)));
     }
-  }, [detailInnerWidth, detailRangeSec, detailScale, timeResolution]);
+  }, [detailInnerWidth, detailRangeSec, detailScale, tickLabelStrategy, timeResolution]);
   const detailTickFormat = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return (date: Date) =>
+        formatSpanAwareTickLabel(date, {
+          rangeStartSec: detailRangeSec[0],
+          rangeEndSec: detailRangeSec[1],
+          axisWidth: detailInnerWidth,
+        });
+    }
+
     switch (timeResolution) {
       case 'seconds':
         return (date: Date) => date.toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
@@ -671,77 +590,288 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       default:
         return (date: Date) => date.toLocaleDateString();
     }
-  }, [timeResolution]);
+  }, [detailInnerWidth, detailRangeSec, tickLabelStrategy, timeResolution]);
+  const overviewTickFormat = useMemo(() => {
+    if (tickLabelStrategy === 'span-aware') {
+      return (date: Date) =>
+        formatSpanAwareTickLabel(date, {
+          rangeStartSec: domainStart,
+          rangeEndSec: domainEnd,
+          axisWidth: overviewInnerWidth,
+        });
+    }
+
+    return (date: Date) => date.toLocaleDateString();
+  }, [domainEnd, domainStart, overviewInnerWidth, tickLabelStrategy]);
 
   const stripSelection = useMemo(() => {
     if (!overviewInnerWidth) return null;
+    if (!Number.isFinite(detailRangeSec[0]) || !Number.isFinite(detailRangeSec[1])) {
+      return null;
+    }
     const x0 = overviewScale(new Date(detailRangeSec[0] * 1000));
     const x1 = overviewScale(new Date(detailRangeSec[1] * 1000));
+    if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
+      return null;
+    }
     const left = Math.min(x0, x1);
     const widthSpan = Math.max(2, Math.abs(x1 - x0));
+    if (!Number.isFinite(left) || !Number.isFinite(widthSpan)) {
+      return null;
+    }
     return { left, width: widthSpan };
   }, [detailRangeSec, overviewInnerWidth, overviewScale]);
 
-  const densityLegend = useMemo(
-    () => ({
-      low: `Low (${DENSITY_DOMAIN[0].toFixed(2)})`,
-      high: `High (${DENSITY_DOMAIN[1].toFixed(2)})`
-    }),
+  const userWarpOverlayBands = useMemo(
+    () =>
+      warpSlices
+        .filter((slice) => slice.enabled)
+        .map((slice) => {
+          const startSec = normalizedToEpochSeconds(clamp(slice.range[0], 0, 100), domainStart, domainEnd);
+          const endSec = normalizedToEpochSeconds(clamp(slice.range[1], 0, 100), domainStart, domainEnd);
+          const rangeStart = Math.max(domainStart, Math.min(startSec, endSec));
+          const rangeEnd = Math.min(domainEnd, Math.max(startSec, endSec));
+          return {
+            id: slice.id,
+            startSec: rangeStart,
+            endSec: rangeEnd,
+            isDebugPreview: slice.warpProfileId === DEBUG_PREVIEW_WARP_PROFILE_ID,
+          };
+        })
+        .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
+    [domainEnd, domainStart, warpSlices]
+  );
+
+  const sliceOverlapCounts = getSliceOverlapCounts();
+
+  const sliceGeometries = useMemo<TimelineSliceGeometry[]>(() => {
+    if (!slices.length || detailInnerWidth <= 0) {
+      return [];
+    }
+
+    const spanSec = Math.max(1, domainEnd - domainStart);
+    const toX = (normalized: number): number | null => {
+      if (!Number.isFinite(normalized)) {
+        return null;
+      }
+      const clampedNorm = clamp(normalized, 0, 100);
+      const sec = domainStart + (clampedNorm / 100) * spanSec;
+      if (!Number.isFinite(sec)) {
+        return null;
+      }
+      const x = detailScale(new Date(sec * 1000));
+      return Number.isFinite(x) ? x : null;
+    };
+
+    const geometries = slices
+      .filter((slice) => slice.isVisible)
+      .map((slice) => {
+        if (slice.type === 'range' && slice.range) {
+          if (!Number.isFinite(slice.range[0]) || !Number.isFinite(slice.range[1])) {
+            return null;
+          }
+          const startX = toX(Math.min(slice.range[0], slice.range[1]));
+          const endX = toX(Math.max(slice.range[0], slice.range[1]));
+          if (startX === null || endX === null) {
+            return null;
+          }
+          const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
+          const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
+          if (right <= 0 || left >= detailInnerWidth) {
+            return null;
+          }
+
+          return {
+            id: slice.id,
+            left,
+            width: Math.max(2, right - left),
+            isActive: activeSliceId === slice.id,
+            isBurst: !!slice.isBurst,
+            isPoint: false,
+            isSuggestion: (slice as { source?: string }).source === 'suggestion',
+            isGeneratedDraft: false,
+            isGeneratedApplied: slice.source === 'generated-applied',
+            overlapCount: sliceOverlapCounts[slice.id] ?? 1,
+            color: slice.color,
+          };
+        }
+
+        if (!Number.isFinite(slice.time)) {
+          return null;
+        }
+        const x = toX(slice.time);
+        if (x === null || x < 0 || x > detailInnerWidth) {
+          return null;
+        }
+
+        return {
+          id: slice.id,
+          left: Math.max(0, Math.min(detailInnerWidth, x - 1)),
+          width: 2,
+          isActive: activeSliceId === slice.id,
+          isBurst: !!slice.isBurst,
+          isPoint: true,
+          isSuggestion: (slice as { source?: string }).source === 'suggestion',
+          isGeneratedDraft: false,
+          isGeneratedApplied: slice.source === 'generated-applied',
+          overlapCount: 1,
+          color: slice.color,
+        };
+      })
+      .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
+
+    return geometries;
+  }, [activeSliceId, detailInnerWidth, detailScale, domainEnd, domainStart, sliceOverlapCounts, slices]);
+
+  const maxSliceOverlap = useMemo(
+    () =>
+      sliceGeometries.reduce((maxOverlap, geometry) => {
+        if (geometry.isPoint) {
+          return maxOverlap;
+        }
+        return Math.max(maxOverlap, geometry.overlapCount);
+      }, 1),
+    [sliceGeometries]
+  );
+
+  const orderedSliceGeometries = useMemo(() => {
+    const stackWeight = (geometry: TimelineSliceGeometry) => {
+      let weight = 0;
+      if (geometry.overlapCount >= 2) {
+        weight += 1;
+      }
+      if (geometry.isBurst) {
+        weight += 1;
+      }
+      if (geometry.isActive) {
+        weight += 3;
+      }
+      return weight;
+    };
+
+    return [...sliceGeometries].sort((a, b) => stackWeight(a) - stackWeight(b));
+  }, [sliceGeometries]);
+
+  const pendingGeneratedGeometries = useMemo<TimelineSliceGeometry[]>(() => {
+    if (!pendingGeneratedBins.length || detailInnerWidth <= 0) {
+      return [];
+    }
+
+    return pendingGeneratedBins
+      .map<TimelineSliceGeometry | null>((bin) => {
+        const startX = detailScale(new Date(bin.startTime));
+        const endX = detailScale(new Date(bin.endTime));
+        if (!Number.isFinite(startX) || !Number.isFinite(endX)) {
+          return null;
+        }
+
+        const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
+        const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
+        if (right <= 0 || left >= detailInnerWidth || right <= left) {
+          return null;
+        }
+
+        return {
+          id: `pending-${bin.id}`,
+          left,
+          width: Math.max(2, right - left),
+          isActive: false,
+          isBurst: false,
+          isPoint: false,
+          isSuggestion: false,
+          isGeneratedDraft: true,
+          isGeneratedApplied: false,
+          overlapCount: 1,
+          color: 'purple',
+        };
+      })
+      .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
+  }, [detailInnerWidth, detailScale, pendingGeneratedBins]);
+
+  const isTimelineLoading = isViewportLoading;
+  const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
+
+  const brushDateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
     []
   );
 
+  const brushRangeLabel = useMemo(() => {
+    if (!brushRange) {
+      return 'No selection';
+    }
+
+    const [startNorm, endNorm] = brushRange;
+    if (!Number.isFinite(startNorm) || !Number.isFinite(endNorm)) {
+      return 'No selection';
+    }
+
+    const clampedStartNorm = clamp(Math.min(startNorm, endNorm), 0, 100);
+    const clampedEndNorm = clamp(Math.max(startNorm, endNorm), 0, 100);
+    const startSec = normalizedToEpochSeconds(clampedStartNorm, domainStart, domainEnd);
+    const endSec = normalizedToEpochSeconds(clampedEndNorm, domainStart, domainEnd);
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) {
+      return 'No selection';
+    }
+
+    const startDate = new Date(startSec * 1000);
+    const endDate = new Date(endSec * 1000);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return 'No selection';
+    }
+
+    return `${brushDateFormatter.format(startDate)} - ${brushDateFormatter.format(endDate)}`;
+  }, [brushDateFormatter, brushRange, domainEnd, domainStart]);
+
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
       <div className="flex flex-col gap-6">
         <div
-          className="flex flex-wrap items-center justify-between gap-3"
+          className="flex flex-wrap items-center gap-3"
           style={{
             paddingLeft: OVERVIEW_MARGIN.left,
             paddingRight: OVERVIEW_MARGIN.right
           }}
         >
-          <div className="relative">
-            {width > 0 ? (
-              <DensityHeatStrip
-                densityMap={densityMap}
-                width={overviewInnerWidth}
-                scale={overviewScale}
-                height={12}
-                isLoading={isComputing}
-                densityDomain={DENSITY_DOMAIN}
-                colorLow={DENSITY_COLOR_LOW}
-                colorHigh={DENSITY_COLOR_HIGH}
-              />
-            ) : (
-              <div className="h-3" />
-            )}
-            {stripSelection && (
-              <div className="pointer-events-none absolute inset-0">
-                <div
-                  className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
-                  style={{ left: stripSelection.left, width: stripSelection.width }}
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <div className="flex w-full items-center justify-between gap-3">
+              <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
+              <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="leading-none">Low</span>
+                <span
+                  className="h-2 w-20 rounded-sm border border-foreground/15"
+                  style={{
+                    background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)`
+                  }}
+                  aria-hidden="true"
                 />
+                <span className="leading-none">High</span>
               </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-sm"
-                style={{ backgroundColor: `rgb(${DENSITY_COLOR_LOW.join(',')})` }}
-                aria-hidden="true"
-              />
-              <span>{densityLegend.low}</span>
             </div>
-            <span aria-hidden="true">→</span>
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-sm"
-                style={{ backgroundColor: `rgb(${DENSITY_COLOR_HIGH.join(',')})` }}
-                aria-hidden="true"
-              />
-              <span>{densityLegend.high}</span>
+            <div className="relative w-full">
+              {width > 0 ? (
+                <DensityHeatStrip
+                  densityMap={densityMap}
+                  width={overviewInnerWidth}
+                  scale={overviewScale}
+                  height={12}
+                  isLoading={isComputing}
+                  densityDomain={DENSITY_DOMAIN}
+                  colorLow={DENSITY_COLOR_LOW}
+                  colorHigh={DENSITY_COLOR_HIGH}
+                />
+              ) : (
+                <div className="h-3" />
+              )}
+              {stripSelection && (
+                <div className="pointer-events-none absolute inset-0">
+                  <div
+                    className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
+                    style={{ left: stripSelection.left, width: stripSelection.width }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -771,6 +901,25 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                 />
               );
             })}
+            {userWarpOverlayBands.map((slice) => {
+              const x0 = overviewScale(new Date(slice.startSec * 1000));
+              const x1 = overviewScale(new Date(slice.endSec * 1000));
+              const left = Math.min(x0, x1);
+              const widthSpan = Math.max(1, Math.abs(x1 - x0));
+              return (
+                <rect
+                  key={`overview-user-warp-${slice.id}`}
+                  x={left}
+                  y={0}
+                  width={widthSpan}
+                  height={OVERVIEW_HEIGHT}
+                  fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.16)' : 'rgba(139, 92, 246, 0.15)'}
+                  stroke={slice.isDebugPreview ? 'rgba(34, 211, 238, 0.7)' : 'rgba(99, 102, 241, 0.55)'}
+                  strokeDasharray={slice.isDebugPreview ? '2 2' : '4 3'}
+                  strokeWidth={1}
+                />
+              );
+            })}
             <g ref={brushRef} className="text-primary/60" />
             <g transform={`translate(0, ${OVERVIEW_HEIGHT})`} className="text-muted-foreground">
               {timeScaleMode === 'adaptive' ? (
@@ -793,7 +942,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
                       fontSize={10}
                       fill="currentColor"
                     >
-                      {tick.toLocaleDateString()}
+                      {overviewTickFormat(tick)}
                     </text>
                   </g>
                 );
@@ -810,6 +959,23 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               paddingRight: DETAIL_MARGIN.right
             }}
           >
+            {burstWindows.length > 0 && (
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                <span className="uppercase tracking-[0.18em] text-slate-500">Burst indicators</span>
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">
+                  prolonged-peak: {burstTaxonomySummary['prolonged-peak']}
+                </span>
+                <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-rose-100">
+                  isolated-spike: {burstTaxonomySummary['isolated-spike']}
+                </span>
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
+                  valley: {burstTaxonomySummary.valley}
+                </span>
+                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-200">
+                  neutral: {burstTaxonomySummary.neutral}
+                </span>
+              </div>
+            )}
             {width > 0 ? (
               <DensityHeatStrip
                 densityMap={detailDensityMap}
@@ -826,38 +992,223 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             )}
           </div>
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
+            <defs>
+              <filter id="timeCursorGlow" x="-50%" y="-10%" width="200%" height="120%">
+                <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor={TIME_CURSOR_COLOR} floodOpacity="0.65" />
+              </filter>
+              <pattern id="sliceOverlapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(35)">
+                <line x1="0" y1="0" x2="0" y2="6" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="2" />
+              </pattern>
+            </defs>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
-            {detailPoints.map((timestamp, index) => {
-              const x = detailScale(new Date(timestamp * 1000));
+            {resolvedDetailRenderMode === 'points'
+              ? detailPoints.map((timestamp, index) => {
+                  const x = detailScale(new Date(timestamp * 1000));
+                  return (
+                    <circle
+                      key={`detail-point-${index}`}
+                      cx={x}
+                      cy={DETAIL_HEIGHT - 6}
+                      r={2}
+                      className="fill-primary/60"
+                    />
+                  );
+                })
+              : detailBins.map((bucket, index) => {
+                  if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
+                  const x0 = detailScale(new Date(bucket.x0 * 1000));
+                  const x1 = detailScale(new Date(bucket.x1 * 1000));
+                  const barWidth = Math.max(0, x1 - x0 - 1);
+                  const barHeight = (bucket.length / detailMax) * DETAIL_HEIGHT;
+                  return (
+                    <rect
+                      key={`detail-bin-${index}`}
+                      x={x0}
+                      y={DETAIL_HEIGHT - barHeight}
+                      width={barWidth}
+                      height={barHeight}
+                      className="fill-primary/20"
+                    />
+                  );
+                })}
+            {userWarpOverlayBands.map((slice) => {
+              if (!Number.isFinite(slice.startSec) || !Number.isFinite(slice.endSec)) {
+                return null;
+              }
+              const x0 = detailScale(new Date(slice.startSec * 1000));
+              const x1 = detailScale(new Date(slice.endSec * 1000));
+              if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
+                return null;
+              }
+              const left = Math.min(x0, x1);
+              const widthSpan = Math.max(1, Math.abs(x1 - x0));
+              if (!Number.isFinite(left) || !Number.isFinite(widthSpan)) {
+                return null;
+              }
               return (
-                <circle
-                  key={`detail-point-${index}`}
-                  cx={x}
-                  cy={DETAIL_HEIGHT - 6}
-                  r={2}
-                  className="fill-primary/60"
+                <rect
+                  key={`detail-user-warp-${slice.id}`}
+                  x={left}
+                  y={0}
+                  width={widthSpan}
+                  height={DETAIL_HEIGHT}
+                  fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.16)' : 'rgba(139, 92, 246, 0.15)'}
+                  stroke={slice.isDebugPreview ? 'rgba(34, 211, 238, 0.7)' : 'rgba(99, 102, 241, 0.55)'}
+                  strokeDasharray={slice.isDebugPreview ? '2 2' : '4 3'}
+                  strokeWidth={1}
                 />
               );
             })}
 
-            <line
-              x1={cursorX}
-              x2={cursorX}
-              y1={0}
-              y2={DETAIL_HEIGHT}
-              className="stroke-primary"
-              strokeWidth={2}
-            />
+            {orderedSliceGeometries.map((geometry) => {
+              const color = resolveSliceColor(geometry.color);
+              const baseOpacity = geometry.isActive
+                ? 0.68
+                : geometry.overlapCount >= 3
+                  ? 0.2
+                  : geometry.overlapCount === 2
+                    ? 0.28
+                    : 0.38;
+
+              // Suggestion slices get a distinct violet styling
+              const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
+              const isGeneratedAppliedSlice = geometry.isGeneratedApplied;
+              const suggestionFill = 'rgba(139, 92, 246, 0.2)';
+              const suggestionStroke = 'rgba(167, 139, 250, 0.85)';
+
+              return (
+                <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
+                  <rect
+                    x={geometry.left}
+                    y={3}
+                    width={Math.max(2, geometry.width)}
+                    height={DETAIL_HEIGHT - 6}
+                    rx={3}
+                    fill={isGeneratedAppliedSlice
+                      ? 'rgba(16, 185, 129, 0.18)'
+                      : isSuggestionSlice
+                        ? suggestionFill
+                        : (geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill)}
+                    stroke={isGeneratedAppliedSlice
+                      ? 'rgba(74, 222, 128, 0.92)'
+                      : isSuggestionSlice
+                        ? suggestionStroke
+                        : (geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke)}
+                    strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1}
+                    strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : isGeneratedAppliedSlice ? '8 2' : undefined}
+                    opacity={baseOpacity}
+                  />
+                  {geometry.overlapCount >= 2 && !geometry.isActive && (
+                    <rect
+                      x={geometry.left}
+                      y={3}
+                      width={Math.max(2, geometry.width)}
+                      height={DETAIL_HEIGHT - 6}
+                      rx={3}
+                      fill="url(#sliceOverlapHatch)"
+                      opacity={geometry.overlapCount >= 3 ? 0.42 : 0.3}
+                    />
+                  )}
+                  {geometry.isActive && (
+                    <rect
+                      x={geometry.left}
+                      y={2}
+                      width={Math.max(2, geometry.width)}
+                      height={DETAIL_HEIGHT - 4}
+                      rx={3}
+                      fill="none"
+                      stroke={geometry.isBurst ? 'rgba(253, 186, 116, 0.95)' : 'rgba(125, 211, 252, 0.95)'}
+                      strokeWidth={2.2}
+                      opacity={0.9}
+                    >
+                      <animate attributeName="opacity" values="0.55;1;0.55" dur="1.8s" repeatCount="indefinite" />
+                    </rect>
+                  )}
+                </g>
+              );
+            })}
+
+            {pendingGeneratedGeometries.map((geometry) => (
+              <g key={geometry.id}>
+                <rect
+                  x={geometry.left}
+                  y={8}
+                  width={Math.max(2, geometry.width)}
+                  height={DETAIL_HEIGHT - 16}
+                  rx={3}
+                  fill="rgba(245, 158, 11, 0.16)"
+                  stroke="rgba(251, 191, 36, 0.92)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                />
+              </g>
+            ))}
+
+            {maxSliceOverlap >= 3 && (
+              <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}>
+                <rect width={86} height={18} rx={9} fill="rgba(15, 23, 42, 0.75)" stroke="rgba(148, 163, 184, 0.55)" />
+                <text x={43} y={12} textAnchor="middle" fontSize={10} fill="rgba(226, 232, 240, 0.95)">
+                  {maxSliceOverlap}x overlap
+                </text>
+              </g>
+            )}
+
+            {cursorX !== null && (
+              <>
+                <line
+                  x1={cursorX}
+                  x2={cursorX}
+                  y1={0}
+                  y2={DETAIL_HEIGHT}
+                  stroke={TIME_CURSOR_COLOR}
+                  strokeWidth={2}
+                  filter="url(#timeCursorGlow)"
+                />
+                <circle
+                  cx={cursorX}
+                  cy={0}
+                  r={8}
+                  fill="rgba(16,185,129,0.2)"
+                  stroke="rgba(16,185,129,0.45)"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                />
+                <circle
+                  cx={cursorX}
+                  cy={0}
+                  r={5.5}
+                  fill={TIME_CURSOR_COLOR}
+                  stroke="rgba(255,255,255,0.95)"
+                  strokeWidth={2}
+                  filter="url(#timeCursorGlow)"
+                />
+              </>
+            )}
             {selectionX !== null && (
-              <line
-                x1={selectionX}
-                x2={selectionX}
-                y1={0}
-                y2={DETAIL_HEIGHT}
-                className="stroke-sky-400"
-                strokeWidth={2}
-                strokeDasharray="4 2"
-              />
+              <g>
+                <line
+                  x1={selectionX}
+                  x2={selectionX}
+                  y1={0}
+                  y2={DETAIL_HEIGHT}
+                  stroke="rgba(56, 189, 248, 0.3)"
+                  strokeWidth={6}
+                />
+                <line
+                  x1={selectionX}
+                  x2={selectionX}
+                  y1={0}
+                  y2={DETAIL_HEIGHT}
+                  stroke="rgba(125, 211, 252, 0.95)"
+                  strokeWidth={2.2}
+                  strokeDasharray="4 2"
+                >
+                  <animate attributeName="opacity" values="0.45;1;0.45" dur="1.7s" repeatCount="indefinite" />
+                </line>
+                <circle cx={selectionX} cy={4} r={3.5} fill="rgba(186, 230, 253, 0.95)">
+                  <animate attributeName="r" values="3;4.5;3" dur="1.7s" repeatCount="indefinite" />
+                </circle>
+              </g>
             )}
             <rect
               ref={zoomRef}
@@ -900,6 +1251,22 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             </g>
             </g>
           </svg>
+          {isTimelineLoading && (
+            <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+                <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-primary/40 border-t-primary" aria-hidden="true" />
+                Loading timeline data...
+              </div>
+            </div>
+          )}
+          {isDetailEmpty && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
+              <div className="rounded-md border border-border/60 bg-background/90 px-4 py-3 text-center shadow-sm">
+                <p className="text-sm font-medium text-foreground">No data in this range</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try expanding the brush range or adjusting filters.</p>
+              </div>
+            </div>
+          )}
           {hoveredDetail && (
             <div
               className="pointer-events-none absolute top-0 z-10 rounded bg-background/95 px-2 py-1 text-xs text-foreground shadow-sm"

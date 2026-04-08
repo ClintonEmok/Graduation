@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
 import type { CrimeRecord } from '@/lib/queries';
 import { isMockDataEnabled } from '@/lib/db';
+import { CHICAGO_BOUNDS, lonLatToNormalized } from '@/lib/coordinate-normalization';
 
 /**
  * Viewport-based crime data API endpoint.
@@ -25,12 +26,26 @@ export const dynamic = 'force-dynamic';
 
 const MOCK_CRIME_TYPES = ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'];
 const MOCK_DISTRICTS = Array.from({ length: 25 }, (_, idx) => String(idx + 1));
-const MIN_LON = -87.9;
-const MAX_LON = -87.5;
-const MIN_LAT = 41.6;
-const MAX_LAT = 42.1;
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
+
+export const parseCsvFilterParam = (value: string | null): string[] | undefined => {
+  if (!value) return undefined;
+  const parsed = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? parsed : undefined;
+};
+
+export const buildBufferedRange = (startEpoch: number, endEpoch: number, bufferDays: number) => {
+  const bufferSeconds = bufferDays * 86400;
+  return {
+    bufferSeconds,
+    bufferedStart: startEpoch - bufferSeconds,
+    bufferedEnd: endEpoch + bufferSeconds,
+  };
+};
 
 const generateMockCrimes = (
   count: number,
@@ -46,18 +61,19 @@ const generateMockCrimes = (
   const results: CrimeRecord[] = [];
 
   for (let i = 0; i < count; i++) {
-    const lon = randomBetween(MIN_LON, MAX_LON);
-    const lat = randomBetween(MIN_LAT, MAX_LAT);
+    const lon = randomBetween(CHICAGO_BOUNDS.minLon, CHICAGO_BOUNDS.maxLon);
+    const lat = randomBetween(CHICAGO_BOUNDS.minLat, CHICAGO_BOUNDS.maxLat);
     const timestamp = Math.floor(randomBetween(start, end));
     const year = new Date(timestamp * 1000).getUTCFullYear();
+    const { x, z } = lonLatToNormalized(lon, lat);
 
     results.push({
       timestamp,
       type: typePool[Math.floor(Math.random() * typePool.length)],
       lat,
       lon,
-      x: ((lon - MIN_LON) / (MAX_LON - MIN_LON) * 100.0) - 50.0,
-      z: ((lat - MIN_LAT) / (MAX_LAT - MIN_LAT) * 100.0) - 50.0,
+      x,
+      z,
       iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
       district: districtPool[Math.floor(Math.random() * districtPool.length)],
       year,
@@ -107,21 +123,14 @@ export async function GET(request: Request) {
     const districtsParam = searchParams.get('districts');
     
     // Apply buffer zone (convert days to seconds)
-    const bufferSeconds = bufferDays * 86400;
-    const bufferedStart = start - bufferSeconds;
-    const bufferedEnd = end + bufferSeconds;
+    const { bufferedStart, bufferedEnd } = buildBufferedRange(start, end, bufferDays);
     
     // Parse optional filters
-    const crimeTypes = crimeTypesParam 
-      ? crimeTypesParam.split(',').map(t => t.trim()).filter(Boolean)
-      : undefined;
-    
-    const districts = districtsParam
-      ? districtsParam.split(',').map(d => d.trim()).filter(Boolean)
-      : undefined;
+    const crimeTypes = parseCsvFilterParam(crimeTypesParam);
+    const districts = parseCsvFilterParam(districtsParam);
 
     if (isMockDataEnabled()) {
-      const mockCount = Math.min(limit, 2000);
+      const mockCount = Math.min(limit, 100000);
       const crimes = generateMockCrimes(mockCount, bufferedStart, bufferedEnd, crimeTypes, districts);
 
       return NextResponse.json(

@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { scaleLinear, ScaleLinear } from 'd3-scale';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { getAdaptiveScaleConfig } from '@/lib/adaptive-scale';
 
 export function useAdaptiveScale(width: number): ScaleLinear<number, number> {
-  const data = useDataStore((state) => state.data);
+  const data = useTimelineDataStore((state) => state.data);
   const { timeRange, timeScaleMode } = useTimeStore();
 
   const scale = useMemo(() => {

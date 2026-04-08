@@ -1,173 +1,177 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-04-08
 
 ## Directory Layout
 
-```
-Project/
-├── .planning/                    # GSD planning documents
-│   └── codebase/                 # Codebase analysis docs
-├── src/                          # Next.js Application Source
-│   ├── app/                      # Next.js App Router
-│   ├── components/               # React Components
-│   │   ├── map/                  # MapLibre Components
-│   │   ├── ui/                   # Shared UI Components (shadcn/ui)
-│   │   └── viz/                  # 3D Visualization Components
-│   └── lib/                      # Utility functions
-├── datapreprocessing/            # Main project directory
-│   ├── .git/                     # Git repository (no commits yet)
-│   ├── .idea/                    # PyCharm/IntelliJ IDE config
-│   ├── .venv/                    # Python virtual environment
-│   ├── pipeline.py               # CLI preprocessing script
-│   ├── crime_pipeline.ipynb      # Main EDA notebook
-│   ├── cube comparison.ipynb     # Time visualization notebook
-│   ├── Crimes_-_2001_to_Present_20260114.csv  # Raw dataset (~2.3GB)
-│   └── viz_*.png                 # Generated visualization outputs
+```text
+neon-tiger/
+├── .planning/            # Planning and codebase maps
+├── data/                 # Source CSVs and DuckDB cache files
+├── datapreprocessing/    # Data preparation scripts and assets
+├── patches/              # patch-package patches
+├── public/               # Static assets
+├── scripts/              # Utility scripts
+├── src/                  # Application source
+├── .github/              # GitHub workflows/config
+├── package.json          # Package manifest and scripts
+├── next.config.ts        # Next.js config
+├── vitest.config.mts     # Vitest config
+└── tsconfig.json         # TypeScript config
 ```
 
 ## Directory Purposes
 
-**src/:**
-- Purpose: Next.js application source code
-- Contains: App router, React components, 3D visualization logic
-- Key files: `src/components/map/MapBase.tsx`, `src/lib/projection.ts`
+**`src/app/`:**
+- Purpose: App Router pages, route-local shells, and API handlers.
+- Contains: `page.tsx`, `layout.tsx`, nested route folders, `route.ts` handlers, route-local `components/`, `hooks/`, and `lib/` folders.
+- Key files: `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/dashboard-v2/page.tsx`, `src/app/timeslicing/page.tsx`, `src/app/timeslicing-algos/page.tsx`, `src/app/stkde/page.tsx`, `src/app/api/**/route.ts`.
 
-**datapreprocessing/:**
-- Purpose: Primary project containing all source code and data
-- Contains: Python scripts, Jupyter notebooks, CSV data, visualization outputs
-- Key files: `pipeline.py`, `crime_pipeline.ipynb`
+**`src/components/`:**
+- Purpose: Shared UI and visualization modules.
+- Contains: map layers, timeline canvases, 3D scene pieces, controls, layout chrome, onboarding, and study UI.
+- Key files: `src/components/layout/DashboardLayout.tsx`, `src/components/layout/TopBar.tsx`, `src/components/map/MapVisualization.tsx`, `src/components/viz/CubeVisualization.tsx`, `src/components/timeline/DualTimeline.tsx`, `src/components/timeline/Timeline.tsx`.
 
-**.venv/:**
-- Purpose: Python virtual environment with project dependencies
-- Contains: Installed packages (pandas, matplotlib, numpy, etc.)
-- Generated: Yes (via `python -m venv`)
-- Committed: No
+**`src/hooks/`:**
+- Purpose: reusable client hooks for data loading, measuring, logging, selection sync, and generators.
+- Contains: fetch hooks, layout helpers, selection helpers, and debounced compute orchestration.
+- Key files: `src/hooks/useCrimeData.ts`, `src/hooks/useViewportCrimeData.ts`, `src/hooks/useSelectionSync.ts`, `src/hooks/useDebouncedDensity.ts`, `src/hooks/useSuggestionGenerator.ts`.
 
-**.idea/:**
-- Purpose: PyCharm/IntelliJ IDE configuration
-- Contains: Project settings, code style, run configurations
-- Generated: Yes (by IDE)
-- Committed: Yes (in staging)
+**`src/lib/`:**
+- Purpose: shared domain logic and low-level helpers.
+- Contains: query builders, STKDE compute, database access, normalization, geometry/projection, adaptive logic, and constants.
+- Key files: `src/lib/queries/index.ts`, `src/lib/queries/builders.ts`, `src/lib/db.ts`, `src/lib/stkde/compute.ts`, `src/lib/stkde/full-population-pipeline.ts`, `src/lib/time-domain.ts`, `src/lib/projection.ts`, `src/lib/selection.ts`.
 
-**.planning/codebase/:**
-- Purpose: GSD workflow documentation
-- Contains: Architecture and structure analysis documents
-- Generated: No (manually created)
-- Committed: Should be
+**`src/providers/`:**
+- Purpose: client providers mounted at the root.
+- Contains: React Query provider.
+- Key files: `src/providers/QueryProvider.tsx`.
+
+**`src/store/`:**
+- Purpose: Zustand stores for app-wide state.
+- Contains: feature stores, persisted stores, and slice-domain composition.
+- Key files: `src/store/useAdaptiveStore.ts`, `src/store/useFilterStore.ts`, `src/store/useTimelineDataStore.ts`, `src/store/useCoordinationStore.ts`, `src/store/useSliceDomainStore.ts`, `src/store/useTimeslicingModeStore.ts`, `src/store/useWarpSliceStore.ts`, `src/store/useBinningStore.ts`, `src/store/useStkdeStore.ts`.
+
+**`src/store/slice-domain/`:**
+- Purpose: slice state implemented as composable slice factories.
+- Contains: core, selection, creation, and adjustment slices plus selectors.
+- Key files: `src/store/slice-domain/createSliceCoreSlice.ts`, `src/store/slice-domain/createSliceSelectionSlice.ts`, `src/store/slice-domain/createSliceCreationSlice.ts`, `src/store/slice-domain/createSliceAdjustmentSlice.ts`, `src/store/slice-domain/selectors.ts`, `src/store/slice-domain/types.ts`.
+
+**`src/workers/`:**
+- Purpose: worker-backed compute.
+- Contains: adaptive map computation and STKDE hotspot projection.
+- Key files: `src/workers/adaptiveTime.worker.ts`, `src/workers/stkdeHotspot.worker.ts`.
+
+**`src/types/`:**
+- Purpose: shared type definitions that are not feature-specific.
+- Key files: `src/types/crime.ts`, `src/types/autoProposalSet.ts`, `src/types/index.ts`.
+
+**`src/utils/`:**
+- Purpose: small generic helpers used outside the core domain layer.
+- Key files: `src/utils/binning.ts`.
+
+**`data/`:**
+- Purpose: source datasets and derived DuckDB caches.
+- Contains: `data/sources/Crimes_-_2001_to_Present_20260114.csv` and `data/cache/crime.duckdb`.
+
+**`datapreprocessing/`:**
+- Purpose: ETL and dataset preparation assets.
+- Contains: preprocessing scripts and notes.
+
+**`public/`:**
+- Purpose: static assets served directly by Next.js.
+- Contains: images and SVGs used by the app shell.
 
 ## Key File Locations
 
 **Entry Points:**
-- `datapreprocessing/pipeline.py`: CLI data preprocessing tool
-- `datapreprocessing/crime_pipeline.ipynb`: Interactive EDA notebook
-- `datapreprocessing/cube comparison.ipynb`: Time visualization experiments
+- `src/app/layout.tsx`: root provider composition.
+- `src/app/page.tsx`: landing page routing.
+- `src/app/dashboard/page.tsx`: main dashboard shell.
+- `src/app/timeslicing/page.tsx`: timeslice workflow shell.
+- `src/app/timeslicing-algos/page.tsx`: algorithm exploration shell.
+- `src/app/stkde/page.tsx`: STKDE route shell.
+- `src/app/api/**/route.ts`: server endpoints.
 
 **Configuration:**
-- `datapreprocessing/.venv/`: Virtual environment (Python 3.13)
-- `datapreprocessing/.idea/`: IDE settings
+- `package.json`: scripts, dependencies, postinstall symlink.
+- `tsconfig.json`: TypeScript strictness and `@/*` alias.
+- `vitest.config.mts`: test environment and alias resolution.
+- `next.config.ts`: DuckDB server external package declaration.
+- `eslint.config.mjs`: linting rules.
 
 **Core Logic:**
-- `datapreprocessing/pipeline.py`: All transformation logic (160 lines)
-  - Lines 12-60: Schema constants (RAW_COLUMNS, DTYPES)
-  - Lines 65-70: `extract_lat_lon()` - coordinate parsing
-  - Lines 73-102: `preprocess_chunk()` - main transformation
-  - Lines 105-116: `iter_clean_chunks()` - chunked reading
-  - Lines 118-122: `write_csv()` - output writing
-  - Lines 125-139: `basic_eda()` - quick EDA
-  - Lines 142-159: `main()` - CLI entry point
+- `src/lib/queries/`: SQL assembly and safe query helpers.
+- `src/lib/stkde/`: STKDE contracts, compute, and full-population pipeline.
+- `src/store/`: cross-view state and workflow state.
+- `src/components/timeline/`: brush, histogram, density, and sync layers.
+- `src/components/map/`: map layers, overlays, and MapLibre wrappers.
+- `src/components/viz/`: 3D scene and cube rendering.
 
-**Data:**
-- `datapreprocessing/Crimes_-_2001_to_Present_20260114.csv`: Raw input (~8.5M rows, 2.3GB)
-
-**Outputs:**
-- `datapreprocessing/viz_*.png`: 20 visualization files (numbered 01-20)
-- `datapreprocessing/crime_preprocessing_visualizations.png`: Combined viz
-- `datapreprocessing/crime_statistical_distributions.png`: Stats viz
+**Testing:**
+- `src/**/*.test.ts` and `src/**/*.test.tsx`: colocated Vitest specs.
+- `src/app/**/page.*.test.ts*`: route-level QA and workflow tests.
+- `src/components/**/**/*.test.ts*`: component and interaction tests.
+- `src/lib/**/*.test.ts`: core algorithm tests.
 
 ## Naming Conventions
 
 **Files:**
-- Python scripts: `snake_case.py` (e.g., `pipeline.py`)
-- Notebooks: `snake_case.ipynb` or descriptive with spaces (e.g., `cube comparison.ipynb`)
-- Data files: Source name preserved (e.g., `Crimes_-_2001_to_Present_*.csv`)
-- Visualizations: `viz_##_description.png` (numbered, snake_case)
+- React components use `PascalCase.tsx`: `src/components/map/MapVisualization.tsx`.
+- Stores use `useXStore.ts`: `src/store/useAdaptiveStore.ts`.
+- Route handlers use `route.ts`: `src/app/api/crimes/range/route.ts`.
+- Tests use `.test.ts` / `.test.tsx` next to the target file.
 
-**Functions:**
-- Use `snake_case` (e.g., `preprocess_chunk`, `extract_lat_lon`)
-
-**Variables:**
-- Use `snake_case` for variables (e.g., `missing_latlon`, `need_fill`)
-- Use `UPPER_SNAKE_CASE` for constants (e.g., `RAW_COLUMNS`, `DTYPES`)
-
-**Columns (DataFrame):**
-- Original data: Title Case with spaces (e.g., `Primary Type`, `Case Number`)
-- Derived features: lowercase (e.g., `month`, `day`, `hour`, `weekday`, `is_weekend`)
+**Directories:**
+- Feature folders are lowercase and domain-oriented: `timeline`, `map`, `stkde`, `timeslicing`, `stats`.
+- Route-local support folders are nested beside the route: `src/app/timeslicing/components/`, `src/app/stkde/lib/`, `src/app/dashboard-v2/hooks/`.
 
 ## Where to Add New Code
 
-**New Transformation Logic:**
-- Add to `datapreprocessing/pipeline.py` as new function
-- Follow existing pattern: function takes DataFrame, returns DataFrame
-- Import in notebook if needed for interactive use
+**New page or route shell:**
+- Primary code: `src/app/<route>/page.tsx`.
+- Route-local helpers: `src/app/<route>/components/`, `src/app/<route>/hooks/`, `src/app/<route>/lib/`.
 
-**New Analysis/Visualization:**
-- Add cells to `datapreprocessing/crime_pipeline.ipynb`
-- Or create new notebook in `datapreprocessing/` directory
-- Save output visualizations as `viz_##_description.png`
+**New shared visual component:**
+- Implementation: `src/components/<domain>/`.
+- Prefer colocating related layers or overlays inside the same domain folder.
 
-**New CLI Commands:**
-- Extend argparse in `datapreprocessing/pipeline.py:main()`
-- Add subparsers if multiple commands needed
+**New client state:**
+- Implementation: `src/store/use<Name>Store.ts`.
+- If the state is slice-based, add slice factories in `src/store/slice-domain/` and re-export through `src/store/useSliceDomainStore.ts`.
 
-**Utility Functions:**
-- Currently no separate utils module
-- Add to `pipeline.py` above the functions that use them
-- Consider creating `utils.py` if pipeline.py grows beyond 300 lines
+**New computation or query logic:**
+- Implementation: `src/lib/<domain>/`.
+- Workerized versions belong in `src/workers/`.
 
-**Tests:**
-- Currently no test infrastructure
-- Would add as `datapreprocessing/test_pipeline.py`
-- Use pytest (add to requirements when creating)
+**New API endpoint:**
+- Implementation: `src/app/api/<resource>/route.ts`.
+- Keep request validation near the route or in shared contracts under `src/lib/`.
+
+**New tests:**
+- Place beside the implementation with the same basename and `.test.ts` / `.test.tsx` suffix.
 
 ## Special Directories
 
-**.venv/:**
-- Purpose: Python virtual environment
-- Generated: Yes
-- Committed: No (should be in .gitignore)
+**`.planning/`:**
+- Purpose: generated analysis and roadmap files.
+- Generated: Yes.
+- Committed: Yes.
 
-**.idea/:**
-- Purpose: IDE configuration (PyCharm)
-- Generated: Yes (by IDE)
-- Committed: Currently yes (unusual - typically gitignored)
+**`data/`:**
+- Purpose: large source and cache files for DuckDB-backed features.
+- Generated: Mixed.
+- Committed: Mixed; source CSVs are checked in, runtime caches are disposable.
 
-**.git/:**
-- Purpose: Git repository metadata
-- Generated: Yes
-- Committed: N/A (it IS the repo)
-- Note: Repository has staged files but no commits yet
+**`patches/`:**
+- Purpose: `patch-package` overrides.
+- Generated: Yes, but committed.
 
-**Output Files (viz_*.png):**
-- Purpose: Generated visualizations from notebook
-- Generated: Yes (by running notebook cells)
-- Committed: Currently staged (consider gitignoring large outputs)
-
-## Git Status
-
-**Repository:** `datapreprocessing/.git`
-**Branch:** master (no commits)
-**Staged files:**
-- `.idea/` configuration files
-- `Crimes_-_2001_to_Present_20260114.csv` (2.3GB - should not be committed)
-- `crime_pipeline.ipynb`
-- `cube comparison.ipynb`
-- `pipeline.py`
-
-**Recommendations:**
-- Create `.gitignore` to exclude `.venv/`, `*.csv`, and large outputs
-- Remove large CSV from staging before first commit
+**`public/`:**
+- Purpose: static assets.
+- Generated: No.
+- Committed: Yes.
 
 ---
 
-*Structure analysis: 2026-01-30*
+*Structure analysis: 2026-04-08*

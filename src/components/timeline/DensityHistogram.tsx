@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { bin, max } from 'd3-array';
-import { useDataStore, DataPoint } from '@/store/useDataStore';
+import { DataPoint } from '@/lib/data/types';
 import { useAdaptiveScale } from '@/hooks/useAdaptiveScale';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 
 interface DensityHistogramProps {
   width: number;
@@ -10,7 +11,7 @@ interface DensityHistogramProps {
 }
 
 export const DensityHistogram: React.FC<DensityHistogramProps> = ({ width, height }) => {
-  const data = useDataStore((state) => state.data);
+  const data = useTimelineDataStore((state) => state.data);
   const { timeRange, currentTime } = useTimeStore();
   const scale = useAdaptiveScale(width);
   

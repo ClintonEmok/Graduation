@@ -137,15 +137,15 @@ export async function GET(request: Request) {
           SELECT 
             ${typeColumnSql} as name, 
             COUNT(*) as count 
-          FROM '${DATA_PATH}' 
-          WHERE ${timeFilter}
-          GROUP BY 1
-          ORDER BY count DESC
-        `;
-        db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
+           FROM '${DATA_PATH}' 
+           WHERE ${timeFilter}
+           GROUP BY 1
+           ORDER BY count DESC
+         `;
+         db.all(query, (err: Error | null, res: unknown[]) => {
+           if (err) reject(err);
+           else resolve(res as Record<string, unknown>[]);
+         });
       }),
 
       // Query for District counts
@@ -158,19 +158,19 @@ export async function GET(request: Request) {
             FROM '${DATA_PATH}' 
             WHERE ${timeFilter}
             GROUP BY 1
-            ORDER BY count DESC
-          `
-          : `
-            SELECT 
-              'Unknown' as name, 
-              COUNT(*) as count 
-            FROM '${DATA_PATH}' 
-            WHERE ${timeFilter}
-          `;
-        db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
+             ORDER BY count DESC
+           `
+           : `
+             SELECT 
+               'Unknown' as name, 
+               COUNT(*) as count 
+             FROM '${DATA_PATH}' 
+             WHERE ${timeFilter}
+           `;
+         db.all(query, (err: Error | null, res: unknown[]) => {
+           if (err) reject(err);
+           else resolve(res as Record<string, unknown>[]);
+         });
       }),
     ]);
 

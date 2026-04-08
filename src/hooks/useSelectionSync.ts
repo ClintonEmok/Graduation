@@ -1,8 +1,31 @@
 import { useEffect } from 'react';
+import { selectFilteredData } from '@/lib/data/selectors';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useSliceStore } from '@/store/useSliceStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+
+const EMPTY_FILTER_STATE = {
+  selectedTypes: [],
+  selectedDistricts: [],
+  selectedTimeRange: null,
+};
+
+const getPointTimeFromFallbackData = (selectedIndex: number): number | null => {
+  const { data, minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+  if (!data.length) return null;
+  const filtered = selectFilteredData(
+    {
+      columns: null,
+      data,
+      minTimestampSec,
+      maxTimestampSec,
+    },
+    EMPTY_FILTER_STATE
+  );
+  const selectedPoint = filtered.find((point) => point.originalIndex === selectedIndex);
+  return selectedPoint ? selectedPoint.y : null;
+};
 
 /**
  * useSelectionSync - The "Conductor" that synchronizes all views
@@ -11,7 +34,7 @@ import { useDataStore } from '@/store/useDataStore';
  * - CoordinationStore: Single source of truth for selection state
  * - TimeStore: Controls the timeline/scrubber position
  * - SliceStore: Manages time slice panels
- * - DataStore: Provides point data for time lookup
+ * - TimelineDataStore + selector contracts: Provides point data for time lookup
  * 
  * Truths enforced:
  * - Selecting in Map updates 3D view
@@ -24,7 +47,7 @@ export function useSelectionSync() {
   const setTime = useTimeStore((state) => state.setTime);
   const slices = useSliceStore((state) => state.slices);
   const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
-  const columns = useDataStore((state) => state.columns);
+  const columns = useTimelineDataStore((state) => state.columns);
 
   // Effect 1: Sync selection to timeline (scroll to selected point's time)
   useEffect(() => {
@@ -37,11 +60,7 @@ export function useSelectionSync() {
       // Real data: timestamp is normalized 0-100
       pointTime = columns.timestamp[selectedIndex];
     } else {
-      // Mock data fallback: get from data array
-      const data = useDataStore.getState().data;
-      if (data[selectedIndex]) {
-        pointTime = data[selectedIndex].timestamp;
-      }
+      pointTime = getPointTimeFromFallbackData(selectedIndex);
     }
 
     if (pointTime !== null) {
@@ -70,10 +89,7 @@ export function useSelectionSync() {
     if (columns && selectedIndex < columns.length) {
       pointTime = columns.timestamp[selectedIndex];
     } else {
-      const data = useDataStore.getState().data;
-      if (data[selectedIndex]) {
-        pointTime = data[selectedIndex].timestamp;
-      }
+      pointTime = getPointTimeFromFallbackData(selectedIndex);
     }
 
     if (pointTime === null) return;

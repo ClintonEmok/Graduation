@@ -16,6 +16,7 @@ interface FeatureFlagsState {
   discardPendingFlags: () => void;
   
   // Utilities
+  setFlag: (id: string, enabled: boolean) => void;
   resetToDefaults: () => void;
   applyURLFlags: (urlFlags: Record<string, boolean>) => void;
   hasPendingChanges: () => boolean;
@@ -54,6 +55,12 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>()(
       
       discardPendingFlags: () => {
         set({ pendingFlags: null });
+      },
+
+      setFlag: (id, enabled) => {
+        set((state) => ({
+          flags: { ...state.flags, [id]: enabled },
+        }));
       },
       
       resetToDefaults: () => {

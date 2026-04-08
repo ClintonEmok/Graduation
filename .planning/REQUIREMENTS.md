@@ -1,103 +1,117 @@
-# Requirements: v2.0 Cube-First Space-Time Slicing Sandbox
+# Requirements: Adaptive Space-Time Cube v3.0
 
-**Milestone:** v2.0  
-**Defined:** 2026-03-05  
-**Core Value:** Users can create, test, and validate space-time slicing directly in a dedicated 3D sandbox route, with timeline/map integration deferred unless needed for cube outcomes.
+**Defined:** 2026-03-25
+**Core Value:** Users can visually compare uniform vs adaptive time mapping to understand how local density-based time scaling reveals patterns hidden in traditional Space-Time Cubes.
 
-## v2.0 Requirements
+## v3.0 Requirements
 
-### Sandbox Route Foundation
+### Binning (Phase 61 — Complete)
 
-- [ ] **ROUTE-01**: A dedicated route exists for 3D timeslicing sandbox workflows (separate from production analysis routes)
-- [ ] **ROUTE-02**: Sandbox route can load with thesis-scale default dataset and initial cube state without full-app dependency coupling
-- [ ] **ROUTE-03**: Sandbox route exposes active context (dataset, filters, spatial bounds, warp mode) in a compact debug panel
-- [ ] **ROUTE-04**: Sandbox state resets/reloads safely for rapid experimentation in one session
+- [x] **BIN-01**: User can select from 13 binning strategies (daytime-heavy, nighttime-heavy, crime-type-specific, burstiness, uniform-distribution, uniform-time, weekday-weekend, quarter-hourly, hourly, daily, weekly, custom, auto-adaptive)
+- [x] **BIN-02**: User can merge adjacent bins
+- [x] **BIN-03**: User can split bins
+- [x] **BIN-04**: User can delete bins
+- [x] **BIN-05**: User can resize bins
+- [x] **BIN-06**: User can save/load binning configurations
+- [x] **BIN-07**: User can undo/reset binning changes
+- [x] **BIN-08**: Constraints validated (minEvents, maxEvents, maxBins, contiguous)
 
-### Cube Spatial Context Setup
+### Constraint-Driven Generation and Review-to-Apply (Phase 62)
 
-- [ ] **CSPAT-01**: User can define one or more spatial constraint regions for the cube workflow (selection, polygon, or named zone)
-- [ ] **CSPAT-02**: Spatial constraints can be enabled or disabled without losing definitions
-- [ ] **CSPAT-03**: Constraint definitions are visible as first-class indicators inside cube interactions
-- [ ] **CSPAT-04**: Constraint configuration persists during sandbox session interactions
+- [ ] **GEN-01**: User can generate bins from selected crime type filters
+- [ ] **GEN-02**: User can generate bins using neighbourhood context
+- [ ] **GEN-03**: User can generate bins within a user-defined time window
+- [ ] **GEN-04**: User can choose granularity such as hourly or daily without relying on a fixed bin count
+- [ ] **GEN-05**: Generated bins are the default first result shown to the user
+- [ ] **GEN-06**: User can review generated bins and apply them into the unified `dashboard-v2` workflow in one clear step
 
-### Cube-Constrained Warp Proposals
+### Manual Refinement and Adaptive Burst Emphasis (Phase 63)
 
-- [ ] **CWARP-01**: System can generate adaptive warp proposals that prioritize selected cube spatial constraints
-- [ ] **CWARP-02**: Warp proposal details include rationale indicators (for example: density concentration, hotspot coverage)
-- [ ] **CWARP-03**: User can apply a proposal and immediately see updated temporal deformation on cube axes
+- [ ] **MAN-01**: User can manually adjust generated slices after generation
+- [ ] **MAN-02**: Manual editing supports precise boundary changes without breaking the main workflow
+- [ ] **MAN-03**: Burst periods can be represented with narrower or more focused generated slices when appropriate
+- [ ] **MAN-04**: Adaptive mode visually expands burst-heavy periods more aggressively for investigation
+- [ ] **MAN-05**: Manual refinement is delivered inside `dashboard-v2` while remaining synchronized with the generated/apply workflow
 
-### Cube-Aware Interval Proposals
+### Cross-View Synchronization and Workflow Dashboard (Phase 64)
 
-- [ ] **CINTV-01**: System proposes slice intervals that account for temporal bursts within selected cube spatial context
-- [ ] **CINTV-02**: Proposed intervals include confidence or quality signals
-- [ ] **CINTV-03**: User can edit proposal boundaries while preserving constraint-awareness feedback
+- [ ] **SYNC-01**: Applied slices appear clearly on the `dashboard-v2` timeline
+- [ ] **SYNC-02**: Applied slices drive the `dashboard-v2` 2D map and heatmap views coherently
+- [ ] **SYNC-03**: Applied slices are visible and synchronized in the `dashboard-v2` 3D cube
+- [ ] **SYNC-04**: `dashboard-v2` clearly communicates current workflow state (generate, review, applied, refine)
+- [ ] **SYNC-05**: Current strategy, granularity, and active slice set are easy to understand at a glance in `dashboard-v2`
 
-### Cube-First Validation Loop
+### STKDE Integration (Phase 65)
 
-- [ ] **CVAL-01**: Selecting a proposed or accepted slice highlights relevant events consistently in cube views/panels
-- [ ] **CVAL-02**: Changing slice state (accepted/rejected/edited) updates cube visual state within one interaction cycle
-- [ ] **CVAL-03**: User can compare uniform vs adaptive cube representations with overlays kept aligned
+- [ ] **STKD-01**: Kernel density estimation overlay available during slice-based investigation
+- [ ] **STKD-02**: Hotspot detection panel shows high-density areas with useful investigation context
+- [ ] **STKD-03**: Heatmap integration works inside the unified `dashboard-v2` workflow
+- [ ] **STKD-04**: STKDE results are visible in the 3D cube view
+- [ ] **STKD-05**: User can switch between standard slice views and STKDE-enhanced analysis
 
-### Review Workflow
+### Full Workflow Hardening and Validation (Phase 66)
 
-- [ ] **REVIEW-01**: User can accept, modify, or reject each proposed warp/interval item
-- [ ] **REVIEW-02**: Review state is visible as a list with status markers and quick navigation
-- [ ] **REVIEW-03**: User can revert the latest review action without losing proposal provenance
+- [ ] **FLOW-01**: End-to-end generate-review-apply workflow tests pass for `dashboard-v2`
+- [ ] **FLOW-02**: Manual refinement after generation works correctly
+- [ ] **FLOW-03**: State stays synchronized across the `dashboard-v2` timeline, map, heatmap, dashboard panels, and cube
+- [ ] **FLOW-04**: Performance benchmarks meet interactive-use targets
+- [ ] **FLOW-05**: Empty, low-confidence, and error states are handled clearly
+- [ ] **FLOW-06**: The unified `dashboard-v2` prototype is stable enough for evaluation and further research use
 
-### Cube Diagnostics and Analytics
-
-- [ ] **DIAG-01**: User can view per-slice spatial diagnostics (coverage by area/cluster)
-- [ ] **DIAG-02**: User can inspect how accepted slices differ from baseline uniform slicing metrics
-- [ ] **DIAG-03**: Diagnostics can be filtered by active data context (for example crime category)
-
-### Quality and Responsiveness
-
-- [ ] **QUAL-01**: Proposal generation and first render complete quickly enough for interactive use (< 2s target under thesis dataset scale)
-- [ ] **QUAL-02**: Slice edits and cube highlight updates feel real-time (< 100ms target for direct manipulation)
-- [ ] **QUAL-03**: Workflow remains usable with at least 100 proposal/slice items without blocking UI interactions
-
-## Out of Scope (v2.0)
+## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Full timeline-map-cube parity by default | v2.0 is cube-first; broad parity can be added later if needed |
-| Multi-dataset switching UX | Defer until cube sandbox behavior stabilizes |
-| Real-time streaming ingestion | Thesis workflow uses static prepared datasets |
-| Multi-user collaboration | Single-user analysis workflow is sufficient |
-| Cloud persistence/account system | Session-first local workflow remains adequate |
-| Mobile optimization | Desktop research tool remains priority |
+| Mobile responsiveness | Desktop-focused research tool |
+| User accounts | Session-based ID tracking sufficient |
+| Real-time streaming | Static dataset sufficient for thesis |
+| Multiple datasets | Architecture extensible, Chicago only for thesis |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01 | Phase 43 | Pending |
-| ROUTE-02 | Phase 43 | Pending |
-| ROUTE-03 | Phase 43 | Pending |
-| ROUTE-04 | Phase 43 | Pending |
-| CSPAT-01 | Phase 44 | Pending |
-| CSPAT-02 | Phase 44 | Pending |
-| CSPAT-03 | Phase 44 | Pending |
-| CSPAT-04 | Phase 44 | Pending |
-| CWARP-01 | Phase 45 | Pending |
-| CWARP-02 | Phase 45 | Pending |
-| CWARP-03 | Phase 45 | Pending |
-| CINTV-01 | Phase 46 | Pending |
-| CINTV-02 | Phase 46 | Pending |
-| CINTV-03 | Phase 46 | Pending |
-| CVAL-01 | Phase 47 | Pending |
-| CVAL-02 | Phase 47 | Pending |
-| CVAL-03 | Phase 47 | Pending |
-| REVIEW-01 | Phase 48 | Pending |
-| REVIEW-02 | Phase 48 | Pending |
-| REVIEW-03 | Phase 48 | Pending |
-| DIAG-01 | Phase 49 | Pending |
-| DIAG-02 | Phase 49 | Pending |
-| DIAG-03 | Phase 49 | Pending |
-| QUAL-01 | Phase 50 | Pending |
-| QUAL-02 | Phase 50 | Pending |
-| QUAL-03 | Phase 50 | Pending |
+| BIN-01 | Phase 61 | Complete |
+| BIN-02 | Phase 61 | Complete |
+| BIN-03 | Phase 61 | Complete |
+| BIN-04 | Phase 61 | Complete |
+| BIN-05 | Phase 61 | Complete |
+| BIN-06 | Phase 61 | Complete |
+| BIN-07 | Phase 61 | Complete |
+| BIN-08 | Phase 61 | Complete |
+| GEN-01 | Phase 62 | Pending |
+| GEN-02 | Phase 62 | Pending |
+| GEN-03 | Phase 62 | Pending |
+| GEN-04 | Phase 62 | Pending |
+| GEN-05 | Phase 62 | Pending |
+| GEN-06 | Phase 62 | Pending |
+| MAN-01 | Phase 63 | Pending |
+| MAN-02 | Phase 63 | Pending |
+| MAN-03 | Phase 63 | Pending |
+| MAN-04 | Phase 63 | Pending |
+| MAN-05 | Phase 63 | Pending |
+| SYNC-01 | Phase 64 | Pending |
+| SYNC-02 | Phase 64 | Pending |
+| SYNC-03 | Phase 64 | Pending |
+| SYNC-04 | Phase 64 | Pending |
+| SYNC-05 | Phase 64 | Pending |
+| STKD-01 | Phase 65 | Pending |
+| STKD-02 | Phase 65 | Pending |
+| STKD-03 | Phase 65 | Pending |
+| STKD-04 | Phase 65 | Pending |
+| STKD-05 | Phase 65 | Pending |
+| FLOW-01 | Phase 66 | Pending |
+| FLOW-02 | Phase 66 | Pending |
+| FLOW-03 | Phase 66 | Pending |
+| FLOW-04 | Phase 66 | Pending |
+| FLOW-05 | Phase 66 | Pending |
+| FLOW-06 | Phase 66 | Pending |
+
+**Coverage:**
+- v3.0 requirements: 35 total (8 + 6 + 5 + 5 + 5 + 6)
+- Mapped to phases: 35
+- Unmapped: 0 ✓
 
 ---
-
-*Requirements for v2.0 Cube-First Space-Time Slicing Sandbox milestone*
+*Requirements defined: 2026-03-25*
+*Last updated: 2026-03-26 after aligning v3.0 requirements to dashboard-v2 as the single unified route*

@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { RefreshCcw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -12,39 +12,21 @@ import { useWarpProposalStore } from '@/store/useWarpProposalStore';
 import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
 import { useLogger } from '@/hooks/useLogger';
+import { useStkdeStore } from '@/store/useStkdeStore';
 
 export default function CubeVisualization() {
   const { triggerReset } = useUIStore();
-  const { loadRealData, isLoading, columns } = useDataStore();
+  const { loadRealData, isLoading, columns } = useTimelineDataStore();
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
-  const constraints = useCubeSpatialConstraintsStore((state) => state.constraints);
-  const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
-  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
-  const warpSource = useAdaptiveStore((state) => state.warpSource);
-  const appliedProposalId = useWarpProposalStore((state) => state.appliedProposalId);
-  const proposals = useWarpProposalStore((state) => state.proposals);
-  const intervalProposals = useIntervalProposalStore((state) => state.proposals);
-  const selectedIntervalProposalId = useIntervalProposalStore((state) => state.selectedProposalId);
-  const previewIntervalProposalId = useIntervalProposalStore((state) => state.previewProposalId);
-  const appliedIntervalProposalId = useIntervalProposalStore((state) => state.appliedProposalId);
+  const stkdeResponse = useStkdeStore((state) => state.response);
+  const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
+  const runMeta = useStkdeStore((state) => state.runMeta);
   const { log } = useLogger();
 
-  const enabledConstraints = constraints.filter((constraint) => constraint.enabled);
-  const activeConstraintLabel =
-    constraints.find((constraint) => constraint.id === activeConstraintId)?.label ?? 'None';
-  const appliedProposalLabel =
-    proposals.find((proposal) => proposal.id === appliedProposalId)?.label ?? appliedProposalId ?? 'None';
-  const selectedInterval =
-    intervalProposals.find((proposal) => proposal.id === selectedIntervalProposalId) ?? null;
-  const previewIntervalLabel =
-    intervalProposals.find((proposal) => proposal.id === previewIntervalProposalId)?.label ??
-    previewIntervalProposalId ??
-    'None';
-  const appliedInterval = intervalProposals.find((proposal) => proposal.id === appliedIntervalProposalId) ?? null;
-  const appliedIntervalLabel = appliedInterval?.label ?? appliedIntervalProposalId ?? 'None';
+  const selectedHotspot = stkdeResponse?.hotspots.find((hotspot) => hotspot.id === selectedHotspotId) ?? null;
 
   useEffect(() => {
     if (!columns && !isLoading) {
@@ -107,6 +89,32 @@ export default function CubeVisualization() {
               .join(' · ')}
           </div>
         )}
+
+        {stkdeResponse ? (
+          <div className="absolute top-4 left-4 z-10 max-w-sm rounded-md border bg-background/85 px-3 py-2 text-[10px] text-muted-foreground shadow-sm backdrop-blur">
+            <div className="text-xs font-semibold text-foreground">STKDE Context</div>
+            {selectedHotspot ? (
+              <>
+                <div className="mt-1 text-foreground">Hotspot {selectedHotspot.id}</div>
+                <div className="mt-1">Intensity: {selectedHotspot.intensityScore.toFixed(3)}</div>
+                <div className="mt-1">Support: {selectedHotspot.supportCount}</div>
+                <div className="mt-1">
+                  Time window: {new Date(selectedHotspot.peakStartEpochSec * 1000).toLocaleString()} →{' '}
+                  {new Date(selectedHotspot.peakEndEpochSec * 1000).toLocaleString()}
+                </div>
+              </>
+            ) : (
+              <div className="mt-1">No hotspot selected</div>
+            )}
+            {runMeta ? (
+              <div className="mt-1 text-sky-700 dark:text-sky-300">
+                requested={runMeta.requestedComputeMode} effective={runMeta.effectiveComputeMode}
+                {runMeta.truncated ? ' • truncated' : ''}
+                {runMeta.fallbackApplied ? ` • fallback=${runMeta.fallbackApplied}` : ''}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

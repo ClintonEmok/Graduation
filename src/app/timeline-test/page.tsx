@@ -15,12 +15,22 @@ import { SliceList } from '@/app/timeline-test/components/SliceList';
 import { WarpSliceEditor } from '@/app/timeline-test/components/WarpSliceEditor';
 import { SNAP_INTERVALS } from '@/app/timeline-test/lib/slice-utils';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore, type DataPoint } from '@/store/useDataStore';
+import type { DataPoint } from '@/lib/data/types';
 import { useFilterStore } from '@/store/useFilterStore';
-import { useSliceCreationStore } from '@/store/useSliceCreationStore';
-import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
+import {
+  select,
+  selectAdjustmentFixedSnapPresetSec,
+  selectAdjustmentSnapEnabled,
+  selectAdjustmentSnapMode,
+  selectCreationMode,
+  selectCreationPreviewFeedback,
+  selectCreationSnapEnabled,
+  selectIsCreating,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { MOCK_START_MS, MOCK_END_MS, MOCK_START_SEC, MOCK_END_SEC } from '@/lib/constants';
 
 const SAMPLE_POINT_COUNT = 160;
@@ -186,23 +196,22 @@ export default function TimelineTestPage() {
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const warpSlices = useWarpSliceStore((state) => state.slices);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const setTimeRange = useFilterStore((state) => state.setTimeRange);
   const resetFilters = useFilterStore((state) => state.resetFilters);
-  const isCreatingSlice = useSliceCreationStore((state) => state.isCreating);
-  const startCreation = useSliceCreationStore((state) => state.startCreation);
-  const cancelCreation = useSliceCreationStore((state) => state.cancelCreation);
-  const creationMode = useSliceCreationStore((state) => state.creationMode);
-  const dragActive = useSliceCreationStore((state) => state.dragActive);
-  const snapEnabled = useSliceCreationStore((state) => state.snapEnabled);
-  const snapInterval = useSliceCreationStore((state) => state.snapInterval);
-  const previewIsValid = useSliceCreationStore((state) => state.previewIsValid);
-  const previewReason = useSliceCreationStore((state) => state.previewReason);
-  const boundarySnapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
-  const boundarySnapMode = useSliceAdjustmentStore((state) => state.snapMode);
-  const boundaryFixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
+  const isCreatingSlice = useSliceDomainStore(selectIsCreating);
+  const startCreation = useSliceDomainStore(select((state) => state.startCreation));
+  const cancelCreation = useSliceDomainStore(select((state) => state.cancelCreation));
+  const creationMode = useSliceDomainStore(selectCreationMode);
+  const dragActive = useSliceDomainStore(select((state) => state.dragActive));
+  const snapEnabled = useSliceDomainStore(selectCreationSnapEnabled);
+  const { isValid: previewIsValid, reason: previewReason, snapInterval } =
+    useSliceDomainStore(selectCreationPreviewFeedback);
+  const boundarySnapEnabled = useSliceDomainStore(selectAdjustmentSnapEnabled);
+  const boundarySnapMode = useSliceDomainStore(selectAdjustmentSnapMode);
+  const boundaryFixedSnapPresetSec = useSliceDomainStore(selectAdjustmentFixedSnapPresetSec);
 
   const mockDensity = useMemo(() => buildMockDensity(SAMPLE_POINT_COUNT, mockVariant), [mockVariant]);
   const mockTimestamps = useMemo(() => buildMockTimestamps(MOCK_EVENT_COUNT, mockVariant), [mockVariant]);
@@ -226,7 +235,7 @@ export default function TimelineTestPage() {
   useEffect(() => {
     if (!useMockData) return;
     computeMaps(mockTimestamps, [MOCK_START_SEC, MOCK_END_SEC]);
-    useDataStore.setState({
+    useTimelineDataStore.setState({
       data: buildMockPoints(mockTimestamps),
       columns: null,
       minTimestampSec: MOCK_START_SEC,
@@ -602,6 +611,7 @@ export default function TimelineTestPage() {
             <DualTimeline
               adaptiveWarpMapOverride={effectiveWarpMap}
               adaptiveWarpDomainOverride={mapDomain}
+              tickLabelStrategy="span-aware"
             />
             {detailInnerWidth > 0 && (
               <>

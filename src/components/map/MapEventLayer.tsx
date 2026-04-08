@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import type { CircleLayerSpecification, ExpressionSpecification } from 'maplibre-gl';
 import { Layer, Source } from 'react-map-gl/maplibre';
 import { CrimeRecord } from '@/types/crime';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
@@ -30,10 +30,10 @@ interface MapEventLayerProps {
 }
 
 export default function MapEventLayer({ colorMode, hoveredTypeId, records = [] }: MapEventLayerProps) {
-  const columns = useDataStore((state) => state.columns);
-  const data = useDataStore((state) => state.data);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const data = useTimelineDataStore((state) => state.data);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);

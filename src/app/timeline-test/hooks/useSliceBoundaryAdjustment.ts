@@ -9,8 +9,21 @@ import {
   type AdjustmentHandle,
 } from '@/app/timeline-test/lib/slice-adjustment';
 import { MIN_SLICE_DURATION } from '@/app/timeline-test/lib/slice-utils';
-import { useSliceAdjustmentStore } from '@/store/useSliceAdjustmentStore';
-import { useSliceStore } from '@/store/useSliceStore';
+import {
+  select,
+  selectActiveSliceId,
+  selectAdjustmentFixedSnapPresetSec,
+  selectAdjustmentLimitCue,
+  selectAdjustmentSnapEnabled,
+  selectAdjustmentSnapMode,
+  selectAdjustmentTooltip,
+  selectDraggingHandle,
+  selectDraggingSliceId,
+  selectHoverHandle,
+  selectHoverSliceId,
+  selectSlices,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 
 const GRID_CANDIDATE_RADIUS = 4;
 
@@ -92,26 +105,26 @@ export function useSliceBoundaryAdjustment(
   scale: ScaleTime<number, number>,
   domainSec: [number, number]
 ) {
-  const slices = useSliceStore((state) => state.slices);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
-  const updateSlice = useSliceStore((state) => state.updateSlice);
+  const slices = useSliceDomainStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const setActiveSlice = useSliceDomainStore(select((state) => state.setActiveSlice));
+  const updateSlice = useSliceDomainStore(select((state) => state.updateSlice));
 
-  const draggingSliceId = useSliceAdjustmentStore((state) => state.draggingSliceId);
-  const draggingHandle = useSliceAdjustmentStore((state) => state.draggingHandle);
-  const hoverSliceId = useSliceAdjustmentStore((state) => state.hoverSliceId);
-  const hoverHandle = useSliceAdjustmentStore((state) => state.hoverHandle);
-  const tooltip = useSliceAdjustmentStore((state) => state.tooltip);
-  const limitCue = useSliceAdjustmentStore((state) => state.limitCue);
-  const snapEnabled = useSliceAdjustmentStore((state) => state.snapEnabled);
-  const snapMode = useSliceAdjustmentStore((state) => state.snapMode);
-  const fixedSnapPresetSec = useSliceAdjustmentStore((state) => state.fixedSnapPresetSec);
+  const draggingSliceId = useSliceDomainStore(selectDraggingSliceId);
+  const draggingHandle = useSliceDomainStore(selectDraggingHandle);
+  const hoverSliceId = useSliceDomainStore(selectHoverSliceId);
+  const hoverHandle = useSliceDomainStore(selectHoverHandle);
+  const tooltip = useSliceDomainStore(selectAdjustmentTooltip);
+  const limitCue = useSliceDomainStore(selectAdjustmentLimitCue);
+  const snapEnabled = useSliceDomainStore(selectAdjustmentSnapEnabled);
+  const snapMode = useSliceDomainStore(selectAdjustmentSnapMode);
+  const fixedSnapPresetSec = useSliceDomainStore(selectAdjustmentFixedSnapPresetSec);
 
-  const beginDrag = useSliceAdjustmentStore((state) => state.beginDrag);
-  const updateDrag = useSliceAdjustmentStore((state) => state.updateDrag);
-  const endDrag = useSliceAdjustmentStore((state) => state.endDrag);
-  const setHover = useSliceAdjustmentStore((state) => state.setHover);
-  const updateTooltip = useSliceAdjustmentStore((state) => state.updateTooltip);
+  const beginDrag = useSliceDomainStore(select((state) => state.beginDrag));
+  const updateDrag = useSliceDomainStore(select((state) => state.updateDrag));
+  const endDrag = useSliceDomainStore(select((state) => state.endDrag));
+  const setHover = useSliceDomainStore(select((state) => state.setHover));
+  const updateTooltip = useSliceDomainStore(select((state) => state.updateTooltip));
 
   const dragContextRef = useRef<DragContext | null>(null);
   const [domainStartSec, domainEndSec] = toDomainBounds(domainSec);

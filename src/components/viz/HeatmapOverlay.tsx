@@ -1,8 +1,8 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree, createPortal } from '@react-three/fiber';
 import { useFBO } from '@react-three/drei';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useHeatmapStore } from '@/store/useHeatmapStore';
@@ -26,11 +26,11 @@ export const HeatmapOverlay: React.FC<{ blending?: THREE.Blending }> = ({
   const radius = useHeatmapStore((state) => state.radius);
   const opacity = useHeatmapStore((state) => state.opacity);
 
-  const columns = useDataStore((state) => state.columns);
-  const minX = useDataStore((state) => state.minX) ?? -50;
-  const maxX = useDataStore((state) => state.maxX) ?? 50;
-  const minZ = useDataStore((state) => state.minZ) ?? -50;
-  const maxZ = useDataStore((state) => state.maxZ) ?? 50;
+  const columns = useTimelineDataStore((state) => state.columns);
+  const minX = useTimelineDataStore((state) => state.minX) ?? -50;
+  const maxX = useTimelineDataStore((state) => state.maxX) ?? 50;
+  const minZ = useTimelineDataStore((state) => state.minZ) ?? -50;
+  const maxZ = useTimelineDataStore((state) => state.maxZ) ?? 50;
 
   const timeRange = useTimeStore((state) => state.timeRange);
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
@@ -90,9 +90,9 @@ export const HeatmapOverlay: React.FC<{ blending?: THREE.Blending }> = ({
       uTimeMax: { value: timeRange[1] },
       uTypeMap: { value: typeSelectionMap },
       uDistrictMap: { value: districtSelectionMap },
-      uBoundsMin: { value: new THREE.Vector2(0, 0) },
-      uBoundsMax: { value: new THREE.Vector2(0, 0) },
-      uHasBounds: { value: 0 },
+      uBoundsMin: { value: new THREE.Vector2(spatialBounds?.minX ?? 0, spatialBounds?.minZ ?? 0) },
+      uBoundsMax: { value: new THREE.Vector2(spatialBounds?.maxX ?? 0, spatialBounds?.maxZ ?? 0) },
+      uHasBounds: { value: spatialBounds ? 1.0 : 0.0 },
       uPointSize: { value: radius * 5.0 },
     },
     vertexShader: aggregationVertexShader,
@@ -101,7 +101,7 @@ export const HeatmapOverlay: React.FC<{ blending?: THREE.Blending }> = ({
     blending: THREE.AdditiveBlending,
     depthTest: false,
     depthWrite: false,
-  }), []);
+  }), [districtSelectionMap, maxX, maxZ, minX, minZ, radius, spatialBounds, timeRange, typeSelectionMap]);
 
   // Pass 2: Final Heatmap Plane Material
   const heatmapMaterial = useMemo(() => new THREE.ShaderMaterial({
@@ -117,7 +117,7 @@ export const HeatmapOverlay: React.FC<{ blending?: THREE.Blending }> = ({
     depthWrite: false,
     depthTest: true,
     blending,
-  }), [fbo.texture, blending]);
+  }), [blending, fbo.texture, intensity, opacity]);
 
   // Geometry for aggregation (using THREE.Points for max performance)
   const geometry = useMemo(() => {
@@ -136,26 +136,8 @@ export const HeatmapOverlay: React.FC<{ blending?: THREE.Blending }> = ({
   // Update loop
   useFrame(() => {
     if (!isEnabled || !columns) return;
-    
-    // 1. Sync Aggregation Uniforms
-    aggregationMaterial.uniforms.uTimeMin.value = timeRange[0];
-    aggregationMaterial.uniforms.uTimeMax.value = timeRange[1];
-    aggregationMaterial.uniforms.uTypeMap.value = typeSelectionMap;
-    aggregationMaterial.uniforms.uDistrictMap.value = districtSelectionMap;
-    aggregationMaterial.uniforms.uPointSize.value = radius * 5.0;
-    aggregationMaterial.uniforms.uDataBoundsMin.value.set(minX, minZ);
-    aggregationMaterial.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
-    aggregationMaterial.uniforms.uHasBounds.value = spatialBounds ? 1.0 : 0.0;
-    if (spatialBounds) {
-      aggregationMaterial.uniforms.uBoundsMin.value.set(spatialBounds.minX, spatialBounds.minZ);
-      aggregationMaterial.uniforms.uBoundsMax.value.set(spatialBounds.maxX, spatialBounds.maxZ);
-    }
 
-    // 2. Sync Heatmap Uniforms
-    heatmapMaterial.uniforms.uIntensityScale.value = intensity / 10.0;
-    heatmapMaterial.uniforms.uOpacity.value = opacity;
-
-    // 3. Render Aggregation Pass to FBO
+    // Render Aggregation Pass to FBO
     const oldTarget = gl.getRenderTarget();
     gl.setRenderTarget(fbo);
     gl.clear();

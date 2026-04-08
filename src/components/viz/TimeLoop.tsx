@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { useTimeStore } from '@/store/useTimeStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { resolutionToNormalizedStep } from '@/lib/time-domain';
 import * as THREE from 'three';
 
@@ -19,7 +19,7 @@ export function TimeLoop({ pointsRef }: TimeLoopProps) {
       setTime,
       timeResolution
     } = useTimeStore.getState();
-    const { minTimestampSec, maxTimestampSec } = useDataStore.getState();
+    const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
     
     let nextTime = currentTime;
 

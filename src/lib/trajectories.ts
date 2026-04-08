@@ -1,4 +1,4 @@
-import { FilteredPoint } from '@/store/useDataStore';
+import { FilteredPoint } from '@/lib/data/types';
 
 export interface Trajectory {
   block: string;

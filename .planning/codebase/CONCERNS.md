@@ -1,154 +1,118 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-04-08
 
 ## Tech Debt
 
-**Deprecated Pandas API Usage:**
-- Issue: Using deprecated `infer_datetime_format=True` parameter in pandas read_csv calls
-- Files: `datapreprocessing/pipeline.py` (lines 110, 126)
-- Impact: FutureWarning raised during execution; will break in future pandas versions
-- Fix approach: Remove the `infer_datetime_format` parameter entirely as strict parsing is now the default behavior
+**SQL assembly across crime endpoints:**
+- Issue: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, and `src/app/api/crime/facets/route.ts` still build SQL with string interpolation for user-controlled filters.
+- Files: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`
+- Impact: query construction is brittle and hard to audit; malicious filter values can escape the intended query shape.
+- Fix approach: move all filter construction to parameterized helpers in `src/lib/queries/*` and forbid raw string concatenation in route handlers.
 
-**Code Duplication Between Script and Notebook:**
-- Issue: Preprocessing logic duplicated between `pipeline.py` and `crime_pipeline.ipynb`
-- Files: `datapreprocessing/pipeline.py`, `datapreprocessing/crime_pipeline.ipynb`
-- Impact: Changes to preprocessing logic must be made in two places; drift between implementations likely
-- Fix approach: Refactor common functions into a shared module and import in both script and notebook
+**Mock-first failure handling:**
+- Issue: `src/lib/db.ts` defaults to mock mode when env flags are absent, and `src/app/api/crime/meta/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/neighbourhood/poi/route.ts`, and `src/app/api/stkde/hotspots/route.ts` downgrade real errors to demo responses.
+- Files: `src/lib/db.ts`, `src/app/api/crime/meta/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/neighbourhood/poi/route.ts`, `src/app/api/stkde/hotspots/route.ts`
+- Impact: missing data files, DB failures, and bad deployments present as valid app state instead of outages.
+- Fix approach: separate demo-mode from error fallback, and surface non-demo failures as explicit 5xx responses or visible UI errors.
 
-**Inconsistent Datetime Parsing:**
-- Issue: Notebooks show UserWarning about datetime format inference falling back to `dateutil`
-- Files: `datapreprocessing/crime_pipeline.ipynb` (cell outputs around line 233)
-- Impact: Slow parsing due to per-element processing; potential inconsistent behavior
-- Fix approach: Explicitly specify datetime format string (e.g., `%m/%d/%Y %I:%M:%S %p`)
+**Overgrown rendering/controller modules:**
+- Issue: `src/components/timeline/DualTimeline.tsx` (1285 lines), `src/components/viz/DataPoints.tsx` (687 lines), and `src/app/stkde/lib/StkdeRouteShell.tsx` (443 lines) mix fetching, state syncing, geometry, and interaction logic.
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/components/viz/DataPoints.tsx`, `src/app/stkde/lib/StkdeRouteShell.tsx`
+- Impact: changes in one behavior area can regress unrelated interactions.
+- Fix approach: extract data prep, interaction state, and rendering primitives into smaller modules.
 
 ## Known Bugs
 
-**None identified at code level.**
+**Unauthenticated log ingestion:**
+- Symptoms: `src/app/api/study/log/route.ts` appends any JSON array to `logs/study-sessions.jsonl`.
+- Files: `src/app/api/study/log/route.ts`, `src/lib/logger.ts`
+- Trigger: any client that can POST to the route.
+- Workaround: none in code.
+- Fix approach: add auth, schema validation, rate limits, and size caps before writing to disk.
 
-Notebook outputs show successful execution with expected data transformations.
+**Process-local cache growth and cache misses:**
+- Symptoms: `src/app/api/neighbourhood/poi/route.ts` keeps a module-level `Map` for 24h.
+- Files: `src/app/api/neighbourhood/poi/route.ts`
+- Trigger: many distinct bounds requests or multiple server instances.
+- Workaround: none.
+- Fix approach: cap entries and move to shared cache if the route stays hot.
+
+**Demo mode can appear unintentionally:**
+- Symptoms: `src/lib/db.ts` returns mock mode when `USE_MOCK_DATA`/`DISABLE_DUCKDB` is unset.
+- Files: `src/lib/db.ts`, `src/app/api/crime/meta/route.ts`
+- Trigger: missing env configuration.
+- Workaround: manually set env flags.
+- Fix approach: require explicit demo opt-in.
 
 ## Security Considerations
 
-**Large Data File in Repository:**
-- Risk: 2.2GB CSV file (`Crimes_-_2001_to_Present_20260114.csv`) appears to be present in the repository
-- Files: `datapreprocessing/Crimes_-_2001_to_Present_20260114.csv`
-- Current mitigation: None visible
-- Recommendations: Add `.gitignore` file excluding `*.csv` and large data files; use Git LFS or external data storage
+**SQL injection surface:**
+- Risk: `types` and `districts` are interpolated into SQL in `src/lib/duckdb-aggregator.ts` and `src/app/api/crime/stream/route.ts`.
+- Files: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/bins/route.ts`
+- Current mitigation: some endpoints clamp numeric params, but string filters are not parameterized here.
+- Recommendations: use placeholders everywhere and escape/allowlist filter values before query construction.
 
-**Missing .gitignore:**
-- Risk: Sensitive files, large data files, and virtual environment could be committed
-- Files: Project root and `datapreprocessing/` directory
-- Current mitigation: None - no `.gitignore` file found
-- Recommendations: Create `.gitignore` with entries for `.venv/`, `*.csv`, `.DS_Store`, `.idea/`, `*.png`, `__pycache__/`
-
-**Virtual Environment Committed:**
-- Risk: `.venv/` directory appears to be in the repository (observed via file exploration)
-- Files: `datapreprocessing/.venv/`
-- Current mitigation: None
-- Recommendations: Remove `.venv/` from tracking; add to `.gitignore`; provide `requirements.txt` instead
+**Log endpoint data exposure:**
+- Risk: `src/lib/logger.ts` sends session/participant identifiers, and `src/app/api/study/log/route.ts` persists them without access control.
+- Files: `src/lib/logger.ts`, `src/app/api/study/log/route.ts`
+- Current mitigation: none beyond client-side batching.
+- Recommendations: treat these events as sensitive telemetry, add auth and retention controls, and avoid storing raw identifiers unless required.
 
 ## Performance Bottlenecks
 
-**Row-by-Row Geometry Creation:**
-- Problem: Geometry column created using `df.apply()` with lambda function
-- Files: `datapreprocessing/crime_pipeline.ipynb` (Step 8, around line 1128-1132)
-- Cause: `apply(axis=1)` iterates row-by-row, bypassing pandas vectorization
-- Improvement path: Use `gpd.points_from_xy(df['Longitude'], df['Latitude'])` for vectorized Point creation
+**Repeated full-table/CSV scans:**
+- Problem: `src/app/api/crime/meta/route.ts` scans the dataset multiple times; `src/app/api/crime/stream/route.ts` reads and serializes up to 50k rows per request; `src/lib/db.ts` may build a sorted table with a full `ORDER BY`.
+- Files: `src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`, `src/lib/db.ts`
+- Cause: each request re-derives metadata or streams large result sets from source data.
+- Improvement path: persist derived metadata, precompute indexes, and page/stream data incrementally.
 
-**Full Dataset Loading:**
-- Problem: Notebook loads entire 8.4M+ row dataset into memory
-- Files: `datapreprocessing/crime_pipeline.ipynb`
-- Cause: Single `pd.read_csv()` call without chunking for analysis
-- Improvement path: For large analyses, use the chunked approach from `pipeline.py` or Dask/Polars
+**Large STKDE payloads are trimmed after fetch:**
+- Problem: `src/app/stkde/lib/StkdeRouteShell.tsx` and `src/app/dashboard-v2/hooks/useDashboardStkde.ts` serialize responses, measure payload size, then sort/slice heatmap cells client-side.
+- Files: `src/app/stkde/lib/StkdeRouteShell.tsx`, `src/app/dashboard-v2/hooks/useDashboardStkde.ts`
+- Cause: response-size guards happen after network transfer.
+- Improvement path: cap or page at the API layer before serialization.
 
-**Distance Calculation Via Apply:**
-- Problem: Distance to downtown calculated using row-wise `.apply()` on geometry column
-- Files: `datapreprocessing/crime_pipeline.ipynb` (Step 8, lines 1138-1140)
-- Cause: Shapely distance called per-row in Python loop
-- Improvement path: Use vectorized shapely operations or numpy-based haversine formula
+**Unbounded in-memory cache:**
+- Problem: `src/app/api/neighbourhood/poi/route.ts` stores cached summaries in a module-level `Map` with no max size.
+- Files: `src/app/api/neighbourhood/poi/route.ts`
+- Cause: cache eviction is time-based only.
+- Improvement path: add size-based eviction or an external cache.
 
 ## Fragile Areas
 
-**Hardcoded File Paths:**
-- Files: `datapreprocessing/crime_pipeline.ipynb` (line 26: `DATA_PATH = Path('Crimes_-_2001_to_Present_20260114.csv')`)
-- Why fragile: Path assumes execution from specific directory; filename includes date, will need updating for new data
-- Safe modification: Use environment variables or config file for data paths
-- Test coverage: None
+**Type escapes around core data paths:**
+- Files: `src/lib/data/types.ts`, `src/lib/db.ts`, `src/app/api/crime/facets/route.ts`, `src/components/viz/Trajectory.tsx`, `src/components/viz/DataPoints.tsx`
+- Why fragile: `any`, `[key: string]: any`, `as any`, and `@ts-ignore` appear at the database, shader, and event boundaries.
+- Safe modification: keep these boundaries narrow and add explicit adapters before data reaches rendering code.
+- Test coverage: type-related regressions are easy to miss because runtime tests do not exercise compile-time guarantees.
 
-**Hardcoded Geographic Bounds:**
-- Files: `datapreprocessing/crime_pipeline.ipynb` (lines 71-76), `datapreprocessing/pipeline.py` (line 94)
-- Why fragile: City boundary values hardcoded; inconsistent between file and variable definitions
-- Safe modification: Move constants to a shared configuration module
-- Test coverage: None
-
-**Notebook Filename with Space:**
-- Files: `datapreprocessing/cube comparison.ipynb`
-- Why fragile: Filename contains space which can cause issues with command-line tools and imports
-- Safe modification: Rename to `cube_comparison.ipynb`
-- Test coverage: Not applicable
-
-## Scaling Limits
-
-**Memory Constraints:**
-- Current capacity: Loading 2.7M rows uses ~458MB (after filtering to 2015-2025)
-- Limit: Full dataset (8.4M rows) may exceed available memory on smaller machines
-- Scaling path: Use chunked processing (already implemented in `pipeline.py`), or migrate to Dask/Polars
-
-**Single-Threaded Processing:**
-- Current capacity: Sequential row processing
-- Limit: Processing time scales linearly with data size
-- Scaling path: Parallelize chunk processing; use multiprocessing for independent operations
-
-## Dependencies at Risk
-
-**No Explicit Dependency Management:**
-- Risk: No `requirements.txt` or `pyproject.toml` found at project root
-- Impact: Reproducibility issues; version conflicts likely
-- Migration plan: Generate `pip freeze > requirements.txt` from `.venv`; consider `pyproject.toml` for modern packaging
-
-**Pandas Version Sensitivity:**
-- Risk: Deprecated API usage tied to specific pandas versions
-- Impact: Code will break on pandas 3.x
-- Migration plan: Update to non-deprecated API; pin pandas version range in requirements
-
-## Missing Critical Features
-
-**No Automated Tests:**
-- Problem: No test files found (`test_*.py`, `*_test.py`)
-- Blocks: Cannot verify preprocessing correctness after changes; regression risk
-- Recommendation: Add unit tests for `preprocess_chunk()`, `extract_lat_lon()`, and data validation logic
-
-**No Input Validation:**
-- Problem: No checks for input file existence before processing
-- Blocks: Unclear error messages when file missing
-- Recommendation: Add explicit file existence checks with helpful error messages
-
-**No Data Validation Pipeline:**
-- Problem: No schema validation for input CSV; assumes column names match expectations
-- Blocks: Silent failures if CSV format changes
-- Recommendation: Add column presence/type validation at start of pipeline
+**Mouse/shader interaction code is tightly coupled to DOM and WebGL internals:**
+- Files: `src/components/viz/DataPoints.tsx`, `src/components/viz/Trajectory.tsx`, `src/components/viz/SlicePlane.tsx`
+- Why fragile: pointer events, instance IDs, and shader hooks are all coordinated manually.
+- Safe modification: change these in small steps and keep interaction tests close to the affected component.
+- Test coverage: no direct tests cover every pointer/shader branch.
 
 ## Test Coverage Gaps
 
-**Preprocessing Functions:**
-- What's not tested: `preprocess_chunk()`, `extract_lat_lon()`, `iter_clean_chunks()`
-- Files: `datapreprocessing/pipeline.py`
-- Risk: Subtle bugs in data transformation go unnoticed
-- Priority: High
+**No direct coverage detected for the study logging path:**
+- What's not tested: `src/app/api/study/log/route.ts` and `src/lib/logger.ts`
+- Files: `src/app/api/study/log/route.ts`, `src/lib/logger.ts`
+- Risk: payload growth, malformed input, and file-write failures can ship unnoticed.
+- Priority: high
 
-**Boundary Filtering Logic:**
-- What's not tested: Latitude/longitude bounds filtering
-- Files: `datapreprocessing/pipeline.py` (line 94), `datapreprocessing/crime_pipeline.ipynb`
-- Risk: Records incorrectly included or excluded
-- Priority: Medium
+**No direct route tests detected for several fallback-heavy APIs:**
+- What's not tested: `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/neighbourhood/poi/route.ts`
+- Files: `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/neighbourhood/poi/route.ts`
+- Risk: mock fallbacks and query construction regressions can hide behind 200 responses.
+- Priority: high
 
-**Temporal Feature Extraction:**
-- What's not tested: Month, day, hour, weekday extraction from dates
-- Files: `datapreprocessing/pipeline.py` (lines 96-100)
-- Risk: Timezone or DST issues undetected
-- Priority: Medium
+**Very large UI modules are hard to cover exhaustively:**
+- What's not tested: interaction branches in `src/components/timeline/DualTimeline.tsx` and `src/components/viz/DataPoints.tsx`
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/components/viz/DataPoints.tsx`
+- Risk: regressions in one mode can break unrelated timeline/map behaviors.
+- Priority: medium
 
 ---
 
-*Concerns audit: 2026-01-30*
+*Concerns audit: 2026-04-08*

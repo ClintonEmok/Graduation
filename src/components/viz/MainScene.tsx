@@ -5,13 +5,13 @@ import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
 import { SimpleCrimePoints } from './SimpleCrimePoints';
 import MapBase from '../map/MapBase';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useSelectionSync } from '@/hooks/useSelectionSync';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
-import { SpatialConstraintOverlay } from './SpatialConstraintOverlay';
-import { SelectedWarpSliceOverlay } from './SelectedWarpSliceOverlay';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { resolveRouteBinningMode } from '@/lib/adaptive/route-binning-mode';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   // Initialize the selection sync conductor - ties all views together
@@ -22,6 +22,10 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const { data: viewportCrimes } = useViewportCrimeData({ bufferDays: 30 });
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const modeOverride = searchParams.get('mode');
+  const activeBinningMode = resolveRouteBinningMode(pathname, modeOverride);
 
   // Viewport mode: compute adaptive maps from current viewport records.
   useEffect(() => {
@@ -52,7 +56,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
     let cancelled = false;
 
     const fallbackToLocalCompute = () => {
-      const { columns, data } = useDataStore.getState();
+      const { columns, data } = useTimelineDataStore.getState();
 
       if (columns && columns.timestamp) {
         useAdaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
@@ -99,7 +103,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
 
     const loadGlobalMaps = async () => {
       try {
-        const response = await fetch('/api/adaptive/global');
+        const response = await fetch(`/api/adaptive/global?binningMode=${activeBinningMode}`);
         if (!response.ok) {
           throw new Error(`Global adaptive fetch failed: ${response.status}`);
         }
@@ -107,6 +111,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         const payload = (await response.json()) as {
           domain: [number, number];
           densityMap: number[];
+          countMap: number[];
           burstinessMap: number[];
           warpMap: number[];
         };
@@ -117,7 +122,8 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
           Float32Array.from(payload.densityMap || []),
           Float32Array.from(payload.burstinessMap || []),
           Float32Array.from(payload.warpMap || []),
-          payload.domain
+          payload.domain,
+          Float32Array.from(payload.countMap || [])
         );
       } catch (error) {
         console.warn('Falling back to local global adaptive compute:', error);
@@ -130,7 +136,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
     return () => {
       cancelled = true;
     };
-  }, [densityScope]);
+  }, [activeBinningMode, densityScope]);
 
   useEffect(() => {
     if (controlsRef.current) {

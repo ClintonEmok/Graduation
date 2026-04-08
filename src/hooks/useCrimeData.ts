@@ -4,13 +4,12 @@
  * 
  * This hook:
  * - Accepts viewport bounds as parameters (not from store - let caller decide)
- * - Applies buffer to range (start - buffer, end + buffer)
- * - Calls /api/crimes/range with params
+ * - Passes the visible range to /api/crimes/range
+ * - Lets the API apply any requested buffering
  * - Returns CrimeRecord[] format
  * - Handles errors gracefully
  */
 import { useQuery } from '@tanstack/react-query'
-import { addDays } from 'date-fns'
 import { 
   CrimeDataMeta,
   CrimeRecord, 
@@ -23,38 +22,56 @@ interface CrimeRangeResponse {
   meta?: CrimeDataMeta
 }
 
+interface NormalizedEpochRange {
+  start: number
+  end: number
+}
+
+const FALLBACK_EPOCH_RANGE: NormalizedEpochRange = {
+  start: 978307200,
+  end: 1011878400,
+}
+
+function normalizeEpochRange(startEpoch: number, endEpoch: number): NormalizedEpochRange {
+  if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch)) {
+    return FALLBACK_EPOCH_RANGE
+  }
+
+  const start = Math.floor(Math.min(startEpoch, endEpoch))
+  let end = Math.floor(Math.max(startEpoch, endEpoch))
+
+  if (start === end) {
+    end = start + 1
+  }
+
+  return { start, end }
+}
+
 /**
  * Fetch crime data for a date range from the API
  */
 async function fetchCrimesInRange(
   startEpoch: number,
   endEpoch: number,
+  bufferDays: number,
   crimeTypes?: string[],
   districts?: string[],
   limit?: number
 ): Promise<CrimeRangeResponse> {
+  const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
+  const requestPath = `/api/crimes/range?${new URLSearchParams({
+    startEpoch: normalizedRange.start.toString(),
+    endEpoch: normalizedRange.end.toString(),
+    bufferDays: bufferDays.toString(),
+    ...(crimeTypes?.length ? { crimeTypes: crimeTypes.join(',') } : {}),
+    ...(districts?.length ? { districts: districts.join(',') } : {}),
+    ...(limit ? { limit: limit.toString() } : {}),
+  }).toString()}`;
+
   try {
-    const params = new URLSearchParams({
-      startEpoch: startEpoch.toString(),
-      endEpoch: endEpoch.toString(),
-    })
-    
-    if (crimeTypes?.length) {
-      params.append('crimeTypes', crimeTypes.join(','))
-    }
-    if (districts?.length) {
-      params.append('districts', districts.join(','))
-    }
-    if (limit) {
-      params.append('limit', limit.toString())
-    }
-    
-    const response = await fetch(`/api/crimes/range?${params.toString()}`)
+    const response = await fetch(requestPath)
     
       if (!response.ok) {
-        if (response.status === 404) {
-          return { data: [] }
-        }
         throw new Error(`HTTP error: ${response.status}`)
       }
     
@@ -67,8 +84,15 @@ async function fetchCrimesInRange(
     }
   } catch (error) {
     console.error('[useCrimeData] Error fetching crimes:', error)
+    if (error instanceof TypeError) {
+      throw new Error(`Network error while fetching crimes from ${requestPath}`)
+    }
     throw error
   }
+}
+
+function hasValidEpochRange(startEpoch: number, endEpoch: number): boolean {
+  return Number.isFinite(startEpoch) && Number.isFinite(endEpoch) && endEpoch > startEpoch
 }
 
 /**
@@ -95,39 +119,35 @@ export function useCrimeData(
     bufferDays = 30,
     limit = 50000 
   } = options
-  
-  // Convert epoch seconds to Date objects for buffer calculation
-  const start = new Date(startEpoch * 1000)
-  const end = new Date(endEpoch * 1000)
-  
-  // Calculate buffered range
-  const bufferedStart = addDays(start, -bufferDays)
-  const bufferedEnd = addDays(end, bufferDays)
-  
-  // Convert back to epoch seconds for API
-  const bufferedStartEpoch = Math.floor(bufferedStart.getTime() / 1000)
-  const bufferedEndEpoch = Math.floor(bufferedEnd.getTime() / 1000)
+
+  const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
+
+  const hasValidRange = hasValidEpochRange(startEpoch, endEpoch)
   
   const queryKey = [
     'crimes', 
     'viewport', 
-    bufferedStartEpoch, 
-    bufferedEndEpoch,
+    normalizedRange.start,
+    normalizedRange.end,
+    bufferDays,
+    limit,
     crimeTypes,
     districts
   ];
   
-  console.log('[useCrimeData] queryKey:', queryKey);
+  console.log('[useCrimeData] queryKey (visible range):', queryKey);
   
   const query = useQuery({
     queryKey,
     queryFn: () => fetchCrimesInRange(
-      bufferedStartEpoch,
-      bufferedEndEpoch,
+      normalizedRange.start,
+      normalizedRange.end,
+      bufferDays,
       crimeTypes,
       districts,
       limit
     ),
+    enabled: hasValidRange,
     // Keep old data while fetching new to prevent UI flash
     placeholderData: (previousData) => previousData,
     // Don't refetch on window focus - viewport changes should trigger refetch
@@ -143,8 +163,8 @@ export function useCrimeData(
     isFetching: query.isFetching,
     error: query.error as Error | null,
     bufferedRange: {
-      start: bufferedStartEpoch,
-      end: bufferedEndEpoch,
+      start: query.data?.meta?.buffer?.applied.start ?? normalizedRange.start,
+      end: query.data?.meta?.buffer?.applied.end ?? normalizedRange.end,
     },
   }
 }

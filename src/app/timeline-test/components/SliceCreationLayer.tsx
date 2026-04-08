@@ -2,7 +2,12 @@ import { useMemo } from 'react';
 import type { RefObject } from 'react';
 import type { ScaleTime } from 'd3-scale';
 import { useSliceCreation } from '@/app/timeline-test/hooks/useSliceCreation';
-import { useSliceCreationStore } from '@/store/useSliceCreationStore';
+import {
+  selectCreationPreviewEnd,
+  selectCreationPreviewStart,
+  selectIsCreating,
+  useSliceDomainStore,
+} from '@/store/useSliceDomainStore';
 
 interface SliceCreationLayerProps {
   scale: ScaleTime<number, number>;
@@ -11,9 +16,9 @@ interface SliceCreationLayerProps {
 }
 
 export function SliceCreationLayer({ scale, height, containerRef }: SliceCreationLayerProps) {
-  const isCreating = useSliceCreationStore((state) => state.isCreating);
-  const previewStart = useSliceCreationStore((state) => state.previewStart);
-  const previewEnd = useSliceCreationStore((state) => state.previewEnd);
+  const isCreating = useSliceDomainStore(selectIsCreating);
+  const previewStart = useSliceDomainStore(selectCreationPreviewStart);
+  const previewEnd = useSliceDomainStore(selectCreationPreviewEnd);
   const {
     isDragging,
     isNearEdge,

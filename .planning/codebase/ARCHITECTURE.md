@@ -1,129 +1,161 @@
 # Architecture
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-04-08
 
 ## Pattern Overview
 
-**Overall:** ETL Data Pipeline with Interactive Analysis
+**Overall:** App Router feature shells + shared reactive state + compute-heavy domain services.
 
 **Key Characteristics:**
-- Chunked CSV processing for large dataset handling (~8.5M rows)
-- Dual interface: CLI script + Jupyter notebooks for exploratory work
-- Single-stage transformation pipeline (extract, clean, derive, output)
-- No database layer - operates directly on CSV files
-- Visualization-heavy EDA workflow
+- Route entry points live in `src/app/**/page.tsx` and assemble shared feature components.
+- Client state is centralized in Zustand stores under `src/store/` and `src/lib/stores/`.
+- Data-intensive work is pushed into `src/lib/**`, `src/workers/**`, and `src/app/api/**/route.ts`.
 
 ## Layers
 
-**Data Ingestion Layer:**
-- Purpose: Read large CSV files in memory-efficient chunks
-- Location: `datapreprocessing/pipeline.py` (lines 105-116)
-- Contains: `iter_clean_chunks()` generator function
-- Depends on: pandas read_csv with chunking
-- Used by: CLI main function, notebook cells
+**Routing and shells:**
+- Purpose: define pages, route-local orchestration, and top-level composition.
+- Location: `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/dashboard/page.tsx`, `src/app/dashboard-v2/page.tsx`, `src/app/timeslicing/page.tsx`, `src/app/timeslicing-algos/page.tsx`, `src/app/stkde/page.tsx`.
+- Contains: page shells, route-specific panels, Suspense boundaries, URL syncing.
+- Depends on: shared components, hooks, stores, and API routes.
+- Used by: the Next.js App Router.
 
-**Transformation Layer:**
-- Purpose: Clean, validate, and derive features from raw crime data
-- Location: `datapreprocessing/pipeline.py` (lines 73-102)
-- Contains: `preprocess_chunk()` function
-- Depends on: Raw DataFrame from ingestion
-- Used by: Ingestion layer generator
-- Operations:
-  - Duplicate removal (by ID)
-  - Date parsing and validation
-  - Missing value imputation (categorical fills, lat/lon extraction)
-  - Geographic boundary validation (Chicago bounds)
-  - Feature derivation (month, day, hour, weekday, is_weekend)
+**Shared UI components:**
+- Purpose: render maps, timelines, 3D scenes, controls, and panels.
+- Location: `src/components/map/`, `src/components/timeline/`, `src/components/viz/`, `src/components/layout/`, `src/components/study/`, `src/components/binning/`.
+- Contains: canvas/map visualizations, layout shells, controls, legends, overlays.
+- Depends on: stores, hooks, and shared domain helpers.
+- Used by: route shells and other feature modules.
 
-**Output Layer:**
-- Purpose: Write cleaned data to CSV or hold in memory
-- Location: `datapreprocessing/pipeline.py` (lines 118-122)
-- Contains: `write_csv()` function
-- Depends on: Transformed chunk iterator
-- Used by: CLI main function
+**Domain state:**
+- Purpose: keep cross-view state synchronized.
+- Location: `src/store/useTimelineDataStore.ts`, `src/store/useAdaptiveStore.ts`, `src/store/useFilterStore.ts`, `src/store/useCoordinationStore.ts`, `src/store/useTimeslicingModeStore.ts`, `src/store/useSliceDomainStore.ts`, `src/store/useWarpSliceStore.ts`, `src/store/useBinningStore.ts`, `src/store/useStkdeStore.ts`.
+- Contains: selection state, filters, generated slices, adaptive maps, workflow phase, persisted UI state.
+- Depends on: `zustand`, browser storage, and compute helpers.
+- Used by: most client components.
 
-**Analysis Layer (Notebooks):**
-- Purpose: Exploratory data analysis and visualization
-- Location: `datapreprocessing/crime_pipeline.ipynb`, `datapreprocessing/cube comparison.ipynb`
-- Contains: EDA cells, visualization code, statistical analysis
-- Depends on: Raw CSV or processed data
-- Used by: Data scientists/researchers interactively
+**Domain compute and data access:**
+- Purpose: query crime data, build derived maps, and compute STKDE results.
+- Location: `src/lib/queries/`, `src/lib/stkde/`, `src/lib/db.ts`, `src/lib/projection.ts`, `src/lib/selection.ts`, `src/lib/time-domain.ts`.
+- Contains: SQL builders, sanitizers, caching logic, projection math, data contracts.
+- Depends on: DuckDB, Apache Arrow, runtime env vars, and normalization helpers.
+- Used by: API routes, stores, and route shells.
+
+**Workers:**
+- Purpose: offload expensive adaptive-map and hotspot projection work.
+- Location: `src/workers/adaptiveTime.worker.ts`, `src/workers/stkdeHotspot.worker.ts`.
+- Contains: pure compute functions and `self.onmessage` handlers.
+- Depends on: typed inputs and transferables.
+- Used by: `src/store/useAdaptiveStore.ts`, `src/app/stkde/lib/StkdeRouteShell.tsx`.
+
+**API layer:**
+- Purpose: provide server-backed crime streams and precomputed analysis payloads.
+- Location: `src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crimes/range/route.ts`, `src/app/api/adaptive/global/route.ts`, `src/app/api/stkde/hotspots/route.ts`, `src/app/api/neighbourhood/poi/route.ts`, `src/app/api/study/log/route.ts`.
+- Contains: dynamic Node.js handlers, mock-data fallbacks, JSON/Arrow serialization.
+- Depends on: `src/lib/db.ts`, `src/lib/queries/`, `src/lib/stkde/`, `src/lib/neighbourhood`.
+- Used by: stores and route shells through fetch.
 
 ## Data Flow
 
-**CLI Pipeline Flow:**
+**Initial bootstrap:**
 
-1. User invokes `python pipeline.py <input.csv> --out <output.csv>`
-2. Optionally run quick EDA on sample (`--eda` flag)
-3. `iter_clean_chunks()` reads CSV in 200K row chunks
-4. Each chunk passes through `preprocess_chunk()` for transformation
-5. `write_csv()` appends cleaned chunks to output file
+1. `src/app/layout.tsx` mounts `ThemeProvider`, `QueryProvider`, `Toaster`, and `OnboardingTour`.
+2. `src/app/page.tsx` routes users into `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/page.tsx`, `src/app/timeslicing/page.tsx`, or `src/app/timeslicing-algos/page.tsx`.
+3. Route shells query crime data through `useCrimeData` or STKDE payloads through `/api/stkde/hotspots`.
 
-**Notebook Analysis Flow:**
+**Crime data path:**
 
-1. Load full or partial dataset with pandas
-2. Run preprocessing functions (duplicated from pipeline.py)
-3. Generate 20+ visualization PNGs (temporal, spatial, statistical)
-4. Iterate on analysis interactively
+1. `src/app/api/crimes/range/route.ts` validates epoch range, buffers the interval, and calls `queryCrimesInRange` / `queryCrimeCount` from `src/lib/queries/index.ts`.
+2. `src/lib/db.ts` resolves DuckDB and CSV paths, or switches to mock data when `USE_MOCK_DATA` / `DISABLE_DUCKDB` is enabled.
+3. `useTimelineDataStore` stores the result as either row objects or Apache Arrow columnar arrays.
+4. `src/components/map/MapVisualization.tsx`, `src/components/viz/CubeVisualization.tsx`, and `src/components/timeline/DualTimeline.tsx` render against the shared store state.
 
-**State Management:**
-- Stateless processing - no persistent state between runs
-- Each chunk processed independently
-- No checkpoint/resume capability
-- Notebook state held in Jupyter kernel memory
+**Adaptive time flow:**
+
+1. `src/app/timeslicing/page.tsx` and `src/app/timeline-test/page.tsx` collect timestamps and call `useAdaptiveStore.getState().computeMaps(...)`.
+2. `src/store/useAdaptiveStore.ts` posts to `src/workers/adaptiveTime.worker.ts` for binning, smoothing, burstiness scoring, and warp-map generation.
+3. `src/app/api/adaptive/global/route.ts` can hydrate the same store with DB-precomputed maps.
+4. `src/lib/adaptive/route-binning-mode.ts` chooses `uniform-time` vs `uniform-events` by route.
+
+**STKDE flow:**
+
+1. `src/app/stkde/lib/StkdeRouteShell.tsx` resolves URL state, posts to `/api/stkde/hotspots`, and guards against stale responses with request IDs and `AbortController`.
+2. `src/app/api/stkde/hotspots/route.ts` validates the request in `src/lib/stkde/contracts.ts`, selects sampled or full-population execution, and computes a response with `src/lib/stkde/compute.ts` or `src/lib/stkde/full-population-pipeline.ts`.
+3. `src/workers/stkdeHotspot.worker.ts` filters and sorts hotspots for the UI.
+4. `src/store/useStkdeStore.ts` and `src/components/map/MapStkdeHeatmapLayer.tsx` keep the selected hotspot synchronized across map and panels.
+
+**Timeline and slice flow:**
+
+1. `src/components/timeline/DualTimeline.tsx` reads data, slices, burst windows, and warp slices from stores.
+2. It writes brush ranges back into `useFilterStore`, `useTimeStore`, and `useCoordinationStore`.
+3. `src/store/useSliceDomainStore.ts` composes `src/store/slice-domain/createSliceCoreSlice.ts`, `createSliceSelectionSlice.ts`, `createSliceCreationSlice.ts`, and `createSliceAdjustmentSlice.ts` into one persisted slice model.
 
 ## Key Abstractions
 
-**Chunk Iterator:**
-- Purpose: Memory-efficient processing of large CSV
-- Examples: `datapreprocessing/pipeline.py:iter_clean_chunks()`
-- Pattern: Generator yielding transformed DataFrames
+**Query fragments:**
+- Purpose: safely assemble parameterized SQL.
+- Examples: `src/lib/queries/types.ts`, `src/lib/queries/builders.ts`, `src/lib/queries/filters.ts`, `src/lib/queries/sanitization.ts`.
+- Pattern: small fragment objects with `{ sql, params }` and allowlisted table names.
 
-**Schema Constants:**
-- Purpose: Define expected columns, dtypes, and date columns
-- Examples: `datapreprocessing/pipeline.py` lines 12-62
-- Pattern: Module-level tuples and dicts (RAW_COLUMNS, DTYPES, DATE_COLUMNS)
+**View-model shells:**
+- Purpose: convert query state and store state into render-ready models.
+- Examples: `src/app/stkde/lib/stkde-view-model.ts`, `src/app/stats/lib/stats-view-model.ts`, `src/app/timeslicing-algos/lib/mode-selection.ts`.
+- Pattern: memoized route-local orchestration with URL serialization.
 
-**City Bounds:**
-- Purpose: Geographic validation boundaries for Chicago
-- Examples: `datapreprocessing/crime_pipeline.ipynb` (CITY_BOUNDS dict)
-- Pattern: Constant dict with lat/lon min/max
+**Projection and normalization helpers:**
+- Purpose: keep map, cube, and timeline coordinates consistent.
+- Examples: `src/lib/projection.ts`, `src/lib/selection.ts`, `src/lib/time-domain.ts`, `src/lib/coordinate-normalization.ts`.
+- Pattern: pure functions shared by UI and route logic.
+
+**Store slices and selectors:**
+- Purpose: reduce rerenders and keep feature boundaries explicit.
+- Examples: `src/store/slice-domain/selectors.ts`, `src/store/slice-domain/createSliceCoreSlice.ts`, `src/store/slice-domain/createSliceSelectionSlice.ts`.
+- Pattern: selector exports from `src/store/useSliceDomainStore.ts` and feature-specific store hooks.
 
 ## Entry Points
 
-**CLI Entry Point:**
-- Location: `datapreprocessing/pipeline.py:main()`
-- Triggers: Command line invocation with argparse
-- Responsibilities:
-  - Parse input path, output path, chunk size
-  - Optionally run EDA
-  - Execute full pipeline and write output
+**Application shell:**
+- Location: `src/app/layout.tsx`
+- Triggers: every route render.
+- Responsibilities: global providers, fonts, toaster, onboarding.
 
-**Notebook Entry Points:**
-- Location: `datapreprocessing/crime_pipeline.ipynb` (cells 1-5)
-- Triggers: Interactive cell execution
-- Responsibilities:
-  - Load data into memory
-  - Run transformations
-  - Generate visualizations
+**Home route:**
+- Location: `src/app/page.tsx`
+- Triggers: `/`
+- Responsibilities: launchpad links into the main workflows.
+
+**Interactive dashboard:**
+- Location: `src/app/dashboard/page.tsx`, `src/components/layout/DashboardLayout.tsx`.
+- Triggers: dashboard route.
+- Responsibilities: compose map, 3D cube, and timeline in a resizable layout.
+
+**Analysis routes:**
+- Location: `src/app/stkde/page.tsx`, `src/app/timeslicing/page.tsx`, `src/app/timeslicing-algos/page.tsx`, `src/app/timeline-test/page.tsx`, `src/app/timeline-test-3d/page.tsx`.
+- Triggers: route navigation.
+- Responsibilities: load data, compute derived state, and expose review/apply workflows.
+
+**Server data routes:**
+- Location: `src/app/api/**/route.ts`.
+- Triggers: fetch requests from hooks and route shells.
+- Responsibilities: query data, compute aggregates, and return JSON or Arrow streams.
 
 ## Error Handling
 
-**Strategy:** Fail-fast with pandas defaults, coerce on dates
+**Strategy:** Prefer safe fallback data and explicit request validation over hard failures.
 
 **Patterns:**
-- Date parsing uses `errors='coerce'` to convert unparseable dates to NaT
-- No explicit try/except blocks in transformation code
-- Invalid coordinates filtered out rather than raising
-- Missing categorical values filled with 'UNKNOWN' string
+- API routes return mock payloads when DuckDB or source files are unavailable, as in `src/app/api/crime/meta/route.ts` and `src/app/api/crime/stream/route.ts`.
+- Client fetches in `src/app/stkde/lib/StkdeRouteShell.tsx` use request IDs, abort signals, and response-size guards.
+- Validation and clamping happen before compute in `src/lib/stkde/contracts.ts` and `src/lib/queries/sanitization.ts`.
 
 ## Cross-Cutting Concerns
 
-**Logging:** Print statements only (no structured logging framework)
-**Validation:** Implicit via pandas dtypes and boundary filtering
-**Authentication:** Not applicable (local file processing)
-**Configuration:** Hardcoded constants + CLI argparse
+**Logging:** `console.*` is used in route handlers, stores, and route shells; `src/hooks/useLogger.ts` adds event-style logging.
+
+**Validation:** Input checks are centralized in `src/lib/stkde/contracts.ts`, `src/app/api/crimes/range/route.ts`, and `src/lib/queries/sanitization.ts`.
+
+**Authentication:** Not detected; routes are public and data access is controlled by runtime checks and env vars.
 
 ---
 
-*Architecture analysis: 2026-01-30*
+*Architecture analysis: 2026-04-08*

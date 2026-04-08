@@ -3,8 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, MessageSquare, Pencil, Sparkles, X } from 'lucide-react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useSliceSelectionStore } from '@/store/useSliceSelectionStore';
-import { useSliceStore, type TimeSlice } from '@/store/useSliceStore';
+import {
+  select,
+  selectActiveSliceId,
+  selectSelectedIds,
+  selectSlices,
+  useSliceDomainStore,
+  type TimeSlice,
+} from '@/store/useSliceDomainStore';
 import { BURST_CHIP_CLASSNAME, BURST_CHIP_ICON_CLASSNAME } from './SliceToolbar';
 
 const toTimestampLabel = (timeValue: number, domain: [number, number]): string => {
@@ -54,15 +60,15 @@ const getSliceColorOption = (color?: string) =>
   SLICE_COLORS.find((option) => option.name === color);
 
 export function SliceList() {
-  const slices = useSliceStore((state) => state.slices);
-  const activeSliceId = useSliceStore((state) => state.activeSliceId);
-  const removeSlice = useSliceStore((state) => state.removeSlice);
-  const setActiveSlice = useSliceStore((state) => state.setActiveSlice);
-  const updateSlice = useSliceStore((state) => state.updateSlice);
-  const selectedIds = useSliceSelectionStore((state) => state.selectedIds);
-  const selectSlice = useSliceSelectionStore((state) => state.selectSlice);
-  const toggleSlice = useSliceSelectionStore((state) => state.toggleSlice);
-  const deselectSlice = useSliceSelectionStore((state) => state.deselectSlice);
+  const slices = useSliceDomainStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const removeSlice = useSliceDomainStore(select((state) => state.removeSlice));
+  const setActiveSlice = useSliceDomainStore(select((state) => state.setActiveSlice));
+  const updateSlice = useSliceDomainStore(select((state) => state.updateSlice));
+  const selectedIds = useSliceDomainStore(selectSelectedIds);
+  const selectSlice = useSliceDomainStore(select((state) => state.selectSlice));
+  const toggleSlice = useSliceDomainStore(select((state) => state.toggleSlice));
+  const deselectSlice = useSliceDomainStore(select((state) => state.deselectSlice));
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const [editingSliceId, setEditingSliceId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');

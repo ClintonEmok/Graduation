@@ -1,7 +1,7 @@
-import { useRef, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
 import { useSliceStore } from '@/store/useSliceStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { SlicePlane } from './SlicePlane';
 import { scaleLinear } from 'd3-scale';
@@ -12,8 +12,8 @@ export function TimeSlices() {
   const addSlice = useSliceStore((state) => state.addSlice);
   const updateSlice = useSliceStore((state) => state.updateSlice);
   
-  const data = useDataStore((state) => state.data);
-  const columns = useDataStore((state) => state.columns);
+  const data = useTimelineDataStore((state) => state.data);
+  const columns = useTimelineDataStore((state) => state.columns);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   
   // Compute scale

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { getDb, getDataPath, isMockDataEnabled } from '@/lib/db';
+import { lonLatToNormalized } from '@/lib/coordinate-normalization';
 import { tableFromJSON, tableToIPC } from 'apache-arrow';
 
 // Force Node.js runtime for DuckDB compatibility
@@ -20,14 +20,15 @@ function generateMockData(): Record<string, unknown>[] {
     const timestamp = startTimestamp + Math.floor(Math.random() * (endTimestamp - startTimestamp));
     const lat = 41.8 + Math.random() * 0.2;
     const lon = -87.7 + Math.random() * 0.2;
+    const { x, z } = lonLatToNormalized(lon, lat);
     
     mockData.push({
       timestamp,
       type: crimeTypes[Math.floor(Math.random() * crimeTypes.length)],
       lat,
       lon,
-      x: ((lon + 87.5) / (87.7 - 87.5)),
-      z: ((lat - 37) / (42 - 37)),
+      x,
+      z,
       iucr: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
       district: String(Math.floor(Math.random() * 30) + 1),
       year: 2024
@@ -91,8 +92,6 @@ export async function GET(request: Request) {
         "Primary Type" as type,
         "Latitude" as lat,
         "Longitude" as lon,
-        ((lon + 87.5) / (87.7 - 87.5)) as x,
-        ((lat - 37) / (42 - 37)) as z,
         "IUCR" as iucr,
         "District" as district,
         "Year" as year
@@ -105,15 +104,29 @@ export async function GET(request: Request) {
       LIMIT 50000
     `;
 
-    // Manually fetch data and serialize to Arrow
-    const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      db.all(query, (err: Error | null, res: Record<string, unknown>[]) => {
-        if (err) reject(err);
-        else resolve(res);
-      });
+     // Manually fetch data and serialize to Arrow
+     const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+        db.all(query, (err: Error | null, res: unknown[]) => {
+          if (err) reject(err);
+          else resolve(res as Record<string, unknown>[]);
+        });
+     });
+
+    const normalizedRows = rows.map((row) => {
+      const lon = Number(row.lon);
+      const lat = Number(row.lat);
+      const { x, z } = lonLatToNormalized(lon, lat);
+
+      return {
+        ...row,
+        lon,
+        lat,
+        x,
+        z,
+      };
     });
 
-    const table = tableFromJSON(rows);
+    const table = tableFromJSON(normalizedRows);
 
     const ipcBuffer = tableToIPC(table, 'stream');
     

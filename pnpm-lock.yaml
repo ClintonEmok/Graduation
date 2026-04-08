@@ -204,6 +204,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.11)
+      '@types/react-test-renderer':
+        specifier: ^19.1.0
+        version: 19.1.0
       eslint:
         specifier: ^9
         version: 9.39.2(jiti@2.6.1)
@@ -216,6 +219,9 @@ importers:
       patch-package:
         specifier: ^8.0.1
         version: 8.0.1
+      react-test-renderer:
+        specifier: 19.2.0
+        version: 19.2.0(react@19.2.3)
       tailwindcss:
         specifier: ^4
         version: 4.1.18
@@ -2071,6 +2077,9 @@ packages:
     resolution: {integrity: sha512-HHM3nxyUZ3zAylX8ZEyrDNd2XZOnQ0D5XfunJF5FLQnZbHHYq4UWvW1QfelQNXv1ICNkwYhfxjwfnqivYB6bFg==}
     peerDependencies:
       '@types/react': '*'
+
+  '@types/react-test-renderer@19.1.0':
+    resolution: {integrity: sha512-XD0WZrHqjNrxA/MaR9O22w/RNidWR9YZmBdRGI7wcnWGrv/3dA8wKCJ8m63Sn+tLJhcjmuhOi629N66W6kgWzQ==}
 
   '@types/react@19.2.11':
     resolution: {integrity: sha512-tORuanb01iEzWvMGVGv2ZDhYZVeRMrw453DCSAIn/5yvcSVnMoUMTyf33nQJLahYEnv9xqrTNbgz4qY5EfSh0g==}
@@ -4078,6 +4087,9 @@ packages:
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
+  react-is@19.2.4:
+    resolution: {integrity: sha512-W+EWGn2v0ApPKgKKCy/7s7WHXkboGcsrXE+2joLyVxkbyVQfO3MUEaUQDHoSmb8TFFrSKYa9mw64WZHNHSDzYA==}
+
   react-map-gl@8.1.0:
     resolution: {integrity: sha512-vDx/QXR3Tb+8/ap/z6gdMjJQ8ZEyaZf6+uMSPz7jhWF5VZeIsKsGfPvwHVPPwGF43Ryn+YR4bd09uEFNR5OPdg==}
     peerDependencies:
@@ -4126,6 +4138,11 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  react-test-renderer@19.2.0:
+    resolution: {integrity: sha512-zLCFMHFE9vy/w3AxO0zNxy6aAupnCuLSVOJYDe/Tp+ayGI1f2PLQsFVPANSD42gdSbmYx5oN+1VWDhcXtq7hAQ==}
+    peerDependencies:
+      react: ^19.2.0
 
   react-use-measure@2.1.7:
     resolution: {integrity: sha512-KrvcAo13I/60HpwGO5jpW7E9DfusKyLPLvuHlUyP5zqnmAPhNc6qTRjUQrdTADl0lpPpDVU2/Gg51UlOGHXbdg==}
@@ -6610,6 +6627,10 @@ snapshots:
     dependencies:
       '@types/react': 19.2.11
 
+  '@types/react-test-renderer@19.1.0':
+    dependencies:
+      '@types/react': 19.2.11
+
   '@types/react@19.2.11':
     dependencies:
       csstype: 3.2.3
@@ -8947,6 +8968,8 @@ snapshots:
 
   react-is@16.13.1: {}
 
+  react-is@19.2.4: {}
+
   react-map-gl@8.1.0(maplibre-gl@5.17.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       '@vis.gl/react-mapbox': 8.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -8987,6 +9010,12 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.11
+
+  react-test-renderer@19.2.0(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-is: 19.2.4
+      scheduler: 0.27.0
 
   react-use-measure@2.1.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:

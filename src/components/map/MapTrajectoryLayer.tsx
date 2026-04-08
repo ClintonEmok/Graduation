@@ -1,14 +1,17 @@
 import React, { useMemo } from 'react';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import { useTrajectoryStore } from '@/store/useTrajectoryStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { selectFilteredData } from '@/lib/data/selectors';
 import { FeatureCollection, LineString } from 'geojson';
 
 export const MapTrajectoryLayer: React.FC = () => {
   const selectedBlock = useTrajectoryStore((state) => state.selectedBlock);
   const isVisible = useTrajectoryStore((state) => state.isVisible);
-  const columns = useDataStore((state) => state.columns);
-  const data = useDataStore((state) => state.data);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const data = useTimelineDataStore((state) => state.data);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
 
   const geojson = useMemo<FeatureCollection<LineString> | null>(() => {
     if (!selectedBlock || !isVisible) return null;
@@ -16,10 +19,26 @@ export const MapTrajectoryLayer: React.FC = () => {
     let points: { lat: number; lon: number }[] = [];
 
     if (columns && columns.lat && columns.lon) {
-      for (let i = 0; i < columns.length; i++) {
-        if (columns.block[i] === selectedBlock) {
-          points.push({ lat: columns.lat[i], lon: columns.lon[i] });
+      const filtered = selectFilteredData(
+        {
+          columns,
+          data,
+          minTimestampSec,
+          maxTimestampSec,
+        },
+        {
+          selectedTypes: [],
+          selectedDistricts: [],
+          selectedTimeRange: null,
         }
+      );
+      for (let i = 0; i < filtered.length; i += 1) {
+        const point = filtered[i];
+        const { lat, lon } = point;
+        if (point.block !== selectedBlock || typeof lat !== 'number' || typeof lon !== 'number') {
+          continue;
+        }
+        points.push({ lat, lon });
       }
     } else {
       points = data
@@ -45,7 +64,7 @@ export const MapTrajectoryLayer: React.FC = () => {
         }
       ]
     };
-  }, [selectedBlock, isVisible, columns, data]);
+  }, [selectedBlock, isVisible, columns, data, minTimestampSec, maxTimestampSec]);
 
   if (!geojson) return null;
 

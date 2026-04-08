@@ -11,11 +11,14 @@ import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
 import { MapTypeLegend } from './MapTypeLegend';
+import { MapStkdeHeatmapLayer } from './MapStkdeHeatmapLayer';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useMapLayerStore } from '@/store/useMapLayerStore';
+import { useStkdeStore } from '@/store/useStkdeStore';
 import { useLogger } from '@/hooks/useLogger';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
@@ -64,6 +67,16 @@ export default function MapVisualization() {
   const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
   const clearSelection = useCoordinationStore((state) => state.clearSelection);
   const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
+  const visibility = useMapLayerStore((state) => state.visibility);
+  const opacity = useMapLayerStore((state) => state.opacity);
+
+  const stkdeResponse = useStkdeStore((state) => state.response);
+  const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
+  const activeHotspotCentroid = useMemo<[number, number] | null>(() => {
+    if (!stkdeResponse || !selectedHotspotId) return null;
+    const hotspot = stkdeResponse.hotspots.find((row) => row.id === selectedHotspotId);
+    return hotspot ? [hotspot.centroidLng, hotspot.centroidLat] : null;
+  }, [selectedHotspotId, stkdeResponse]);
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -239,10 +252,18 @@ export default function MapVisualization() {
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >
-         <MapEventLayer colorMode={colorMode} hoveredTypeId={hoveredTypeId} records={data} />
-        <MapHeatmapOverlay />
-        <MapClusterHighlights />
-        <MapTrajectoryLayer />
+        {visibility.events ? <MapEventLayer colorMode={colorMode} hoveredTypeId={hoveredTypeId} records={data} /> : null}
+        {visibility.heatmap ? <MapHeatmapOverlay /> : null}
+        {visibility.clusters ? <MapClusterHighlights /> : null}
+        {visibility.trajectories ? <MapTrajectoryLayer /> : null}
+        {visibility.stkde && stkdeResponse?.heatmap.cells?.length ? (
+          <MapStkdeHeatmapLayer
+            cells={stkdeResponse.heatmap.cells}
+            activeHotspotId={selectedHotspotId}
+            activeHotspotCentroid={activeHotspotCentroid}
+            opacity={opacity.stkde}
+          />
+        ) : null}
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
         <MapDebugOverlay clickPoint={lastClick} selectedPoint={selectionPoint} />
 
@@ -254,6 +275,9 @@ export default function MapVisualization() {
       {/* Overlay UI */}
       <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
         <h2 className="text-sm font-semibold">Map View</h2>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          {visibility.stkde ? 'Mode: STKDE Enhanced' : 'Mode: Standard'}
+        </div>
         <div className="mt-2 flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">
             <button

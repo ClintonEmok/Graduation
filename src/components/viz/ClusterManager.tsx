@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
-import { useDataStore, selectFilteredData, FilteredPoint } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { selectFilteredData, type FilteredDataState } from '@/lib/data/selectors';
+import { FilteredPoint } from '@/lib/data/types';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useClusterStore, Cluster } from '@/store/useClusterStore';
 import { useTimeStore } from '@/store/useTimeStore';
@@ -13,10 +15,10 @@ import { DBSCAN } from 'density-clustering';
 import debounce from 'lodash.debounce';
 
 export const ClusterManager: React.FC = () => {
-  const columns = useDataStore((state) => state.columns);
-  const data = useDataStore((state) => state.data);
-  const minTimestampSec = useDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useDataStore((state) => state.maxTimestampSec);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const data = useTimelineDataStore((state) => state.data);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
@@ -38,10 +40,12 @@ export const ClusterManager: React.FC = () => {
     }
 
     // 1. Get filtered data
-    const filteredPoints = selectFilteredData(
-      { columns, data, minTimestampSec, maxTimestampSec } as any,
-      { selectedTypes, selectedDistricts, selectedTimeRange }
-    );
+    const filteredDataState: FilteredDataState = { columns, data, minTimestampSec, maxTimestampSec };
+    const filteredPoints = selectFilteredData(filteredDataState, {
+      selectedTypes,
+      selectedDistricts,
+      selectedTimeRange,
+    });
 
     if (filteredPoints.length === 0) {
       setClusters([]);

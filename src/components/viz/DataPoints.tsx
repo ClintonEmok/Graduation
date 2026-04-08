@@ -14,7 +14,8 @@ import * as THREE from 'three';
 import { useFrame, RootState, useThree } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { RaycastLine } from './RaycastLine';
-import { DataPoint, useDataStore } from '@/store/useDataStore';
+import { DataPoint } from '@/lib/data/types';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 // import { computeAdaptiveY, computeAdaptiveYColumnar } from '@/lib/adaptive-scale'; // Removed
 import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
 import { useTimeStore } from '@/store/useTimeStore';
@@ -38,6 +39,14 @@ const DISTRICT_MAP_SIZE = 36;
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 
+const createTexture = (data: Float32Array) => {
+  const tex = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat, THREE.FloatType);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+};
+
 export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ data }, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   useImperativeHandle(ref, () => meshRef.current!);
@@ -49,11 +58,11 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   const showContext = useUIStore((state) => state.showContext);
   const contextOpacity = useUIStore((state) => state.contextOpacity);
-  const columns = useDataStore((state) => state.columns);
-  const minX = useDataStore((state) => state.minX) ?? -50;
-  const maxX = useDataStore((state) => state.maxX) ?? 50;
-  const minZ = useDataStore((state) => state.minZ) ?? -50;
-  const maxZ = useDataStore((state) => state.maxZ) ?? 50;
+  const columns = useTimelineDataStore((state) => state.columns);
+  const minX = useTimelineDataStore((state) => state.minX) ?? -50;
+  const maxX = useTimelineDataStore((state) => state.maxX) ?? 50;
+  const minZ = useTimelineDataStore((state) => state.minZ) ?? -50;
+  const maxZ = useTimelineDataStore((state) => state.maxZ) ?? 50;
 
   const timeRange = useTimeStore((state) => state.timeRange);
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
@@ -77,54 +86,18 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
 
   // Initialize Data Texture for Warp Map
   // Default: 2 points (0 -> 0, 1 -> 100) linear mapping
-  const [warpTexture] = useState(() => {
-    const tex = new THREE.DataTexture(
-      new Float32Array([0, 100]),
-      2,
-      1,
-      THREE.RedFormat,
-      THREE.FloatType
-    );
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.needsUpdate = true;
-    return tex;
-  });
+  const warpTexture = useMemo(
+    () => createTexture(warpMap && warpMap.length > 0 ? warpMap : new Float32Array([0, 100])),
+    [warpMap]
+  );
+  const selectedDensityMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
+  const densityTexture = useMemo(
+    () => createTexture(selectedDensityMap && selectedDensityMap.length > 0 ? selectedDensityMap : new Float32Array([0, 0])),
+    [selectedDensityMap]
+  );
 
-  const [densityTexture] = useState(() => {
-    const tex = new THREE.DataTexture(
-      new Float32Array([0, 0]),
-      2,
-      1,
-      THREE.RedFormat,
-      THREE.FloatType
-    );
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.needsUpdate = true;
-    return tex;
-  });
-
-  // Update texture when warpMap changes
-  useEffect(() => {
-    if (warpMap && warpMap.length > 0) {
-      // Re-allocate texture if size changes, or just update data if safe?
-      // Safest to dispose and recreate or just update image.data if size matches?
-      // DataTexture allows updating image.data.
-      warpTexture.image.data = warpMap;
-      warpTexture.image.width = warpMap.length;
-      warpTexture.needsUpdate = true;
-    }
-  }, [warpMap, warpTexture]);
-
-  useEffect(() => {
-    const selected = burstMetric === 'burstiness' ? burstinessMap : densityMap;
-    if (selected && selected.length > 0) {
-      densityTexture.image.data = selected;
-      densityTexture.image.width = selected.length;
-      densityTexture.needsUpdate = true;
-    }
-  }, [burstMetric, burstinessMap, densityMap, densityTexture]);
+  useEffect(() => () => warpTexture.dispose(), [warpTexture]);
+  useEffect(() => () => densityTexture.dispose(), [densityTexture]);
 
   // Normalize time range
   const normalizedTimeRange = useMemo(() => {

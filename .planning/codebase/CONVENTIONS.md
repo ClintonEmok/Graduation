@@ -1,189 +1,94 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-01-30
+**Analysis Date:** 2026-04-08
 
 ## Naming Patterns
 
 **Files:**
-- Python modules: `snake_case.py` (e.g., `pipeline.py`)
-- Jupyter notebooks: `descriptive_name.ipynb` with spaces allowed (e.g., `crime_pipeline.ipynb`, `cube comparison.ipynb`)
+- React components use `PascalCase.tsx` in `src/components/**` and `src/app/**` (for example `src/components/dashboard/DashboardHeader.tsx`, `src/app/stats/page.tsx`).
+- Hooks use `use*.ts` / `use*.tsx` (`src/hooks/useCrimeData.ts`, `src/components/timeline/hooks/useBrushZoomSync.ts`).
+- Tests live beside implementation with a `.test.ts` or `.test.tsx` suffix (`src/lib/queries.test.ts`, `src/app/api/crimes/range/route.test.ts`).
 
 **Functions:**
-- Use `snake_case` for all function names
-- Examples from `datapreprocessing/pipeline.py`:
-  - `extract_lat_lon()`
-  - `preprocess_chunk()`
-  - `iter_clean_chunks()`
-  - `write_csv()`
-  - `basic_eda()`
+- Use `camelCase` for helpers and exported functions (`queryCrimesInRange` in `src/lib/queries.ts`, `parseCsvFilterParam` in `src/app/api/crimes/range/route.ts`).
+- Name React components and store hooks in PascalCase (`DashboardHeader`, `useFilterStore`).
+- Prefer verb-first action names in stores (`setTimeRange`, `clearSpatialBounds`, `savePreset` in `src/store/useFilterStore.ts`).
 
 **Variables:**
-- Local variables: `snake_case` (e.g., `missing_latlon`, `has_location_str`, `need_fill`)
-- Loop variables: short descriptive names (e.g., `df`, `col`, `chunk`)
-
-**Constants:**
-- Use `UPPER_SNAKE_CASE` for module-level constants
-- Examples from `datapreprocessing/pipeline.py`:
-  - `RAW_COLUMNS`
-  - `DTYPES`
-  - `DATE_COLUMNS`
-  - `CHUNKSIZE`
-  - `SAMPLE_ROWS`
+- Use descriptive nouns for state and derived values (`bufferedRange`, `workflowPhase`, `selectedHotspotId`).
+- Use `const` by default; `let` appears only for mutable local flow (`src/lib/queries.ts`, `src/hooks/useCrimeData.ts`).
 
 **Types:**
-- Use standard Python typing module types: `Tuple`, `Iterable`, `Optional`
+- Export interfaces/types near the top of the file (`CrimeRecord` re-exported from `src/lib/queries.ts`, `FilterPreset` in `src/store/useFilterStore.ts`).
+- Use `Readonly<...>` and explicit object shapes for component props when useful (`src/app/layout.tsx`).
 
 ## Code Style
 
 **Formatting:**
-- Black formatter configured (detected in PyCharm/IntelliJ IDE settings)
-- No standalone `.prettierrc` or `pyproject.toml` with formatting config
+- ESLint is the only explicit code-quality tool (`eslint.config.mjs`), with Next.js core-web-vitals and TypeScript rules.
+- No Prettier config is present; follow the surrounding file style.
+- Source files are mixed in semicolon/quote style across the repo (`src/hooks/useCrimeData.ts` vs `src/app/layout.tsx`), so preserve local style when editing.
 
-**Linting:**
-- No explicit linting configuration detected
-- IDE-based linting via PyCharm
-
-**Line Length:**
-- Not strictly enforced
-- Long lines observed (e.g., line 94 in `pipeline.py` is ~130 characters)
+**Layout:**
+- Keep imports grouped by external packages first, then `@/` aliases, then relative imports (`src/app/layout.tsx`, `src/lib/queries.ts`).
+- Prefer small pure helpers above larger exported operations (`normalizeRange`, `clamp`, `buildBufferedRange`).
+- Use early returns for invalid input and guard clauses for empty state (`src/store/useFilterStore.ts`, `src/app/api/crimes/range/route.ts`).
 
 ## Import Organization
 
 **Order:**
-1. Future imports: `from __future__ import annotations`
-2. Standard library: `argparse`, `re`, `pathlib`, `typing`
-3. Third-party packages: `pandas`, `numpy`, `matplotlib`
-
-**Style:**
-```python
-#!/usr/bin/env python3
-"""Module docstring."""
-from __future__ import annotations
-
-import argparse
-import re
-from pathlib import Path
-from typing import Iterable, Tuple
-
-import pandas as pd
-```
+1. Framework/runtime imports (`next/server`, `react`, `vitest`).
+2. Third-party packages (`zustand`, `@tanstack/react-query`, `radix-ui`).
+3. Local `@/` aliases.
+4. Relative imports for nearby modules/tests.
 
 **Path Aliases:**
-- None configured
+- `@/*` maps to `./src/*` in `tsconfig.json` and is used throughout app, component, and test code (`src/app/layout.tsx`, `src/app/api/crimes/range/route.test.ts`).
 
 ## Error Handling
 
 **Patterns:**
-- Use `errors="coerce"` for graceful date parsing failures
-- Filter out invalid data rather than raising exceptions
-- Example from `datapreprocessing/pipeline.py`:
-```python
-df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-df = df.loc[~(df["Latitude"].isna() & df["Longitude"].isna())]
-```
-
-**Validation:**
-- Bounds checking for geographic coordinates
-- Data filtering rather than error raising
+- Route handlers validate inputs with explicit 400 responses before any data work (`src/app/api/crimes/range/route.ts`).
+- Async helpers wrap external work in `try/catch`, log with `console.error`, and rethrow or return a structured failure (`src/lib/queries.ts`, `src/hooks/useCrimeData.ts`).
+- Store actions return `null`/`void` for invalid user input instead of throwing (`savePreset`, `renamePreset` in `src/store/useFilterStore.ts`).
+- Use fallback values for invalid or missing runtime data (`FALLBACK_EPOCH_RANGE` in `src/hooks/useCrimeData.ts`, `isMockDataEnabled` in `src/lib/db.ts`).
 
 ## Logging
 
-**Framework:** `print()` statements (no logging framework)
+**Framework:** `console`
 
 **Patterns:**
-- Simple print for status messages: `print(f"Wrote cleaned data to {args.out}")`
-- Print for EDA output: `print("Shape (sample):", df.shape)`
+- Log initialization and unexpected failures in data-access code (`src/lib/db.ts`, `src/lib/queries.ts`).
+- Log hook/query diagnostics sparingly and close to the data boundary (`src/hooks/useCrimeData.ts`).
 
 ## Comments
 
 **When to Comment:**
-- Module-level docstrings required
-- Function docstrings for non-trivial functions
-- Inline comments are minimal
-
-**Docstring Style:**
-```python
-"""Short one-line description."""
-```
-
-- Uses imperative mood ("Extract", "Preprocess", "Load")
-- Example from `datapreprocessing/pipeline.py`:
-```python
-def extract_lat_lon(location_series: pd.Series) -> Tuple[pd.Series, pd.Series]:
-    """Extract latitude/longitude floats from the Location string column."""
-```
+- Use comments for intent, contracts, and environment/runtime constraints (`runtime = 'nodejs'` in `src/app/api/crimes/range/route.ts`, DuckDB notes in `src/lib/db.ts`).
+- Prefer short comments over long prose; inline explanatory comments are common in store and API code.
 
 ## Function Design
 
 **Size:**
-- Functions are kept reasonably short (10-30 lines typical)
-- Single responsibility per function
+- Keep public entry points thin and delegate normalization, building, and persistence to helpers (`src/lib/queries.ts`, `src/app/api/crimes/range/route.ts`).
 
 **Parameters:**
-- Use type hints for all parameters
-- Use default values where appropriate
-- Example:
-```python
-def iter_clean_chunks(path: Path, chunksize: int) -> Iterable[pd.DataFrame]:
-```
+- Pass plain objects for multi-option APIs (`queryCrimesInRange(..., { limit, sampleStride, crimeTypes, districts })`).
+- Use tuples for ordered ranges (`[start, end]` in `src/store/useFilterStore.ts`, `src/hooks/useCrimeData.ts`).
 
 **Return Values:**
-- Explicit return type annotations
-- Use tuples for multiple return values
-- Generators preferred for streaming data
+- Return normalized domain objects from boundaries, not raw DB rows (`src/lib/queries.ts`).
+- Favor structured response payloads with `data` + `meta` in APIs (`src/app/api/crimes/range/route.ts`).
 
 ## Module Design
 
 **Exports:**
-- No `__all__` declarations
-- All public functions at module level
+- Export primary public functions from the module file and keep supporting helpers local unless tests need them (`src/lib/queries.ts`, `src/app/api/crimes/range/route.ts`).
+- Re-export types next to public helpers when they are part of the module contract (`src/lib/queries.ts`).
 
 **Barrel Files:**
-- Not used
-
-**Entry Points:**
-- Use `if __name__ == "__main__":` guard
-- Separate `main()` function for CLI entry
-
-## DataFrame Conventions
-
-**Mutation:**
-- Always copy DataFrames before in-place operations: `df = df.copy()`
-- Use `inplace=True` sparingly, prefer reassignment
-
-**Column Access:**
-- String column names with bracket notation: `df["Column Name"]`
-- Columns with spaces preserved from source data
-
-**Method Chaining:**
-- Limited chaining, prefer explicit intermediate steps
-
-## CLI Pattern
-
-**Framework:** `argparse`
-
-**Structure:**
-```python
-def main() -> None:
-    parser = argparse.ArgumentParser(description="...")
-    parser.add_argument("input", type=Path, help="...")
-    parser.add_argument("--out", type=Path, default=Path("output.csv"))
-    parser.add_argument("--flag", action="store_true")
-    args = parser.parse_args()
-    # ... logic using args
-```
-
-## Notebook Conventions
-
-**Cell Organization:**
-1. Imports and configuration constants at top
-2. Function definitions
-3. Execution/analysis cells
-
-**Configuration:**
-- Define constants in early cells: `CHUNKSIZE`, `SAMPLE_ROWS`, `DATA_PATH`
-- Use dictionaries for grouped settings: `DTYPES`, `CITY_BOUNDS`
+- Barrel-style modules exist in feature folders (`src/lib/queries/index.ts`); prefer them when a feature already exposes a public surface.
 
 ---
 
-*Convention analysis: 2026-01-30*
+*Convention analysis: 2026-04-08*

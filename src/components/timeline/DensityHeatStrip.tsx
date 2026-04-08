@@ -146,20 +146,26 @@ export function DensityHeatStrip({
   }, [activeDensityMap, colorHigh, colorLow, logicalHeight, logicalWidth, resolvedDomain, scale]);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-1 mb-1">
+      {showLegend && (
+        <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+          <span className="leading-none">{legendLabels.low}</span>
+          <span
+            className="h-2 w-20 rounded-sm border border-foreground/15"
+            style={{
+              background: `linear-gradient(90deg, rgb(${colorLow.join(',')}) 0%, rgb(${colorHigh.join(',')}) 100%)`
+            }}
+            aria-hidden="true"
+          />
+          <span className="leading-none">{legendLabels.high}</span>
+        </div>
+      )}
       <canvas
         ref={canvasRef}
         className={`block rounded-sm transition-opacity duration-200 ${isLoading ? 'opacity-55' : 'opacity-80'}`}
         aria-label="Density heat strip"
         aria-busy={isLoading}
       />
-      {showLegend && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{legendLabels.low}</span>
-          <span aria-hidden="true">→</span>
-          <span>{legendLabels.high}</span>
-        </div>
-      )}
     </div>
   );
 }
