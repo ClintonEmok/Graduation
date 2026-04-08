@@ -140,10 +140,11 @@ Plans:
 2. Burst class and confidence metadata are visible during slice review.
 3. Peaks/spikes/valleys are distinguishable in both data and UI representation.
 4. Edge-case behavior is covered by tests.
-**Plans:** 1 stub plan ready
+**Plans:** 2 plans
 
 Plans:
-- [ ] 67-01-PLAN.md - Implement burst taxonomy contracts, metrics, and UI indicators
+- [ ] 67-01-PLAN.md - Build deterministic burst taxonomy core and diagnostics bridge
+- [ ] 67-02-PLAN.md - Surface burst class, confidence, and rationale in review/timeline UI
 
 ---
 
