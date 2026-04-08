@@ -1,209 +1,177 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-03-30
+**Analysis Date:** 2026-04-08
 
 ## Directory Layout
 
-```
+```text
 neon-tiger/
-├── src/
-│   ├── app/                    # Next.js App Router (pages + API)
-│   ├── components/             # React UI components
-│   ├── hooks/                  # Custom React hooks
-│   ├── lib/                    # Business logic, utilities
-│   ├── store/                  # Zustand state management
-│   ├── types/                  # TypeScript type definitions
-│   ├── workers/                # Web Workers
-│   └── providers/              # React context providers
-├── data/                      # Data files (CSVs, DuckDB cache)
-├── public/                    # Static assets
-├── scripts/                   # Build/utility scripts
-├── patches/                   # Dependency patches
-└── .planning/                 # Planning documents
+├── .planning/            # Planning and codebase maps
+├── data/                 # Source CSVs and DuckDB cache files
+├── datapreprocessing/    # Data preparation scripts and assets
+├── patches/              # patch-package patches
+├── public/               # Static assets
+├── scripts/              # Utility scripts
+├── src/                  # Application source
+├── .github/              # GitHub workflows/config
+├── package.json          # Package manifest and scripts
+├── next.config.ts        # Next.js config
+├── vitest.config.mts     # Vitest config
+└── tsconfig.json         # TypeScript config
 ```
 
 ## Directory Purposes
 
-### src/app (Routes)
-- **Purpose:** Next.js App Router pages and API endpoints
-- **Contains:** `page.tsx` files for routes, `route.ts` for API handlers, `layout.tsx` for layouts
-- **Key files:**
-  - `src/app/dashboard/page.tsx` - Main dashboard entry
-  - `src/app/api/crimes/range/route.ts` - Crime data API
-  - `src/app/api/stkde/hotspots/route.ts` - STKDE API
+**`src/app/`:**
+- Purpose: App Router pages, route-local shells, and API handlers.
+- Contains: `page.tsx`, `layout.tsx`, nested route folders, `route.ts` handlers, route-local `components/`, `hooks/`, and `lib/` folders.
+- Key files: `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/dashboard-v2/page.tsx`, `src/app/timeslicing/page.tsx`, `src/app/timeslicing-algos/page.tsx`, `src/app/stkde/page.tsx`, `src/app/api/**/route.ts`.
 
-### src/components (UI)
-- **Purpose:** React components organized by feature domain
-- **Contains:** JSX/TSX components, subdirectories for feature groups
-- **Key directories:**
-  - `src/components/map/` - Map visualizations (MapBase, MapVisualization, MapLayerManager)
-  - `src/components/viz/` - 3D cube/scene components (CubeVisualization, Scene, MainScene)
-  - `src/components/timeline/` - Timeline components (DualTimeline, TimelinePanel, TimelineBrush)
-  - `src/components/layout/` - App layout (DashboardLayout, TopBar)
-  - `src/components/ui/` - Shared UI (shadcn components)
-  - `src/components/viz/shaders/` - GLSL shaders
+**`src/components/`:**
+- Purpose: Shared UI and visualization modules.
+- Contains: map layers, timeline canvases, 3D scene pieces, controls, layout chrome, onboarding, and study UI.
+- Key files: `src/components/layout/DashboardLayout.tsx`, `src/components/layout/TopBar.tsx`, `src/components/map/MapVisualization.tsx`, `src/components/viz/CubeVisualization.tsx`, `src/components/timeline/DualTimeline.tsx`, `src/components/timeline/Timeline.tsx`.
 
-### src/hooks (React Hooks)
-- **Purpose:** Custom hooks for data fetching and UI logic
-- **Contains:** Hook functions for crime data, selection, density
-- **Key files:**
-  - `src/hooks/useCrimeData.ts` - Crime data fetching with React Query
-  - `src/hooks/useSliceStats.ts` - Slice statistics
-  - `src/hooks/useDebouncedDensity.ts` - Density calculations
+**`src/hooks/`:**
+- Purpose: reusable client hooks for data loading, measuring, logging, selection sync, and generators.
+- Contains: fetch hooks, layout helpers, selection helpers, and debounced compute orchestration.
+- Key files: `src/hooks/useCrimeData.ts`, `src/hooks/useViewportCrimeData.ts`, `src/hooks/useSelectionSync.ts`, `src/hooks/useDebouncedDensity.ts`, `src/hooks/useSuggestionGenerator.ts`.
 
-### src/lib (Business Logic)
-- **Purpose:** Core application logic, database access, utilities
-- **Contains:** Query builders, DuckDB integration, algorithms
-- **Key directories:**
-  - `src/lib/queries/` - SQL query builders
-  - `src/lib/binning/` - Time binning logic
-  - `src/lib/stkde/` - STKDE computation
-  - `src/lib/context-diagnostics/` - Context comparison
-  - `src/lib/adaptive/` - Adaptive algorithms
-  - `src/lib/neighbourhood/` - Geographic neighborhoods
-  - `src/lib/stats/` - Statistical operations
+**`src/lib/`:**
+- Purpose: shared domain logic and low-level helpers.
+- Contains: query builders, STKDE compute, database access, normalization, geometry/projection, adaptive logic, and constants.
+- Key files: `src/lib/queries/index.ts`, `src/lib/queries/builders.ts`, `src/lib/db.ts`, `src/lib/stkde/compute.ts`, `src/lib/stkde/full-population-pipeline.ts`, `src/lib/time-domain.ts`, `src/lib/projection.ts`, `src/lib/selection.ts`.
 
-### src/store (State Management)
-- **Purpose:** Zustand stores for application state
-- **Contains:** Store definitions and slice implementations
-- **Key files:**
-  - `src/store/useSliceDomainStore.ts` - Time slice management
-  - `src/store/useCoordinationStore.ts` - Cross-component coordination
-  - `src/store/useAdaptiveStore.ts` - Adaptive state
-  - `src/store/useFilterStore.ts` - Filter state
-  - `src/store/slice-domain/` - Slice sub-domain types and creators
+**`src/providers/`:**
+- Purpose: client providers mounted at the root.
+- Contains: React Query provider.
+- Key files: `src/providers/QueryProvider.tsx`.
 
-### src/types (TypeScript)
-- **Purpose:** Type definitions and interfaces
-- **Contains:** Domain types, API types
-- **Key files:**
-  - `src/types/crime.ts` - CrimeRecord, CrimeDataMeta types
-  - `src/types/index.ts` - Re-exports
+**`src/store/`:**
+- Purpose: Zustand stores for app-wide state.
+- Contains: feature stores, persisted stores, and slice-domain composition.
+- Key files: `src/store/useAdaptiveStore.ts`, `src/store/useFilterStore.ts`, `src/store/useTimelineDataStore.ts`, `src/store/useCoordinationStore.ts`, `src/store/useSliceDomainStore.ts`, `src/store/useTimeslicingModeStore.ts`, `src/store/useWarpSliceStore.ts`, `src/store/useBinningStore.ts`, `src/store/useStkdeStore.ts`.
 
-### src/workers (Web Workers)
-- **Purpose:** Background computation off main thread
-- **Contains:** Worker entry points
-- **Key files:**
-  - `src/workers/stkdeHotspot.worker.ts` - STKDE hotspot filtering
-  - `src/workers/adaptiveTime.worker.ts` - Adaptive time computation
+**`src/store/slice-domain/`:**
+- Purpose: slice state implemented as composable slice factories.
+- Contains: core, selection, creation, and adjustment slices plus selectors.
+- Key files: `src/store/slice-domain/createSliceCoreSlice.ts`, `src/store/slice-domain/createSliceSelectionSlice.ts`, `src/store/slice-domain/createSliceCreationSlice.ts`, `src/store/slice-domain/createSliceAdjustmentSlice.ts`, `src/store/slice-domain/selectors.ts`, `src/store/slice-domain/types.ts`.
 
-### src/providers (React Context)
-- **Purpose:** React context providers
-- **Contains:** QueryProvider, ThemeProvider
-- **Key files:**
-  - `src/providers/QueryProvider.tsx` - TanStack Query setup
+**`src/workers/`:**
+- Purpose: worker-backed compute.
+- Contains: adaptive map computation and STKDE hotspot projection.
+- Key files: `src/workers/adaptiveTime.worker.ts`, `src/workers/stkdeHotspot.worker.ts`.
 
-### data/ (Data Files)
-- **Purpose:** Crime data CSVs and DuckDB cache
-- **Contains:**
-  - `data/sources/` - Source CSV files
-  - `data/cache/` - DuckDB database file
+**`src/types/`:**
+- Purpose: shared type definitions that are not feature-specific.
+- Key files: `src/types/crime.ts`, `src/types/autoProposalSet.ts`, `src/types/index.ts`.
+
+**`src/utils/`:**
+- Purpose: small generic helpers used outside the core domain layer.
+- Key files: `src/utils/binning.ts`.
+
+**`data/`:**
+- Purpose: source datasets and derived DuckDB caches.
+- Contains: `data/sources/Crimes_-_2001_to_Present_20260114.csv` and `data/cache/crime.duckdb`.
+
+**`datapreprocessing/`:**
+- Purpose: ETL and dataset preparation assets.
+- Contains: preprocessing scripts and notes.
+
+**`public/`:**
+- Purpose: static assets served directly by Next.js.
+- Contains: images and SVGs used by the app shell.
 
 ## Key File Locations
 
-### Entry Points
-- **Main Dashboard:** `src/app/dashboard/page.tsx`
-- **STKDE View:** `src/app/stkde/page.tsx`
-- **Stats View:** `src/app/stats/page.tsx`
+**Entry Points:**
+- `src/app/layout.tsx`: root provider composition.
+- `src/app/page.tsx`: landing page routing.
+- `src/app/dashboard/page.tsx`: main dashboard shell.
+- `src/app/timeslicing/page.tsx`: timeslice workflow shell.
+- `src/app/timeslicing-algos/page.tsx`: algorithm exploration shell.
+- `src/app/stkde/page.tsx`: STKDE route shell.
+- `src/app/api/**/route.ts`: server endpoints.
 
-### Configuration
-- **Next.js:** `next.config.ts`
-- **TypeScript:** `tsconfig.json`
-- **Testing:** `vitest.config.mts`
-- **Linting:** `eslint.config.mjs`
-- **Package Manager:** `pnpm-workspace.yaml`
+**Configuration:**
+- `package.json`: scripts, dependencies, postinstall symlink.
+- `tsconfig.json`: TypeScript strictness and `@/*` alias.
+- `vitest.config.mts`: test environment and alias resolution.
+- `next.config.ts`: DuckDB server external package declaration.
+- `eslint.config.mjs`: linting rules.
 
-### Core Logic
-- **Database:** `src/lib/db.ts`
-- **Queries:** `src/lib/queries.ts`
-- **Slice Store:** `src/store/useSliceDomainStore.ts`
-- **Coordination:** `src/store/useCoordinationStore.ts`
+**Core Logic:**
+- `src/lib/queries/`: SQL assembly and safe query helpers.
+- `src/lib/stkde/`: STKDE contracts, compute, and full-population pipeline.
+- `src/store/`: cross-view state and workflow state.
+- `src/components/timeline/`: brush, histogram, density, and sync layers.
+- `src/components/map/`: map layers, overlays, and MapLibre wrappers.
+- `src/components/viz/`: 3D scene and cube rendering.
 
-### Testing
-- Test files co-located with source (`.test.ts`, `.test.tsx`)
-- Example: `src/hooks/useCrimeData.test.ts`
+**Testing:**
+- `src/**/*.test.ts` and `src/**/*.test.tsx`: colocated Vitest specs.
+- `src/app/**/page.*.test.ts*`: route-level QA and workflow tests.
+- `src/components/**/**/*.test.ts*`: component and interaction tests.
+- `src/lib/**/*.test.ts`: core algorithm tests.
 
 ## Naming Conventions
 
-### Files
-- **Components:** PascalCase (`MapVisualization.tsx`, `TimelinePanel.tsx`)
-- **Hooks:** camelCase with `use` prefix (`useCrimeData.ts`, `useSliceStats.ts`)
-- **Stores:** camelCase with `use` prefix (`useSliceStore.ts`, `useFilterStore.ts`)
-- **Utils:** camelCase (`utils.ts`, `binning.ts`)
-- **Types:** PascalCase (`CrimeRecord.ts`, `TimeSlice.ts`)
-- **Workers:** camelCase (`.worker.ts`)
-- **API Routes:** kebab-case (`crimes/range/route.ts`)
+**Files:**
+- React components use `PascalCase.tsx`: `src/components/map/MapVisualization.tsx`.
+- Stores use `useXStore.ts`: `src/store/useAdaptiveStore.ts`.
+- Route handlers use `route.ts`: `src/app/api/crimes/range/route.ts`.
+- Tests use `.test.ts` / `.test.tsx` next to the target file.
 
-### Directories
-- **General:** kebab-case (`slice-domain`, `context-diagnostics`, `binning-rules`)
-- **Components:** kebab-case (`map/`, `viz/`, `timeline/`)
-
-### Variables/Functions
-- **Functions:** camelCase (`queryCrimesInRange`, `buildDensityBinsQuery`)
-- **Types/Interfaces:** PascalCase (`CrimeRecord`, `TimeSlice`, `UseCrimeDataOptions`)
-- **Constants:** UPPER_SNAKE_CASE (`DEFAULT_DB_PATH`, `MOCK_CRIME_TYPES`)
+**Directories:**
+- Feature folders are lowercase and domain-oriented: `timeline`, `map`, `stkde`, `timeslicing`, `stats`.
+- Route-local support folders are nested beside the route: `src/app/timeslicing/components/`, `src/app/stkde/lib/`, `src/app/dashboard-v2/hooks/`.
 
 ## Where to Add New Code
 
-### New Feature (Page Route)
-- Implementation: `src/app/[feature]/page.tsx`
-- API endpoints: `src/app/api/[feature]/route.ts`
-- Components: `src/components/[feature]/`
+**New page or route shell:**
+- Primary code: `src/app/<route>/page.tsx`.
+- Route-local helpers: `src/app/<route>/components/`, `src/app/<route>/hooks/`, `src/app/<route>/lib/`.
 
-### New Component
-- Primary: `src/components/[domain]/ComponentName.tsx`
-- Tests: `src/components/[domain]/ComponentName.test.tsx`
+**New shared visual component:**
+- Implementation: `src/components/<domain>/`.
+- Prefer colocating related layers or overlays inside the same domain folder.
 
-### New Hook
-- Implementation: `src/hooks/useFeatureName.ts`
-- Tests: `src/hooks/useFeatureName.test.ts`
+**New client state:**
+- Implementation: `src/store/use<Name>Store.ts`.
+- If the state is slice-based, add slice factories in `src/store/slice-domain/` and re-export through `src/store/useSliceDomainStore.ts`.
 
-### New Store Slice
-- Implementation: `src/store/useFeatureStore.ts`
-- Slice implementation: `src/store/slice-domain/createFeatureSlice.ts`
-- Types: `src/store/slice-domain/types.ts`
+**New computation or query logic:**
+- Implementation: `src/lib/<domain>/`.
+- Workerized versions belong in `src/workers/`.
 
-### New Query/API
-- Query logic: `src/lib/queries.ts` or `src/lib/queries/[feature].ts`
-- API route: `src/app/api/[endpoint]/route.ts`
+**New API endpoint:**
+- Implementation: `src/app/api/<resource>/route.ts`.
+- Keep request validation near the route or in shared contracts under `src/lib/`.
 
-### New Utility
-- Implementation: `src/lib/feature-utils.ts` or `src/utils/feature-utils.ts`
-
-### New Worker
-- Implementation: `src/workers/feature.worker.ts`
-
-### New Type
-- Definition: `src/types/feature.ts`
-- Re-export: `src/types/index.ts`
+**New tests:**
+- Place beside the implementation with the same basename and `.test.ts` / `.test.tsx` suffix.
 
 ## Special Directories
 
-### src/app/api
-- **Purpose:** Next.js API routes (server-side endpoints)
-- **Generated:** No (codewritten)
-- **Committed:** Yes
+**`.planning/`:**
+- Purpose: generated analysis and roadmap files.
+- Generated: Yes.
+- Committed: Yes.
 
-### data/cache
-- **Purpose:** DuckDB database file
-- **Generated:** Yes (at runtime)
-- **Committed:** No (in .gitignore)
+**`data/`:**
+- Purpose: large source and cache files for DuckDB-backed features.
+- Generated: Mixed.
+- Committed: Mixed; source CSVs are checked in, runtime caches are disposable.
 
-### data/sources
-- **Purpose:** Source CSV data files
-- **Generated:** No (downloaded/provided)
-- **Committed:** Yes (sample data)
+**`patches/`:**
+- Purpose: `patch-package` overrides.
+- Generated: Yes, but committed.
 
-### .planning
-- **Purpose:** GSD planning documents
-- **Generated:** Yes (by GSD commands)
-- **Committed:** Yes (version controlled)
-
-### patches
-- **Purpose:** Dependency patches (e.g., duckdb version fix)
-- **Generated:** No (manually created)
-- **Committed:** Yes
+**`public/`:**
+- Purpose: static assets.
+- Generated: No.
+- Committed: Yes.
 
 ---
 
-*Structure analysis: 2026-03-30*
+*Structure analysis: 2026-04-08*

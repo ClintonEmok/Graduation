@@ -1,192 +1,118 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-30
+**Analysis Date:** 2026-04-08
 
 ## Tech Debt
 
-**Massive DualTimeline Component:**
-- Issue: `src/components/timeline/DualTimeline.tsx` is 1245 lines - extremely large single file component
-- Files: `src/components/timeline/DualTimeline.tsx`
-- Impact: Hard to maintain, test, and understand. Any change risks breaking multiple unrelated features
-- Fix approach: Split into smaller, focused sub-components (OverviewTimeline, DetailTimeline, Axis, Brush, etc.)
+**SQL assembly across crime endpoints:**
+- Issue: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, and `src/app/api/crime/facets/route.ts` still build SQL with string interpolation for user-controlled filters.
+- Files: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`
+- Impact: query construction is brittle and hard to audit; malicious filter values can escape the intended query shape.
+- Fix approach: move all filter construction to parameterized helpers in `src/lib/queries/*` and forbid raw string concatenation in route handlers.
 
-**Massive Suggestion Stores:**
-- Issue: `src/store/useSuggestionStore.ts` is 768 lines, handling too many responsibilities
-- Files: `src/store/useSuggestionStore.ts`, `src/app/timeslicing/components/SuggestionPanel.tsx` (767 lines)
-- Impact: Store is difficult to test and reason about
-- Fix approach: Split into focused stores (suggestion generation, suggestion UI state, suggestion selection)
+**Mock-first failure handling:**
+- Issue: `src/lib/db.ts` defaults to mock mode when env flags are absent, and `src/app/api/crime/meta/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/neighbourhood/poi/route.ts`, and `src/app/api/stkde/hotspots/route.ts` downgrade real errors to demo responses.
+- Files: `src/lib/db.ts`, `src/app/api/crime/meta/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/neighbourhood/poi/route.ts`, `src/app/api/stkde/hotspots/route.ts`
+- Impact: missing data files, DB failures, and bad deployments present as valid app state instead of outages.
+- Fix approach: separate demo-mode from error fallback, and surface non-demo failures as explicit 5xx responses or visible UI errors.
 
-**Large Page Components:**
-- Issue: Multiple page components exceed 600+ lines
-- Files: `src/app/timeline-test/page.tsx` (672 lines), `src/app/timeline-test-3d/components/SuggestionPanel.tsx` (643 lines)
-- Impact: Bundle size concerns, longer parse times
-- Fix approach: Extract visualization logic into custom hooks, extract UI into components
-
-**Unused/Missing Index Exports:**
-- Issue: Many lib files lack barrel exports, forcing deep imports
-- Files: `src/lib/` directory
-- Impact: Brittle import paths, harder refactoring
-- Fix approach: Add index.ts barrel files to all lib directories
+**Overgrown rendering/controller modules:**
+- Issue: `src/components/timeline/DualTimeline.tsx` (1285 lines), `src/components/viz/DataPoints.tsx` (687 lines), and `src/app/stkde/lib/StkdeRouteShell.tsx` (443 lines) mix fetching, state syncing, geometry, and interaction logic.
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/components/viz/DataPoints.tsx`, `src/app/stkde/lib/StkdeRouteShell.tsx`
+- Impact: changes in one behavior area can regress unrelated interactions.
+- Fix approach: extract data prep, interaction state, and rendering primitives into smaller modules.
 
 ## Known Bugs
 
-**Silent Error Swallowing in Catch Blocks:**
-- Issue: Multiple catch blocks with empty bodies that silently fail
-- Files: 
-  - `src/store/useSuggestionStore.ts` (line 236 - empty catch returns empty array)
-  - `src/store/useFilterStore.ts` (lines 29, 43 - empty catch)
-  - `src/app/timeline-test-3d/page.tsx` (line 269 - empty catch)
-  - `src/app/timeline-test-3d/components/TimeSlices3D.tsx` (lines 306, 364 - empty catch)
-  - `src/hooks/useURLFeatureFlags.ts` (line 105 - empty catch)
-- Impact: Errors are hidden from users and logs, making debugging extremely difficult
-- Fix approach: Add proper error logging in all catch blocks, surface errors to user when appropriate
+**Unauthenticated log ingestion:**
+- Symptoms: `src/app/api/study/log/route.ts` appends any JSON array to `logs/study-sessions.jsonl`.
+- Files: `src/app/api/study/log/route.ts`, `src/lib/logger.ts`
+- Trigger: any client that can POST to the route.
+- Workaround: none in code.
+- Fix approach: add auth, schema validation, rate limits, and size caps before writing to disk.
 
-**Debug Console Statements:**
-- Issue: 100+ console.log/console.warn/console.error statements throughout codebase
-- Files: Scattered across components, hooks, stores, and API routes
-- Impact: Clutters browser console, potential performance impact in development, security risk if sensitive data logged
-- Fix approach: Remove all console.log statements, keep only critical console.error for actual errors with proper context
+**Process-local cache growth and cache misses:**
+- Symptoms: `src/app/api/neighbourhood/poi/route.ts` keeps a module-level `Map` for 24h.
+- Files: `src/app/api/neighbourhood/poi/route.ts`
+- Trigger: many distinct bounds requests or multiple server instances.
+- Workaround: none.
+- Fix approach: cap entries and move to shared cache if the route stays hot.
 
-## Type Safety Issues
-
-**Excessive `any` Type Usage:**
-- Issue: 28+ instances of `any` type scattered throughout codebase
-- Files:
-  - `src/lib/db.ts` (line 4: `let db: any = null`)
-  - `src/hooks/useCrimeStream.ts` (lines 8, 11: arrays and callbacks typed as `any`)
-  - `src/components/viz/TrajectoryLayer.tsx` (line 38: `const points: any[] = []`)
-  - `src/components/timeline/Timeline.tsx` (line 20: index signature with `any`)
-  - API routes in `src/app/api/` (multiple instances)
-- Impact: TypeScript cannot catch type errors in these areas, runtime errors more likely
-- Fix approach: Replace with proper types, use `unknown` where type is truly unknown, create proper interfaces
+**Demo mode can appear unintentionally:**
+- Symptoms: `src/lib/db.ts` returns mock mode when `USE_MOCK_DATA`/`DISABLE_DUCKDB` is unset.
+- Files: `src/lib/db.ts`, `src/app/api/crime/meta/route.ts`
+- Trigger: missing env configuration.
+- Workaround: manually set env flags.
+- Fix approach: require explicit demo opt-in.
 
 ## Security Considerations
 
-**Environment Variable Validation:**
-- Issue: Raw environment variables used without validation
-- Files: 
-  - `src/app/api/stkde/hotspots/route.ts` (line 11)
-  - `src/lib/db.ts` (lines 9, 25)
-- Impact: Could accept invalid values leading to unexpected behavior
-- Fix approach: Add validation/schema for environment variables at startup
+**SQL injection surface:**
+- Risk: `types` and `districts` are interpolated into SQL in `src/lib/duckdb-aggregator.ts` and `src/app/api/crime/stream/route.ts`.
+- Files: `src/lib/duckdb-aggregator.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/bins/route.ts`
+- Current mitigation: some endpoints clamp numeric params, but string filters are not parameterized here.
+- Recommendations: use placeholders everywhere and escape/allowlist filter values before query construction.
 
-**Console Logging of Sensitive Data:**
-- Issue: Potential for sensitive data to be logged via console.log statements
-- Files: `src/components/viz/DataPoints.tsx` (debug raycasting logs), various hooks
-- Impact: Data exposure in browser console
-- Fix approach: Remove debug logging, use proper debug tooling
+**Log endpoint data exposure:**
+- Risk: `src/lib/logger.ts` sends session/participant identifiers, and `src/app/api/study/log/route.ts` persists them without access control.
+- Files: `src/lib/logger.ts`, `src/app/api/study/log/route.ts`
+- Current mitigation: none beyond client-side batching.
+- Recommendations: treat these events as sensitive telemetry, add auth and retention controls, and avoid storing raw identifiers unless required.
 
 ## Performance Bottlenecks
 
-**Heavy Computation in Render Path:**
-- Issue: Large component render calculations happening synchronously
-- Files:
-  - `src/components/timeline/DualTimeline.tsx` (1245 lines of render logic)
-  - `src/components/viz/DataPoints.tsx` (687 lines)
-  - `src/lib/stkde/compute.ts` (461 lines)
-- Impact: UI jank, slow interactions with large datasets
-- Fix approach: Memoize computations, use web workers for heavy calculations, implement virtualization
+**Repeated full-table/CSV scans:**
+- Problem: `src/app/api/crime/meta/route.ts` scans the dataset multiple times; `src/app/api/crime/stream/route.ts` reads and serializes up to 50k rows per request; `src/lib/db.ts` may build a sorted table with a full `ORDER BY`.
+- Files: `src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`, `src/lib/db.ts`
+- Cause: each request re-derives metadata or streams large result sets from source data.
+- Improvement path: persist derived metadata, precompute indexes, and page/stream data incrementally.
 
-**No Virtualization for Large Lists:**
-- Issue: Rendering potentially large arrays without virtualization
-- Files: Suggestion panels, slice lists
-- Impact: Performance degrades linearly with data size
-- Fix approach: Implement react-window or similar for long lists
+**Large STKDE payloads are trimmed after fetch:**
+- Problem: `src/app/stkde/lib/StkdeRouteShell.tsx` and `src/app/dashboard-v2/hooks/useDashboardStkde.ts` serialize responses, measure payload size, then sort/slice heatmap cells client-side.
+- Files: `src/app/stkde/lib/StkdeRouteShell.tsx`, `src/app/dashboard-v2/hooks/useDashboardStkde.ts`
+- Cause: response-size guards happen after network transfer.
+- Improvement path: cap or page at the API layer before serialization.
 
-**DuckDB Initialization:**
-- Issue: Synchronous database initialization can block
-- Files: `src/lib/db.ts`
-- Impact: Initial load time, potential UI blocking
-- Fix approach: Lazy initialization, worker-based initialization
+**Unbounded in-memory cache:**
+- Problem: `src/app/api/neighbourhood/poi/route.ts` stores cached summaries in a module-level `Map` with no max size.
+- Files: `src/app/api/neighbourhood/poi/route.ts`
+- Cause: cache eviction is time-based only.
+- Improvement path: add size-based eviction or an external cache.
 
 ## Fragile Areas
 
-**Slice Domain Store Complexity:**
-- Issue: Complex slice domain with multiple slice types (core, adjustment, creation, selection)
-- Files: `src/store/slice-domain/` directory
-- Why fragile: Multiple store slices interacting, state sync issues between slices
-- Safe modification: Always test multi-slice interactions, use selectors
-- Test coverage: Partial - some slice-specific tests exist but integration tests limited
+**Type escapes around core data paths:**
+- Files: `src/lib/data/types.ts`, `src/lib/db.ts`, `src/app/api/crime/facets/route.ts`, `src/components/viz/Trajectory.tsx`, `src/components/viz/DataPoints.tsx`
+- Why fragile: `any`, `[key: string]: any`, `as any`, and `@ts-ignore` appear at the database, shader, and event boundaries.
+- Safe modification: keep these boundaries narrow and add explicit adapters before data reaches rendering code.
+- Test coverage: type-related regressions are easy to miss because runtime tests do not exercise compile-time guarantees.
 
-**Timeline State Synchronization:**
-- Issue: Multiple stores managing timeline state with potential race conditions
-- Files: `src/store/useTimeStore.ts`, `src/store/useTimelineDataStore.ts`, `src/store/useSliceStore.ts`
-- Why fragile: Brush zoom, time range selection, slice creation all modify overlapping state
-- Safe modification: Use transactions or batched updates
-- Test coverage: Gaps in concurrent state modification testing
-
-**Web Worker Communication:**
-- Issue: Workers for STKDE and adaptive time computations with message passing
-- Files: `src/workers/stkdeHotspot.worker.ts`, `src/workers/adaptiveTime.worker.ts`
-- Why fragile: No type-safe message contracts, worker crashes are silent
-- Safe modification: Add error boundaries around worker calls, implement retry logic
-- Test coverage: Limited - worker tests exist but error scenarios not fully covered
-
-## Scaling Limits
-
-**In-Memory Data:**
-- Current capacity: Large datasets loaded into memory via DuckDB WASM
-- Limit: Browser memory (~2GB typical), dataset size ~10M records
-- Scaling path: Implement streaming/chunking, server-side aggregation
-
-**Client-Side State:**
-- Current capacity: Zustand stores hold significant application state
-- Limit: Serialization costs on navigation, memory pressure
-- Scaling path: Implement store persistence strategies, lazy load state
-
-**Maplibre GL Rendering:**
-- Current capacity: Large point datasets rendered via GPU
-- Limit: ~100K visible points before frame drops
-- Scaling path: Clustering, level-of-detail rendering, viewport culling
-
-## Dependencies at Risk
-
-**DuckDB WASM:**
-- Risk: Heavy dependency (megabytes), complex initialization
-- Impact: Slow cold start, large bundle size
-- Migration plan: Consider server-side DuckDB for initial queries, lighter client for streaming
-
-**React 19:**
-- Risk: Relatively new version, potential compatibility issues
-- Impact: Bug fixes may require updates, ecosystem compatibility
-- Migration plan: Monitor, test thoroughly on updates
-
-**Three.js / React Three Fiber:**
-- Risk: Large 3D library bundle
-- Impact: Significant bundle size increase for 3D features
-- Migration plan: Lazy load 3D components, consider lighter alternatives for simple visualizations
-
-**Next.js 16:**
-- Risk: Very new version (16.1.6)
-- Impact: Potential breaking changes, less community knowledge
-- Migration plan: Test thoroughly on updates, monitor Next.js releases
+**Mouse/shader interaction code is tightly coupled to DOM and WebGL internals:**
+- Files: `src/components/viz/DataPoints.tsx`, `src/components/viz/Trajectory.tsx`, `src/components/viz/SlicePlane.tsx`
+- Why fragile: pointer events, instance IDs, and shader hooks are all coordinated manually.
+- Safe modification: change these in small steps and keep interaction tests close to the affected component.
+- Test coverage: no direct tests cover every pointer/shader branch.
 
 ## Test Coverage Gaps
 
-**Integration Tests:**
-- What's not tested: End-to-end user workflows across multiple pages/stores
-- Files: Integration between timeline, suggestion generation, and STKDE
-- Risk: Store interactions can break silently
-- Priority: High
+**No direct coverage detected for the study logging path:**
+- What's not tested: `src/app/api/study/log/route.ts` and `src/lib/logger.ts`
+- Files: `src/app/api/study/log/route.ts`, `src/lib/logger.ts`
+- Risk: payload growth, malformed input, and file-write failures can ship unnoticed.
+- Priority: high
 
-**Error Boundary Tests:**
-- What's not tested: Component error boundaries, worker failure recovery
-- Files: UI components with error potential
-- Risk: Full app crashes on component errors
-- Priority: Medium
+**No direct route tests detected for several fallback-heavy APIs:**
+- What's not tested: `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/neighbourhood/poi/route.ts`
+- Files: `src/app/api/crime/stream/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/neighbourhood/poi/route.ts`
+- Risk: mock fallbacks and query construction regressions can hide behind 200 responses.
+- Priority: high
 
-**API Route Tests:**
-- What's not tested: Most API routes lack comprehensive error case testing
-- Files: `src/app/api/` routes
-- Risk: API failures not handled gracefully
-- Priority: Medium
-
-**Store Concurrency Tests:**
-- What's not tested: Concurrent store updates from multiple sources
-- Files: Slice domain stores
-- Risk: Race conditions in production
-- Priority: High
+**Very large UI modules are hard to cover exhaustively:**
+- What's not tested: interaction branches in `src/components/timeline/DualTimeline.tsx` and `src/components/viz/DataPoints.tsx`
+- Files: `src/components/timeline/DualTimeline.tsx`, `src/components/viz/DataPoints.tsx`
+- Risk: regressions in one mode can break unrelated timeline/map behaviors.
+- Priority: medium
 
 ---
 
-*Concerns audit: 2026-03-30*
+*Concerns audit: 2026-04-08*
