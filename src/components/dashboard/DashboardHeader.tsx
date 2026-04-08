@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import Link from 'next/link';
 import { useShallow } from 'zustand/react/shallow';
 import { useBinningStore } from '@/store/useBinningStore';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
@@ -75,23 +74,11 @@ export function DashboardHeader({ className = '' }: DashboardHeaderProps) {
     <header className={`border-b border-slate-800 bg-slate-950/95 px-4 py-3 ${className}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-sm font-semibold tracking-tight text-slate-100">dashboard-v2 · unified v3.0 route</h1>
+          <h1 className="text-sm font-semibold tracking-tight text-slate-100">dashboard-v2 · status header</h1>
           <p className="mt-0.5 text-[11px] text-slate-400">
-            Timeline, map/heatmap, and cube stay synchronized without route switching.
+            Context only — use the workflow rail for actions.
           </p>
         </div>
-
-        <nav className="flex items-center gap-2 text-[11px] text-slate-500">
-          <Link href="/dashboard-v2" className="rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-slate-200">
-            dashboard-v2
-          </Link>
-          <Link href="/timeslicing" className="hover:text-slate-300">
-            timeslicing
-          </Link>
-          <Link href="/stkde" className="hover:text-slate-300">
-            stkde
-          </Link>
-        </nav>
       </div>
 
       <div className="mt-3 grid gap-2 text-[11px] text-slate-200 md:grid-cols-2 xl:grid-cols-4">
