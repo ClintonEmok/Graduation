@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: making-everything-click
 status: in_progress
-stopped_at: Phase 66 context gathered and ready for planning
-last_updated: "2026-03-30T00:00:00Z"
-last_activity: 2026-03-30 - captured Phase 66 hardening/validation decisions
+stopped_at: Phase 67 burst taxonomy and metrics completed
+last_updated: "2026-04-08T09:01:30Z"
+last_activity: 2026-04-08 - completed Phase 67 burst taxonomy and metrics
 progress:
-  total_phases: 6
-  completed_phases: 4
-  total_plans: 232
-  completed_plans: 222
-  percent: 96
+  total_phases: 70
+  completed_phases: 56
+  total_plans: 239
+  completed_plans: 225
+  percent: 94
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Phase 66 context complete; ready to plan validation gate execution
+**Current focus:** Phase 67 complete; ready to plan Phase 68 burst-editing work
 
 ## Current Position
 
-Phase: **66 of 71** (v3.0 milestone: Making Everything Click)
-Plan: 66-CONTEXT captured; 66-01-PLAN pending replan
-Status: **In progress — Phase 66 defined as a lightweight sign-off gate for unified workflow validation**
-Last activity: 2026-03-30 - Completed Phase 66 discuss/context capture
+Phase: **67 of 71** (v3.0 milestone: Making Everything Click)
+Plan: 67-02 complete; 67-01 and 67-02 committed atomically
+Status: **Phase complete — burst taxonomy core and UI exposure are landed**
+Last activity: 2026-04-08 - Completed Phase 67 burst taxonomy and metrics
 
-Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/232 plans complete (96%)
+Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 225/239 plans complete (94%)
 
 ## Milestone Status
 
@@ -44,7 +44,7 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/2
 - v2.3: 3/4 phases complete (Phase 54: 5/9 plans — tech debt on 54-02, 54-03, 54-06, 54-08)
 - v2.4: Complete (Phase 55: 2/2)
 - v2.5: Complete (Phases 56, 59)
-- v3.0: context progression includes phases 61-71 (Phase 65 complete; Phase 66 ready for planning)
+- v3.0: context progression includes phases 61-71 (Phases 61-65 complete; Phase 66 pending; Phase 67 complete)
 
 ## v3.0 Roadmap Summary
 
@@ -74,6 +74,9 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/2
 - [Phase 65]: Hotspot click commits global time/spatial focus via filter + coordination stores; hover remains preview-only.
 - [Phase 65]: Cube now exposes `STKDE Context` with hotspot details, provenance (`requested=`/`effective=`), and `No hotspot selected` fallback.
 - [Phase 66]: Operate as a lightweight gate phase with blocker journeys, 2 clean runs, first-time analyst lens, and blocked sign-off on failure.
+- [Phase 67]: Burst taxonomy now uses deterministic neighborhood rules with global thresholds and explicit tie-break reasoning.
+- [Phase 67]: Legacy burst-pattern diagnostics remain as a compatibility bridge alongside semantic labels.
+- [Phase 67]: Review surfaces now expose burst class, confidence, rationale, and provenance inline across generation, timeline, and detail views.
 
 ## Previous Decisions (Preserved)
 
@@ -84,6 +87,6 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 222/2
 
 ## Session Continuity
 
-Last session: 2026-03-30T00:00:00Z
-Stopped at: Captured Phase 66 context decisions
-Resume: .planning/phases/66-full-integration-testing/66-CONTEXT.md
+Last session: 2026-04-08T09:01:30Z
+Stopped at: Completed Phase 67 burst taxonomy and metrics
+Resume: None
