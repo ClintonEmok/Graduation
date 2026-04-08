@@ -11,6 +11,7 @@ describe('DashboardHeader flow consolidation', () => {
     expect(headerSource).not.toMatch(/href="\/stkde"/);
     expect(headerSource).toMatch(/status header/);
     expect(headerSource).toMatch(/Context only/);
+    expect(headerSource).not.toMatch(/go to|open|navigate/i);
     expect(headerSource).toMatch(/workflow/);
     expect(headerSource).toMatch(/sync status/);
     expect(headerSource).toMatch(/slice summary/);
