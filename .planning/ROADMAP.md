@@ -148,7 +148,24 @@ Plans:
 
 ---
 
-### Phase 68: Advanced User-Defined Timeslices
+### Phase 68: Dashboard-v2 Flow Consolidation
+
+**Goal:** Consolidate all core investigation tasks into one less-is-more `dashboard-v2` design driven by explicit user flows and scenarios.
+**Depends on:** Phase 70
+**Requirements:** FLOW-CONS-01, FLOW-CONS-02, FLOW-CONS-03, FLOW-CONS-04 (proposed)
+**Success Criteria** (what must be TRUE):
+1. Core investigation tasks complete end-to-end without route hopping.
+2. Main workflow has one primary action per step.
+3. Duplicate controls are removed and advanced options are progressively disclosed.
+4. Flow/scenario coverage is documented and testable.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 68-01-PLAN.md - Consolidate dashboard-v2 into a single guided workflow with hidden-by-default advanced analysis and locked route contracts
+
+---
+
+### Phase 69: Advanced Manual Slice Editing
 
 **Goal:** Extend manual slice operations into analyst-grade editing (resize + precision adjustment + reliable edit history) while preserving synchronization.
 **Depends on:** Phase 67
@@ -161,31 +178,14 @@ Plans:
 **Plans:** 1 stub plan ready
 
 Plans:
-- [ ] 68-01-PLAN.md - Add advanced manual timeslice editing and synchronization guarantees
-
----
-
-### Phase 69: Full-Range Generation Pipeline
-
-**Goal:** Add generation path that can use full in-range populations (not only sampled UI fetches) with explicit provenance and progress controls.
-**Depends on:** Phase 68
-**Requirements:** GEN-FULL-01, GEN-FULL-02, GEN-FULL-03, GEN-FULL-04 (proposed)
-**Success Criteria** (what must be TRUE):
-1. Full-range generation mode is available for long/high-volume windows.
-2. Provenance clearly distinguishes raw total, returned, sampled, and used counts.
-3. Generation supports progress and cancel behavior.
-4. UI responsiveness remains acceptable during long jobs.
-**Plans:** 1 stub plan ready
-
-Plans:
-- [ ] 69-01-PLAN.md - Build full-range generation pipeline and provenance UX
+- [ ] 69-01-PLAN.md - Add advanced manual timeslice editing and synchronization guarantees
 
 ---
 
 ### Phase 70: Validation and Research Readiness
 
 **Goal:** Convert workflow and quality expectations into reproducible validation scenarios suitable for thesis/research evaluation.
-**Depends on:** Phase 69
+**Depends on:** Phase 71
 **Requirements:** VAL-01, VAL-02, VAL-03, VAL-04 (proposed)
 **Success Criteria** (what must be TRUE):
 1. Acceptance matrix has deterministic pass/fail criteria.
@@ -199,20 +199,20 @@ Plans:
 
 ---
 
-### Phase 71: Dashboard-v2 Flow Consolidation
+### Phase 71: Full-Range Generation and Provenance
 
-**Goal:** Consolidate all core investigation tasks into one less-is-more `dashboard-v2` design driven by explicit user flows and scenarios.
-**Depends on:** Phase 70
-**Requirements:** FLOW-CONS-01, FLOW-CONS-02, FLOW-CONS-03, FLOW-CONS-04 (proposed)
+**Goal:** Add generation path that can use full in-range populations (not only sampled UI fetches) with explicit provenance and progress controls.
+**Depends on:** Phase 69
+**Requirements:** GEN-FULL-01, GEN-FULL-02, GEN-FULL-03, GEN-FULL-04 (proposed)
 **Success Criteria** (what must be TRUE):
-1. Core investigation tasks complete end-to-end without route hopping.
-2. Main workflow has one primary action per step.
-3. Duplicate controls are removed and advanced options are progressively disclosed.
-4. Flow/scenario coverage is documented and testable.
+1. Full-range generation mode is available for long/high-volume windows.
+2. Provenance clearly distinguishes raw total, returned, sampled, and used counts.
+3. Generation supports progress and cancel behavior.
+4. UI responsiveness remains acceptable during long jobs.
 **Plans:** 1 stub plan ready
 
 Plans:
-- [ ] 71-01-PLAN.md - Design and implement scenario-driven dashboard-v2 consolidation
+- [ ] 71-01-PLAN.md - Build full-range generation pipeline and provenance UX
 
 ---
 
@@ -328,6 +328,6 @@ Plans:
 
 ---
 
-*Last updated: 2026-03-30 after replanning Phase 66 as a gate-first hardening + sign-off workflow and keeping stubs 67-71 for future work*
+*Last updated: 2026-03-30 after renumbering stubs 68-71 to reflect demo-priority sequencing*
 
 *For milestone history, see `.planning/MILESTONES.md`*
