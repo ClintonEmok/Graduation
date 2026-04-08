@@ -10,7 +10,7 @@ provides:
   - Deterministic blocker-journey assertions for workflow transitions and sync status semantics
   - Hardened store-level invariants for no-match recovery and STKDE stale-state retention
   - Green typecheck + targeted + full-suite verification captured in phase validation map
-affects: [66-02-signoff-gate, 70-validation-and-research-readiness]
+affects: [66-02-signoff-gate]
 tech-stack:
   added: []
   patterns:

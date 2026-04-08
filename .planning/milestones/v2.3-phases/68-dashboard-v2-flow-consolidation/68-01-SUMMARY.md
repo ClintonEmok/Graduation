@@ -13,7 +13,7 @@ provides:
   - status-only dashboard header without route-hopping links
   - hidden-by-default advanced panels with STKDE gated to post-apply/refine workflow states
   - flow-contract regression tests for page and header behavior
-affects: [69-advanced-manual-slice-editing, 70-validation-and-research-readiness, 71-full-range-generation-provenance]
+affects: []
 
 # Tech tracking
 tech-stack:
