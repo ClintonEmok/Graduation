@@ -491,4 +491,77 @@ describe('buildAdaptiveBinDiagnostics', () => {
       expect(noEvents?.percent).toBe(100);
     });
   });
+
+  test('classifies sustained peaks deterministically across repeated runs', () => {
+    const domain: [number, number] = [0, 30];
+    const timestamps = [2, 4, 6, 12, 14, 16, 22, 24];
+    const countMap = Float32Array.from([2, 6, 2]);
+    const densityMap = Float32Array.from([0.18, 0.92, 0.22]);
+    const warpMap = Float32Array.from([0, 10, 20]);
+
+    const runA = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain,
+      timestamps,
+      countMap,
+      densityMap,
+      warpMap,
+    });
+
+    const runB = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain,
+      timestamps,
+      countMap,
+      densityMap,
+      warpMap,
+    });
+
+    expect(runA).toEqual(runB);
+    expect(runA[1]?.burstClass).toBe('prolonged-peak');
+    expect(runA[1]?.burstConfidence).toBeGreaterThan(0);
+    expect(runA[1]?.burstRationale).toContain('Sustained');
+  });
+
+  test('classifies a short high window as isolated spike when neighbors do not sustain it', () => {
+    const domain: [number, number] = [0, 18];
+    const timestamps = [1, 2, 8, 9, 16];
+    const rows = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain,
+      timestamps,
+      countMap: Float32Array.from([1, 2, 1]),
+      densityMap: Float32Array.from([0.12, 0.91, 0.1]),
+      warpMap: Float32Array.from([0, 6, 12]),
+    });
+
+    expect(rows[1]?.burstClass).toBe('isolated-spike');
+    expect(rows[1]?.tieBreakReason).toContain('isolated spike');
+  });
+
+  test('classifies low contrast windows as valleys and keeps near-threshold ties deterministic', () => {
+    const domain: [number, number] = [0, 24];
+    const valleyRows = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain,
+      timestamps: [1, 3, 5, 11, 13, 15, 19, 21],
+      countMap: Float32Array.from([6, 1, 5]),
+      densityMap: Float32Array.from([0.82, 0.16, 0.78]),
+      warpMap: Float32Array.from([0, 8, 16]),
+    });
+
+    const tiedRows = buildAdaptiveBinDiagnostics({
+      selectedStrategy: 'uniform-time',
+      domain,
+      timestamps: [2, 6, 10, 14, 18],
+      countMap: Float32Array.from([2, 2, 1]),
+      densityMap: Float32Array.from([0.3, 0.3, 0.29]),
+      warpMap: Float32Array.from([0, 8, 16]),
+    });
+
+    expect(valleyRows[1]?.burstClass).toBe('valley');
+    expect(valleyRows[1]?.thresholdSource).toContain('global-thresholds');
+    expect(tiedRows[0]?.burstClass).toBe(tiedRows[0]?.burstClass);
+    expect(tiedRows[0]?.burstScore).toBeDefined();
+  });
 });

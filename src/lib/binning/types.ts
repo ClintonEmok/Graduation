@@ -25,6 +25,22 @@ export interface TimeBin {
   isModified?: boolean;
   /** Merge source bin IDs */
   mergedFrom?: string[];
+  /** Deterministic burst taxonomy label */
+  burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+  /** Burst taxonomy rule version */
+  burstRuleVersion?: string;
+  /** Burst taxonomy score */
+  burstScore?: number;
+  /** Burst taxonomy confidence */
+  burstConfidence?: number;
+  /** Burst taxonomy provenance */
+  burstProvenance?: string;
+  /** Tie-break explanation */
+  tieBreakReason?: string;
+  /** Threshold source note */
+  thresholdSource?: string;
+  /** Neighborhood summary for the taxonomy decision */
+  neighborhoodSummary?: string;
 }
 
 export interface BinGroup {

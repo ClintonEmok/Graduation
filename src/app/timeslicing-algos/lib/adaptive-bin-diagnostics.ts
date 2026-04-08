@@ -1,4 +1,5 @@
 import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import { classifyBurstWindow, type BurstTaxonomy } from '@/lib/binning/burst-taxonomy';
 
 const EPSILON = 1e-6;
 
@@ -52,6 +53,15 @@ export interface AdaptiveBinDiagnosticRow {
   cumulativeWarpOffsetSec: number;
   characterizationLabels: AdaptiveBinTraitLabel[];
   traitPercents: AdaptiveBinTraitPercent[];
+  burstClass?: BurstTaxonomy;
+  burstRuleVersion?: string;
+  burstScore?: number;
+  burstConfidence?: number;
+  burstProvenance?: string;
+  tieBreakReason?: string;
+  thresholdSource?: string;
+  neighborhoodSummary?: string;
+  burstRationale?: string;
 }
 
 interface BuildAdaptiveBinDiagnosticsOptions {
@@ -364,7 +374,7 @@ export const buildAdaptiveBinDiagnostics = ({
 
   const totalEvents = timestampsInDomain.length;
 
-  return Array.from({ length: baseBinCount }, (_, binIndex) => {
+  const baseRows = Array.from({ length: baseBinCount }, (_, binIndex) => {
     const startSec = boundaries[binIndex] ?? start;
     const endSec = boundaries[binIndex + 1] ?? end;
     const widthSec = Math.max(0, endSec - startSec);
@@ -415,6 +425,35 @@ export const buildAdaptiveBinDiagnostics = ({
       cumulativeWarpOffsetSec: warpedStartSec - startSec,
       characterizationLabels,
       traitPercents,
+    };
+  });
+
+  return baseRows.map((row, binIndex) => {
+    const neighbors = [baseRows[binIndex - 1], baseRows[binIndex + 1]]
+      .filter((neighbor): neighbor is AdaptiveBinDiagnosticRow => neighbor !== undefined)
+      .map((neighbor) => ({
+        value: neighbor.normalizedDensity,
+        count: neighbor.rawCount,
+        durationSec: neighbor.widthSec,
+      }));
+    const taxonomy = classifyBurstWindow({
+      value: row.normalizedDensity,
+      count: row.rawCount,
+      durationSec: row.widthSec,
+      neighborhood: neighbors,
+    });
+
+    return {
+      ...row,
+      burstClass: taxonomy.burstClass,
+      burstRuleVersion: taxonomy.burstRuleVersion,
+      burstScore: taxonomy.burstScore,
+      burstConfidence: taxonomy.burstConfidence,
+      burstProvenance: taxonomy.burstProvenance,
+      tieBreakReason: taxonomy.tieBreakReason,
+      thresholdSource: taxonomy.thresholdSource,
+      neighborhoodSummary: taxonomy.neighborhoodSummary,
+      burstRationale: taxonomy.rationale,
     };
   });
 };
