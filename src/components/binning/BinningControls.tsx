@@ -61,6 +61,13 @@ const STRATEGIES: Array<{ value: BinningStrategy; label: string; description: st
   { value: 'uniform-distribution', label: 'Uniform events', description: 'Balance event counts per bin' },
 ];
 
+const BURST_TAXONOMY_LEGEND = [
+  { label: 'prolonged-peak', tone: 'bg-amber-500/15 text-amber-200 border-amber-500/30' },
+  { label: 'isolated-spike', tone: 'bg-rose-500/15 text-rose-200 border-rose-500/30' },
+  { label: 'valley', tone: 'bg-sky-500/15 text-sky-200 border-sky-500/30' },
+  { label: 'neutral', tone: 'bg-slate-500/15 text-slate-200 border-slate-500/30' },
+];
+
 const isFixedIntervalStrategy = (strategy: BinningStrategy) =>
   strategy === 'hourly' || strategy === 'daily' || strategy === 'weekly';
 
@@ -283,6 +290,14 @@ export function BinningControls({
               Last run: {new Date(lastGeneratedMetadata.generatedAt).toLocaleTimeString()}
             </span>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+          <span className="uppercase tracking-[0.18em] text-slate-500">Burst taxonomy</span>
+          {BURST_TAXONOMY_LEGEND.map((item) => (
+            <span key={item.label} className={`rounded-full border px-2 py-1 ${item.tone}`}>
+              {item.label}
+            </span>
+          ))}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

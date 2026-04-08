@@ -22,6 +22,7 @@ import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
+import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
@@ -474,6 +475,28 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const burstWindows = useBurstWindows();
   const burstWindowsForAutoSlices = disableAutoBurstSlices ? [] : burstWindows;
+  const burstTaxonomySummary = useMemo(() => {
+    const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
+      'prolonged-peak': 0,
+      'isolated-spike': 0,
+      valley: 0,
+      neutral: 0,
+    };
+
+    for (const [index, window] of burstWindows.entries()) {
+      const taxonomy = classifyBurstWindow({
+        value: window.peak,
+        count: window.count,
+        durationSec: window.duration,
+        neighborhood: [burstWindows[index - 1], burstWindows[index + 1]]
+          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
+          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
+      });
+      counts[taxonomy.burstClass] += 1;
+    }
+
+    return counts;
+  }, [burstWindows]);
 
   // Auto-create burst slices when burst data becomes available (unless disabled)
   useAutoBurstSlices(burstWindowsForAutoSlices);
@@ -936,6 +959,23 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
               paddingRight: DETAIL_MARGIN.right
             }}
           >
+            {burstWindows.length > 0 && (
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                <span className="uppercase tracking-[0.18em] text-slate-500">Burst indicators</span>
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">
+                  prolonged-peak: {burstTaxonomySummary['prolonged-peak']}
+                </span>
+                <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-rose-100">
+                  isolated-spike: {burstTaxonomySummary['isolated-spike']}
+                </span>
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
+                  valley: {burstTaxonomySummary.valley}
+                </span>
+                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-200">
+                  neutral: {burstTaxonomySummary.neutral}
+                </span>
+              </div>
+            )}
             {width > 0 ? (
               <DensityHeatStrip
                 densityMap={detailDensityMap}

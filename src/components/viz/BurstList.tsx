@@ -9,6 +9,7 @@ import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } fr
 import { focusTimelineRange } from '@/lib/slice-utils';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
+import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 
 const formatDuration = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -24,6 +25,15 @@ export type BurstWindow = {
   peak: number;
   count: number;
   duration: number;
+  burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+  burstConfidence?: number;
+  burstScore?: number;
+  burstRationale?: string;
+  burstRuleVersion?: string;
+  burstProvenance?: string;
+  tieBreakReason?: string;
+  thresholdSource?: string;
+  neighborhoodSummary?: string;
 };
 
 export const useBurstWindows = () => {
@@ -98,6 +108,37 @@ export function BurstList() {
   const setBurstMetric = useAdaptiveStore((state) => state.setBurstMetric);
 
   const burstWindows = useBurstWindows();
+  const burstWindowsWithTaxonomy = useMemo(() => {
+    return burstWindows.map((window, index, windows) => {
+      const neighborhood = [windows[index - 1], windows[index + 1]]
+        .filter((neighbor): neighbor is BurstWindow => neighbor !== undefined)
+        .map((neighbor) => ({
+          value: neighbor.peak,
+          count: neighbor.count,
+          durationSec: neighbor.duration,
+        }));
+
+      const taxonomy = classifyBurstWindow({
+        value: window.peak,
+        count: window.count,
+        durationSec: window.duration,
+        neighborhood,
+      });
+
+      return {
+        ...window,
+        burstClass: taxonomy.burstClass,
+        burstConfidence: taxonomy.burstConfidence,
+        burstScore: taxonomy.burstScore,
+        burstRationale: taxonomy.rationale,
+        burstRuleVersion: taxonomy.burstRuleVersion,
+        burstProvenance: taxonomy.burstProvenance,
+        tieBreakReason: taxonomy.tieBreakReason,
+        thresholdSource: taxonomy.thresholdSource,
+        neighborhoodSummary: taxonomy.neighborhoodSummary,
+      };
+    });
+  }, [burstWindows]);
 
   // Check if mapDomain is normalized (0-100) or actual epoch timestamps
   // Epoch timestamps are large numbers (billions for seconds, trillions for ms)
@@ -140,7 +181,7 @@ export function BurstList() {
 
   const burstMatches = useMemo(() => {
     const lookup = new Map<string, string | null>();
-    for (const window of burstWindows) {
+    for (const window of burstWindowsWithTaxonomy) {
       const normalizedRange = toNormalizedRange(window.start, window.end);
       if (!normalizedRange) {
         lookup.set(window.id, null);
@@ -150,7 +191,7 @@ export function BurstList() {
       lookup.set(window.id, match?.id ?? null);
     }
     return lookup;
-  }, [burstWindows, findMatchingSlice, toNormalizedRange]);
+  }, [burstWindowsWithTaxonomy, findMatchingSlice, toNormalizedRange]);
 
   const formatWindow = (start: number, end: number) => {
     let startEpoch: number;
@@ -212,14 +253,14 @@ export function BurstList() {
     });
   };
 
-  if (burstWindows.length === 0) return null;
+  if (burstWindowsWithTaxonomy.length === 0) return null;
 
   return (
     <div className="p-4 border-t">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Burst Windows</h3>
-        <span className="text-[10px] text-muted-foreground">Top {burstWindows.length}</span>
-      </div>
+          <span className="text-[10px] text-muted-foreground">Top {burstWindowsWithTaxonomy.length}</span>
+        </div>
       
       {/* Burst Adjustment Controls */}
       <div className="mt-3 space-y-3 pb-3 border-b">
@@ -255,7 +296,7 @@ export function BurstList() {
       </div>
       
       <div className="mt-3 space-y-2">
-        {burstWindows.map((window, index) => {
+        {burstWindowsWithTaxonomy.map((window, index) => {
           const matchingSliceId = burstMatches.get(window.id) ?? null;
           const isSelected = matchingSliceId === activeSliceId;
           const isLinked = matchingSliceId !== null;
@@ -291,6 +332,17 @@ export function BurstList() {
             </div>
             <div className="mt-1 text-foreground">
               {formatWindow(window.start, window.end)}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">
+                Class: {window.burstClass ?? 'neutral'}
+              </span>
+              <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
+                Confidence: {Math.round(window.burstConfidence ?? 0)}%
+              </span>
+              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-muted-foreground">
+                Reason: {window.burstRationale ?? 'No taxonomy rationale available.'}
+              </span>
             </div>
           </button>
           );

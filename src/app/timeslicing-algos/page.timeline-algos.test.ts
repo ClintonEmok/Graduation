@@ -89,6 +89,43 @@ describe('/timeslicing-algos route intent', () => {
     expect(statsSource).toMatch(/strategy-stats-widget/);
   });
 
+  test('exposes burst taxonomy vocabulary in the review and timeline surfaces', () => {
+    const burstListSource = readFileSync(new URL('../../components/viz/BurstList.tsx', import.meta.url), 'utf8');
+    const burstDetailsSource = readFileSync(new URL('../../components/viz/BurstDetails.tsx', import.meta.url), 'utf8');
+    const timelineSource = readFileSync(new URL('../../components/timeline/DualTimeline.tsx', import.meta.url), 'utf8');
+    const binningSource = readFileSync(new URL('../../components/binning/BinningControls.tsx', import.meta.url), 'utf8');
+    const taxonomySource = readFileSync(new URL('../../lib/binning/burst-taxonomy.ts', import.meta.url), 'utf8');
+
+    expect(taxonomySource).toMatch(/prolonged-peak/);
+    expect(taxonomySource).toMatch(/isolated-spike/);
+    expect(taxonomySource).toMatch(/valley/);
+    expect(taxonomySource).toMatch(/neutral/);
+    expect(taxonomySource).toMatch(/classifyBurstWindow/);
+
+    expect(burstListSource).toMatch(/Class:/);
+    expect(burstListSource).toMatch(/Confidence:/);
+    expect(burstListSource).toMatch(/Reason:/);
+    expect(burstListSource).toMatch(/burstClass/);
+    expect(burstListSource).toMatch(/burstConfidence/);
+
+    expect(burstDetailsSource).toMatch(/Why this label/);
+    expect(burstDetailsSource).toMatch(/burstRuleVersion/);
+    expect(burstDetailsSource).toMatch(/burstProvenance/);
+    expect(burstDetailsSource).toMatch(/burstConfidence/);
+
+    expect(timelineSource).toMatch(/Burst indicators/);
+    expect(timelineSource).toMatch(/prolonged-peak/);
+    expect(timelineSource).toMatch(/isolated-spike/);
+    expect(timelineSource).toMatch(/valley/);
+    expect(timelineSource).toMatch(/neutral/);
+
+    expect(binningSource).toMatch(/Burst taxonomy/);
+    expect(binningSource).toMatch(/prolonged-peak/);
+    expect(binningSource).toMatch(/isolated-spike/);
+    expect(binningSource).toMatch(/valley/);
+    expect(binningSource).toMatch(/neutral/);
+  });
+
   test('keeps comparison-first summary while rendering detail-only bin characterization', () => {
     const shellSource = readFileSync(new URL('./lib/TimeslicingAlgosRouteShell.tsx', import.meta.url), 'utf8');
     const statsSource = readFileSync(new URL('./lib/TimeslicingAlgosStrategyStats.tsx', import.meta.url), 'utf8');

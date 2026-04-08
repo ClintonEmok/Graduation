@@ -3,6 +3,8 @@ import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeId, getCrimeTypeName } from '@/lib/category-maps';
+import { useBurstWindows } from './BurstList';
+import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 
 type StatRow = { label: string; value: string };
 type GapBin = { label: string; count: number; percent: number };
@@ -17,6 +19,7 @@ const formatInterval = (seconds: number) => {
 
 export function BurstDetails() {
   const selectedBurstWindows = useCoordinationStore((state) => state.selectedBurstWindows);
+  const burstWindows = useBurstWindows();
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -97,20 +100,35 @@ export function BurstDetails() {
           percent: times.length ? (count / times.length) * 100 : 0
         }));
 
+      const matchingWindow = burstWindows.find(
+        (candidate) => Math.abs(candidate.start - window.start) < 0.001 && Math.abs(candidate.end - window.end) < 0.001
+      );
+      const taxonomy = matchingWindow
+        ? classifyBurstWindow({
+            value: matchingWindow.peak,
+            count: matchingWindow.count,
+            durationSec: matchingWindow.duration,
+            neighborhood: burstWindows
+              .filter((candidate) => candidate.id !== matchingWindow.id)
+              .slice(0, 2)
+              .map((candidate) => ({ value: candidate.peak, count: candidate.count, durationSec: candidate.duration })),
+          })
+        : null;
+
       const rows: StatRow[] = [
         { label: 'Events', value: `${times.length}` },
         { label: 'Mean gap', value: formatInterval(meanDelta) },
         { label: 'Median gap', value: formatInterval(medianDelta) }
       ];
 
-      return { rows, topTypes, gapBins, total: times.length };
+      return { rows, topTypes, gapBins, total: times.length, taxonomy };
     };
 
     return selectedBurstWindows.map((window) => ({
       window,
       stats: buildStats(window)
     }));
-  }, [columns, data, maxTimestampSec, minTimestampSec, selectedBurstWindows]);
+  }, [burstWindows, columns, data, maxTimestampSec, minTimestampSec, selectedBurstWindows]);
 
   if (!stats || stats.length === 0) return null;
 
@@ -129,6 +147,23 @@ export function BurstDetails() {
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Burst {index + 1}</span>
               <span>{entry.window.metric === 'burstiness' ? 'Inter-arrival' : 'Density'}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">
+                Class: {entry.stats.taxonomy?.burstClass ?? 'neutral'}
+              </span>
+              <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
+                Confidence: {Math.round(entry.stats.taxonomy?.burstConfidence ?? 0)}%
+              </span>
+              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-muted-foreground">
+                Rule: {entry.stats.taxonomy?.burstRuleVersion ?? 'n/a'}
+              </span>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Why this label: {entry.stats.taxonomy?.rationale ?? 'No taxonomy rationale available.'}
+            </div>
+            <div className="mt-1 text-[10px] text-muted-foreground">
+              Provenance: {entry.stats.taxonomy?.burstProvenance ?? 'n/a'}
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
               {entry.stats.rows.map((row) => (
