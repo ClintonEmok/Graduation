@@ -161,7 +161,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 68-01-PLAN.md - Consolidate dashboard-v2 into a single guided workflow with hidden-by-default advanced analysis and locked route contracts
+- [x] 68-01-PLAN.md - Consolidate dashboard-v2 into a single guided workflow with hidden-by-default advanced analysis and locked route contracts
 
 ---
 
@@ -248,7 +248,7 @@ Plans:
 | 65 | v3.0 | Replan needed | Planned | - |
 | 66 | v3.0 | Replan needed | Planned | - |
 | 67 | v3.0 | 0/1 | Planned | - |
-| 68 | v3.0 | 0/1 | Planned | - |
+| 68 | v3.0 | 1/1 | Complete | 2026-04-08 |
 | 69 | v3.0 | 0/1 | Planned | - |
 | 70 | v3.0 | 0/1 | Planned | - |
 | 71 | v3.0 | 0/1 | Planned | - |

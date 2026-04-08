@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: making-everything-click
 status: in_progress
-stopped_at: Phase 67 burst taxonomy and metrics completed
-last_updated: "2026-04-08T09:01:30Z"
-last_activity: 2026-04-08 - completed Phase 67 burst taxonomy and metrics
+stopped_at: Completed 68-01-PLAN.md
+last_updated: "2026-04-08T16:17:19Z"
+last_activity: 2026-04-08 - completed Phase 68 dashboard-v2 flow consolidation
 progress:
   total_phases: 70
   completed_phases: 56
   total_plans: 239
-  completed_plans: 225
-  percent: 94
+  completed_plans: 226
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Users compare uniform vs adaptive time mapping to reveal hidden spatiotemporal patterns.
-**Current focus:** Phase 67 complete; ready to plan Phase 68 burst-editing work
+**Current focus:** Phase 68 complete; ready for Phase 69 advanced manual slice editing
 
 ## Current Position
 
-Phase: **67 of 71** (v3.0 milestone: Making Everything Click)
-Plan: 67-02 complete; 67-01 and 67-02 committed atomically
-Status: **Phase complete — burst taxonomy core and UI exposure are landed**
-Last activity: 2026-04-08 - Completed Phase 67 burst taxonomy and metrics
+Phase: **68 of 71** (v3.0 milestone: Making Everything Click)
+Plan: 68-01 complete
+Status: **In progress — flow consolidation landed, next phase queued**
+Last activity: 2026-04-08 - Completed Phase 68 dashboard-v2 flow consolidation
 
-Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 225/239 plans complete (94%)
+Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓█** 226/239 plans complete (95%)
 
 ## Milestone Status
 
@@ -44,7 +44,7 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 225/2
 - v2.3: 3/4 phases complete (Phase 54: 5/9 plans — tech debt on 54-02, 54-03, 54-06, 54-08)
 - v2.4: Complete (Phase 55: 2/2)
 - v2.5: Complete (Phases 56, 59)
-- v3.0: context progression includes phases 61-71 (Phases 61-65 complete; Phase 66 pending; Phase 67 complete)
+- v3.0: context progression includes phases 61-71 (Phases 61-65 complete; Phase 66 pending; Phases 67-68 complete)
 
 ## v3.0 Roadmap Summary
 
@@ -77,6 +77,8 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 225/2
 - [Phase 67]: Burst taxonomy now uses deterministic neighborhood rules with global thresholds and explicit tie-break reasoning.
 - [Phase 67]: Legacy burst-pattern diagnostics remain as a compatibility bridge alongside semantic labels.
 - [Phase 67]: Review surfaces now expose burst class, confidence, rationale, and provenance inline across generation, timeline, and detail views.
+- [Phase 68]: dashboard-v2 workflow now prioritizes a single rail-driven generate→review→apply→refine→analyze flow with one dominant CTA surface.
+- [Phase 68]: Header navigation links are removed so route hopping no longer competes with in-route workflow guidance.
 
 ## Previous Decisions (Preserved)
 
@@ -87,6 +89,6 @@ Progress: **▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░** 225/2
 
 ## Session Continuity
 
-Last session: 2026-04-08T09:01:30Z
-Stopped at: Completed Phase 67 burst taxonomy and metrics
+Last session: 2026-04-08T16:17:19Z
+Stopped at: Completed 68-01-PLAN.md
 Resume: None
