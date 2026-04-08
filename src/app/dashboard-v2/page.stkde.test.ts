@@ -16,30 +16,8 @@ type Panels = {
   stkde: boolean;
 };
 
-type MockTimeslicingState = {
-  generationStatus: string;
-  pendingGeneratedBins: unknown[];
-  generationError: string | null;
-  mode: string;
-};
-
-type MockCoordinationState = {
-  panelNoMatch: Record<string, { at: number; reason: string; panel?: string }>;
-};
-
-type MockStkdeResponse = {
-  hotspots: Array<{
-    id: string;
-    peakStartEpochSec: number;
-    peakEndEpochSec: number;
-    radiusMeters: number;
-    centroidLat: number;
-    centroidLng: number;
-  }>;
-};
-
 const hoisted = vi.hoisted(() => ({
-  togglePanelSpy: vi.fn<(panel: keyof Panels) => void>(),
+  setPanelSpy: vi.fn<(panel: keyof Panels, visible: boolean) => void>(),
   setGenerationInputsSpy: vi.fn(),
   setWorkflowPhaseSpy: vi.fn(),
   setSyncStatusSpy: vi.fn(),
@@ -48,44 +26,39 @@ const hoisted = vi.hoisted(() => ({
   setSpatialBoundsSpy: vi.fn(),
   computeMapsSpy: vi.fn(),
   timelineSetStateSpy: vi.fn(),
+  layoutState: {
+    panels: {
+      timeline: true,
+      map: true,
+      refinement: false,
+      layers: false,
+      cube: true,
+      stkde: false,
+    } as Panels,
+    mapRatio: 55,
+  },
   timeslicingState: {
     generationStatus: 'idle',
     pendingGeneratedBins: [],
     generationError: null,
-    mode: 'manual',
-  } as MockTimeslicingState,
+    mode: 'auto',
+  },
   coordinationState: {
+    workflowPhase: 'generate' as 'generate' | 'review' | 'applied' | 'refine',
     panelNoMatch: {},
-  } as MockCoordinationState,
+  },
   sliceState: {
     slices: [] as unknown[],
   },
   stkdeState: {
     selectedHotspotId: null as string | null,
-    response: null as MockStkdeResponse | null,
-  },
-  state: {
-    panels: {
-      timeline: true,
-      map: true,
-      refinement: true,
-      layers: true,
-      cube: true,
-      stkde: true,
-    } as Panels,
+    response: null,
   },
 }));
 
 vi.mock('lucide-react', () => {
   const Icon = () => null;
-  return {
-    CheckCircle2: Icon,
-    Clock3: Icon,
-    Cuboid: Icon,
-    Layers3: Icon,
-    Sparkles: Icon,
-    X: Icon,
-  };
+  return { Shield: Icon, Sparkles: Icon };
 });
 
 vi.mock('@/components/ui/button', () => ({
@@ -110,6 +83,10 @@ vi.mock('@/components/dashboard/DashboardHeader', () => ({
   DashboardHeader: () => e('header', { 'data-testid': 'dashboard-header' }),
 }));
 
+vi.mock('@/components/binning/BinningControls', () => ({
+  BinningControls: () => e('div', { 'data-testid': 'binning-controls' }),
+}));
+
 vi.mock('@/app/timeslicing/components/SuggestionToolbar', () => ({
   SuggestionToolbar: () => e('div', { 'data-testid': 'suggestion-toolbar' }),
 }));
@@ -119,7 +96,7 @@ vi.mock('@/components/map/MapLayerManager', () => ({
 }));
 
 vi.mock('@/components/stkde/DashboardStkdePanel', () => ({
-  DashboardStkdePanel: () => e('div', { 'data-testid': 'dashboard-stkde-panel' }, 'STKDE PANEL'),
+  DashboardStkdePanel: () => e('div', { 'data-testid': 'dashboard-stkde-panel' }),
 }));
 
 vi.mock('@/hooks/useCrimeData', () => ({
@@ -127,9 +104,12 @@ vi.mock('@/hooks/useCrimeData', () => ({
     data: [
       {
         timestamp: 1710000000,
+        lat: 41.88,
+        lon: -87.63,
         x: 10,
         z: 20,
         type: 'THEFT',
+        district: '1',
       },
     ],
   }),
@@ -150,15 +130,18 @@ vi.mock('@/store/useTimelineDataStore', () => {
   return { useTimelineDataStore };
 });
 
-vi.mock('@/store/useAdaptiveStore', () => {
-  const useAdaptiveStore = ((selector: (s: { mapDomain: [number, number] }) => unknown) =>
-    selector({ mapDomain: [1700000000, 1720000000] })) as unknown as {
-    (selector: (s: { mapDomain: [number, number] }) => unknown): unknown;
-    getState: () => { computeMaps: (timestamps: Float32Array, domain: [number, number], options: unknown) => void };
-  };
-  useAdaptiveStore.getState = () => ({ computeMaps: hoisted.computeMapsSpy });
-  return { useAdaptiveStore };
-});
+vi.mock('@/store/useAdaptiveStore', () => ({
+  useAdaptiveStore: (() => {
+    const useAdaptiveStore = ((selector: (s: { mapDomain: [number, number] }) => unknown) =>
+      selector({ mapDomain: [1700000000, 1720000000] })) as unknown as {
+      (selector: (s: { mapDomain: [number, number] }) => unknown): unknown;
+      getState: () => { computeMaps: typeof hoisted.computeMapsSpy };
+    };
+
+    useAdaptiveStore.getState = () => ({ computeMaps: hoisted.computeMapsSpy });
+    return useAdaptiveStore;
+  })(),
+}));
 
 vi.mock('@/store/useTimeslicingModeStore', () => ({
   useTimeslicingModeStore: (
@@ -167,8 +150,6 @@ vi.mock('@/store/useTimeslicingModeStore', () => ({
       pendingGeneratedBins: unknown[];
       generationError: string | null;
       mode: string;
-      clearPendingGeneratedBins: () => void;
-      applyGeneratedBins: (_domain: [number, number]) => void;
       setGenerationInputs: (_inputs: unknown) => void;
     }) => unknown
   ) =>
@@ -177,8 +158,6 @@ vi.mock('@/store/useTimeslicingModeStore', () => ({
       pendingGeneratedBins: hoisted.timeslicingState.pendingGeneratedBins,
       generationError: hoisted.timeslicingState.generationError,
       mode: hoisted.timeslicingState.mode,
-      clearPendingGeneratedBins: vi.fn(),
-      applyGeneratedBins: vi.fn(),
       setGenerationInputs: hoisted.setGenerationInputsSpy,
     }),
 }));
@@ -203,17 +182,18 @@ vi.mock('@/store/useFilterStore', () => ({
 }));
 
 vi.mock('@/store/useLayoutStore', () => ({
-  useLayoutStore: (selector: (s: { panels: Panels; togglePanel: typeof hoisted.togglePanelSpy; mapRatio: number }) => unknown) =>
+  useLayoutStore: (selector: (s: { panels: Panels; setPanel: typeof hoisted.setPanelSpy; mapRatio: number }) => unknown) =>
     selector({
-      panels: hoisted.state.panels,
-      togglePanel: hoisted.togglePanelSpy,
-      mapRatio: 55,
+      panels: hoisted.layoutState.panels,
+      setPanel: hoisted.setPanelSpy,
+      mapRatio: hoisted.layoutState.mapRatio,
     }),
 }));
 
 vi.mock('@/store/useCoordinationStore', () => ({
   useCoordinationStore: (
     selector: (s: {
+      workflowPhase: 'generate' | 'review' | 'applied' | 'refine';
       setWorkflowPhase: typeof hoisted.setWorkflowPhaseSpy;
       setSyncStatus: typeof hoisted.setSyncStatusSpy;
       commitSelection: typeof hoisted.commitSelectionSpy;
@@ -221,6 +201,7 @@ vi.mock('@/store/useCoordinationStore', () => ({
     }) => unknown
   ) =>
     selector({
+      workflowPhase: hoisted.coordinationState.workflowPhase,
       setWorkflowPhase: hoisted.setWorkflowPhaseSpy,
       setSyncStatus: hoisted.setSyncStatusSpy,
       commitSelection: hoisted.commitSelectionSpy,
@@ -229,7 +210,7 @@ vi.mock('@/store/useCoordinationStore', () => ({
 }));
 
 vi.mock('@/store/useStkdeStore', () => ({
-  useStkdeStore: (selector: (s: { selectedHotspotId: string | null; response: MockStkdeResponse | null }) => unknown) =>
+  useStkdeStore: (selector: (s: { selectedHotspotId: string | null; response: unknown }) => unknown) =>
     selector({ selectedHotspotId: hoisted.stkdeState.selectedHotspotId, response: hoisted.stkdeState.response }),
 }));
 
@@ -237,17 +218,9 @@ vi.mock('@/lib/projection', () => ({
   project: () => [0, 0],
 }));
 
-describe('dashboard-v2 STKDE runtime behavior', () => {
+describe('dashboard-v2 flow consolidation runtime', () => {
   beforeEach(() => {
-    hoisted.state.panels = {
-      timeline: true,
-      map: true,
-      refinement: true,
-      layers: true,
-      cube: true,
-      stkde: true,
-    };
-    hoisted.togglePanelSpy.mockReset();
+    hoisted.setPanelSpy.mockReset();
     hoisted.setGenerationInputsSpy.mockReset();
     hoisted.setWorkflowPhaseSpy.mockReset();
     hoisted.setSyncStatusSpy.mockReset();
@@ -256,179 +229,56 @@ describe('dashboard-v2 STKDE runtime behavior', () => {
     hoisted.setSpatialBoundsSpy.mockReset();
     hoisted.computeMapsSpy.mockReset();
     hoisted.timelineSetStateSpy.mockReset();
-    hoisted.timeslicingState = {
-      generationStatus: 'idle',
-      pendingGeneratedBins: [],
-      generationError: null,
-      mode: 'manual',
+    hoisted.layoutState.panels = {
+      timeline: true,
+      map: true,
+      refinement: false,
+      layers: false,
+      cube: true,
+      stkde: false,
     };
-    hoisted.coordinationState = {
-      panelNoMatch: {},
-    };
-    hoisted.sliceState = {
-      slices: [],
-    };
-    hoisted.stkdeState = {
-      selectedHotspotId: null,
-      response: null,
-    };
-  });
-
-  test('renders STKDE panel when stkde panel visibility is enabled', () => {
-    let renderer: TestRenderer.ReactTestRenderer;
-    act(() => {
-      renderer = TestRenderer.create(e(DashboardV2Page));
-    });
-
-    const stkdePanel = renderer!.root.findByProps({ 'data-testid': 'dashboard-stkde-panel' });
-    expect(stkdePanel.props.children).toBe('STKDE PANEL');
-    expect(hoisted.setGenerationInputsSpy).toHaveBeenCalled();
-  });
-
-  test('hides STKDE panel when stkde panel visibility is disabled', () => {
-    hoisted.state.panels.stkde = false;
-
-    let renderer: TestRenderer.ReactTestRenderer;
-    act(() => {
-      renderer = TestRenderer.create(e(DashboardV2Page));
-    });
-
-    const panels = renderer!.root.findAllByProps({ 'data-testid': 'dashboard-stkde-panel' });
-    expect(panels).toHaveLength(0);
-  });
-
-  test('clicking STKDE toggle dispatches layout toggle action', () => {
-    let renderer: TestRenderer.ReactTestRenderer;
-    act(() => {
-      renderer = TestRenderer.create(e(DashboardV2Page));
-    });
-
-    const readText = (value: unknown): string => {
-      if (typeof value === 'string') return value;
-      if (Array.isArray(value)) return value.map(readText).join('');
-      return '';
-    };
-
-    const stkdeToggleButton = renderer!.root
-      .findAllByType('button')
-      .find((node) => readText(node.props.children).includes('STKDE'));
-
-    expect(stkdeToggleButton).toBeDefined();
-
-    act(() => {
-      stkdeToggleButton!.props.onClick();
-    });
-
-    expect(hoisted.togglePanelSpy).toHaveBeenCalledWith('stkde');
-  });
-
-  test('sets workflow phase to review when pending generated bins exist', () => {
-    hoisted.timeslicingState.pendingGeneratedBins = [{ id: 'draft-1' }];
-
-    act(() => {
-      TestRenderer.create(e(DashboardV2Page));
-    });
-
-    expect(hoisted.setWorkflowPhaseSpy).toHaveBeenCalledWith('review');
-  });
-
-  test('sets workflow phase to applied when generated-applied slices exist in non-manual mode', () => {
-    hoisted.sliceState.slices = [
-      {
-        source: 'generated-applied',
-        isVisible: true,
-        type: 'point',
-        time: 1710000000000,
-      },
-    ];
+    hoisted.coordinationState.workflowPhase = 'generate';
+    hoisted.coordinationState.panelNoMatch = {};
+    hoisted.sliceState.slices = [];
+    hoisted.stkdeState.selectedHotspotId = null;
+    hoisted.stkdeState.response = null;
+    hoisted.timeslicingState.pendingGeneratedBins = [];
+    hoisted.timeslicingState.generationError = null;
     hoisted.timeslicingState.mode = 'auto';
-
-    act(() => {
-      TestRenderer.create(e(DashboardV2Page));
-    });
-
-    expect(hoisted.setWorkflowPhaseSpy).toHaveBeenCalledWith('applied');
+    hoisted.timeslicingState.generationStatus = 'idle';
   });
 
-  test('sets workflow phase to refine when generated-applied slices exist in manual mode', () => {
-    hoisted.sliceState.slices = [
-      {
-        source: 'generated-applied',
-        isVisible: true,
-        type: 'point',
-        time: 1710000000000,
-      },
-    ];
-    hoisted.timeslicingState.mode = 'manual';
-
+  test('renders the guided workflow shell without showing STKDE before apply/refine', () => {
+    let renderer: TestRenderer.ReactTestRenderer;
     act(() => {
-      TestRenderer.create(e(DashboardV2Page));
+      renderer = TestRenderer.create(e(DashboardV2Page));
     });
 
-    expect(hoisted.setWorkflowPhaseSpy).toHaveBeenCalledWith('refine');
+    expect(renderer!.root.findByProps({ 'data-testid': 'binning-controls' })).toBeDefined();
+    expect(renderer!.root.findByProps({ 'data-testid': 'suggestion-toolbar' })).toBeDefined();
+    expect(renderer!.root.findAllByProps({ 'data-testid': 'dashboard-stkde-panel' })).toHaveLength(0);
   });
 
-  test('sets sync status to partial when generation error exists', () => {
-    hoisted.timeslicingState.generationError = 'Generation failed for current constraints';
+  test('unlocks analysis by requesting the STKDE panel when applied slices are active', () => {
+    hoisted.coordinationState.workflowPhase = 'applied';
+    hoisted.layoutState.panels.stkde = false;
 
     act(() => {
       TestRenderer.create(e(DashboardV2Page));
     });
 
-    expect(hoisted.setSyncStatusSpy).toHaveBeenCalledWith('partial', 'Generation failed for current constraints');
+    expect(hoisted.setPanelSpy).toHaveBeenCalledWith('stkde', true);
   });
 
-  test('sets sync status to partial when panel no-match metadata exists', () => {
-    hoisted.coordinationState.panelNoMatch = {
-      map: {
-        at: Date.now(),
-        reason: 'Selected index not in map viewport',
-        panel: 'map',
-      },
-    };
+  test('renders STKDE once the analysis panel is unlocked', () => {
+    hoisted.coordinationState.workflowPhase = 'applied';
+    hoisted.layoutState.panels.stkde = true;
 
+    let renderer: TestRenderer.ReactTestRenderer;
     act(() => {
-      TestRenderer.create(e(DashboardV2Page));
+      renderer = TestRenderer.create(e(DashboardV2Page));
     });
 
-    expect(hoisted.setSyncStatusSpy).toHaveBeenCalledWith('partial', 'Selected index not in map viewport', 'map');
-  });
-
-  test('commits hotspot selection and applies investigative overlay mismatch copy', () => {
-    hoisted.sliceState.slices = [
-      {
-        source: 'generated-applied',
-        isVisible: true,
-        type: 'range',
-        range: [1700000000000, 1700100000000],
-      },
-    ];
-
-    hoisted.stkdeState.selectedHotspotId = 'hotspot-1';
-    hoisted.stkdeState.response = {
-      hotspots: [
-        {
-          id: 'hotspot-1',
-          peakStartEpochSec: 1715000000,
-          peakEndEpochSec: 1715003600,
-          radiusMeters: 120,
-          centroidLat: 41.88,
-          centroidLng: -87.63,
-        },
-      ],
-    };
-
-    act(() => {
-      TestRenderer.create(e(DashboardV2Page));
-    });
-
-    expect(hoisted.setTimeRangeSpy).toHaveBeenCalledWith([1715000000, 1715003600]);
-    expect(hoisted.setSpatialBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(hoisted.commitSelectionSpy).toHaveBeenCalledWith(0, 'map');
-    expect(hoisted.setSyncStatusSpy).toHaveBeenCalledWith(
-      'partial',
-      'Hotspot time window is an investigative overlay; applied slices remain the workflow source of truth.',
-      'map'
-    );
+    expect(renderer!.root.findByProps({ 'data-testid': 'dashboard-stkde-panel' })).toBeDefined();
   });
 });

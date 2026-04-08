@@ -34,10 +34,10 @@ export const useLayoutStore = create<LayoutState>()(
       panels: {
         timeline: true,
         map: true,
-        refinement: true,
-        layers: true,
+        refinement: false,
+        layers: false,
         cube: true,
-        stkde: true,
+        stkde: false,
       },
       setPanel: (panel, visible) =>
         set((state) => ({

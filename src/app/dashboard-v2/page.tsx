@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { CheckCircle2, Clock3, Cuboid, Layers3, Sparkles, X } from 'lucide-react';
+import { Shield, Sparkles } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
 import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { BinningControls } from '@/components/binning/BinningControls';
 import { SuggestionToolbar } from '@/app/timeslicing/components/SuggestionToolbar';
-import { Button } from '@/components/ui/button';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -21,15 +21,45 @@ import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { MapLayerManager } from '@/components/map/MapLayerManager';
 import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
 import { useStkdeStore } from '@/store/useStkdeStore';
+import { useBinningStore } from '@/store/useBinningStore';
 import { project } from '@/lib/projection';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
 const MIN_VALID_DATA_EPOCH = 946684800;
 
+const WORKFLOW_STEPS = [
+  {
+    key: 'generate',
+    label: 'Generate Draft Slices',
+    detail: 'Set intent and create reviewable slices.',
+  },
+  {
+    key: 'review',
+    label: 'Review',
+    detail: 'Inspect draft bins and warnings before apply.',
+  },
+  {
+    key: 'applied',
+    label: 'Apply',
+    detail: 'Promote the chosen draft into shared slices.',
+  },
+  {
+    key: 'refine',
+    label: 'Refine',
+    detail: 'Merge, split, delete, and resize in place.',
+  },
+  {
+    key: 'analyze',
+    label: 'Analyze',
+    detail: 'Unlock STKDE in the right sidebar.',
+  },
+] as const;
+
 export default function DashboardV2Page() {
+  const workflowPhase = useCoordinationStore((state) => state.workflowPhase);
+  const setPanel = useLayoutStore((state) => state.setPanel);
   const panels = useLayoutStore((state) => state.panels);
-  const togglePanel = useLayoutStore((state) => state.togglePanel);
   const mapRatio = useLayoutStore((state) => state.mapRatio);
 
   const viewportStart = useViewportStore((state) => state.startDate);
@@ -43,6 +73,7 @@ export default function DashboardV2Page() {
   const hasValidAdaptiveDomain = mapDomain[1] > mapDomain[0] && mapDomain[0] >= MIN_VALID_DATA_EPOCH;
   const domainStartSec = hasValidAdaptiveDomain ? mapDomain[0] : (minTimestampSec ?? DEFAULT_START_EPOCH);
   const domainEndSec = hasValidAdaptiveDomain ? mapDomain[1] : (maxTimestampSec ?? DEFAULT_END_EPOCH);
+  const analysisUnlocked = workflowPhase === 'applied' || workflowPhase === 'refine';
 
   const [rangeStart, rangeEnd] = useMemo(() => {
     if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
@@ -62,13 +93,40 @@ export default function DashboardV2Page() {
     limit: 50000,
   });
 
+  const crimeData = useMemo(() => crimes ?? [], [crimes]);
+
+  const generationData = useMemo(
+    () => crimeData.map((crime) => ({ timestamp: crime.timestamp * 1000, type: crime.type, district: crime.district })),
+    [crimeData]
+  );
+
+  const availableCrimeTypes = useMemo(() => {
+    const uniqueTypes = new Set(crimeData.map((crime) => crime.type));
+    return Array.from(uniqueTypes).sort();
+  }, [crimeData]);
+
+  const availableNeighbourhoods = useMemo(() => {
+    const uniqueDistricts = new Set(crimeData.map((crime) => crime.district));
+    return Array.from(uniqueDistricts).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [crimeData]);
+
   const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
-  const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const generationError = useTimeslicingModeStore((state) => state.generationError);
   const mode = useTimeslicingModeStore((state) => state.mode);
-  const clearPendingGeneratedBins = useTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
-  const applyGeneratedBins = useTimeslicingModeStore((state) => state.applyGeneratedBins);
+  const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const setGenerationInputs = useTimeslicingModeStore((state) => state.setGenerationInputs);
+
+  const bins = useBinningStore((state) => state.bins);
+  const strategy = useBinningStore((state) => state.strategy);
+  const selectedBinId = useBinningStore((state) => state.selectedBinId);
+  const savedConfigurations = useBinningStore((state) => state.savedConfigurations);
+  const setStrategy = useBinningStore((state) => state.setStrategy);
+  const selectBin = useBinningStore((state) => state.selectBin);
+  const mergeBins = useBinningStore((state) => state.mergeBins);
+  const splitBin = useBinningStore((state) => state.splitBin);
+  const deleteBin = useBinningStore((state) => state.deleteBin);
+  const saveConfiguration = useBinningStore((state) => state.saveConfiguration);
+  const loadConfiguration = useBinningStore((state) => state.loadConfiguration);
 
   const appliedSlices = useSliceDomainStore(
     useShallow((state) => state.slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible))
@@ -112,6 +170,12 @@ export default function DashboardV2Page() {
 
     setWorkflowPhase('generate');
   }, [appliedSlices.length, mode, pendingGeneratedBins.length, setWorkflowPhase]);
+
+  useEffect(() => {
+    if (analysisUnlocked && !panels.stkde) {
+      setPanel('stkde', true);
+    }
+  }, [analysisUnlocked, panels.stkde, setPanel]);
 
   useEffect(() => {
     if (generationStatus === 'generating') {
@@ -242,111 +306,97 @@ export default function DashboardV2Page() {
   }, [crimes, domainEndSec, domainStartSec]);
 
   const selectionDetailPoints = useMemo(() => {
-    const timestamps = crimes.map((crime) => crime.timestamp);
+    const timestamps = crimeData.map((crime) => crime.timestamp);
     const maxPoints = 4000;
     if (timestamps.length <= maxPoints) {
       return timestamps;
     }
     const step = Math.ceil(timestamps.length / maxPoints);
     return timestamps.filter((_, index) => index % step === 0);
-  }, [crimes]);
-
-  const handleApply = () => {
-    applyGeneratedBins([rangeStart * 1000, rangeEnd * 1000]);
-  };
+  }, [crimeData]);
 
   const mapVisible = panels.map;
   const cubeVisible = panels.cube;
+  const showAnalysisPanel = analysisUnlocked && panels.stkde;
+  const activeWorkflowKey = showAnalysisPanel ? 'analyze' : workflowPhase;
+  const completedWorkflowSteps = useMemo(() => {
+    if (activeWorkflowKey === 'review') return new Set(['generate']);
+    if (activeWorkflowKey === 'applied') return new Set(['generate', 'review']);
+    if (activeWorkflowKey === 'refine') return new Set(['generate', 'review', 'applied']);
+    if (activeWorkflowKey === 'analyze') return new Set(['generate', 'review', 'applied', 'refine']);
+    return new Set<string>();
+  }, [activeWorkflowKey]);
+
+  const workflowLabels = WORKFLOW_STEPS.map((step) => ({
+    ...step,
+    isActive: step.key === activeWorkflowKey,
+    isComplete: completedWorkflowSteps.has(step.key),
+  }));
 
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
       <DashboardHeader />
 
-      <div className="flex items-center gap-1 border-b border-slate-800 bg-slate-950/80 px-3 py-2 text-[11px]">
-        <button
-          onClick={() => togglePanel('timeline')}
-          className={`rounded border px-2 py-1 transition ${
-            panels.timeline ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
-          }`}
-        >
-          <Clock3 className="mr-1 inline size-3" />
-          Timeline
-        </button>
-        <button
-          onClick={() => togglePanel('map')}
-          className={`rounded border px-2 py-1 transition ${
-            panels.map ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
-          }`}
-        >
-          Map / heatmap
-        </button>
-        <button
-          onClick={() => togglePanel('cube')}
-          className={`rounded border px-2 py-1 transition ${
-            panels.cube ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
-          }`}
-        >
-          <Cuboid className="mr-1 inline size-3" />
-          Cube
-        </button>
-        <button
-          onClick={() => togglePanel('refinement')}
-          className={`rounded border px-2 py-1 transition ${
-            panels.refinement ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
-          }`}
-        >
-          <Sparkles className="mr-1 inline size-3" />
-          Refinement
-        </button>
-        <button
-          onClick={() => togglePanel('layers')}
-          className={`rounded border px-2 py-1 transition ${
-            panels.layers ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
-          }`}
-        >
-          <Layers3 className="mr-1 inline size-3" />
-          Layers
-        </button>
-        <button
-          onClick={() => togglePanel('stkde')}
-          className={`rounded border px-2 py-1 transition ${
-            panels.stkde ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-slate-800 text-slate-400'
-          }`}
-        >
-          STKDE
-        </button>
+      <div aria-label="workflow rail" className="border-b border-slate-800 bg-slate-950/85 px-4 py-3">
+        <div className="grid gap-2 md:grid-cols-5">
+          {workflowLabels.map((step) => (
+            <div
+              key={step.key}
+              className={`rounded-lg border px-3 py-2 text-[11px] transition ${
+                step.isActive
+                  ? 'border-violet-400/50 bg-violet-500/10 text-violet-100'
+                  : step.isComplete
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                    : 'border-slate-800 bg-slate-950 text-slate-400'
+              }`}
+            >
+              <div className="font-medium uppercase tracking-[0.16em]">{step.label}</div>
+              <div className="mt-1 text-slate-400">{step.detail}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        {panels.refinement && (
-          <aside className="w-80 overflow-y-auto border-r border-slate-800 bg-slate-950/80 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-slate-400">Refinement</h2>
-              <button onClick={() => togglePanel('refinement')} className="rounded p-0.5 text-slate-500 hover:text-slate-300">
-                <X className="size-3.5" />
-              </button>
-            </div>
+      <div className="grid min-h-0 flex-1 gap-4 px-4 py-4 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)_minmax(0,360px)]">
+        <aside className="min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-[11px] text-slate-300">
+            <Sparkles className="size-3.5 text-violet-300" />
+            Guided generation and review stay in one surface.
+          </div>
 
-            {pendingGeneratedBins.length > 0 && (
-              <div className="mb-3 rounded border border-amber-500/20 bg-amber-500/5 p-2.5 text-[11px]">
-                <div className="font-medium text-amber-200">Draft bins ({pendingGeneratedBins.length})</div>
-                <div className="mt-2 flex gap-2">
-                  <Button size="sm" onClick={handleApply} className="h-7 gap-1 text-[11px]">
-                    <CheckCircle2 className="size-3" />
-                    Apply
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={clearPendingGeneratedBins} className="h-7 text-[11px]">
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            )}
+          <BinningControls
+            bins={bins}
+            strategy={strategy}
+            onStrategyChange={setStrategy}
+            onBinSelect={selectBin}
+            selectedBinId={selectedBinId}
+            onMerge={mergeBins}
+            onSplit={splitBin}
+            onDelete={(binId) => {
+              deleteBin(binId);
+              if (selectedBinId === binId) {
+                selectBin(null);
+              }
+            }}
+            savedConfigs={savedConfigurations.map((config) => ({ id: config.id, name: config.name }))}
+            onSaveConfig={saveConfiguration}
+            onLoadConfig={loadConfiguration}
+            generationData={generationData}
+            generationDomain={[rangeStart * 1000, rangeEnd * 1000]}
+            availableCrimeTypes={availableCrimeTypes}
+            availableNeighbourhoods={availableNeighbourhoods}
+          />
 
+          <div className="mt-4">
             <SuggestionToolbar applyDomain={[rangeStart * 1000, rangeEnd * 1000]} />
-          </aside>
-        )}
+          </div>
 
-        <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/40 p-3 text-[11px] text-slate-400">
+            Review and refinement stay in this same surface; STKDE stays hidden until the workflow unlocks analysis.
+          </div>
+        </aside>
+
+        <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60">
           <div className="min-h-0 border-b border-slate-800" style={{ height: `${mapRatio}%` }}>
             {mapVisible || cubeVisible ? (
               <div className={`grid h-full gap-0 ${mapVisible && cubeVisible ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -397,35 +447,22 @@ export default function DashboardV2Page() {
           )}
         </section>
 
-        {(panels.layers || panels.stkde) && (
-          <aside className="w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/80 p-3">
-            <div className="space-y-3">
-              {panels.layers ? (
-                <div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-xs font-medium text-slate-300">Layer Manager</h2>
-                    <button onClick={() => togglePanel('layers')} className="rounded p-0.5 text-slate-500 hover:text-slate-300">
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                  <MapLayerManager />
-                </div>
-              ) : null}
-
-              {panels.stkde ? (
-                <div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-xs font-medium text-slate-300">STKDE</h2>
-                    <button onClick={() => togglePanel('stkde')} className="rounded p-0.5 text-slate-500 hover:text-slate-300">
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                  <DashboardStkdePanel />
-                </div>
-              ) : null}
+        {showAnalysisPanel ? (
+          <aside className="min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] text-sky-100">
+              <Shield className="size-3.5" />
+              Analysis is now unlocked in the right sidebar.
             </div>
+
+            <DashboardStkdePanel />
+
+            {panels.layers ? (
+              <div className="mt-4">
+                <MapLayerManager />
+              </div>
+            ) : null}
           </aside>
-        )}
+        ) : null}
       </div>
     </main>
   );

@@ -422,7 +422,7 @@ export function BinningControls({
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={handleGenerate} disabled={generationStatus === 'generating'} className="gap-2">
             {generationStatus === 'generating' ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-            {generationStatus === 'generating' ? 'Generating draft bins…' : 'Generate draft bins'}
+            {generationStatus === 'generating' ? 'Generating Draft Slices…' : 'Generate Draft Slices'}
           </Button>
           {generationInputs.timeWindow.start && generationInputs.timeWindow.end && (
             <span className="text-xs text-slate-400">
