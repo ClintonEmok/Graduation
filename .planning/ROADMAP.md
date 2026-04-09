@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment, but Phase 2 now isolates generate/review/apply into full-screen screens before the dashboard opens map-first in a shared viewport that can swap between the 2D map and 3D cube.
+This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment, but Phase 2 now pivots to a dedicated `/dashboard-demo` route that showcases the map-first shared viewport + STKDE handoff shell without modifying the existing stable `/dashboard` route.
 
 ## Phases
 
@@ -30,22 +30,22 @@ Plans:
   4. User can narrow or expand the active temporal window with a timeline slider.
 
 ### Phase 2: Workflow isolation + dashboard handoff
-**Goal**: Generate, review, and apply stay in isolated full-screen screens, then hand off directly into a simplified dashboard shell.
+**Goal**: Keep existing routes stable while shipping a dedicated dashboard demo route that proves the map-first handoff shell with fixed STKDE rail.
 **Depends on**: Phase 1
 **Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
 **Plans:** 4
 Plans:
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-01-PLAN.md` — isolate generate, review, and apply into a dedicated full-screen workflow shell.
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-02-PLAN.md` — reshape the post-apply dashboard into a map-first shell with a fixed STKDE rail.
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-03-PLAN.md` — keep apply-preview editable in place and auto-advance directly into the dashboard.
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-04-PLAN.md` — visually verify the full generate → review → apply → dashboard handoff.
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-01-PLAN.md` — superseded by user direction shift (no longer mutating timeslicing flow shell).
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-02-PLAN.md` — superseded by demo-route pivot.
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-03-PLAN.md` — superseded by demo-route pivot.
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-04-PLAN.md` — now treated as human verification gate for the new `/dashboard-demo` route.
 **Success Criteria** (what must be TRUE):
-  1. User can open generate slices as a dedicated full-screen step that is separate from the dashboard.
-  2. User can review draft bins and warnings in a dedicated full-screen review step.
-  3. User can preview applied slices on the timeline in a dedicated full-screen apply-preview step that stays editable in place.
-  4. Clicking Apply auto-advances directly into the dashboard with no intermediate confirmation screen.
-  5. The final dashboard opens map-first in a shared viewport that swaps between the 2D map and 3D cube.
-  6. The final dashboard includes a fixed, always-visible right STKDE rail and carries only the applied state forward.
+  1. Existing `/dashboard` remains stable with Phase 1 behavior intact.
+  2. Existing `/timeslicing` remains stable (no Phase 2 shell regressions carried forward).
+  3. New `/dashboard-demo` route opens map-first in a shared viewport.
+  4. `/dashboard-demo` can swap between 2D map and 3D cube in one viewport.
+  5. `/dashboard-demo` keeps a fixed, always-visible right STKDE rail.
+  6. `/dashboard-demo` reuses core primitives/stores without introducing a second frontend architecture.
 
 ### Phase 3: Trace trajectories + compare behaviors
 **Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.

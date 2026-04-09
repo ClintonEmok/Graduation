@@ -21,6 +21,15 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **FLOW-05**: Clicking Apply advances directly into the dashboard without an intermediate confirmation screen.
 - [ ] **FLOW-06**: The final dashboard opens map-first in a shared viewport that can swap between the 2D map and 3D cube, and it carries only the applied state forward.
 
+### Dashboard Demo Route Pivot (Phase 2 override)
+
+- [ ] **DEMO-01**: Existing `/dashboard` route remains at stable Phase 1 behavior while Phase 2 work proceeds.
+- [ ] **DEMO-02**: Existing `/timeslicing` route remains at stable pre-Phase-2 behavior while Phase 2 work proceeds.
+- [ ] **DEMO-03**: A new isolated `/dashboard-demo` route renders a map-first shared viewport.
+- [ ] **DEMO-04**: `/dashboard-demo` supports manual 2D map ↔ 3D cube swapping in the same viewport.
+- [ ] **DEMO-05**: `/dashboard-demo` renders an always-visible fixed right STKDE rail.
+- [ ] **DEMO-06**: `/dashboard-demo` reuses existing primitives/stores (MapVisualization, CubeVisualization, TimelinePanel/DualTimeline, DashboardStkdePanel) without creating a second frontend architecture.
+
 ### Trace and Compare
 
 - [ ] **T2**: User can follow the temporal evolution of selected incidents/records and aggregated clusters over time to understand movement paths and duration.
@@ -90,6 +99,12 @@ Explicitly excluded. Documented to prevent scope creep.
 | FLOW-04 | Phase 2 | Planned |
 | FLOW-05 | Phase 2 | Planned |
 | FLOW-06 | Phase 2 | Planned |
+| DEMO-01 | Phase 2 | Planned |
+| DEMO-02 | Phase 2 | Planned |
+| DEMO-03 | Phase 2 | Planned |
+| DEMO-04 | Phase 2 | Planned |
+| DEMO-05 | Phase 2 | Planned |
+| DEMO-06 | Phase 2 | Planned |
 | T2 | Phase 3 | Planned |
 | T3 | Phase 3 | Planned |
 | VIEW-02 | Phase 3 | Planned |
