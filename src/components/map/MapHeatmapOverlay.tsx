@@ -9,6 +9,8 @@ import { project } from '@/lib/projection';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import { useHeatmapStore } from '@/store/useHeatmapStore';
 
+/* eslint-disable react-hooks/immutability */
+
 /**
  * MapCameraSync synchronizes the Three.js orthographic camera with the 
  * MapLibre map's center and zoom level.
@@ -66,7 +68,7 @@ export const MapHeatmapOverlay: React.FC = () => {
         camera={{ position: [0, 10, 0], zoom: 1 }}
       >
         <MapCameraSync />
-        <HeatmapOverlay blending={THREE.AdditiveBlending} />
+        <HeatmapOverlay blending={THREE.NormalBlending} />
       </Canvas>
     </div>
   );

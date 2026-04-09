@@ -254,8 +254,8 @@ export default function MapVisualization() {
       >
         {visibility.events ? <MapEventLayer colorMode={colorMode} hoveredTypeId={hoveredTypeId} records={data} /> : null}
         {visibility.heatmap ? <MapHeatmapOverlay /> : null}
-        {visibility.clusters ? <MapClusterHighlights /> : null}
         {visibility.trajectories ? <MapTrajectoryLayer /> : null}
+        {visibility.clusters ? <MapClusterHighlights /> : null}
         {visibility.stkde && stkdeResponse?.heatmap.cells?.length ? (
           <MapStkdeHeatmapLayer
             cells={stkdeResponse.heatmap.cells}
@@ -274,9 +274,9 @@ export default function MapVisualization() {
       
       {/* Overlay UI */}
       <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
-        <h2 className="text-sm font-semibold">Map View</h2>
+        <h2 className="text-sm font-semibold">Overview Map</h2>
         <div className="mt-1 text-[10px] text-muted-foreground">
-          {visibility.stkde ? 'Mode: STKDE Enhanced' : 'Mode: Standard'}
+          {visibility.stkde ? 'Overview density with hotspot cues' : 'Density-first overview'}
         </div>
         <div className="mt-2 flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">
@@ -289,7 +289,7 @@ export default function MapVisualization() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Burst
+              Density
             </button>
             <button
               type="button"
@@ -348,7 +348,7 @@ export default function MapVisualization() {
         {colorMode === 'burst' ? (
           <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="h-2 w-2 rounded-full bg-orange-500" />
-            <span>Burst ≥ {Math.round(burstThreshold * 100)}%</span>
+            <span>Density ≥ {Math.round(burstThreshold * 100)}%</span>
           </div>
         ) : (
           <div className="mt-2">
