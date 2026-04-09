@@ -109,9 +109,9 @@ export const applyRangeToStoresContract = ({
   setBrushRange(nextRange);
   setViewport(safeStart, safeEnd);
 
-  const clampedTime = clamp(currentTime, nextRange[0], nextRange[1]);
-  if (clampedTime !== currentTime) {
-    setTime(clampedTime);
+  const clampedCurrentTime = clamp(currentTime, nextRange[0], nextRange[1]);
+  if (clampedCurrentTime !== currentTime) {
+    setTime(clampedCurrentTime);
   }
 };
 
@@ -236,7 +236,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
 
-  // Detail range: override > selectedTimeRange > viewport bounds (first year)
+  // Active window range: override > selectedTimeRange > viewport bounds (first year)
   const detailRangeSec = useMemo<[number, number]>(() => {
     if (detailRangeOverride && Number.isFinite(detailRangeOverride[0]) && Number.isFinite(detailRangeOverride[1])) {
       const start = Math.min(detailRangeOverride[0], detailRangeOverride[1]);

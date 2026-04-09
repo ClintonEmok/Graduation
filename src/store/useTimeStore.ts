@@ -7,6 +7,19 @@ import {
   TIME_STEP_DEFAULT
 } from '@/lib/constants';
 
+const clampToRange = (time: number, range: [number, number]): number => {
+  return Math.max(range[0], Math.min(range[1], time));
+};
+
+const normalizeRange = (range: [number, number]): [number, number] => {
+  const [start, end] = range;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return range;
+  }
+
+  return start <= end ? [start, end] : [end, start];
+};
+
 interface TimeState {
   currentTime: number;
   isPlaying: boolean;
@@ -37,13 +50,13 @@ export const useTimeStore = create<TimeState>((set) => ({
   timeScaleMode: 'linear',
 
   setTime: (time) => set((state) => ({ 
-    currentTime: Math.max(state.timeRange[0], Math.min(state.timeRange[1], time)) 
+    currentTime: clampToRange(time, state.timeRange) 
   })),
   
   stepTime: (direction) => set((state) => {
     const nextTime = state.currentTime + (direction * TIME_STEP_DEFAULT);
     return {
-      currentTime: Math.max(state.timeRange[0], Math.min(state.timeRange[1], nextTime))
+      currentTime: clampToRange(nextTime, state.timeRange)
     };
   }),
 
@@ -51,7 +64,14 @@ export const useTimeStore = create<TimeState>((set) => ({
   
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   
-  setRange: (range) => set({ timeRange: range }),
+  setRange: (range) => set((state) => {
+    const nextRange = normalizeRange(range);
+
+    return {
+      timeRange: nextRange,
+      currentTime: clampToRange(state.currentTime, nextRange),
+    };
+  }),
   
   setSpeed: (speed) => set({ speed }),
   
