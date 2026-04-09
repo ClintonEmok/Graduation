@@ -69,6 +69,7 @@ export default function TimeslicingPage() {
   const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
   const generationError = useTimeslicingModeStore((state) => state.generationError);
+  const lastAppliedAt = useTimeslicingModeStore((state) => state.lastAppliedAt);
   const lastGeneratedMetadata = useTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const generationInputs = useTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useTimeslicingModeStore((state) => state.setGenerationInputs);

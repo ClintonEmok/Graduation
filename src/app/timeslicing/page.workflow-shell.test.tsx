@@ -10,6 +10,7 @@ describe('/timeslicing workflow shell', () => {
     expect(shellSource).toMatch(/Generate/);
     expect(shellSource).toMatch(/Review/);
     expect(shellSource).toMatch(/Apply/);
+    expect(pageSource).toMatch(/TimelineQaContextCard/);
   });
 
   test('keeps dashboard-only chrome out of the workflow route', () => {
