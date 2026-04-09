@@ -64,6 +64,7 @@ export function TimeslicingWorkflowShell({ activeStep, onStepChange, children }:
                   key={step}
                   type="button"
                   onClick={() => onStepChange(step)}
+                  aria-current={isActive ? 'step' : undefined}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${
                     isActive
                       ? 'border-violet-400/70 bg-violet-500/15 text-violet-100'
