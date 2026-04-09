@@ -22,10 +22,15 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/dashboard-demo/DemoMapVisualization.tsx', import.meta.url),
       'utf8'
     );
+    const demoStatsMapOverlaySource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoStatsMapOverlay.tsx', import.meta.url),
+      'utf8'
+    );
     const demoSlicePanelSource = readFileSync(
       new URL('../../components/dashboard-demo/DemoSlicePanel.tsx', import.meta.url),
       'utf8'
     );
+    const mapVisualizationSource = readFileSync(new URL('../../components/map/MapVisualization.tsx', import.meta.url), 'utf8');
     const demoDualTimelineSource = readFileSync(
       new URL('../../components/timeline/DemoDualTimeline.tsx', import.meta.url),
       'utf8'
@@ -42,6 +47,7 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/Show map viewport/);
     expect(shellSource).toMatch(/Show cube viewport/);
     expect(demoMapVisualizationSource).toMatch(/Show STKDE overlay|Hide STKDE overlay/);
+    expect(demoMapVisualizationSource).toMatch(/DemoStatsMapOverlay/);
     expect(demoMapVisualizationSource).toMatch(/stkdeVisibleOverride/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoAnalysisStore/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoFilterStore/);
@@ -67,6 +73,13 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsSource).toMatch(/getDistrictDisplayName/);
     expect(demoStatsSource).toMatch(/Spatial distribution/);
     expect(demoStatsSource).toMatch(/Hourly pulse/);
+    expect(demoStatsMapOverlaySource).toMatch(/heatmap/);
+    expect(demoStatsMapOverlaySource).toMatch(/demo-stats-districts/);
+    expect(demoStatsMapOverlaySource).toMatch(/chicago-police-districts\.geojson/);
+    expect(demoStatsMapOverlaySource).toMatch(/dist_num/);
+    expect(demoStatsMapOverlaySource).toMatch(/dist_label/);
+    expect(demoStatsMapOverlaySource).toMatch(/selectedDistricts/);
+    expect(mapVisualizationSource).toMatch(/statsOverlay/);
     expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
     expect(demoStkdePanelSource).toMatch(/Presets/);
     expect(demoStkdePanelSource).toMatch(/Focus|Balanced|Wide/);

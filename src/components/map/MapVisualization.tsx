@@ -29,6 +29,7 @@ interface MapVisualizationProps {
   stkdeResponse?: StkdeResponse | null;
   stkdeSelectedHotspotId?: string | null;
   stkdeVisibleOverride?: boolean;
+  statsOverlay?: React.ReactNode;
   filterStoreOverride?: unknown;
   coordinationStoreOverride?: unknown;
   adaptiveStoreOverride?: unknown;
@@ -46,6 +47,7 @@ export default function MapVisualization({
   stkdeResponse: demoStkdeResponse = null,
   stkdeSelectedHotspotId,
   stkdeVisibleOverride,
+  statsOverlay,
   filterStoreOverride,
   coordinationStoreOverride,
   adaptiveStoreOverride,
@@ -304,6 +306,7 @@ export default function MapVisualization({
         {visibility.heatmap ? <MapHeatmapOverlay /> : null}
         {visibility.trajectories ? <MapTrajectoryLayer /> : null}
         {visibility.clusters ? <MapClusterHighlights /> : null}
+        {statsOverlay ?? null}
         {isStkdeVisible && stkdeResponse?.heatmap.cells?.length ? (
           <MapStkdeHeatmapLayer
             cells={stkdeResponse.heatmap.cells}

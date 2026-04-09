@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Layers3 } from 'lucide-react';
 import MapVisualization from '@/components/map/MapVisualization';
+import { DemoStatsMapOverlay } from '@/components/dashboard-demo/DemoStatsMapOverlay';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -29,6 +30,7 @@ export function DemoMapVisualization({
         stkdeResponse={stkdeResponse ?? storeStkdeResponse}
         stkdeSelectedHotspotId={stkdeSelectedHotspotId ?? storeSelectedHotspotId}
         stkdeVisibleOverride={showStkde}
+        statsOverlay={<DemoStatsMapOverlay />}
         filterStoreOverride={useDashboardDemoFilterStore}
         coordinationStoreOverride={useDashboardDemoCoordinationStore}
         adaptiveStoreOverride={useDashboardDemoAdaptiveStore}
