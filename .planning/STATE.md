@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 5 complete
-last_updated: "2026-04-09T18:23:20Z"
+stopped_at: Phase 6 timeline polish completed
+last_updated: "2026-04-09T21:21:00Z"
 progress:
-  total_phases: 9
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 9
-  percent: 82
+  total_phases: 11
+  completed_phases: 6
+  total_plans: 13
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -20,22 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 6 — Workflow isolation + dashboard handoff
+**Current focus:** Phase 7 — Contextual data enrichment
 
 ## Current Position
 
 Phase: 6
 Plan: 01
-Status: Phase 5 complete — demo stats + STKDE interaction verified and ready for workflow isolation planning
-Last activity: 2026-04-09 - Completed Phase 5 stats + STKDE interaction execution
+Status: Phase 6 complete — demo timeline polish executed
+Last activity: 2026-04-09 - Completed Phase 6 demo timeline polish
 
-Progress: [█████████░] 82%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: ~4 min
 - Total execution time: 0.6 hours
 
@@ -48,10 +48,12 @@ Progress: [█████████░] 82%
 | 3 | 1 | 1 | 24 min |
 | 4 | 1 | 1 | 1 min |
 | 5 | 3 | 3 | - |
-| 6 | 4 | 0 | - |
-| 7 | 0 | 0 | - |
-| 8 | 0 | 0 | - |
+| 6 | 1 | 1 | 32 min |
+| 7 | 1 | 0 | - |
+| 8 | 4 | 0 | - |
 | 9 | 0 | 0 | - |
+| 10 | 0 | 0 | - |
+| 11 | 0 | 0 | - |
 
 **Recent Trend:**
 
@@ -86,6 +88,9 @@ Progress: [█████████░] 82%
 - Thread selected districts one-way from stats into STKDE while keeping hotspot interaction local to the STKDE rail.
 - Keep hotspot/place labels in district-first language and preserve lightweight recovery states inside the demo rail.
 - Lock the Phase 5 contract with source-inspection and API regression tests.
+- Use a two-track demo timeline with a stronger focused/adapted top track, a subtle raw baseline, and curved warp connectors when readable.
+- Keep the slice companion secondary by compressing its copy and badges instead of expanding the shell.
+- Lock the demo shell contract with source-inspection tests so stable `/dashboard` and `/timeslicing` routes stay isolated.
 
 ### Pending Todos
 
@@ -93,7 +98,9 @@ Progress: [█████████░] 82%
 - Phase 3 demo timeline rewrite is complete.
 - Phase 4 demo stats + STKDE wiring is complete.
 - Phase 5 demo stats + STKDE interaction is complete.
-- Phase 6 workflow isolation plan follows next.
+- Phase 6 demo timeline polish is complete.
+- Phase 7 contextual data enrichment plan is drafted.
+- Phase 8 workflow isolation plan follows after the two inserted phases.
 
 ### Blockers/Concerns
 
@@ -102,6 +109,6 @@ Progress: [█████████░] 82%
 
 ## Session Continuity
 
-Last session: 2026-04-09T18:23:20Z
-Stopped at: Phase 5 complete
-Resume file: .planning/phases/05-stats-stkde-interaction/05-CONTEXT.md
+Last session: 2026-04-09T21:21:00Z
+Stopped at: Completed Phase 6 demo timeline polish
+Resume file: .planning/phases/07-contextual-data-enrichment/07-CONTEXT.md
