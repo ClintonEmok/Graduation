@@ -65,20 +65,28 @@ export function DemoDualTimeline({
   );
 
   return (
-    <DualTimeline
-      {...props}
-      disableAutoBurstSlices={disableAutoBurstSlices}
-      tickLabelStrategy={tickLabelStrategy}
-      timeStoreOverride={timeStore}
-      filterStoreOverride={filterStore}
-      coordinationStoreOverride={coordinationStore}
-      timeslicingModeStoreOverride={timeslicingModeStore}
-      sliceDomainStoreOverride={useDashboardDemoSliceStore}
-      warpOverlayBandsOverride={warpOverlayBands}
-      timeScaleModeOverride={timeScaleMode}
-      warpFactorOverride={warpFactor}
-      adaptiveWarpMapOverride={authoredWarpMap}
-      adaptiveWarpDomainOverride={warpDomain}
-    />
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span>Focused / adapted track</span>
+        <span>Raw baseline underneath</span>
+      </div>
+      <DualTimeline
+        {...props}
+        disableAutoBurstSlices={disableAutoBurstSlices}
+        tickLabelStrategy={tickLabelStrategy}
+        timeStoreOverride={timeStore}
+        filterStoreOverride={filterStore}
+        coordinationStoreOverride={coordinationStore}
+        timeslicingModeStoreOverride={timeslicingModeStore}
+        sliceDomainStoreOverride={useDashboardDemoSliceStore}
+        warpOverlayBandsOverride={warpOverlayBands}
+        timeScaleModeOverride={timeScaleMode}
+        warpFactorOverride={warpFactor}
+        adaptiveWarpMapOverride={authoredWarpMap}
+        adaptiveWarpDomainOverride={warpDomain}
+        showWarpConnectors
+        warpConnectorStyle="curved"
+      />
+    </div>
   );
 }

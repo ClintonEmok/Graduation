@@ -78,15 +78,18 @@ export function DemoTimelinePanel() {
     <div className="w-full h-full bg-background border-t p-4 flex flex-col gap-4">
       <div className="w-full flex flex-col gap-4">
         <div className="rounded-md border bg-muted/10 px-3 py-2">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground pb-2">
-            <span>Demo timeline • Detail view</span>
-            <span>Brush overview to resize the window • click detail to inspect a moment</span>
+          <div className="space-y-1 pb-2 text-[10px] text-muted-foreground">
+            <div className="flex items-center justify-between gap-3">
+              <span>Demo timeline</span>
+              <span>Focused track above • raw baseline below</span>
+            </div>
+            <p className="max-w-3xl">Brush the top track to resize the window, then inspect the baseline and slice edits below.</p>
           </div>
           <DemoDualTimeline />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2 min-w-[120px]">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 min-w-[120px] shrink-0">
             <Settings2 className="w-4 h-4" />
             <span>Temporal Resolution</span>
           </div>
@@ -101,11 +104,11 @@ export function DemoTimelinePanel() {
           </div>
           <div className="w-12 text-right font-mono">{timeResolution}</div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background px-1.5 py-1">
             <button
               type="button"
               onClick={handleStep.bind(null, -1)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
               title="Step backward"
             >
               <ChevronRight className="h-4 w-4 rotate-180" />
@@ -113,7 +116,7 @@ export function DemoTimelinePanel() {
             <button
               type="button"
               onClick={handleTogglePlay}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
@@ -121,7 +124,7 @@ export function DemoTimelinePanel() {
             <button
               type="button"
               onClick={handleStep.bind(null, 1)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
               title="Step forward"
             >
               <ChevronRight className="h-4 w-4" />

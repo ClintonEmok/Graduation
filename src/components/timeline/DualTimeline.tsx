@@ -163,6 +163,8 @@ interface DualTimelineProps {
   detailBinCount?: number;
   disableAutoBurstSlices?: boolean;
   tickLabelStrategy?: TickLabelStrategy;
+  showWarpConnectors?: boolean;
+  warpConnectorStyle?: 'straight' | 'curved';
 }
 
 export const DualTimeline: React.FC<DualTimelineProps> = ({
@@ -186,6 +188,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   detailBinCount = 60,
   disableAutoBurstSlices = false,
   tickLabelStrategy = 'legacy',
+  showWarpConnectors = false,
+  warpConnectorStyle = 'curved',
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
@@ -675,6 +679,37 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     [domainEnd, domainStart, warpOverlayBandsOverride, warpSlices]
   );
 
+  const warpConnectors = useMemo(() => {
+    if (!showWarpConnectors || !userWarpOverlayBands.length || width <= 0) {
+      return [];
+    }
+
+    const connectorHeight = 44;
+
+    return userWarpOverlayBands.map((band, index) => {
+      const startX = overviewScale(new Date(((band.startSec + band.endSec) / 2) * 1000));
+      const endX = detailScale(new Date(((band.startSec + band.endSec) / 2) * 1000));
+
+      if (!Number.isFinite(startX) || !Number.isFinite(endX)) {
+        return null;
+      }
+
+      const bend = warpConnectorStyle === 'curved' ? Math.max(12, Math.min(28, Math.abs(endX - startX) * 0.35 + 12)) : 0;
+      const topY = 2;
+      const bottomY = connectorHeight - 2;
+      const controlOffset = index % 2 === 0 ? bend : -bend;
+
+      return {
+        id: band.id,
+        path:
+          warpConnectorStyle === 'curved'
+            ? `M ${startX} ${topY} C ${startX + controlOffset} ${connectorHeight * 0.25}, ${endX - controlOffset} ${connectorHeight * 0.75}, ${endX} ${bottomY}`
+            : `M ${startX} ${topY} L ${endX} ${bottomY}`,
+        stroke: band.isDebugPreview ? 'rgba(34, 211, 238, 0.65)' : 'rgba(129, 140, 248, 0.5)',
+      };
+    }).filter((connector): connector is { id: string; path: string; stroke: string } => connector !== null);
+  }, [detailScale, showWarpConnectors, userWarpOverlayBands, overviewScale, warpConnectorStyle, width]);
+
   const sliceOverlapCounts = getSliceOverlapCounts();
 
   const sliceGeometries = useMemo<TimelineSliceGeometry[]>(() => {
@@ -983,6 +1018,42 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             </g>
           </g>
         </svg>
+
+        {warpConnectors.length > 0 ? (
+          <div className="pointer-events-none relative h-11">
+            <svg width={width} height={44} className="absolute inset-0 overflow-visible" aria-hidden="true">
+              <defs>
+                <linearGradient id="warpConnectorGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(129, 140, 248, 0.12)" />
+                  <stop offset="100%" stopColor="rgba(125, 211, 252, 0.08)" />
+                </linearGradient>
+              </defs>
+              {warpConnectors.map((connector) => (
+                <path
+                  key={connector.id}
+                  d={connector.path}
+                  fill="none"
+                  stroke="url(#warpConnectorGlow)"
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  opacity={0.65}
+                />
+              ))}
+              {warpConnectors.map((connector) => (
+                <path
+                  key={`${connector.id}-line`}
+                  d={connector.path}
+                  fill="none"
+                  stroke={connector.stroke}
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeDasharray="3 4"
+                  opacity={0.95}
+                />
+              ))}
+            </svg>
+          </div>
+        ) : null}
 
         <div className="relative">
           <div
