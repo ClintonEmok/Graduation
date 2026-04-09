@@ -13,8 +13,6 @@ type DemoViewport = 'map' | 'cube';
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
   const lastAppliedAt = useTimeslicingModeStore((state) => state.lastAppliedAt);
-  const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
-  const lastGeneratedMetadata = useTimeslicingModeStore((state) => state.lastGeneratedMetadata);
 
   return (
     <main
@@ -24,30 +22,28 @@ export function DashboardDemoShell() {
     >
       <div className="flex h-full min-w-0 flex-col pr-80">
         <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
-          <div className="absolute left-4 top-4 z-10 rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-[11px] text-slate-200 backdrop-blur">
-            Map-first shared viewport
-          </div>
-
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/80 p-1 text-[11px] backdrop-blur">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/80 p-1 backdrop-blur">
             <button
               type="button"
               onClick={() => setActiveViewport('map')}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition-colors ${
+              aria-label="Show map viewport"
+              title="Show map viewport"
+              className={`inline-flex items-center justify-center rounded-full p-2 transition-colors ${
                 activeViewport === 'map' ? 'bg-sky-500/20 text-sky-100' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <Map className="size-3.5" />
-              2D map
             </button>
             <button
               type="button"
               onClick={() => setActiveViewport('cube')}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition-colors ${
+              aria-label="Show cube viewport"
+              title="Show cube viewport"
+              className={`inline-flex items-center justify-center rounded-full p-2 transition-colors ${
                 activeViewport === 'cube' ? 'bg-violet-500/20 text-violet-100' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <SquareStack className="size-3.5" />
-              3D cube
             </button>
           </div>
 
@@ -58,17 +54,9 @@ export function DashboardDemoShell() {
                 ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}`
                 : 'Ready for applied state handoff'}
             </span>
-            <span className="text-slate-500">•</span>
-            <span>{generationStatus === 'applied' ? 'Applied slices active' : 'Post-apply analysis ready'}</span>
-            {lastGeneratedMetadata ? (
-              <>
-                <span className="text-slate-500">•</span>
-                <span>{lastGeneratedMetadata.binCount} draft bins last generated</span>
-              </>
-            ) : null}
           </div>
 
-          <div className="h-full w-full">{activeViewport === 'map' ? <MapVisualization /> : <CubeVisualization />}</div>
+          <div className="h-full w-full transition-opacity duration-200 ease-out">{activeViewport === 'map' ? <MapVisualization /> : <CubeVisualization />}</div>
         </section>
 
         <div className="shrink-0 border-t border-slate-800">
