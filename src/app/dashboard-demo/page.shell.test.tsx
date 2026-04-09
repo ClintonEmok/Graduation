@@ -112,21 +112,25 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/disableAutoBurstSlices/);
     expect(demoDualTimelineSource).toMatch(/adaptiveWarpMapOverride/);
     expect(demoDualTimelineSource).toMatch(/adaptiveWarpDomainOverride/);
-    expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle="curved"|warpOverlayBandsOverride/);
+    expect(demoDualTimelineSource).toMatch(/warpOverlayBandsOverride/);
+    expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle="curved"/);
   });
 
   test('keeps the stable dashboard route on Phase 1 composition', () => {
     const dashboardPageSource = readFileSync(new URL('../dashboard/page.tsx', import.meta.url), 'utf8');
     const statsRouteSource = readFileSync(new URL('../stats/lib/StatsRouteShell.tsx', import.meta.url), 'utf8');
     const stkdeRouteSource = readFileSync(new URL('../stkde/lib/StkdeRouteShell.tsx', import.meta.url), 'utf8');
+    const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
 
     expect(dashboardPageSource).toMatch(/DashboardLayout/);
     expect(dashboardPageSource).toMatch(/MapVisualization/);
     expect(dashboardPageSource).toMatch(/CubeVisualization/);
     expect(dashboardPageSource).toMatch(/TimelinePanel/);
     expect(dashboardPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|Map-first shared viewport|WorkflowSkeleton/);
+    expect(dashboardPageSource).not.toMatch(/useDashboardDemoWarpStore|buildDemoSliceAuthoredWarpMap/);
     expect(statsRouteSource).not.toMatch(/useDashboardDemoAnalysisStore/);
     expect(stkdeRouteSource).not.toMatch(/useDashboardDemoAnalysisStore/);
+    expect(timeslicingPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|useDashboardDemoWarpStore|buildDemoSliceAuthoredWarpMap/);
   });
 
   test('keeps applied-state text inside the STKDE panel instead of the viewport shell', () => {
