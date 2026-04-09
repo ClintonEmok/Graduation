@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Clock3, Layers3, TriangleAlert } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -15,6 +15,7 @@ import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
 import { TimeslicingWorkflowShell, type TimeslicingWorkflowStep } from './components/TimeslicingWorkflowShell';
+import { deriveWorkflowStep, shouldAutoAdvanceToReview } from './workflow-step';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildTimelineQaModel } from '@/components/timeline/qa/timeline-qa-model';
@@ -304,23 +305,34 @@ export default function TimeslicingPage() {
     [domainEndSec, domainStartSec, fetchedDomainLabel, rangeEnd, rangeStart, selectedTimeRange],
   );
 
-  const derivedStep = useMemo<TimeslicingWorkflowStep>(() => {
-    if (pendingGeneratedBins.length > 0) {
-      return 'review';
-    }
-
-    if (generationStatus === 'applied' || lastAppliedAt !== null) {
-      return 'apply';
-    }
-
-    if (generationStatus === 'generating') {
-      return 'generate';
-    }
-
-    return 'generate';
-  }, [generationStatus, lastAppliedAt, pendingGeneratedBins.length]);
+  const derivedStep = useMemo<TimeslicingWorkflowStep>(
+    () =>
+      deriveWorkflowStep({
+        pendingGeneratedBinsCount: pendingGeneratedBins.length,
+        generationStatus,
+        lastAppliedAt,
+      }),
+    [generationStatus, lastAppliedAt, pendingGeneratedBins.length]
+  );
 
   const [activeStep, setActiveStep] = useState<TimeslicingWorkflowStep>(() => derivedStep);
+  const lastAutoAdvancedGeneratedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const generatedAt = lastGeneratedMetadata?.generatedAt ?? null;
+    if (
+      shouldAutoAdvanceToReview({
+        activeStep,
+        pendingGeneratedBinsCount: pendingGeneratedBins.length,
+        generationStatus,
+        generatedAt,
+        lastAutoAdvancedGeneratedAt: lastAutoAdvancedGeneratedAtRef.current,
+      })
+    ) {
+      setActiveStep('review');
+      lastAutoAdvancedGeneratedAtRef.current = generatedAt;
+    }
+  }, [activeStep, generationStatus, lastGeneratedMetadata?.generatedAt, pendingGeneratedBins.length]);
 
   useEffect(() => {
     if (derivedStep !== 'generate') {
