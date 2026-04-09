@@ -44,7 +44,7 @@ describe('/api/stkde/hotspots POST', () => {
 
     const payload = {
       domain: { startEpochSec: 1_700_000_000, endEpochSec: 1_700_086_400 },
-      filters: {},
+      filters: { districts: ['001', '006'] },
       params: {
         spatialBandwidthMeters: 50,
         temporalBandwidthHours: 500,
@@ -90,6 +90,7 @@ describe('/api/stkde/hotspots POST', () => {
       1_700_086_400,
       expect.objectContaining({
         limit: 50000,
+        districts: ['001', '006'],
       }),
     );
     expect(buildFullPopulationStkdeInputsMock).not.toHaveBeenCalled();
@@ -131,7 +132,7 @@ describe('/api/stkde/hotspots POST', () => {
         computeMode: 'full-population',
         callerIntent: 'stkde',
         domain: { startEpochSec: 1_700_000_000, endEpochSec: 1_700_086_400 },
-        filters: {},
+        filters: { districts: ['001', '006'] },
         params: {
           spatialBandwidthMeters: 750,
           temporalBandwidthHours: 24,
@@ -155,6 +156,11 @@ describe('/api/stkde/hotspots POST', () => {
     expect(body.meta.fullPopulationStats).toEqual({ scannedRows: 8, aggregatedCells: 2, queryMs: 15 });
     expect(queryCrimesInRangeMock).not.toHaveBeenCalled();
     expect(buildFullPopulationStkdeInputsMock).toHaveBeenCalledTimes(1);
+    expect(buildFullPopulationStkdeInputsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: expect.objectContaining({ districts: ['001', '006'] }),
+      }),
+    );
   });
 
   it('falls back to sampled mode when full-population span exceeds guardrail', async () => {

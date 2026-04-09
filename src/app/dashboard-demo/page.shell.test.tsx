@@ -64,12 +64,17 @@ describe('/dashboard-demo shell', () => {
     expect(demoStkdeHookSource).toMatch(/buildStkdeViewModel/);
     expect(demoStkdeHookSource).toMatch(/DEFAULT_STKDE_BBOX/);
     expect(demoStatsSource).toMatch(/Stats Summary/);
+    expect(demoStatsSource).toMatch(/getDistrictDisplayName/);
+    expect(demoStatsSource).toMatch(/Spatial distribution/);
     expect(demoStatsSource).toMatch(/Hourly pulse/);
     expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
     expect(demoStkdePanelSource).toMatch(/Presets/);
     expect(demoStkdePanelSource).toMatch(/Focus|Balanced|Wide/);
     expect(demoStkdePanelSource).toMatch(/Parameters are preset-only in the demo rail/);
-    expect(demoStkdePanelSource).not.toMatch(/Spatial BW|Temporal BW|Grid cell|Top K|Min support|Time window|type="number"/);
+    expect(demoStkdePanelSource).toMatch(/District hotspots/);
+    expect(demoStkdePanelSource).toMatch(/District context/);
+    expect(demoStkdePanelSource).toMatch(/No hotspots found for the current district context/);
+    expect(demoStkdePanelSource).not.toMatch(/Spatial BW|Temporal BW|Grid cell|Top K|Min support|Time window|type="number"|Intensity/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoTimeStore/);
