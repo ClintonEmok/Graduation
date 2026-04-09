@@ -37,6 +37,14 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **UXF-03**: User can keep contextual status awareness (applied state, generation status, draft metadata) without obscuring primary analysis controls.
 - [ ] **UXF-04**: User can navigate the desktop-first layout (main viewport, timeline rail, fixed STKDE rail) without visual clutter or competing focal points.
 
+### Workflow Skeleton Under Demo
+
+- [ ] **WFUI-01**: User can see the workflow framed as a multistep form-style scaffold inside `/dashboard-demo`.
+- [ ] **WFUI-02**: User can understand generate/review/apply as distinct steps from the skeleton alone, even before technical wiring exists.
+- [ ] **WFUI-03**: User can recognize that the workflow skeleton is nested under the demo rather than exposed as a separate route.
+- [ ] **WFUI-04**: User can open the workflow skeleton from a left-anchored toggle drawer without it competing with the fixed right STKDE rail.
+- [ ] **WFUI-05**: User can start in an `Explore` step and move into a continuous slice-building and review flow before dashboard handoff.
+
 ### Trace and Compare
 
 - [ ] **T2**: User can follow the temporal evolution of selected incidents/records and aggregated clusters over time to understand movement paths and duration.
@@ -116,6 +124,11 @@ Explicitly excluded. Documented to prevent scope creep.
 | UXF-02 | Phase 2 | Planned |
 | UXF-03 | Phase 2 | Planned |
 | UXF-04 | Phase 2 | Planned |
+| WFUI-01 | Phase 2 | Planned |
+| WFUI-02 | Phase 2 | Planned |
+| WFUI-03 | Phase 2 | Planned |
+| WFUI-04 | Phase 2 | Planned |
+| WFUI-05 | Phase 2 | Planned |
 | T2 | Phase 4 | Planned |
 | T3 | Phase 4 | Planned |
 | VIEW-02 | Phase 4 | Planned |

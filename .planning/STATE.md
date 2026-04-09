@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 2 (dashboard-demo UI/UX hardening) inserted and queued
-last_updated: "2026-04-09T11:15:00Z"
+stopped_at: Phase 2 dashboard demo UI/UX hardening complete
+last_updated: "2026-04-09T10:16:43Z"
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 17
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 33
 ---
 
 # Project State
@@ -20,31 +20,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 2 — Dashboard demo UI/UX hardening
+**Current focus:** Phase 3 — Workflow isolation + dashboard handoff
 
 ## Current Position
 
 Phase: 2
-Plan: Not started
-Status: Ready to plan — UX hardening phase inserted before technical workflow integration
-Last activity: 2026-04-09 - Inserted Phase 2 UI/UX hardening before technical workflow phase
+Plan: 05
+Status: Complete — dashboard demo shell and nested workflow drawer shipped
+Last activity: 2026-04-09 - Completed Phase 2 dashboard demo UI/UX hardening
 
-Progress: [█░░░░░] 17%
+Progress: [██░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
-- Average duration: -
-- Total execution time: 0.0 hours
+- Total plans completed: 4
+- Average duration: ~4 min
+- Total execution time: 0.1 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 3 | 3 | - |
-| 2 | 0 | 0 | - |
+| 2 | 1 | 1 | 4 min |
 | 3 | 0 | 0 | - |
 | 4 | 0 | 0 | - |
 | 5 | 0 | 0 | - |
@@ -52,7 +52,7 @@ Progress: [█░░░░░] 17%
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01, 01-02, 01-03
+- Last 5 plans: 01-01, 01-02, 01-03, 02-05
 - Trend: Stable
 
 ## Accumulated Context
@@ -73,10 +73,13 @@ Progress: [█░░░░░] 17%
 - Make apply-preview timeline-only, editable in place, and warning-visible.
 - Make the post-apply dashboard map-first with one shared viewport that swaps between 2D and 3D, plus a fixed STKDE rail.
 - Insert a dedicated dashboard-demo UI/UX hardening phase before technical workflow wiring.
+- Keep `/dashboard-demo` low-density and map-first with an embedded Explore / Build / Review workflow drawer.
+- Protect the stable `/dashboard` and `/timeslicing` shells with source-inspection regression tests.
 
 ### Pending Todos
 
-- Phase 2 (UI/UX hardening) is ready to plan.
+- Phase 2 workflow skeleton plan is drafted and ready for execution.
+- Phase 3 workflow isolation plan is ready to execute next.
 
 ### Blockers/Concerns
 
@@ -85,6 +88,6 @@ Progress: [█░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-04-09T11:15:00Z
-Stopped at: Phase 2 (dashboard-demo UI/UX hardening) inserted and queued
-Resume file: .planning/phases/02-workflow-isolation-dashboard-handoff/02-CONTEXT.md
+Last session: 2026-04-09T10:16:43Z
+Stopped at: Completed Phase 2 dashboard demo UI/UX hardening
+Resume file: .planning/phases/03-workflow-isolation/03-01-PLAN.md

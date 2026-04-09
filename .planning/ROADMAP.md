@@ -2,12 +2,12 @@
 
 ## Overview
 
-This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. A dedicated UX-first phase now comes before workflow integration so visual flow decisions are stabilized before technical wiring.
+This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. A dedicated UX-first phase now comes before workflow integration so visual flow decisions are stabilized before technical wiring.
 
 ## Phases
 
 - [x] **Phase 1: Overview + pattern summaries** — reveal broad clusters and recurring patterns in the 2D density view. (completed 2026-04-09)
-- [ ] **Phase 2: Dashboard demo UX hardening** — finalize UI flow and interaction semantics on `/dashboard-demo` without technical workflow coupling.
+- [ ] **Phase 2: Dashboard demo UX hardening** — finalize UI flow and interaction semantics on `/dashboard-demo`, including a workflow skeleton that behaves like a multistep form without technical workflow coupling.
 - [ ] **Phase 3: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after UX is stabilized.
 - [ ] **Phase 4: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
 - [ ] **Phase 5: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
@@ -31,27 +31,32 @@ Plans:
   4. User can narrow or expand the active temporal window with a timeline slider.
 
 ### Phase 2: Dashboard demo UX hardening
-**Goal**: Use `/dashboard-demo` as a UX laboratory to validate and refine the end-to-end visual flow before technical workflow wiring begins.
+**Goal**: Use `/dashboard-demo` as a UX laboratory to validate and refine the end-to-end visual flow, including an `Explore`-first workflow skeleton with continuous slice-building and review, before technical workflow wiring begins.
 **Depends on**: Phase 1
-**Requirements**: DEMO-01, DEMO-02, DEMO-03, DEMO-04, DEMO-05, DEMO-06, UXF-01, UXF-02, UXF-03, UXF-04
-**Plans:** 4
+**Requirements**: DEMO-01, DEMO-02, DEMO-03, DEMO-04, DEMO-05, DEMO-06, UXF-01, UXF-02, UXF-03, UXF-04, WFUI-01, WFUI-02, WFUI-03, WFUI-04, WFUI-05
+**Plans:** 1
 Plans:
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-01-PLAN.md` — retained as historical context only (superseded).
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-02-PLAN.md` — retained as historical context only (superseded).
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-03-PLAN.md` — retained as historical context only (superseded).
-- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-04-PLAN.md` — repurposed to verify the `/dashboard-demo` UX shell pivot.
+- `.planning/phases/02-dashboard-demo-ui-ux/02-05-PLAN.md` — cohesive `/dashboard-demo` shell, route regression, and nested workflow scaffold.
 **Success Criteria** (what must be TRUE):
   1. Existing `/dashboard` remains stable with Phase 1 behavior intact.
   2. Existing `/timeslicing` remains stable (no workflow-shell regressions carried forward).
   3. `/dashboard-demo` renders a coherent UI flow (map-first viewport, fixed right rail, timeline continuity).
-  4. `/dashboard-demo` interaction language is consistent and production-oriented (labels, affordances, visual hierarchy).
-  5. `/dashboard-demo` swap and rail behavior is intuitive on desktop-first constraints.
-  6. `/dashboard-demo` reuses core primitives/stores without introducing a second frontend architecture.
+  4. `/dashboard-demo` includes a workflow skeleton presented as an `Explore`-first multistep-form-style surface under the demo shell.
+  5. `/dashboard-demo` lets slice-building and review feel continuous rather than split into disconnected mini-pages.
+  6. `/dashboard-demo` interaction language is consistent and production-oriented (labels, affordances, visual hierarchy).
+  7. `/dashboard-demo` swap and rail behavior is intuitive on desktop-first constraints.
+  8. `/dashboard-demo` reuses core primitives/stores without introducing a second frontend architecture.
 
 ### Phase 3: Workflow isolation + dashboard handoff (technical)
-**Goal**: Implement technical workflow wiring after Phase 2 UX is validated, so generate/review/apply behavior is robust and testable.
+**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after Phase 2 UX is validated, so the workflow stays separate from dashboard analysis until Apply.
 **Depends on**: Phase 2
 **Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
+**Plans:** 4
+Plans:
+- `.planning/phases/03-workflow-isolation/03-01-PLAN.md` — isolate the workflow into a dedicated shell.
+- `.planning/phases/03-workflow-isolation/03-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
+- `.planning/phases/03-workflow-isolation/03-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
+- `.planning/phases/03-workflow-isolation/03-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
 **Success Criteria** (what must be TRUE):
   1. User can open generate slices as a dedicated full-screen step separate from dashboard analysis.
   2. User can review and edit draft bins with warnings visible before apply.
