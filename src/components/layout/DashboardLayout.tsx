@@ -34,7 +34,12 @@ export default function DashboardLayout({
   return (
     <div className={`relative h-full w-full overflow-hidden bg-black text-white ${className}`} aria-label="Phase 2 map-first dashboard shell" data-phase="workflow-isolation-dashboard-handoff">
       <div className="flex h-full min-w-0 flex-col pr-80">
-        <div className="min-h-0 flex-1 overflow-hidden">{mainViewport}</div>
+        <div
+          className="min-h-0 flex-1 overflow-hidden"
+          aria-label="dashboard shared viewport swap target"
+        >
+          {mainViewport}
+        </div>
         {bottomRail ? <div className="shrink-0 border-t border-slate-800">{bottomRail}</div> : null}
       </div>
 
