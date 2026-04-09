@@ -10,7 +10,11 @@ import { TopBar } from '@/components/layout/TopBar';
 
 export default function DashboardPage() {
   return (
-    <main className="h-screen w-screen overflow-hidden bg-black text-white relative flex flex-col">
+    <main
+      className="relative flex h-screen w-screen flex-col overflow-hidden bg-black text-white"
+      aria-label="Phase 1 overview and pattern summaries dashboard"
+      data-phase="overview-pattern-summaries"
+    >
       <Suspense fallback={null}>
         <DashboardHeader />
       </Suspense>
