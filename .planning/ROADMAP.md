@@ -20,8 +20,8 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 **Plans**: 3
 Plans:
 - `.planning/phases/01-overview-pattern-summaries/01-PLAN.md` — Done: reframe the dashboard shell and status rail around overview-first semantics.
-- `.planning/phases/01-overview-pattern-summaries/02-PLAN.md` — Make the 2D density surface readable for clusters and recurring patterns.
-- `.planning/phases/01-overview-pattern-summaries/03-PLAN.md` — Make the timeline slider the primary temporal control.
+- `.planning/phases/01-overview-pattern-summaries/02-PLAN.md` — Done: make the 2D density surface readable for clusters and recurring patterns.
+- `.planning/phases/01-overview-pattern-summaries/03-PLAN.md` — Done: make the timeline slider the primary temporal control.
 **Success Criteria** (what must be TRUE):
   1. User can perceive global trends, high-activity intervals, and spatial clusters.
   2. User can generalize from detailed observations to recurring behaviors or periodic patterns.
@@ -71,7 +71,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Requirements | Status | Completed |
 |-------|--------------|--------|-----------|
-| 1. Overview + pattern summaries | 4 | In Progress | 2/3 |
+| 1. Overview + pattern summaries | 4 | Complete | 2026-04-09 |
 | 2. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 3. Detect events + decode bursts | 6 | Not started | - |
 | 4. Support overlays + hardening | 10 | Not started | - |
