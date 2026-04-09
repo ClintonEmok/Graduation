@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildStkdeViewModel, type StkdeHotspotRowModel } from '@/app/stkde/lib/stkde-view-model';
 import { DEFAULT_STKDE_BBOX, type StkdeQueryState } from '@/app/stkde/lib/stkde-query-state';
 import type { StkdeResponse } from '@/lib/stkde/contracts';
+import { padDistrict } from '@/lib/stats/aggregation';
+import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
 import type { StkdeParams } from '@/store/useStkdeStore';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 
@@ -40,6 +42,14 @@ export function useDemoStkde(): DemoStkdeResult {
   const stkdeScopeMode = useDashboardDemoAnalysisStore((state) => state.stkdeScopeMode);
   const stkdeParams = useDashboardDemoAnalysisStore((state) => state.stkdeParams);
   const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+  const selectedDistrictLabels = useMemo(
+    () => (selectedDistricts.length > 0 ? selectedDistricts.map((district) => getDistrictDisplayName(district)) : ['all districts']),
+    [selectedDistricts]
+  );
+  const paddedDistricts = useMemo(
+    () => (selectedDistricts.length > 0 ? selectedDistricts.map(padDistrict) : undefined),
+    [selectedDistricts]
+  );
   const setSelectedHotspot = useDashboardDemoAnalysisStore((state) => state.setSelectedHotspot);
   const setHoveredHotspot = useDashboardDemoAnalysisStore((state) => state.setHoveredHotspot);
   const setStkdeParams = useDashboardDemoAnalysisStore((state) => state.setStkdeParams);
@@ -90,6 +100,7 @@ export function useDemoStkde(): DemoStkdeResult {
             },
             filters: {
               bbox: DEFAULT_STKDE_BBOX,
+              ...(paddedDistricts ? { districts: paddedDistricts } : {}),
             },
             params: {
               spatialBandwidthMeters: queryState.spatialBandwidthMeters,
@@ -138,7 +149,7 @@ export function useDemoStkde(): DemoStkdeResult {
     })();
 
     return () => controller.abort();
-  }, [queryState, refreshTick, selectedDistricts.length]);
+  }, [paddedDistricts, queryState, refreshTick, selectedDistricts.length]);
 
   useEffect(() => {
     return () => {
@@ -167,7 +178,7 @@ export function useDemoStkde(): DemoStkdeResult {
 
   return {
     rows: viewModel.rows,
-    summaryLabel: `${viewModel.summaryLabel} • ${selectedDistricts.length || 'all'} districts`,
+    summaryLabel: `${viewModel.summaryLabel} • ${selectedDistrictLabels.join(', ')}`,
     heatmapCellCount: viewModel.heatmapCellCount,
     response,
     isLoading,

@@ -70,6 +70,12 @@ const appendCrimeFilters = (request: StkdeRequest, params: unknown[]) => {
     params.push(...request.filters.crimeTypes);
   }
 
+  if (request.filters.districts?.length) {
+    const placeholders = request.filters.districts.map(() => '?').join(', ');
+    filters.push(`"District" IN (${placeholders})`);
+    params.push(...request.filters.districts);
+  }
+
   const bbox = request.filters.bbox;
   if (bbox) {
     filters.push('"Longitude" >= ? AND "Longitude" <= ?');

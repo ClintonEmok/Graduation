@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { HotspotPanel } from '@/app/stkde/lib/HotspotPanel';
 import { useDemoStkde } from '@/components/dashboard-demo/lib/useDemoStkde';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
 
 const STKDE_SCOPE_LABELS = {
   'applied-slices': 'Applied slices',
@@ -98,6 +98,12 @@ export function DemoStkdePanel() {
   const hoveredHotspotId = useDashboardDemoAnalysisStore((state) => state.hoveredHotspotId);
   const setSpatialFilter = useDashboardDemoAnalysisStore((state) => state.setSpatialFilter);
   const setTemporalFilter = useDashboardDemoAnalysisStore((state) => state.setTemporalFilter);
+  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+
+  const selectedDistrictLabels = useMemo(
+    () => (selectedDistricts.length > 0 ? selectedDistricts.map((district) => getDistrictDisplayName(district)) : ['All districts']),
+    [selectedDistricts]
+  );
 
   const activePreset = useMemo(
     () =>
@@ -123,7 +129,8 @@ export function DemoStkdePanel() {
     <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100">
       <header className="space-y-1">
         <div className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">STKDE Rail</div>
-        <p className="text-[11px] text-slate-400">Primary analysis surface for hotspot investigation inside the demo shell.</p>
+        <p className="text-[11px] text-slate-400">Balanced hotspot surface for the selected district context.</p>
+        <div className="text-[11px] text-slate-500">District context: {selectedDistrictLabels.join(', ')}</div>
       </header>
 
       <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3 text-[11px] text-slate-300">
@@ -191,30 +198,70 @@ export function DemoStkdePanel() {
         <p className="text-slate-500">Parameters are preset-only in the demo rail.</p>
       </div>
 
-      <HotspotPanel
-        rows={rows}
-        selectedHotspotId={selectedHotspotId}
-        hoveredHotspotId={hoveredHotspotId}
-        onSelectHotspot={(row) => {
-          setSelectedHotspot(row.id);
-          const { latDelta, lonDelta } = toRadiusDegrees(row.centroid[1], row.radiusMeters);
-          setSpatialFilter({
-            minLng: row.centroid[0] - lonDelta,
-            maxLng: row.centroid[0] + lonDelta,
-            minLat: row.centroid[1] - latDelta,
-            maxLat: row.centroid[1] + latDelta,
-          });
+      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">District hotspots</h3>
+          <span className="text-[11px] text-slate-500">Top matches</span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="rounded border border-dashed border-slate-700 px-3 py-4 text-xs text-slate-500">
+            No hotspots found for the current district context. Try Refresh or a wider preset.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {rows.map((row, index) => {
+              const selected = row.id === selectedHotspotId;
+              const hovered = row.id === hoveredHotspotId;
 
-          const selectedHotspot = response?.hotspots.find((hotspot) => hotspot.id === row.id);
-          if (selectedHotspot) {
-            setTemporalFilter({
-              startEpochSec: selectedHotspot.peakStartEpochSec,
-              endEpochSec: selectedHotspot.peakEndEpochSec,
-            });
-          }
-        }}
-        onHoverHotspot={setHoveredHotspot}
-      />
+              return (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                      selected
+                        ? 'border-rose-400/80 bg-rose-500/10'
+                        : hovered
+                          ? 'border-slate-500 bg-slate-800/80'
+                          : 'border-slate-700 bg-slate-900/80 hover:border-slate-500'
+                    }`}
+                    onMouseEnter={() => setHoveredHotspot(row.id)}
+                    onMouseLeave={() => setHoveredHotspot(null)}
+                    onFocus={() => setHoveredHotspot(row.id)}
+                    onBlur={() => setHoveredHotspot(null)}
+                    onClick={() => {
+                      setSelectedHotspot(row.id);
+                      const { latDelta, lonDelta } = toRadiusDegrees(row.centroid[1], row.radiusMeters);
+                      setSpatialFilter({
+                        minLng: row.centroid[0] - lonDelta,
+                        maxLng: row.centroid[0] + lonDelta,
+                        minLat: row.centroid[1] - latDelta,
+                        maxLat: row.centroid[1] + latDelta,
+                      });
+
+                      const selectedHotspot = response?.hotspots.find((hotspot) => hotspot.id === row.id);
+                      if (selectedHotspot) {
+                        setTemporalFilter({
+                          startEpochSec: selectedHotspot.peakStartEpochSec,
+                          endEpochSec: selectedHotspot.peakEndEpochSec,
+                        });
+                      }
+                    }}
+                    >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-slate-100">District cluster {index + 1}</span>
+                      <span className="text-[11px] text-slate-500">{row.supportLabel} support</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                      <span>Place context: {selectedDistrictLabels.join(', ')}</span>
+                      <span>Shared hotspot surface</span>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

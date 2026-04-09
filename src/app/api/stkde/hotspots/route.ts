@@ -110,6 +110,7 @@ export async function POST(request: Request) {
         {
           limit: normalizedRequest.limits.maxEvents,
           crimeTypes: normalizedRequest.filters.crimeTypes,
+          districts: normalizedRequest.filters.districts,
         },
       );
 

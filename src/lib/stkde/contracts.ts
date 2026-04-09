@@ -15,6 +15,7 @@ export interface StkdeRequest {
   filters: {
     crimeTypes?: string[];
     bbox?: [number, number, number, number];
+    districts?: string[];
   };
   params: {
     spatialBandwidthMeters: number;
@@ -183,6 +184,10 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
     ? filtersRaw.crimeTypes.map((entry) => String(entry).trim()).filter(Boolean)
     : undefined;
 
+  const districts = Array.isArray(filtersRaw.districts)
+    ? filtersRaw.districts.map((entry) => String(entry).trim()).filter(Boolean)
+    : undefined;
+
   const paramsRaw = (source.params ?? {}) as Record<string, unknown>;
   const limitsRaw = (source.limits ?? {}) as Record<string, unknown>;
   const clampsApplied: string[] = [];
@@ -209,6 +214,7 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
     filters: {
       crimeTypes,
       bbox,
+      districts,
     },
     params: {
       spatialBandwidthMeters: resolveClamped(
