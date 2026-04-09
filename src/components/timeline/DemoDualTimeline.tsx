@@ -10,6 +10,7 @@ import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 
 type DemoDualTimelineProps = React.ComponentProps<typeof DualTimeline>;
 
@@ -41,6 +42,30 @@ export function DemoDualTimeline({
     [slices, warpDomain]
   );
 
+  const warpOverlayBandsOverride = useMemo(
+    () =>
+      slices
+        .filter((slice) => slice.isVisible)
+        .map((slice) => {
+          const [normalizedStart, normalizedEnd] =
+            slice.type === 'range' && slice.range
+              ? [Math.min(slice.range[0], slice.range[1]), Math.max(slice.range[0], slice.range[1])]
+              : [Math.max(0, slice.time - (slice.isBurst ? 2.5 : 1.5)), Math.min(100, slice.time + (slice.isBurst ? 2.5 : 1.5))];
+
+          const startSec = normalizedToEpochSeconds(normalizedStart, warpDomain[0], warpDomain[1]);
+          const endSec = normalizedToEpochSeconds(normalizedEnd, warpDomain[0], warpDomain[1]);
+
+          return {
+            id: slice.id,
+            startSec: Math.min(startSec, endSec),
+            endSec: Math.max(startSec, endSec),
+            isDebugPreview: false,
+          };
+        })
+        .filter((band) => Number.isFinite(band.startSec) && Number.isFinite(band.endSec) && band.endSec > band.startSec),
+    [slices, warpDomain]
+  );
+
   return (
     <DualTimeline
       {...props}
@@ -55,6 +80,7 @@ export function DemoDualTimeline({
       warpFactorOverride={warpFactor}
       adaptiveWarpMapOverride={authoredWarpMap}
       adaptiveWarpDomainOverride={warpDomain}
+      warpOverlayBandsOverride={warpOverlayBandsOverride}
     />
   );
 }
