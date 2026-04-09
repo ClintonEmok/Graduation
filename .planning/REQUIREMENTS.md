@@ -20,7 +20,16 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **DEMO-10**: User can use the stats/STKDE surfaces without the demo becoming a second architecture or a second dashboard app.
 - [ ] **DEMO-11**: User can keep the demo analysis surfaces ready for the workflow isolation phase that follows.
 
-### Workflow Isolation and Dashboard Handoff (Phase 5)
+### Demo Stats Variant and STKDE Interaction (Phase 5)
+
+- [ ] **STAT-01**: User can see district-based stats summaries inside `/dashboard-demo`.
+- [ ] **STAT-02**: User can inspect the spatial distribution / hotspot view as part of the demo stats experience.
+- [ ] **STAT-03**: User can select a district in stats and have STKDE filter accordingly.
+- [ ] **STAT-04**: User can keep stats and STKDE in separate tabs inside the demo rail.
+- [ ] **STAT-05**: User can read hotspot/place labels in plain-language district terms.
+- [ ] **STAT-06**: User can keep STKDE hotspot selection from altering stats summary state.
+
+### Workflow Isolation and Dashboard Handoff (Phase 6)
 
 - [ ] **FLOW-01**: User can open generate slices as a dedicated full-screen step that is separate from the dashboard.
 - [ ] **FLOW-02**: User can review draft bins and warnings in a dedicated full-screen review step.
@@ -129,12 +138,18 @@ Explicitly excluded. Documented to prevent scope creep.
 | DEMO-09 | Phase 4 | Planned |
 | DEMO-10 | Phase 4 | Planned |
 | DEMO-11 | Phase 4 | Planned |
-| FLOW-01 | Phase 5 | Planned |
-| FLOW-02 | Phase 5 | Planned |
-| FLOW-03 | Phase 5 | Planned |
-| FLOW-04 | Phase 5 | Planned |
-| FLOW-05 | Phase 5 | Planned |
-| FLOW-06 | Phase 5 | Planned |
+| STAT-01 | Phase 5 | Planned |
+| STAT-02 | Phase 5 | Planned |
+| STAT-03 | Phase 5 | Planned |
+| STAT-04 | Phase 5 | Planned |
+| STAT-05 | Phase 5 | Planned |
+| STAT-06 | Phase 5 | Planned |
+| FLOW-01 | Phase 6 | Planned |
+| FLOW-02 | Phase 6 | Planned |
+| FLOW-03 | Phase 6 | Planned |
+| FLOW-04 | Phase 6 | Planned |
+| FLOW-05 | Phase 6 | Planned |
+| FLOW-06 | Phase 6 | Planned |
 | DEMO-01 | Phase 2 | Planned |
 | DEMO-02 | Phase 2 | Planned |
 | DEMO-03 | Phase 2 | Planned |
@@ -155,26 +170,26 @@ Explicitly excluded. Documented to prevent scope creep.
 | DTL-03 | Phase 3 | Planned |
 | DTL-04 | Phase 3 | Planned |
 | DTL-05 | Phase 3 | Planned |
-| T2 | Phase 6 | Planned |
-| T3 | Phase 6 | Planned |
-| VIEW-02 | Phase 6 | Planned |
-| VIEW-03 | Phase 6 | Planned |
-| T4 | Phase 7 | Planned |
-| T6 | Phase 7 | Planned |
-| T7 | Phase 7 | Planned |
-| T8 | Phase 7 | Planned |
-| VIEW-05 | Phase 7 | Planned |
-| VIEW-06 | Phase 7 | Planned |
-| TRUST-01 | Phase 8 | Planned |
-| TRUST-02 | Phase 8 | Planned |
-| TRUST-03 | Phase 8 | Planned |
-| TRUST-04 | Phase 8 | Planned |
-| HOTS-01 | Phase 8 | Planned |
-| HOTS-02 | Phase 8 | Planned |
-| SUGG-01 | Phase 8 | Planned |
-| SUGG-02 | Phase 8 | Planned |
-| PERF-01 | Phase 8 | Planned |
-| PERF-02 | Phase 8 | Planned |
+| T2 | Phase 7 | Planned |
+| T3 | Phase 7 | Planned |
+| VIEW-02 | Phase 7 | Planned |
+| VIEW-03 | Phase 7 | Planned |
+| T4 | Phase 8 | Planned |
+| T6 | Phase 8 | Planned |
+| T7 | Phase 8 | Planned |
+| T8 | Phase 8 | Planned |
+| VIEW-05 | Phase 8 | Planned |
+| VIEW-06 | Phase 8 | Planned |
+| TRUST-01 | Phase 9 | Planned |
+| TRUST-02 | Phase 9 | Planned |
+| TRUST-03 | Phase 9 | Planned |
+| TRUST-04 | Phase 9 | Planned |
+| HOTS-01 | Phase 9 | Planned |
+| HOTS-02 | Phase 9 | Planned |
+| SUGG-01 | Phase 9 | Planned |
+| SUGG-02 | Phase 9 | Planned |
+| PERF-01 | Phase 9 | Planned |
+| PERF-02 | Phase 9 | Planned |
 
 ---
 *Requirements defined: 2026-04-09*
