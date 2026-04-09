@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Layers3, Map, SquareStack } from 'lucide-react';
 import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { TimelinePanel } from '@/components/timeline/TimelinePanel';
 import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
 import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
-import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 
 type DemoViewport = 'map' | 'cube';
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
-  const lastAppliedAt = useTimeslicingModeStore((state) => state.lastAppliedAt);
+  const loadRealData = useTimelineDataStore((state) => state.loadRealData);
+
+  useEffect(() => {
+    void loadRealData();
+  }, [loadRealData]);
 
   return (
     <main
@@ -23,7 +27,7 @@ export function DashboardDemoShell() {
     >
       <div className="flex h-full min-w-0 flex-col pr-80">
         <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/80 p-1 backdrop-blur">
+          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/80 p-1 backdrop-blur">
             <button
               type="button"
               onClick={() => setActiveViewport('map')}
@@ -46,15 +50,6 @@ export function DashboardDemoShell() {
             >
               <SquareStack className="size-3.5" />
             </button>
-          </div>
-
-          <div className="absolute bottom-4 left-4 z-10 flex flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-[11px] text-slate-300 backdrop-blur">
-            <Layers3 className="size-3.5 text-emerald-300" />
-            <span>
-              {lastAppliedAt
-                ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}`
-                : 'Ready for applied state handoff'}
-            </span>
           </div>
 
           <div className="h-full w-full transition-opacity duration-200 ease-out">{activeViewport === 'map' ? <MapVisualization /> : <CubeVisualization />}</div>

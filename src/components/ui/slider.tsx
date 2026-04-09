@@ -17,10 +17,12 @@ function Slider({
   const resolvedDefault = Array.isArray(defaultValue)
     ? defaultValue
     : undefined
-  const _values = React.useMemo(
-    () => resolvedValue ?? resolvedDefault ?? [min, max],
-    [resolvedValue, resolvedDefault, min, max]
-  )
+  const _values = React.useMemo(() => {
+    if (resolvedValue && resolvedValue.length > 0) return resolvedValue
+    if (resolvedDefault && resolvedDefault.length > 0) return resolvedDefault
+    return [min]
+  }, [resolvedValue, resolvedDefault, min])
+  const thumbCount = Math.max(1, _values.length)
 
   return (
     <SliderPrimitive.Root
@@ -48,7 +50,7 @@ function Slider({
           )}
         />
       </SliderPrimitive.Track>
-      {Array.from({ length: _values.length }, (_, index) => (
+      {Array.from({ length: thumbCount }, (_, index) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}

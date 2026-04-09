@@ -12,9 +12,11 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/TimelinePanel/);
     expect(shellSource).toMatch(/DashboardStkdePanel/);
+    expect(shellSource).toMatch(/loadRealData/);
+    expect(shellSource).toMatch(/z-40/);
     expect(shellSource).toMatch(/Show map viewport/);
     expect(shellSource).toMatch(/Show cube viewport/);
-    expect(shellSource).not.toMatch(/Map-first shared viewport|2D map|3D cube|generationStatus|lastGeneratedMetadata/);
+    expect(shellSource).not.toMatch(/Map-first shared viewport|2D map|3D cube|generationStatus|lastGeneratedMetadata|Ready for applied state handoff|Applied state carried forward/);
   });
 
   test('keeps the stable dashboard route on Phase 1 composition', () => {
@@ -24,6 +26,13 @@ describe('/dashboard-demo shell', () => {
     expect(dashboardPageSource).toMatch(/MapVisualization/);
     expect(dashboardPageSource).toMatch(/CubeVisualization/);
     expect(dashboardPageSource).not.toMatch(/DashboardDemoShell|Map-first shared viewport|WorkflowSkeleton/);
+  });
+
+  test('keeps applied-state text inside the STKDE panel instead of the viewport shell', () => {
+    const stkdePanelSource = readFileSync(new URL('../../components/stkde/DashboardStkdePanel.tsx', import.meta.url), 'utf8');
+
+    expect(stkdePanelSource).toMatch(/Applied state carried forward|No applied state yet/);
+    expect(stkdePanelSource).not.toMatch(/Ready for applied state handoff/);
   });
 
   test('keeps the timeslicing workflow shell separate from the demo chrome', () => {

@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useDashboardStkde } from '@/app/dashboard-v2/hooks/useDashboardStkde';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { STKDE_PARAM_LIMITS, useStkdeStore } from '@/store/useStkdeStore';
+import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
 
 const formatTimeWindow = (startEpochSec: number, endEpochSec: number) => {
   const start = new Date(startEpochSec * 1000).toLocaleString();
@@ -23,6 +24,7 @@ export function DashboardStkdePanel() {
   const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
   const hoveredHotspotId = useStkdeStore((state) => state.hoveredHotspotId);
   const setHotspotSelection = useStkdeStore((state) => state.setHotspotSelection);
+  const lastAppliedAt = useTimeslicingModeStore((state) => state.lastAppliedAt);
 
   const appliedSliceCount = useSliceDomainStore(
     (state) => state.slices.filter((slice) => slice.source === 'generated-applied' && slice.isVisible).length
@@ -50,6 +52,9 @@ export function DashboardStkdePanel() {
         <div className="inline-flex rounded-full border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">
           {scopeLabel}
         </div>
+        <p className="text-[11px] text-slate-400">
+          {lastAppliedAt ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}` : 'No applied state yet'}
+        </p>
       </header>
 
       <div className="space-y-3">
