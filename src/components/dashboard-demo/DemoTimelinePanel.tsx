@@ -78,12 +78,9 @@ export function DemoTimelinePanel() {
     <div className="w-full h-full bg-background border-t p-4 flex flex-col gap-4">
       <div className="w-full flex flex-col gap-4">
         <div className="rounded-md border bg-muted/10 px-3 py-2">
-          <div className="space-y-1 pb-2 text-[10px] text-muted-foreground">
-            <div className="flex items-center justify-between gap-3">
-              <span>Demo timeline</span>
-              <span>Focused track above • raw baseline below</span>
-            </div>
-            <p className="max-w-3xl">Brush the top track to resize the window, then inspect the baseline and slice edits below.</p>
+          <div className="flex items-center justify-between gap-3 pb-2 text-[10px] text-muted-foreground">
+            <span>Demo timeline</span>
+            <span>Focused track above • raw baseline below</span>
           </div>
           <DemoDualTimeline />
         </div>
