@@ -12,6 +12,8 @@ import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { CameraControls } from '@react-three/drei';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { resolveRouteBinningMode } from '@/lib/adaptive/route-binning-mode';
+import { SpatialConstraintOverlay } from './SpatialConstraintOverlay';
+import { SelectedWarpSliceOverlay } from './SelectedWarpSliceOverlay';
 
 export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
   // Initialize the selection sync conductor - ties all views together

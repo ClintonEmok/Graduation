@@ -21,10 +21,39 @@ export default function CubeVisualization() {
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const constraints = useCubeSpatialConstraintsStore((state) => state.constraints);
+  const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
+  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
+  const warpSource = useAdaptiveStore((state) => state.warpSource);
+  const warpProposals = useWarpProposalStore((state) => state.proposals);
+  const selectedWarpProposalId = useWarpProposalStore((state) => state.selectedProposalId);
+  const appliedWarpProposalId = useWarpProposalStore((state) => state.appliedProposalId);
+  const intervalProposals = useIntervalProposalStore((state) => state.proposals);
+  const selectedIntervalId = useIntervalProposalStore((state) => state.selectedProposalId);
+  const previewIntervalId = useIntervalProposalStore((state) => state.previewProposalId);
+  const appliedIntervalId = useIntervalProposalStore((state) => state.appliedProposalId);
   const stkdeResponse = useStkdeStore((state) => state.response);
   const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
   const runMeta = useStkdeStore((state) => state.runMeta);
   const { log } = useLogger();
+
+  const enabledConstraints = constraints.filter((constraint) => constraint.enabled);
+  const activeConstraint =
+    constraints.find((constraint) => constraint.id === activeConstraintId) ?? enabledConstraints[0] ?? null;
+  const activeConstraintLabel = activeConstraint?.label ?? 'None';
+  const selectedWarpProposal =
+    warpProposals.find((proposal) => proposal.id === selectedWarpProposalId) ?? null;
+  const appliedWarpProposal =
+    warpProposals.find((proposal) => proposal.id === appliedWarpProposalId) ?? null;
+  const appliedProposalLabel = appliedWarpProposal?.label ?? selectedWarpProposal?.label ?? 'None';
+  const selectedInterval =
+    intervalProposals.find((proposal) => proposal.id === selectedIntervalId) ?? null;
+  const previewInterval =
+    intervalProposals.find((proposal) => proposal.id === previewIntervalId) ?? null;
+  const appliedInterval =
+    intervalProposals.find((proposal) => proposal.id === appliedIntervalId) ?? null;
+  const previewIntervalLabel = previewInterval?.label ?? 'None';
+  const appliedIntervalLabel = appliedInterval?.label ?? 'None';
 
   const selectedHotspot = stkdeResponse?.hotspots.find((hotspot) => hotspot.id === selectedHotspotId) ?? null;
 
