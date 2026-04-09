@@ -151,22 +151,21 @@ export function DemoSlicePanel() {
     <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100" aria-busy={isComputing}>
       <header className="mb-3 space-y-1">
         <h2 className="text-sm font-semibold text-slate-100">Slice Companion</h2>
-        <p className="text-[11px] text-slate-400">Use the right rail to build and review slices without crowding the timeline.</p>
-        <p className="text-[11px] text-slate-400">Visible slices can also drive demo warping when adaptive mode is enabled.</p>
-        <div className="text-[11px] text-slate-400">
+        <p className="text-[11px] text-slate-400">A secondary review rail for slice edits, locks, and visibility.</p>
+        <div className="text-[11px] text-slate-500">
           {lastAppliedAt ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}` : 'No applied state yet'}
         </div>
       </header>
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Slices {sliceStats.total}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Visible {sliceStats.visible}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Locked {sliceStats.locked}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Burst {sliceStats.burst}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Mode {mode}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Status {generationStatus}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">Draft bins {pendingGeneratedBins.length}</span>
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-300">
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Slices {sliceStats.total}</span>
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Visible {sliceStats.visible}</span>
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Locked {sliceStats.locked}</span>
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Burst {sliceStats.burst}</span>
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Mode {mode}</span>
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Status {generationStatus}</span>
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Draft bins {pendingGeneratedBins.length}</span>
         </div>
 
         {activeWindowLabel ? (
@@ -178,31 +177,31 @@ export function DemoSlicePanel() {
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleAddPointSlice}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Point
-          </button>
-          <button
-            type="button"
-            onClick={handleAddRangeSlice}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Range
-          </button>
-          <button
-            type="button"
-            onClick={clearSlices}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAddPointSlice}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Point
+            </button>
+            <button
+              type="button"
+              onClick={handleAddRangeSlice}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Range
+            </button>
+            <button
+              type="button"
+              onClick={clearSlices}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear
+            </button>
         </div>
 
         <div className="space-y-2">
