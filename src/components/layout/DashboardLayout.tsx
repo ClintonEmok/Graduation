@@ -1,53 +1,71 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from 'react';
-import { useLayoutStore } from '@/store/useLayoutStore';
+import { ReactNode, useEffect, useState } from "react";
+import { Panel, Group, Separator } from "react-resizable-panels";
+import { useLayoutStore } from "@/store/useLayoutStore";
 
 interface DashboardLayoutProps {
-  mainViewport: ReactNode;
-  bottomRail?: ReactNode;
-  rightRail?: ReactNode;
+  leftPanel: ReactNode;
+  topRightPanel: ReactNode;
+  bottomRightPanel: ReactNode;
   className?: string;
 }
 
 export default function DashboardLayout({
-  mainViewport,
-  bottomRail,
-  rightRail,
-  className = '',
+  leftPanel,
+  topRightPanel,
+  bottomRightPanel,
+  className = "",
 }: DashboardLayoutProps) {
-  const { setOuterLayout } = useLayoutStore();
+  const { outerLayout, innerLayout, setOuterLayout, setInnerLayout } = useLayoutStore();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
-    setOuterLayout({ top: 72, bottom: bottomRail ? 28 : 0 });
-  }, [bottomRail, setOuterLayout]);
-
   if (!isMounted) {
-    return null;
+    return null; // Avoid hydration mismatch and ensure store is ready
   }
 
   return (
-    <div className={`relative h-full w-full overflow-hidden bg-black text-white ${className}`} aria-label="Phase 2 map-first dashboard shell" data-phase="workflow-isolation-dashboard-handoff">
-      <div className="flex h-full min-w-0 flex-col pr-80">
-        <div
-          className="min-h-0 flex-1 overflow-hidden"
-          aria-label="dashboard shared viewport swap target"
-        >
-          {mainViewport}
-        </div>
-        {bottomRail ? <div className="shrink-0 border-t border-slate-800">{bottomRail}</div> : null}
-      </div>
+    <div
+      className={`h-full w-full overflow-hidden bg-background text-foreground ${className}`}
+      aria-label="Phase 1 overview-first map, cube, and timeline shell"
+      data-phase="overview-pattern-summaries"
+    >
+      {/* Outer Group: Vertical split between the main overview rail and timeline control rail */}
+      <Group orientation="vertical" onLayoutChange={setOuterLayout} id="outer-group">
+        {/* Top area: map foreground with cube as supporting context */}
+        <Panel id="top" defaultSize={outerLayout.top} minSize={30}>
+          <Group orientation="horizontal" onLayoutChange={setInnerLayout} id="inner-group">
+            {/* Left panel: primary overview surface */}
+            <Panel id="top-left" defaultSize={innerLayout.left} minSize={20}>
+              <div id="tour-map-panel" className="h-full w-full relative overflow-hidden">
+                {leftPanel}
+              </div>
+            </Panel>
 
-      {rightRail ? (
-        <aside className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur">
-          {rightRail}
-        </aside>
-      ) : null}
+            <Separator className="w-1 bg-border hover:bg-primary/50 transition-colors flex items-center justify-center z-50 focus:outline-none cursor-col-resize" />
+
+            {/* Right panel: secondary 3D context */}
+            <Panel id="top-right" defaultSize={innerLayout.right} minSize={20}>
+              <div id="tour-cube-panel" className="h-full w-full relative overflow-hidden">
+                {topRightPanel}
+              </div>
+            </Panel>
+          </Group>
+        </Panel>
+
+        <Separator className="h-1 bg-border hover:bg-primary/50 transition-colors flex items-center justify-center z-50 focus:outline-none cursor-row-resize" />
+
+        {/* Bottom panel: lower timeline control rail */}
+        <Panel id="bottom" defaultSize={outerLayout.bottom} minSize={10}>
+          <div id="tour-timeline-panel" className="h-full w-full relative overflow-hidden">
+            {bottomRightPanel}
+          </div>
+        </Panel>
+      </Group>
     </div>
   );
 }

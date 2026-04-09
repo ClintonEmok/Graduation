@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo } from 'react';
 import { CheckCircle2, Clock3, Layers3, TriangleAlert } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useMeasure } from '@/hooks/useMeasure';
@@ -14,8 +13,6 @@ import { useBinningStore } from '@/store/useBinningStore';
 import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { SuggestionToolbar } from './components/SuggestionToolbar';
-import { TimeslicingWorkflowShell, type TimeslicingWorkflowStep } from './components/TimeslicingWorkflowShell';
-import { deriveWorkflowStep, shouldAutoAdvanceToReview } from './workflow-step';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildTimelineQaModel } from '@/components/timeline/qa/timeline-qa-model';
@@ -27,7 +24,6 @@ const MIN_VALID_DATA_EPOCH = 946684800;
 
 export default function TimeslicingPage() {
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
-  const router = useRouter();
 
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -60,7 +56,7 @@ export default function TimeslicingPage() {
     return [viewportStart, viewportEnd];
   }, [selectedTimeRange, viewportEnd, viewportStart]);
 
-  const { data: selectionCrimes } = useCrimeData({
+  const { data: selectionCrimes, isLoading: isSelectionLoading } = useCrimeData({
     startEpoch: rangeStart,
     endEpoch: rangeEnd,
     bufferDays: 0,
@@ -70,11 +66,9 @@ export default function TimeslicingPage() {
   const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
   const generationError = useTimeslicingModeStore((state) => state.generationError);
-  const lastAppliedAt = useTimeslicingModeStore((state) => state.lastAppliedAt);
   const lastGeneratedMetadata = useTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const generationInputs = useTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useTimeslicingModeStore((state) => state.setGenerationInputs);
-  const applyGeneratedBins = useTimeslicingModeStore((state) => state.applyGeneratedBins);
   const mergePendingGeneratedBins = useTimeslicingModeStore((state) => state.mergePendingGeneratedBins);
   const splitPendingGeneratedBin = useTimeslicingModeStore((state) => state.splitPendingGeneratedBin);
   const deletePendingGeneratedBin = useTimeslicingModeStore((state) => state.deletePendingGeneratedBin);
@@ -305,260 +299,154 @@ export default function TimeslicingPage() {
     [domainEndSec, domainStartSec, fetchedDomainLabel, rangeEnd, rangeStart, selectedTimeRange],
   );
 
-  const derivedStep = useMemo<TimeslicingWorkflowStep>(
-    () =>
-      deriveWorkflowStep({
-        pendingGeneratedBinsCount: pendingGeneratedBins.length,
-        generationStatus,
-        lastAppliedAt,
-      }),
-    [generationStatus, lastAppliedAt, pendingGeneratedBins.length]
-  );
-
-  const [activeStep, setActiveStep] = useState<TimeslicingWorkflowStep>(() => derivedStep);
-  const lastAutoAdvancedGeneratedAtRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const generatedAt = lastGeneratedMetadata?.generatedAt ?? null;
-    if (
-      shouldAutoAdvanceToReview({
-        activeStep,
-        pendingGeneratedBinsCount: pendingGeneratedBins.length,
-        generationStatus,
-        generatedAt,
-        lastAutoAdvancedGeneratedAt: lastAutoAdvancedGeneratedAtRef.current,
-      })
-    ) {
-      setActiveStep('review');
-      lastAutoAdvancedGeneratedAtRef.current = generatedAt;
-    }
-  }, [activeStep, generationStatus, lastGeneratedMetadata?.generatedAt, pendingGeneratedBins.length]);
-
-  useEffect(() => {
-    if (derivedStep !== 'generate') {
-      setActiveStep(derivedStep);
-    }
-  }, [derivedStep]);
-
   const WorkflowIcon = workflowState.icon;
 
-  const handleApply = () => {
-    const applied = applyGeneratedBins([rangeStart * 1000, rangeEnd * 1000]);
-    if (applied) {
-      router.push('/dashboard');
-    }
-  };
-
   return (
-    <TimeslicingWorkflowShell activeStep={activeStep} onStepChange={setActiveStep}>
-      <main className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 overflow-y-auto px-6 py-8 md:px-12">
-        {activeStep === 'generate' ? (
-          <>
-            <section className="space-y-2">
-              <h2 className="text-2xl font-semibold tracking-tight">User-Driven Timeslicing</h2>
-              <p className="max-w-3xl text-sm text-slate-300">
-                Generate bins from crime type, neighbourhood, time window, and granularity inputs.
-              </p>
-            </section>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100 md:px-12">
+      <div className="mx-auto w-full max-w-6xl space-y-8">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">User-Driven Timeslicing</h1>
+          <p className="max-w-3xl text-sm text-slate-300">
+            Generate bins from crime type, neighbourhood, time window, and granularity inputs. Review the draft result on the
+            timeline, then apply it into the shared slice state.
+          </p>
+        </header>
 
-            <section className="rounded-xl border border-slate-700/60 bg-slate-900/65 p-5">
-              <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300">
+        <section className="rounded-xl border border-slate-700/60 bg-slate-900/65 p-5">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300">
+              <span>
+                Data: <strong className="text-slate-100">{dataSummaryLabel}</strong>
+              </span>
+              {hasRealData && (
                 <span>
-                  Data: <strong className="text-slate-100">{dataSummaryLabel}</strong>
+                  Range:{' '}
+                  <strong className="text-slate-100">
+                    {new Date(domainStartSec * 1000).toLocaleDateString()} - {new Date(domainEndSec * 1000).toLocaleDateString()}
+                  </strong>
                 </span>
-                {hasRealData && (
-                  <span>
-                    Range:{' '}
-                    <strong className="text-slate-100">
-                      {new Date(domainStartSec * 1000).toLocaleDateString()} - {new Date(domainEndSec * 1000).toLocaleDateString()}
-                    </strong>
-                  </span>
-                )}
-                {lastGeneratedMetadata && (
-                  <span>
-                    Last generated: <strong className="text-slate-100">{lastGeneratedMetadata.binCount} bins / {lastGeneratedMetadata.eventCount} events</strong>
-                  </span>
-                )}
-              </div>
+              )}
+              {lastGeneratedMetadata && (
+                <span>
+                  Last generated: <strong className="text-slate-100">{lastGeneratedMetadata.binCount} bins / {lastGeneratedMetadata.eventCount} events</strong>
+                </span>
+              )}
+            </div>
 
-              <div className="mt-4 space-y-4">
-                <TimelineQaContextCard model={timelineQaModel} />
-                <BinningControls
-                  bins={bins}
-                  strategy={strategy}
-                  onStrategyChange={(nextStrategy) => useBinningStore.getState().setStrategy(nextStrategy)}
-                  onBinSelect={(binId) => useBinningStore.getState().selectBin(binId)}
-                  selectedBinId={selectedBinId}
-                  onMerge={mergePendingGeneratedBins}
-                  onSplit={splitPendingGeneratedBin}
-                  onDelete={(binId) => {
-                    deletePendingGeneratedBin(binId);
-                    if (selectedBinId === binId) {
-                      useBinningStore.getState().selectBin(null);
-                    }
-                  }}
-                  savedConfigs={savedConfigurations.map((config) => ({ id: config.id, name: config.name }))}
-                  onSaveConfig={(name) => useBinningStore.getState().saveConfiguration(name)}
-                  onLoadConfig={(id) => useBinningStore.getState().loadConfiguration(id)}
-                  generationData={generationEvents}
-                  generationDomain={[rangeStart * 1000, rangeEnd * 1000]}
-                  availableCrimeTypes={availableCrimeTypes}
-                  availableNeighbourhoods={availableNeighbourhoods}
-                />
-              </div>
-            </section>
-          </>
-        ) : null}
+            <TimelineQaContextCard model={timelineQaModel} />
 
-        {activeStep === 'review' ? (
-          <>
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">Review</h2>
-              <div className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <WorkflowIcon className={`mt-0.5 size-5 ${workflowState.tone}`} />
-                <div>
-                  <div className={`text-sm font-medium ${workflowState.tone}`}>{workflowState.label}</div>
-                  <p className="mt-1 text-xs text-slate-400">{workflowState.description}</p>
-                </div>
+            <div className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <WorkflowIcon className={`mt-0.5 size-5 ${workflowState.tone}`} />
+              <div>
+                <div className={`text-sm font-medium ${workflowState.tone}`}>{workflowState.label}</div>
+                <p className="mt-1 text-xs text-slate-400">{workflowState.description}</p>
               </div>
-            </section>
+            </div>
+          </div>
+        </section>
 
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-medium uppercase tracking-wide text-slate-300">Timeline review</h3>
-                  <p className="mt-1 text-xs text-slate-400">Draft bins stay visible while you review the generated shape.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="h-3 w-5 rounded-sm border border-amber-300/90 bg-amber-400/15" />
-                    Draft generated bin
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="h-3 w-5 rounded-sm border border-emerald-300/90 bg-emerald-400/15" />
-                    Applied slice
-                  </span>
-                </div>
-              </div>
+        <BinningControls
+          bins={bins}
+          strategy={strategy}
+          onStrategyChange={(nextStrategy) => useBinningStore.getState().setStrategy(nextStrategy)}
+          onBinSelect={(binId) => useBinningStore.getState().selectBin(binId)}
+          selectedBinId={selectedBinId}
+          onMerge={mergePendingGeneratedBins}
+          onSplit={splitPendingGeneratedBin}
+          onDelete={(binId) => {
+            deletePendingGeneratedBin(binId);
+            if (selectedBinId === binId) {
+              useBinningStore.getState().selectBin(null);
+            }
+          }}
+          savedConfigs={savedConfigurations.map((config) => ({ id: config.id, name: config.name }))}
+          onSaveConfig={(name) => useBinningStore.getState().saveConfiguration(name)}
+          onLoadConfig={(id) => useBinningStore.getState().loadConfiguration(id)}
+          generationData={generationEvents}
+          generationDomain={[rangeStart * 1000, rangeEnd * 1000]}
+          availableCrimeTypes={availableCrimeTypes}
+          availableNeighbourhoods={availableNeighbourhoods}
+        />
 
-              <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
-                {isLoading ? (
-                  <div className="flex h-40 items-center justify-center text-slate-400">Loading crime data...</div>
-                ) : error ? (
-                  <div className="flex h-40 items-center justify-center text-red-400">Error loading data: {error.message}</div>
-                ) : timelineWidth > 0 ? (
-                  <DualTimeline
-                    detailRangeOverride={[rangeStart, rangeEnd]}
-                    interactive={false}
-                    timestampSecondsOverride={selectionTimestamps}
-                    detailPointsOverride={selectionDetailPoints}
-                    detailRenderMode="auto"
-                    disableAutoBurstSlices={true}
-                    adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
-                    adaptiveWarpMapOverride={null}
-                    tickLabelStrategy="span-aware"
-                  />
-                ) : (
-                  <div className="h-40" />
-                )}
-              </div>
-            </section>
-          </>
-        ) : null}
+        <SuggestionToolbar applyDomain={[rangeStart * 1000, rangeEnd * 1000]} />
 
-        {activeStep === 'apply' ? (
-          <>
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">Apply</h2>
-              <p className="max-w-3xl text-xs text-slate-400">
-                Edit the pending bins in place, keep warnings visible, and apply directly into the shared slice state.
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">Timeline review</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Draft bins appear immediately after generation. Applied slices remain visible as the active shared result.
               </p>
-            </section>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-5 rounded-sm border border-amber-300/90 bg-amber-400/15" />
+                Draft generated bin
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-5 rounded-sm border border-emerald-300/90 bg-emerald-400/15" />
+                Applied slice
+              </span>
+            </div>
+          </div>
 
-            <section className="space-y-4 rounded-xl border border-slate-700/60 bg-slate-900/65 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-medium uppercase tracking-wide text-slate-300">Warnings and apply</h3>
-                  <p className="mt-1 text-xs text-slate-400">Warnings stay on screen while you adjust the pending bins.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                    {pendingGeneratedBins.length} pending bins
-                  </div>
-                  <div className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                    {new Date(rangeStart * 1000).toLocaleDateString()} - {new Date(rangeEnd * 1000).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-
-              {(generationError ?? lastGeneratedMetadata?.warning) ? (
-                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                  <span className="font-medium text-amber-300">Review warning:</span>{' '}
-                  {generationError ?? lastGeneratedMetadata?.warning}
-                </div>
-              ) : null}
-
-               <SuggestionToolbar applyDomain={[rangeStart * 1000, rangeEnd * 1000]} onApply={handleApply} />
-
-              <BinningControls
-                bins={bins}
-                strategy={strategy}
-                onStrategyChange={(nextStrategy) => useBinningStore.getState().setStrategy(nextStrategy)}
-                onBinSelect={(binId) => useBinningStore.getState().selectBin(binId)}
-                selectedBinId={selectedBinId}
-                onMerge={mergePendingGeneratedBins}
-                onSplit={splitPendingGeneratedBin}
-                onDelete={(binId) => {
-                  deletePendingGeneratedBin(binId);
-                  if (selectedBinId === binId) {
-                    useBinningStore.getState().selectBin(null);
-                  }
-                }}
-                savedConfigs={savedConfigurations.map((config) => ({ id: config.id, name: config.name }))}
-                onSaveConfig={(name) => useBinningStore.getState().saveConfiguration(name)}
-                onLoadConfig={(id) => useBinningStore.getState().loadConfiguration(id)}
-                generationData={generationEvents}
-                generationDomain={[rangeStart * 1000, rangeEnd * 1000]}
-                availableCrimeTypes={availableCrimeTypes}
-                availableNeighbourhoods={availableNeighbourhoods}
+          <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
+            {isLoading ? (
+              <div className="flex h-40 items-center justify-center text-slate-400">Loading crime data...</div>
+            ) : error ? (
+              <div className="flex h-40 items-center justify-center text-red-400">Error loading data: {error.message}</div>
+            ) : timelineWidth > 0 ? (
+              <DualTimeline
+                detailRangeOverride={[rangeStart, rangeEnd]}
+                detailPointsOverride={selectionDetailPoints}
+                detailRenderMode="auto"
+                disableAutoBurstSlices={true}
+                adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
+                adaptiveWarpMapOverride={null}
+                tickLabelStrategy="span-aware"
               />
+            ) : (
+              <div className="h-40" />
+            )}
+          </div>
+        </section>
 
-              <div className="grid gap-2 text-[11px] text-slate-400">
-                <div className="inline-flex items-center gap-1.5">
-                  <span className="h-3 w-5 rounded-sm border border-amber-300/90 bg-amber-400/15" />
-                  Draft generated bin
-                </div>
-                <div className="inline-flex items-center gap-1.5">
-                  <span className="h-3 w-5 rounded-sm border border-emerald-300/90 bg-emerald-400/15" />
-                  Applied slice
-                </div>
-              </div>
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium uppercase tracking-wide text-slate-300">Selection timeline</h2>
+              <p className="mt-1 text-xs text-slate-400">Focused review window for the currently selected time range.</p>
+            </div>
+            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+              {new Date(rangeStart * 1000).toLocaleDateString()} - {new Date(rangeEnd * 1000).toLocaleDateString()}
+            </span>
+          </div>
 
-              <div ref={timelineContainerRef} className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
-                {isLoading ? (
-                  <div className="flex h-40 items-center justify-center text-slate-400">Loading crime data...</div>
-                ) : error ? (
-                  <div className="flex h-40 items-center justify-center text-red-400">Error loading data: {error.message}</div>
-                ) : timelineWidth > 0 ? (
-                  <DualTimeline
-                    detailRangeOverride={[rangeStart, rangeEnd]}
-                    interactive={true}
-                    timestampSecondsOverride={selectionTimestamps}
-                    detailPointsOverride={selectionDetailPoints}
-                    detailRenderMode="auto"
-                    disableAutoBurstSlices={true}
-                    adaptiveWarpDomainOverride={[domainStartSec, domainEndSec]}
-                    adaptiveWarpMapOverride={null}
-                    tickLabelStrategy="span-aware"
-                  />
-                ) : (
-                  <div className="h-40" />
-                )}
-              </div>
-            </section>
-          </>
-        ) : null}
-      </main>
-    </TimeslicingWorkflowShell>
+          {isSelectionLoading ? (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-700/60 bg-slate-900/40 text-xs text-slate-400">
+              Loading selection timeline...
+            </div>
+          ) : selectionTimestamps.length === 0 ? (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-700/60 bg-slate-900/40 text-xs text-slate-500">
+              No crimes in this selection range.
+            </div>
+          ) : (
+            <div className="relative rounded-md border border-slate-700/70 bg-slate-950/60 p-3">
+              <DualTimeline
+                domainOverride={[rangeStart, rangeEnd]}
+                detailRangeOverride={[rangeStart, rangeEnd]}
+                interactive={false}
+                timestampSecondsOverride={selectionTimestamps}
+                detailPointsOverride={selectionDetailPoints}
+                disableAutoBurstSlices={true}
+                adaptiveWarpDomainOverride={[rangeStart, rangeEnd]}
+                adaptiveWarpMapOverride={null}
+                tickLabelStrategy="span-aware"
+              />
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
   );
 }
