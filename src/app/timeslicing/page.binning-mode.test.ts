@@ -8,6 +8,13 @@ describe('timeslicing adaptive binning mode intent', () => {
     expect(pageSource).toMatch(/computeMaps\([\s\S]*?binningMode:\s*'uniform-events'/);
   });
 
+  test('applies generated bins and routes directly to the dashboard', () => {
+    const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(pageSource).toMatch(/applyGeneratedBins/);
+    expect(pageSource).toMatch(/push\('\/dashboard'\)/);
+  });
+
   test('opts both DualTimeline callsites into span-aware tick labels', () => {
     const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 

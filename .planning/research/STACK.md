@@ -42,6 +42,7 @@
 | DuckDB | 1.4.x | Local OLAP / spatial-ish analytical queries | **Keep**; ideal for the current offline research prototype and large local datasets | HIGH |
 | Apache Arrow | 21.1.x | Columnar transport/streaming | **Keep**; excellent fit for efficient API-to-client data flow | HIGH |
 | @loaders.gl/arrow + @loaders.gl/core | 4.3.x | Arrow ingestion/stream helpers | **Keep** if the Arrow streaming path remains; otherwise simplify | MEDIUM |
+| density-clustering | 1.3.x | Spatial clustering / hotspot support | **Keep** if hotspot/STKDE remains a supported analysis feature | MEDIUM |
 | Web Workers | Native | Off-main-thread compute | **Keep** and expand; adaptive warp/STKDE should stay off the UI thread | HIGH |
 | Comlink | 4.x | Typed worker bridge | **Add**; strong fit for worker API safety and ergonomics | MEDIUM |
 

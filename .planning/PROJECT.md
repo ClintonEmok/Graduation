@@ -2,7 +2,7 @@
 
 ## What This Is
 
-This is a Next.js prototype for bursty spatiotemporal crime analysis. It couples a 2D density projection with a 3D Space-Time Cube and non-uniform temporal scaling so users can perceive overview patterns, trace trajectories, compare behaviors, detect anomalies, and recover metric duration.
+This is a Next.js prototype for bursty spatiotemporal crime analysis. It couples a 2D density projection with a 3D Space-Time Cube, plus a staged slice workflow and non-uniform temporal scaling so users can perceive overview patterns, trace trajectories, compare behaviors, detect anomalies, and recover metric duration.
 
 ## Core Value
 
@@ -51,6 +51,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 - Existing brownfield Next.js 16 App Router app with feature-based organization
 - Core stack includes TypeScript, Zustand, Three.js, MapLibre, DuckDB, Apache Arrow, and Web Workers
 - The current README frames the product as a hybrid spatiotemporal exploration tool with brushing, playback, adaptive controls, and burst highlighting
+- The current README frames the product as a hybrid spatiotemporal exploration tool with brushing, playback, adaptive controls, burst highlighting, and an isolated slice workflow that hands into a simplified dashboard
 - Codebase analysis already exists in `.planning/codebase/`, and milestone history exists in `.planning/milestones/`
 - Known concerns include large components, excessive console logging, silent mock-data fallbacks, input validation gaps, and heavy data processing on the main thread
 
@@ -70,6 +71,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 | Use non-uniform temporal scaling for burst analysis | Preserves metric duration while making burst order legible | ✓ Good |
 | Keep hotspot and guidance features as support features | They help analysis without becoming the main task model | ✓ Good |
 | Run adaptive-time computation in Web Workers | Prevents expensive warp calculations from blocking interaction | ✓ Good |
+| Keep generate, review, and apply isolated from the dashboard | Keeps the workflow focused and makes the conceptual tasks easier to test | ✓ Good |
 
 ## Evolution
 

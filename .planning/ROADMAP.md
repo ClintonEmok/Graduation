@@ -2,14 +2,15 @@
 
 ## Overview
 
-This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks: overview, trace, compare, detect, summarize, and burst analysis. The visualization strategy is a hybrid 2D density projection + 3D Space-Time Cube environment, synchronized through brushing, linking, and non-uniform temporal scaling so users can read both broad patterns and metric duration without losing context.
+This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment, but Phase 2 now isolates generate/review/apply into full-screen screens before the dashboard opens map-first in a shared viewport that can swap between the 2D map and 3D cube.
 
 ## Phases
 
 - [x] **Phase 1: Overview + pattern summaries** — reveal broad clusters and recurring patterns in the 2D density view. (completed 2026-04-09)
-- [ ] **Phase 2: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
-- [ ] **Phase 3: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
-- [ ] **Phase 4: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
+- [ ] **Phase 2: Workflow isolation + dashboard handoff** — keep generate, review, and apply separate from the dashboard, then enter a simplified post-apply dashboard.
+- [ ] **Phase 3: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
+- [ ] **Phase 4: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
+- [ ] **Phase 5: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
 
 ## Phase Details
 
@@ -28,9 +29,27 @@ Plans:
   3. User can inspect a 2D density projection with opacity modulation that reveals clusters without hiding the overview.
   4. User can narrow or expand the active temporal window with a timeline slider.
 
-### Phase 2: Trace trajectories + compare behaviors
-**Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
+### Phase 2: Workflow isolation + dashboard handoff
+**Goal**: Generate, review, and apply stay in isolated full-screen screens, then hand off directly into a simplified dashboard shell.
 **Depends on**: Phase 1
+**Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
+**Plans:** 4
+Plans:
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-01-PLAN.md` — isolate generate, review, and apply into a dedicated full-screen workflow shell.
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-02-PLAN.md` — reshape the post-apply dashboard into a map-first shell with a fixed STKDE rail.
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-03-PLAN.md` — keep apply-preview editable in place and auto-advance directly into the dashboard.
+- `.planning/phases/02-workflow-isolation-dashboard-handoff/02-04-PLAN.md` — visually verify the full generate → review → apply → dashboard handoff.
+**Success Criteria** (what must be TRUE):
+  1. User can open generate slices as a dedicated full-screen step that is separate from the dashboard.
+  2. User can review draft bins and warnings in a dedicated full-screen review step.
+  3. User can preview applied slices on the timeline in a dedicated full-screen apply-preview step that stays editable in place.
+  4. Clicking Apply auto-advances directly into the dashboard with no intermediate confirmation screen.
+  5. The final dashboard opens map-first in a shared viewport that swaps between the 2D map and 3D cube.
+  6. The final dashboard includes a fixed, always-visible right STKDE rail and carries only the applied state forward.
+
+### Phase 3: Trace trajectories + compare behaviors
+**Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
+**Depends on**: Phase 2
 **Requirements**: T2, T3, VIEW-02, VIEW-03
 **Success Criteria** (what must be TRUE):
   1. User can follow the temporal evolution of selected incidents/records and aggregated clusters over time.
@@ -38,9 +57,9 @@ Plans:
   3. User can inspect a coordinated 3D Space-Time Cube with time mapped to the vertical axis.
   4. User can synchronize navigation, selection, and brushing/linking between the 2D and 3D views.
 
-### Phase 3: Detect events + decode bursts
+### Phase 4: Detect events + decode bursts
 **Goal**: Non-uniform temporal scaling makes anomalies and burst structure readable while preserving metric duration.
-**Depends on**: Phase 2
+**Depends on**: Phase 3
 **Requirements**: T4, T6, T7, T8, VIEW-05, VIEW-06
 **Success Criteria** (what must be TRUE):
   1. User can identify intersections, pauses, or abrupt changes in activity that deviate from the norm.
@@ -50,9 +69,9 @@ Plans:
   5. User can use non-uniform temporal scaling to expand dense intervals while keeping metric duration visible.
   6. User can distinguish categorical structure with hue and low-confidence events with transparency.
 
-### Phase 4: Support overlays + hardening
+### Phase 5: Support overlays + hardening
 **Goal**: Trust, hotspot, guidance, and performance support stay explicit without undermining the core analytical workflow.
-**Depends on**: Phase 3
+**Depends on**: Phase 4
 **Requirements**: TRUST-01, TRUST-02, TRUST-03, TRUST-04, HOTS-01, HOTS-02, SUGG-01, SUGG-02, PERF-01, PERF-02
 **Success Criteria** (what must be TRUE):
   1. User can see whether the app is loading, ready, or degraded during startup.
@@ -67,11 +86,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Requirements | Status | Completed |
 |-------|--------------|--------|-----------|
 | 1. Overview + pattern summaries | 4 | Complete    | 2026-04-09 |
-| 2. Trace trajectories + compare behaviors | 4 | Not started | - |
-| 3. Detect events + decode bursts | 6 | Not started | - |
-| 4. Support overlays + hardening | 10 | Not started | - |
+| 2. Workflow isolation + dashboard handoff | 6 | Not started | - |
+| 3. Trace trajectories + compare behaviors | 4 | Not started | - |
+| 4. Detect events + decode bursts | 6 | Not started | - |
+| 5. Support overlays + hardening | 10 | Not started | - |

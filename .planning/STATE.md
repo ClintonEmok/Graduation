@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 01-HUMAN-UAT.md
-last_updated: "2026-04-09T06:18:30Z"
+stopped_at: Phase 2 context refined
+last_updated: "2026-04-09T07:08:44Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 25
+  percent: 20
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 2 — Trace trajectories + compare behaviors
+**Current focus:** Phase 2 — Workflow isolation + dashboard handoff
 
 ## Current Position
 
 Phase: 2
 Plan: Not started
-Status: In progress — overview patterns complete, next phase queued
-Last activity: 2026-04-09 - Phase 1 human verification complete
+Status: Ready to plan — isolated workflow captured, next phase queued
+Last activity: 2026-04-09 - Phase 2 context refined
 
-Progress: [█░░░] 25%
+Progress: [█░░░░] 20%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [█░░░] 25%
 | 2 | 0 | 0 | - |
 | 3 | 0 | 0 | - |
 | 4 | 0 | 0 | - |
+| 5 | 0 | 0 | - |
 
 **Recent Trend:**
 
@@ -67,10 +68,13 @@ Progress: [█░░░] 25%
 - Surface the timeline as the explicit overview-window control for phase 1.
 - Clamp the shared time store whenever the active range changes.
 - Preserve a small regression test around temporal range normalization and step clamping.
+- Insert an isolated workflow phase before trace/compare so generate, review, and apply stay out of the dashboard.
+- Make apply-preview timeline-only, editable in place, and warning-visible.
+- Make the post-apply dashboard map-first with one shared viewport that swaps between 2D and 3D, plus a fixed STKDE rail.
 
 ### Pending Todos
 
-- Phase 2 is ready to discuss and plan.
+- Phase 2 is ready to plan.
 
 ### Blockers/Concerns
 
@@ -79,6 +83,6 @@ Progress: [█░░░] 25%
 
 ## Session Continuity
 
-Last session: 2026-04-09T06:18:30Z
-Stopped at: Completed 01-HUMAN-UAT.md
-Resume file: None
+Last session: 2026-04-09T07:08:44Z
+Stopped at: Phase 2 context refined
+Resume file: .planning/phases/02-workflow-isolation-dashboard-handoff/02-CONTEXT.md

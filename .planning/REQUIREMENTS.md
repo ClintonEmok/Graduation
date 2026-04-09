@@ -12,6 +12,15 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **T1**: User can perceive broad spatiotemporal patterns, including global trends, high-activity intervals, and spatial clusters.
 - [ ] **T5**: User can generalize from detailed observations to identify recurring behaviors or periodic patterns.
 
+### Workflow Isolation and Dashboard Handoff
+
+- [ ] **FLOW-01**: User can open generate slices as a dedicated full-screen step that is separate from the dashboard.
+- [ ] **FLOW-02**: User can review draft bins and warnings in a dedicated full-screen review step.
+- [ ] **FLOW-03**: User can preview applied slices on the timeline in a dedicated full-screen apply-preview step that stays editable in place.
+- [ ] **FLOW-04**: User can keep warnings visible while applying and editing slices in the apply-preview step.
+- [ ] **FLOW-05**: Clicking Apply advances directly into the dashboard without an intermediate confirmation screen.
+- [ ] **FLOW-06**: The final dashboard opens map-first in a shared viewport that can swap between the 2D map and 3D cube, and it carries only the applied state forward.
+
 ### Trace and Compare
 
 - [ ] **T2**: User can follow the temporal evolution of selected incidents/records and aggregated clusters over time to understand movement paths and duration.
@@ -75,27 +84,33 @@ Explicitly excluded. Documented to prevent scope creep.
 | T5 | Phase 1 | Planned |
 | VIEW-01 | Phase 1 | Planned |
 | VIEW-04 | Phase 1 | Planned |
-| T2 | Phase 2 | Planned |
-| T3 | Phase 2 | Planned |
-| VIEW-02 | Phase 2 | Planned |
-| VIEW-03 | Phase 2 | Planned |
-| T4 | Phase 3 | Planned |
-| T6 | Phase 3 | Planned |
-| T7 | Phase 3 | Planned |
-| T8 | Phase 3 | Planned |
-| VIEW-05 | Phase 3 | Planned |
-| VIEW-06 | Phase 3 | Planned |
-| TRUST-01 | Phase 4 | Planned |
-| TRUST-02 | Phase 4 | Planned |
-| TRUST-03 | Phase 4 | Planned |
-| TRUST-04 | Phase 4 | Planned |
-| HOTS-01 | Phase 4 | Planned |
-| HOTS-02 | Phase 4 | Planned |
-| SUGG-01 | Phase 4 | Planned |
-| SUGG-02 | Phase 4 | Planned |
-| PERF-01 | Phase 4 | Planned |
-| PERF-02 | Phase 4 | Planned |
+| FLOW-01 | Phase 2 | Planned |
+| FLOW-02 | Phase 2 | Planned |
+| FLOW-03 | Phase 2 | Planned |
+| FLOW-04 | Phase 2 | Planned |
+| FLOW-05 | Phase 2 | Planned |
+| FLOW-06 | Phase 2 | Planned |
+| T2 | Phase 3 | Planned |
+| T3 | Phase 3 | Planned |
+| VIEW-02 | Phase 3 | Planned |
+| VIEW-03 | Phase 3 | Planned |
+| T4 | Phase 4 | Planned |
+| T6 | Phase 4 | Planned |
+| T7 | Phase 4 | Planned |
+| T8 | Phase 4 | Planned |
+| VIEW-05 | Phase 4 | Planned |
+| VIEW-06 | Phase 4 | Planned |
+| TRUST-01 | Phase 5 | Planned |
+| TRUST-02 | Phase 5 | Planned |
+| TRUST-03 | Phase 5 | Planned |
+| TRUST-04 | Phase 5 | Planned |
+| HOTS-01 | Phase 5 | Planned |
+| HOTS-02 | Phase 5 | Planned |
+| SUGG-01 | Phase 5 | Planned |
+| SUGG-02 | Phase 5 | Planned |
+| PERF-01 | Phase 5 | Planned |
+| PERF-02 | Phase 5 | Planned |
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after paper-task remap*
+*Last updated: 2026-04-09 after workflow-isolation phase insertion*

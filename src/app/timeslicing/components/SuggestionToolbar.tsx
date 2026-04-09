@@ -12,6 +12,7 @@ import { getDistrictDisplayName } from '@/lib/category-maps';
 interface SuggestionToolbarProps {
   className?: string;
   applyDomain?: [number, number];
+  onApply?: () => void;
 }
 
 const formatDateTime = (timestampMs: number | null) => {
@@ -19,7 +20,7 @@ const formatDateTime = (timestampMs: number | null) => {
   return new Date(timestampMs).toLocaleString();
 };
 
-export function SuggestionToolbar({ className, applyDomain }: SuggestionToolbarProps) {
+export function SuggestionToolbar({ className, applyDomain, onApply }: SuggestionToolbarProps) {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const generationStatus = useTimeslicingModeStore((state) => state.generationStatus);
@@ -46,6 +47,11 @@ export function SuggestionToolbar({ className, applyDomain }: SuggestionToolbarP
 
   const handleApply = () => {
     if (!resolvedApplyDomain) return;
+    if (onApply) {
+      onApply();
+      return;
+    }
+
     applyGeneratedBins(resolvedApplyDomain);
   };
 
