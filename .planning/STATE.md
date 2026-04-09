@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 6 timeline polish completed
-last_updated: "2026-04-09T21:21:00Z"
+stopped_at: Phase 6 timeline polish completed; warp follow-up completed
+last_updated: "2026-04-10T00:18:57Z"
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 13
-  completed_plans: 10
-  percent: 77
+  total_plans: 14
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -20,24 +20,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 7 — Contextual data enrichment
+**Current focus:** Phase 7 — contextual data enrichment
 
 ## Current Position
 
 Phase: 6
-Plan: 01
-Status: Phase 6 complete — demo timeline polish executed
-Last activity: 2026-04-09 - Completed Phase 6 demo timeline polish
+Plan: 02
+Status: Phase 6 complete — demo timeline polish and warp follow-up executed
+Last activity: 2026-04-10 - Completed Phase 6 warp follow-up
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: ~4 min
-- Total execution time: 0.6 hours
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
@@ -48,7 +48,7 @@ Progress: [████████░░] 77%
 | 3 | 1 | 1 | 24 min |
 | 4 | 1 | 1 | 1 min |
 | 5 | 3 | 3 | - |
-| 6 | 1 | 1 | 32 min |
+| 6 | 2 | 2 | 20 min |
 | 7 | 1 | 0 | - |
 | 8 | 4 | 0 | - |
 | 9 | 0 | 0 | - |
@@ -57,7 +57,7 @@ Progress: [████████░░] 77%
 
 **Recent Trend:**
 
-- Last 5 plans: 03-01, 04-01, 05-01, 05-02, 05-03
+- Last 5 plans: 05-01, 05-02, 05-03, 06-01, 06-02
 - Trend: Stable
 
 ## Accumulated Context
@@ -91,6 +91,9 @@ Progress: [████████░░] 77%
 - Use a two-track demo timeline with a stronger focused/adapted top track, a subtle raw baseline, and curved warp connectors when readable.
 - Keep the slice companion secondary by compressing its copy and badges instead of expanding the shell.
 - Lock the demo shell contract with source-inspection tests so stable `/dashboard` and `/timeslicing` routes stay isolated.
+- Keep the Phase 6 warp follow-up demo-local, but simplify the visible warp language to a quieter bands-first presentation.
+- Use the proven slice-authored warp-map path from `timeline-test` as the source of truth for demo slice warping.
+- Keep the demo warp cue as subtle bands-first presentation layered over the existing slice-authored warp map.
 
 ### Pending Todos
 
@@ -99,6 +102,7 @@ Progress: [████████░░] 77%
 - Phase 4 demo stats + STKDE wiring is complete.
 - Phase 5 demo stats + STKDE interaction is complete.
 - Phase 6 demo timeline polish is complete.
+- Phase 6 warp follow-up is complete.
 - Phase 7 contextual data enrichment plan is drafted.
 - Phase 8 workflow isolation plan follows after the two inserted phases.
 
@@ -109,6 +113,6 @@ Progress: [████████░░] 77%
 
 ## Session Continuity
 
-Last session: 2026-04-09T21:21:00Z
-Stopped at: Completed Phase 6 demo timeline polish
-Resume file: .planning/phases/07-contextual-data-enrichment/07-CONTEXT.md
+Last session: 2026-04-10T00:18:57Z
+Stopped at: Completed Phase 6 warp follow-up
+Resume file: None
