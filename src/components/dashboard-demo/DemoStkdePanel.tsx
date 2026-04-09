@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { HotspotPanel } from '@/app/stkde/lib/HotspotPanel';
 import { useDemoStkde } from '@/components/dashboard-demo/lib/useDemoStkde';
@@ -9,6 +10,66 @@ const STKDE_SCOPE_LABELS = {
   'applied-slices': 'Applied slices',
   'full-viewport': 'Full viewport',
 } as const;
+
+type DemoStkdePreset = {
+  id: string;
+  label: string;
+  description: string;
+  scopeMode: 'applied-slices' | 'full-viewport';
+  params: {
+    spatialBandwidthMeters: number;
+    temporalBandwidthHours: number;
+    gridCellMeters: number;
+    topK: number;
+    minSupport: number;
+    timeWindowHours: number;
+  };
+};
+
+const STKDE_PRESETS: DemoStkdePreset[] = [
+  {
+    id: 'focus',
+    label: 'Focus',
+    description: 'Tighter hotspot hunt for applied slices.',
+    scopeMode: 'applied-slices',
+    params: {
+      spatialBandwidthMeters: 450,
+      temporalBandwidthHours: 12,
+      gridCellMeters: 250,
+      topK: 8,
+      minSupport: 3,
+      timeWindowHours: 12,
+    },
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    description: 'Default demo scan with steady coverage.',
+    scopeMode: 'applied-slices',
+    params: {
+      spatialBandwidthMeters: 750,
+      temporalBandwidthHours: 24,
+      gridCellMeters: 500,
+      topK: 12,
+      minSupport: 5,
+      timeWindowHours: 24,
+    },
+  },
+  {
+    id: 'wide',
+    label: 'Wide',
+    description: 'Broader city sweep for full viewport analysis.',
+    scopeMode: 'full-viewport',
+    params: {
+      spatialBandwidthMeters: 1200,
+      temporalBandwidthHours: 48,
+      gridCellMeters: 750,
+      topK: 20,
+      minSupport: 8,
+      timeWindowHours: 48,
+    },
+  },
+];
 
 const toRadiusDegrees = (lat: number, radiusMeters: number) => {
   const latDelta = radiusMeters / 111_320;
@@ -38,6 +99,26 @@ export function DemoStkdePanel() {
   const setSpatialFilter = useDashboardDemoAnalysisStore((state) => state.setSpatialFilter);
   const setTemporalFilter = useDashboardDemoAnalysisStore((state) => state.setTemporalFilter);
 
+  const activePreset = useMemo(
+    () =>
+      STKDE_PRESETS.find(
+        (preset) =>
+          preset.scopeMode === scopeMode &&
+          preset.params.spatialBandwidthMeters === params.spatialBandwidthMeters &&
+          preset.params.temporalBandwidthHours === params.temporalBandwidthHours &&
+          preset.params.gridCellMeters === params.gridCellMeters &&
+          preset.params.topK === params.topK &&
+          preset.params.minSupport === params.minSupport &&
+          preset.params.timeWindowHours === params.timeWindowHours
+      ) ?? null,
+    [params, scopeMode]
+  );
+
+  const applyPreset = (preset: DemoStkdePreset) => {
+    setScopeMode(preset.scopeMode);
+    setStkdeParams(preset.params);
+  };
+
   return (
     <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100">
       <header className="space-y-1">
@@ -59,51 +140,55 @@ export function DemoStkdePanel() {
         {isLoading ? <div className="mt-2 text-slate-500">Computing hotspot surface…</div> : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-        <button
-          type="button"
-          onClick={() => setScopeMode('applied-slices')}
-          className={`rounded border px-2 py-1 ${scopeMode === 'applied-slices' ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60'}`}
-        >
-          Applied slices
-        </button>
-        <button
-          type="button"
-          onClick={() => setScopeMode('full-viewport')}
-          className={`rounded border px-2 py-1 ${scopeMode === 'full-viewport' ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60'}`}
-        >
-          Full viewport
-        </button>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <span>Presets</span>
+          <span>{activePreset ? `Active: ${activePreset.label}` : 'Preset-driven controls'}</span>
+        </div>
+        <div className="grid gap-2">
+          {STKDE_PRESETS.map((preset) => {
+            const isActive = activePreset?.id === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                  isActive ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-900'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em]">{preset.label}</span>
+                  <span className="text-[10px] text-slate-500">{STKDE_SCOPE_LABELS[preset.scopeMode]}</span>
+                </div>
+                <div className="mt-1 text-[11px] text-slate-400">{preset.description}</div>
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {preset.params.spatialBandwidthMeters}m • {preset.params.temporalBandwidthHours}h • {preset.params.gridCellMeters}m • top {preset.params.topK}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-        <label>
-          Spatial BW (m)
-          <input type="number" value={params.spatialBandwidthMeters} onChange={(event) => setStkdeParams({ spatialBandwidthMeters: Number(event.target.value) })} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-        <label>
-          Temporal BW (h)
-          <input type="number" value={params.temporalBandwidthHours} onChange={(event) => setStkdeParams({ temporalBandwidthHours: Number(event.target.value) })} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-        <label>
-          Grid cell (m)
-          <input type="number" value={params.gridCellMeters} onChange={(event) => setStkdeParams({ gridCellMeters: Number(event.target.value) })} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-        <label>
-          Top K
-          <input type="number" value={params.topK} onChange={(event) => setStkdeParams({ topK: Number(event.target.value) })} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-        <label>
-          Min support
-          <input type="number" value={params.minSupport} onChange={(event) => setStkdeParams({ minSupport: Number(event.target.value) })} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-        <label>
-          Time window (h)
-          <input type="number" value={params.timeWindowHours} onChange={(event) => setStkdeParams({ timeWindowHours: Number(event.target.value) })} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
+      <div className="space-y-2 text-[11px] text-slate-300">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setScopeMode('applied-slices')}
+            className={`rounded border px-2 py-1 ${scopeMode === 'applied-slices' ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60'}`}
+          >
+            Applied slices
+          </button>
+          <button
+            type="button"
+            onClick={() => setScopeMode('full-viewport')}
+            className={`rounded border px-2 py-1 ${scopeMode === 'full-viewport' ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60'}`}
+          >
+            Full viewport
+          </button>
+        </div>
+        <p className="text-slate-500">Parameters are preset-only in the demo rail.</p>
       </div>
 
       <HotspotPanel

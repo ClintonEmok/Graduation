@@ -66,6 +66,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsSource).toMatch(/Stats Summary/);
     expect(demoStatsSource).toMatch(/Hourly pulse/);
     expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
+    expect(demoStkdePanelSource).toMatch(/Presets/);
+    expect(demoStkdePanelSource).toMatch(/Focus|Balanced|Wide/);
+    expect(demoStkdePanelSource).toMatch(/Parameters are preset-only in the demo rail/);
+    expect(demoStkdePanelSource).not.toMatch(/Spatial BW|Temporal BW|Grid cell|Top K|Min support|Time window|type="number"/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoTimeStore/);
