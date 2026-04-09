@@ -5,8 +5,21 @@ describe('/dashboard-demo shell', () => {
   test('renders the demo shell through DashboardDemoShell', () => {
     const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
     const shellSource = readFileSync(new URL('../../components/dashboard-demo/DashboardDemoShell.tsx', import.meta.url), 'utf8');
+    const railTabsSource = readFileSync(new URL('../../components/dashboard-demo/DashboardDemoRailTabs.tsx', import.meta.url), 'utf8');
+    const demoStatsSource = readFileSync(new URL('../../components/dashboard-demo/DemoStatsPanel.tsx', import.meta.url), 'utf8');
+    const demoStkdePanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoStkdePanel.tsx', import.meta.url), 'utf8');
+    const demoAnalysisStoreSource = readFileSync(new URL('../../store/useDashboardDemoAnalysisStore.ts', import.meta.url), 'utf8');
+    const demoNeighborhoodStatsSource = readFileSync(
+      new URL('../../components/dashboard-demo/lib/useDemoNeighborhoodStats.ts', import.meta.url),
+      'utf8'
+    );
+    const demoStkdeHookSource = readFileSync(new URL('../../components/dashboard-demo/lib/useDemoStkde.ts', import.meta.url), 'utf8');
     const demoTimelinePanelSource = readFileSync(
       new URL('../../components/dashboard-demo/DemoTimelinePanel.tsx', import.meta.url),
+      'utf8'
+    );
+    const demoSlicePanelSource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoSlicePanel.tsx', import.meta.url),
       'utf8'
     );
     const demoDualTimelineSource = readFileSync(
@@ -19,28 +32,57 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/MapVisualization/);
     expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/DemoTimelinePanel/);
-    expect(shellSource).toMatch(/DashboardStkdePanel/);
+    expect(shellSource).toMatch(/DashboardDemoRailTabs/);
     expect(shellSource).toMatch(/loadRealData/);
     expect(shellSource).toMatch(/z-40/);
     expect(shellSource).toMatch(/Show map viewport/);
     expect(shellSource).toMatch(/Show cube viewport/);
     expect(shellSource).not.toMatch(/Map-first shared viewport|2D map|3D cube|generationStatus|lastGeneratedMetadata|\bTimelinePanel\b/);
+    expect(railTabsSource).toMatch(/TabsTrigger value="stats"/);
+    expect(railTabsSource).toMatch(/TabsTrigger value="stkde"/);
+    expect(railTabsSource).toMatch(/TabsTrigger value="slices"/);
+    expect(railTabsSource).toMatch(/DemoStatsPanel/);
+    expect(railTabsSource).toMatch(/DemoStkdePanel/);
+    expect(demoAnalysisStoreSource).toMatch(/useDashboardDemoAnalysisStore/);
+    expect(demoAnalysisStoreSource).toMatch(/selectedDistricts/);
+    expect(demoAnalysisStoreSource).toMatch(/stkdeParams/);
+    expect(demoNeighborhoodStatsSource).toMatch(/useDashboardDemoAnalysisStore/);
+    expect(demoNeighborhoodStatsSource).toMatch(/aggregateStats/);
+    expect(demoNeighborhoodStatsSource).toMatch(/transformStatsSummary/);
+    expect(demoStkdeHookSource).toMatch(/callerIntent: 'dashboard-demo'/);
+    expect(demoStkdeHookSource).toMatch(/buildStkdeViewModel/);
+    expect(demoStkdeHookSource).toMatch(/DEFAULT_STKDE_BBOX/);
+    expect(demoStatsSource).toMatch(/Stats Summary/);
+    expect(demoStatsSource).toMatch(/Hourly pulse/);
+    expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
-    expect(demoTimelinePanelSource).toMatch(/useSliceStore/);
-    expect(demoTimelinePanelSource).toMatch(/useTimeslicingModeStore/);
-    expect(demoTimelinePanelSource).toMatch(/Collapsible slice editing layer/);
+    expect(demoTimelinePanelSource).toMatch(/useDashboardDemoWarpStore/);
+    expect(demoTimelinePanelSource).toMatch(/Warp factor/);
+    expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
+    expect(railTabsSource).toMatch(/Tabs/);
+    expect(railTabsSource).toMatch(/DemoSlicePanel/);
+    expect(demoSlicePanelSource).toMatch(/useSliceStore/);
+    expect(demoSlicePanelSource).toMatch(/useTimeslicingModeStore/);
+    expect(demoSlicePanelSource).toMatch(/Slice Companion/);
+    expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoDualTimelineSource).toMatch(/DualTimeline/);
+    expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);
+    expect(demoDualTimelineSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoDualTimelineSource).toMatch(/disableAutoBurstSlices/);
   });
 
   test('keeps the stable dashboard route on Phase 1 composition', () => {
     const dashboardPageSource = readFileSync(new URL('../dashboard/page.tsx', import.meta.url), 'utf8');
+    const statsRouteSource = readFileSync(new URL('../stats/lib/StatsRouteShell.tsx', import.meta.url), 'utf8');
+    const stkdeRouteSource = readFileSync(new URL('../stkde/lib/StkdeRouteShell.tsx', import.meta.url), 'utf8');
 
     expect(dashboardPageSource).toMatch(/DashboardLayout/);
     expect(dashboardPageSource).toMatch(/MapVisualization/);
     expect(dashboardPageSource).toMatch(/CubeVisualization/);
     expect(dashboardPageSource).toMatch(/TimelinePanel/);
     expect(dashboardPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|Map-first shared viewport|WorkflowSkeleton/);
+    expect(statsRouteSource).not.toMatch(/useDashboardDemoAnalysisStore/);
+    expect(stkdeRouteSource).not.toMatch(/useDashboardDemoAnalysisStore/);
   });
 
   test('keeps applied-state text inside the STKDE panel instead of the viewport shell', () => {
