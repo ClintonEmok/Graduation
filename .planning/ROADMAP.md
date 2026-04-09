@@ -6,7 +6,7 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 
 ## Phases
 
-- [ ] **Phase 1: Overview + pattern summaries** — reveal broad clusters and recurring patterns in the 2D density view.
+- [x] **Phase 1: Overview + pattern summaries** — reveal broad clusters and recurring patterns in the 2D density view. (completed 2026-04-09)
 - [ ] **Phase 2: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
 - [ ] **Phase 3: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
 - [ ] **Phase 4: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
@@ -71,7 +71,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Requirements | Status | Completed |
 |-------|--------------|--------|-----------|
-| 1. Overview + pattern summaries | 4 | Complete | 2026-04-09 |
+| 1. Overview + pattern summaries | 4 | Complete    | 2026-04-09 |
 | 2. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 3. Detect events + decode bursts | 6 | Not started | - |
 | 4. Support overlays + hardening | 10 | Not started | - |
