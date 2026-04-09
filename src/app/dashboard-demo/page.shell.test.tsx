@@ -92,6 +92,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoTimelinePanelSource).toMatch(/Warp factor/);
+    expect(demoTimelinePanelSource).toMatch(/Focused track above|raw baseline below/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
@@ -109,6 +110,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoDualTimelineSource).toMatch(/disableAutoBurstSlices/);
+    expect(demoDualTimelineSource).toMatch(/Focused \/ adapted track/);
+    expect(demoDualTimelineSource).toMatch(/Raw baseline underneath/);
+    expect(demoDualTimelineSource).toMatch(/showWarpConnectors/);
+    expect(demoDualTimelineSource).toMatch(/warpConnectorStyle="curved"/);
   });
 
   test('keeps the stable dashboard route on Phase 1 composition', () => {
