@@ -97,11 +97,15 @@ describe('/dashboard-demo shell', () => {
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoSliceStore/);
+    expect(demoSlicePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
-    expect(demoDualTimelineSource).toMatch(/DualTimeline/);
+    expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
+    expect(demoSlicePanelSource).toMatch(/warpWeight|Warp strength/);
+    expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
+    expect(demoDualTimelineSource).toMatch(/DemoDualTimeline/);
     expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoSliceStore/);
@@ -109,11 +113,12 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoFilterStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
+    expect(demoDualTimelineSource).toMatch(/hasVisibleWarpSlices/);
+    expect(demoDualTimelineSource).toMatch(/warpEnabled/);
     expect(demoDualTimelineSource).toMatch(/disableAutoBurstSlices/);
-    expect(demoDualTimelineSource).toMatch(/adaptiveWarpMapOverride/);
-    expect(demoDualTimelineSource).toMatch(/adaptiveWarpDomainOverride/);
-    expect(demoDualTimelineSource).toMatch(/warpOverlayBandsOverride/);
-    expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle="curved"/);
+    expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);
+    expect(demoDualTimelineSource).not.toMatch(/timeStoreOverride|filterStoreOverride|coordinationStoreOverride|adaptiveStoreOverride|sliceDomainStoreOverride|timeslicingModeStoreOverride/);
+    expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle/);
   });
 
   test('keeps the stable dashboard route on Phase 1 composition', () => {

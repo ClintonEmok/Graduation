@@ -10,6 +10,8 @@ export interface TimeSlice {
   color?: string;
   notes?: string;
   source?: TimeSliceSource;
+  warpEnabled?: boolean;
+  warpWeight?: number;
   type: 'point' | 'range';
   time: number;
   range?: [number, number];

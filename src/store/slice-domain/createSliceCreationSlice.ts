@@ -104,26 +104,30 @@ export const createSliceCreationSlice: SliceDomainStateCreator<SliceCreationStat
 
     const hasRange = previewEnd !== null && previewEnd !== previewStart;
     const createdSlice: TimeSlice = hasRange
-      ? {
-          id,
-          name: sliceName,
-          type: 'range',
-          time: previewStart,
-          range: [previewStart, previewEnd],
-          isLocked: false,
-          isVisible: true,
-          startDateTimeMs: toDateTimeMs(previewStart),
-          endDateTimeMs: previewEnd === null ? null : toDateTimeMs(previewEnd),
-        }
-      : {
-          id,
-          name: sliceName,
-          type: 'point',
-          time: previewStart,
-          isLocked: false,
-          isVisible: true,
-          startDateTimeMs: toDateTimeMs(previewStart),
-        };
+        ? {
+            id,
+            name: sliceName,
+            type: 'range',
+            time: previewStart,
+            range: [previewStart, previewEnd],
+            warpEnabled: true,
+            warpWeight: 1,
+            isLocked: false,
+            isVisible: true,
+            startDateTimeMs: toDateTimeMs(previewStart),
+            endDateTimeMs: previewEnd === null ? null : toDateTimeMs(previewEnd),
+          }
+        : {
+            id,
+            name: sliceName,
+            type: 'point',
+            time: previewStart,
+            warpEnabled: true,
+            warpWeight: 1,
+            isLocked: false,
+            isVisible: true,
+            startDateTimeMs: toDateTimeMs(previewStart),
+          };
 
     get().addSlice(createdSlice);
     set(resetCreationState());

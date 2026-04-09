@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   Eye,
   EyeOff,
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
+import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -39,24 +40,52 @@ const parseDateTimeLocalValue = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
+
 export function DemoSlicePanel() {
   const { currentTime, timeRange, timeResolution } = useDashboardDemoTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const { isComputing } = useDebouncedDensity();
 
-   const slices = useDashboardDemoSliceStore((state) => state.slices);
-   const addSlice = useDashboardDemoSliceStore((state) => state.addSlice);
-   const removeSlice = useDashboardDemoSliceStore((state) => state.removeSlice);
-   const updateSlice = useDashboardDemoSliceStore((state) => state.updateSlice);
-   const toggleLock = useDashboardDemoSliceStore((state) => state.toggleLock);
-   const toggleVisibility = useDashboardDemoSliceStore((state) => state.toggleVisibility);
-   const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
+  const slices = useDashboardDemoSliceStore((state) => state.slices);
+  const addSlice = useDashboardDemoSliceStore((state) => state.addSlice);
+  const removeSlice = useDashboardDemoSliceStore((state) => state.removeSlice);
+  const updateSlice = useDashboardDemoSliceStore((state) => state.updateSlice);
+  const toggleLock = useDashboardDemoSliceStore((state) => state.toggleLock);
+  const toggleVisibility = useDashboardDemoSliceStore((state) => state.toggleVisibility);
+  const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
 
   const mode = useDashboardDemoTimeslicingModeStore((state) => state.mode);
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
+  const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
+  const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
+  const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
+  const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
+  const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
+
+  const visibleWarpSliceCount = useMemo(
+    () => slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true)).length,
+    [slices]
+  );
+
+  useEffect(() => {
+    if (visibleWarpSliceCount > 0) {
+      if (warpMode !== 'adaptive') {
+        setTimeScaleMode('adaptive');
+      }
+      if (warpFactor === 0) {
+        setWarpFactor(1);
+      }
+      return;
+    }
+
+    if (warpMode !== 'linear' || warpFactor !== 0) {
+      resetWarp();
+    }
+  }, [resetWarp, setTimeScaleMode, setWarpFactor, visibleWarpSliceCount, warpFactor, warpMode]);
 
   const activeWindowLabel = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) {
@@ -117,6 +146,8 @@ export function DemoSlicePanel() {
       type: 'point',
       time: currentTime,
       source: 'manual',
+      warpEnabled: true,
+      warpWeight: 1,
       isLocked: false,
       isVisible: true,
       startDateTimeMs,
@@ -140,6 +171,8 @@ export function DemoSlicePanel() {
       time: (normalizedRange[0] + normalizedRange[1]) / 2,
       range: normalizedRange,
       source: 'manual',
+      warpEnabled: true,
+      warpWeight: 1,
       isLocked: false,
       isVisible: true,
       startDateTimeMs,
@@ -235,6 +268,40 @@ export function DemoSlicePanel() {
                     />
 
                     <div className="text-xs text-slate-400">{formatSliceLabel(slice, index)}</div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => updateSlice(slice.id, { warpEnabled: !(slice.warpEnabled ?? true) })}
+                        className={`rounded border px-2 py-1 font-medium transition ${
+                          (slice.warpEnabled ?? true)
+                            ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400'
+                            : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
+                        }`}
+                        title={(slice.warpEnabled ?? true) ? 'Disable warp influence' : 'Enable warp influence'}
+                      >
+                        {(slice.warpEnabled ?? true) ? 'Warp enabled' : 'Warp disabled'}
+                      </button>
+
+                      <label className="inline-flex items-center gap-2 text-slate-400">
+                        <span>Warp strength</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={3}
+                          step={0.1}
+                          value={(slice.warpWeight ?? 1).toFixed(1)}
+                          onChange={(event) => {
+                            const parsed = Number(event.target.value);
+                            if (!Number.isFinite(parsed)) {
+                              return;
+                            }
+                            updateSlice(slice.id, { warpWeight: clampWarpWeight(parsed) });
+                          }}
+                          className="h-7 w-20 border-slate-700 bg-slate-950 text-right text-slate-100"
+                        />
+                      </label>
+                    </div>
 
                     <div className="grid gap-2 md:grid-cols-2">
                       <label className="space-y-1 text-[11px] text-slate-400">

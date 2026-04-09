@@ -1,6 +1,7 @@
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
 
 const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
+const clampWeight = (value: number) => Math.min(3, Math.max(0, value));
 
 const resolveSliceRange = (slice: TimeSlice): [number, number] | null => {
   if (slice.range) {
@@ -23,7 +24,7 @@ export const buildDemoSliceAuthoredWarpMap = (
   domain: [number, number],
   sampleCount: number
 ): Float32Array | null => {
-  const enabledSlices = slices.filter((slice) => slice.isVisible);
+  const enabledSlices = slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true));
   if (enabledSlices.length === 0 || sampleCount < 2) {
     return null;
   }
@@ -52,8 +53,9 @@ export const buildDemoSliceAuthoredWarpMap = (
       const halfWidth = Math.max(0.5, (end - start) / 2);
       const normalizedDistance = Math.abs((percent - center) / halfWidth);
       const falloff = Math.max(0, 1 - normalizedDistance);
-      const weight = slice.isBurst ? 1.25 : slice.type === 'range' ? 1 : 0.85;
-      boost += weight * (0.35 + 0.65 * falloff);
+      const baseWeight = slice.isBurst ? 1.25 : slice.type === 'range' ? 1 : 0.85;
+      const authoredWeight = clampWeight(slice.warpWeight ?? 1);
+      boost += baseWeight * authoredWeight * (0.35 + 0.65 * falloff);
     }
 
     density[i] = 1 + boost;
