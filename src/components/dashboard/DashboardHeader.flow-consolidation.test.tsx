@@ -9,8 +9,9 @@ describe('DashboardHeader flow consolidation', () => {
     expect(headerSource).not.toMatch(/href="\/dashboard-v2"/);
     expect(headerSource).not.toMatch(/href="\/timeslicing"/);
     expect(headerSource).not.toMatch(/href="\/stkde"/);
-    expect(headerSource).toMatch(/status header/);
-    expect(headerSource).toMatch(/Context only/);
+    expect(headerSource).toMatch(/overview and pattern summaries/);
+    expect(headerSource).toMatch(/overview · pattern summaries/);
+    expect(headerSource).toMatch(/Map-first overview surface/);
     expect(headerSource).not.toMatch(/go to|open|navigate/i);
     expect(headerSource).toMatch(/workflow/);
     expect(headerSource).toMatch(/sync status/);

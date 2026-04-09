@@ -66,7 +66,7 @@ export function DashboardHeader({ className = '' }: DashboardHeaderProps) {
     return {
       draftCount,
       appliedCount,
-      summaryText: `strategy ${strategy} · granularity ${granularity} · applied ${appliedCount} · draft ${draftCount}`,
+      summaryText: `overview · pattern summaries · strategy ${strategy} · granularity ${granularity} · applied ${appliedCount} · draft ${draftCount}`,
     };
   }, [appliedSlices.length, granularity, pendingGeneratedBins.length, strategy]);
 
@@ -74,9 +74,11 @@ export function DashboardHeader({ className = '' }: DashboardHeaderProps) {
     <header className={`border-b border-slate-800 bg-slate-950/95 px-4 py-3 ${className}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-sm font-semibold tracking-tight text-slate-100">dashboard-v2 · status header</h1>
+          <h1 className="text-sm font-semibold tracking-tight text-slate-100">
+            Phase 1 · overview and pattern summaries
+          </h1>
           <p className="mt-0.5 text-[11px] text-slate-400">
-            Context only — use the workflow rail for actions.
+            Map-first overview surface for recurring patterns. Use the workflow rail for actions.
           </p>
         </div>
       </div>
