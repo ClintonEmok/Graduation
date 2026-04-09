@@ -1,0 +1,178 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { buildStkdeViewModel, type StkdeHotspotRowModel } from '@/app/stkde/lib/stkde-view-model';
+import { DEFAULT_STKDE_BBOX, type StkdeQueryState } from '@/app/stkde/lib/stkde-query-state';
+import type { StkdeResponse } from '@/lib/stkde/contracts';
+import type { StkdeParams } from '@/store/useStkdeStore';
+import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+
+interface DemoStkdeResult {
+  rows: StkdeHotspotRowModel[];
+  summaryLabel: string;
+  heatmapCellCount: number;
+  response: StkdeResponse | null;
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+  setSelectedHotspot: (hotspotId: string | null) => void;
+  setHoveredHotspot: (hotspotId: string | null) => void;
+  setStkdeParams: (patch: Partial<StkdeParams>) => void;
+  setScopeMode: (mode: 'applied-slices' | 'full-viewport') => void;
+}
+
+function toQueryState(scopeMode: 'applied-slices' | 'full-viewport', startEpochSec: number, endEpochSec: number, params: StkdeParams): StkdeQueryState {
+  return {
+    ...params,
+    computeMode: scopeMode === 'full-viewport' ? 'full-population' : 'sampled',
+    startEpochSec,
+    endEpochSec,
+  };
+}
+
+export function useDemoStkde(): DemoStkdeResult {
+  const requestIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const [response, setResponse] = useState<StkdeResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const timeRange = useDashboardDemoAnalysisStore((state) => state.timeRange);
+  const stkdeScopeMode = useDashboardDemoAnalysisStore((state) => state.stkdeScopeMode);
+  const stkdeParams = useDashboardDemoAnalysisStore((state) => state.stkdeParams);
+  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+  const setSelectedHotspot = useDashboardDemoAnalysisStore((state) => state.setSelectedHotspot);
+  const setHoveredHotspot = useDashboardDemoAnalysisStore((state) => state.setHoveredHotspot);
+  const setStkdeParams = useDashboardDemoAnalysisStore((state) => state.setStkdeParams);
+  const setScopeMode = useDashboardDemoAnalysisStore((state) => state.setStkdeScopeMode);
+
+  const queryState = useMemo<StkdeQueryState>(
+    () =>
+      toQueryState(stkdeScopeMode, timeRange.startEpoch, timeRange.endEpoch, {
+        computeMode: 'sampled',
+        startEpochSec: timeRange.startEpoch,
+        endEpochSec: timeRange.endEpoch,
+        spatialBandwidthMeters: stkdeParams.spatialBandwidthMeters,
+        temporalBandwidthHours: stkdeParams.temporalBandwidthHours,
+        gridCellMeters: stkdeParams.gridCellMeters,
+        topK: stkdeParams.topK,
+        minSupport: stkdeParams.minSupport,
+        timeWindowHours: stkdeParams.timeWindowHours,
+      }),
+    [stkdeParams, stkdeScopeMode, timeRange.endEpoch, timeRange.startEpoch]
+  );
+
+  const refresh = useCallback(() => {
+    setRefreshTick((value) => value + 1);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = controller;
+
+    const requestId = ++requestIdRef.current;
+    setIsLoading(true);
+    setError(null);
+
+    void (async () => {
+      try {
+        const result = await fetch('/api/stkde/hotspots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            callerIntent: 'dashboard-demo',
+            computeMode: queryState.computeMode,
+            domain: {
+              startEpochSec: queryState.startEpochSec,
+              endEpochSec: queryState.endEpochSec,
+            },
+            filters: {
+              bbox: DEFAULT_STKDE_BBOX,
+            },
+            params: {
+              spatialBandwidthMeters: queryState.spatialBandwidthMeters,
+              temporalBandwidthHours: queryState.temporalBandwidthHours,
+              gridCellMeters: queryState.gridCellMeters,
+              topK: queryState.topK,
+              minSupport: queryState.minSupport,
+              timeWindowHours: queryState.timeWindowHours,
+            },
+            limits: {
+              maxEvents: 50000,
+              maxGridCells: 12000,
+            },
+            guardrails: {
+              fullPopulationMaxSpanDays: 12000,
+              fullPopulationTimeoutMs: 20000,
+            },
+            context: {
+              selectedDistrictCount: selectedDistricts.length,
+            },
+          }),
+        });
+
+        if (!result.ok) {
+          const body = await result.json().catch(() => ({ error: `HTTP ${result.status}` }));
+          throw new Error(body.error ?? `STKDE request failed (${result.status})`);
+        }
+
+        const data = (await result.json()) as StkdeResponse;
+        if (controller.signal.aborted || requestId !== requestIdRef.current) {
+          return;
+        }
+
+        setResponse(data);
+      } catch (requestError) {
+        if (controller.signal.aborted) return;
+        setError(requestError instanceof Error ? requestError.message : 'Failed to run STKDE');
+        setResponse(null);
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [queryState, refreshTick, selectedDistricts.length]);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const viewModel = useMemo(
+    () =>
+      buildStkdeViewModel(
+        {
+          computeMode: queryState.computeMode,
+          startEpochSec: queryState.startEpochSec,
+          endEpochSec: queryState.endEpochSec,
+          spatialBandwidthMeters: queryState.spatialBandwidthMeters,
+          temporalBandwidthHours: queryState.temporalBandwidthHours,
+          gridCellMeters: queryState.gridCellMeters,
+          topK: queryState.topK,
+          minSupport: queryState.minSupport,
+          timeWindowHours: queryState.timeWindowHours,
+        },
+        response
+      ),
+    [queryState, response]
+  );
+
+  return {
+    rows: viewModel.rows,
+    summaryLabel: `${viewModel.summaryLabel} • ${selectedDistricts.length || 'all'} districts`,
+    heatmapCellCount: viewModel.heatmapCellCount,
+    response,
+    isLoading,
+    error,
+    refresh,
+    setSelectedHotspot,
+    setHoveredHotspot,
+    setStkdeParams,
+    setScopeMode,
+  };
+}
