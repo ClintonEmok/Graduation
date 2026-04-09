@@ -18,6 +18,13 @@ describe('slice store actions', () => {
     expect(slicesAfterAdd[0].type).toBe('point');
     expect(slicesAfterAdd[0].isLocked).toBe(false);
 
+    store.updateSlice(slicesAfterAdd[0].id, {
+      startDateTimeMs: 1710000000000,
+      endDateTimeMs: 1710003600000,
+    });
+    expect(useSliceStore.getState().slices[0].startDateTimeMs).toBe(1710000000000);
+    expect(useSliceStore.getState().slices[0].endDateTimeMs).toBe(1710003600000);
+
     const id = slicesAfterAdd[0].id;
 
     store.updateSlice(id, { time: 60 });

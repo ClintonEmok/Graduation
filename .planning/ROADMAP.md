@@ -2,16 +2,18 @@
 
 ## Overview
 
-This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. A dedicated UX-first phase now comes before workflow integration so visual flow decisions are stabilized before technical wiring.
+This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, demo timeline rewrite, demo stats/STKDE wiring, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. A dedicated UX-first phase now comes before the demo timeline rewrite so visual flow decisions are stabilized before later interaction wiring.
 
 ## Phases
 
 - [x] **Phase 1: Overview + pattern summaries** — reveal broad clusters and recurring patterns in the 2D density view. (completed 2026-04-09)
 - [ ] **Phase 2: Dashboard demo UX hardening** — finalize UI flow and interaction semantics on `/dashboard-demo`, including a workflow skeleton that behaves like a multistep form without technical workflow coupling.
-- [ ] **Phase 3: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after UX is stabilized.
-- [ ] **Phase 4: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
-- [ ] **Phase 5: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
-- [ ] **Phase 6: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
+- [ ] **Phase 3: Demo timeline rewrite** — rebuild the timeline/dual timeline for the demo so slices and overlays feel polished, lightweight, and workflow-ready.
+- [ ] **Phase 4: Demo stats + STKDE wiring** — bring the stats and hotspot analysis surfaces into `/dashboard-demo` as interaction/state wiring built on the separate stats and STKDE routes.
+- [ ] **Phase 5: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after the demo analysis surfaces are stabilized.
+- [ ] **Phase 6: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
+- [ ] **Phase 7: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
+- [ ] **Phase 8: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
 
 ## Phase Details
 
@@ -47,25 +49,51 @@ Plans:
   7. `/dashboard-demo` swap and rail behavior is intuitive on desktop-first constraints.
   8. `/dashboard-demo` reuses core primitives/stores without introducing a second frontend architecture.
 
-### Phase 3: Workflow isolation + dashboard handoff (technical)
-**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after Phase 2 UX is validated, so the workflow stays separate from dashboard analysis until Apply.
+### Phase 3: Demo timeline rewrite
+**Goal**: Rebuild the timeline/dual timeline for `/dashboard-demo` so the demo has a polished, lower-clutter temporal surface before workflow wiring begins.
 **Depends on**: Phase 2
+**Requirements**: DTL-01, DTL-02, DTL-03, DTL-04, DTL-05
+**Plans:** 1
+Plans:
+- `.planning/phases/03-demo-timeline-rewrite/03-01-PLAN.md` — rewrite the demo timeline and separate slice overlays into a cleaner demo-specific structure.
+**Success Criteria** (what must be TRUE):
+  1. User can read the demo timeline without proof-of-concept clutter dominating the view.
+  2. User can see slices as a clear overlay/companion layer rather than a busy visual pileup.
+  3. User can manipulate slice state in a way that feels polished and demo-friendly.
+  4. The rewritten demo timeline is ready to support the workflow phase that follows.
+
+### Phase 4: Demo stats + STKDE wiring
+**Goal**: Bring the stats and hotspot analysis surfaces into `/dashboard-demo` as interaction and state wiring built on the separate stats and STKDE routes.
+**Depends on**: Phase 3
+**Requirements**: DEMO-07, DEMO-08, DEMO-09, DEMO-10, DEMO-11
+**Plans:** 1
+Plans:
+- `.planning/phases/04-demo-stats-stkde/04-01-PLAN.md` — wire the demo stats and STKDE surfaces into the dashboard demo state model.
+**Success Criteria** (what must be TRUE):
+  1. User can see stats and hotspot analysis as part of the demo dashboard instead of as detached reference routes.
+  2. User can change selection/time context and see demo stats/STKDE respond in the same shared analysis state.
+  3. Demo-specific interaction state stays isolated from the stable route behavior.
+  4. The demo analysis surfaces are ready for the workflow isolation phase that follows.
+
+### Phase 5: Workflow isolation + dashboard handoff (technical)
+**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after the demo analysis surfaces are validated, so the workflow stays separate from dashboard analysis until Apply.
+**Depends on**: Phase 4
 **Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
 **Plans:** 4
 Plans:
-- `.planning/phases/03-workflow-isolation/03-01-PLAN.md` — isolate the workflow into a dedicated shell.
-- `.planning/phases/03-workflow-isolation/03-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
-- `.planning/phases/03-workflow-isolation/03-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
-- `.planning/phases/03-workflow-isolation/03-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
+- `.planning/phases/05-workflow-isolation/05-01-PLAN.md` — isolate the workflow into a dedicated shell.
+- `.planning/phases/05-workflow-isolation/05-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
+- `.planning/phases/05-workflow-isolation/05-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
+- `.planning/phases/05-workflow-isolation/05-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
 **Success Criteria** (what must be TRUE):
   1. User can open generate slices as a dedicated full-screen step separate from dashboard analysis.
   2. User can review and edit draft bins with warnings visible before apply.
   3. Apply transitions directly into dashboard analysis without dead-end confirmation screens.
   4. Dashboard receives only applied state and remains isolated from pre-apply workflow concerns.
 
-### Phase 4: Trace trajectories + compare behaviors
+### Phase 6: Trace trajectories + compare behaviors
 **Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
-**Depends on**: Phase 3
+**Depends on**: Phase 5
 **Requirements**: T2, T3, VIEW-02, VIEW-03
 **Success Criteria** (what must be TRUE):
   1. User can follow the temporal evolution of selected incidents/records and aggregated clusters over time.
@@ -73,9 +101,9 @@ Plans:
   3. User can inspect a coordinated 3D Space-Time Cube with time mapped to the vertical axis.
   4. User can synchronize navigation, selection, and brushing/linking between the 2D and 3D views.
 
-### Phase 5: Detect events + decode bursts
+### Phase 7: Detect events + decode bursts
 **Goal**: Non-uniform temporal scaling makes anomalies and burst structure readable while preserving metric duration.
-**Depends on**: Phase 4
+**Depends on**: Phase 6
 **Requirements**: T4, T6, T7, T8, VIEW-05, VIEW-06
 **Success Criteria** (what must be TRUE):
   1. User can identify intersections, pauses, or abrupt changes in activity that deviate from the norm.
@@ -85,9 +113,9 @@ Plans:
   5. User can use non-uniform temporal scaling to expand dense intervals while keeping metric duration visible.
   6. User can distinguish categorical structure with hue and low-confidence events with transparency.
 
-### Phase 6: Support overlays + hardening
+### Phase 8: Support overlays + hardening
 **Goal**: Trust, hotspot, guidance, and performance support stay explicit without undermining the core analytical workflow.
-**Depends on**: Phase 5
+**Depends on**: Phase 7
 **Requirements**: TRUST-01, TRUST-02, TRUST-03, TRUST-04, HOTS-01, HOTS-02, SUGG-01, SUGG-02, PERF-01, PERF-02
 **Success Criteria** (what must be TRUE):
   1. User can see whether the app is loading, ready, or degraded during startup.
@@ -102,13 +130,15 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Requirements | Status | Completed |
 |-------|--------------|--------|-----------|
 | 1. Overview + pattern summaries | 4 | Complete    | 2026-04-09 |
-| 2. Dashboard demo UX hardening | 10 | Not started | - |
-| 3. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
-| 4. Trace trajectories + compare behaviors | 4 | Not started | - |
-| 5. Detect events + decode bursts | 6 | Not started | - |
-| 6. Support overlays + hardening | 10 | Not started | - |
+| 2. Dashboard demo UX hardening | 10 | Complete    | 2026-04-09 |
+| 3. Demo timeline rewrite | 5 | Not started | - |
+| 4. Demo stats + STKDE wiring | 5 | Not started | - |
+| 5. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
+| 6. Trace trajectories + compare behaviors | 4 | Not started | - |
+| 7. Detect events + decode bursts | 6 | Not started | - |
+| 8. Support overlays + hardening | 10 | Not started | - |

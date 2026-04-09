@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { Map, SquareStack } from 'lucide-react';
-import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
-import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
 import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
+import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
 
 type DemoViewport = 'map' | 'cube';
 
@@ -52,7 +52,13 @@ export function DashboardDemoShell() {
             </button>
           </div>
 
-          <div className="h-full w-full transition-opacity duration-200 ease-out">{activeViewport === 'map' ? <MapVisualization /> : <CubeVisualization />}</div>
+          <div className="h-full w-full transition-opacity duration-200 ease-out">
+            {activeViewport === 'map' ? (
+              <DemoMapVisualization />
+            ) : (
+              <CubeVisualization />
+            )}
+          </div>
         </section>
 
         <div className="shrink-0 border-t border-slate-800">
@@ -62,9 +68,7 @@ export function DashboardDemoShell() {
 
       <WorkflowSkeleton />
 
-      <aside className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur">
-        <DashboardStkdePanel />
-      </aside>
+      <DashboardDemoRailTabs />
     </main>
   );
 }

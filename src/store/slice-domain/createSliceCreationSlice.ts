@@ -4,6 +4,8 @@ import type {
   SliceDomainStateCreator,
   TimeSlice,
 } from './types';
+import { normalizedToEpochSeconds } from '../../lib/time-domain';
+import { useTimelineDataStore } from '../useTimelineDataStore';
 
 type SliceCreationBaseState = Pick<
   SliceCreationState,
@@ -48,6 +50,15 @@ const resetCreationState = (): SliceCreationBaseState => ({
   ...resetPreviewState(),
   ...resetPreviewFeedback(),
 });
+
+const toDateTimeMs = (normalizedValue: number): number | null => {
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+  if (minTimestampSec === null || maxTimestampSec === null || maxTimestampSec <= minTimestampSec) {
+    return null;
+  }
+
+  return normalizedToEpochSeconds(normalizedValue, minTimestampSec, maxTimestampSec) * 1000;
+};
 
 export const createSliceCreationSlice: SliceDomainStateCreator<SliceCreationState> = (set, get) => ({
   ...resetCreationState(),
@@ -101,6 +112,8 @@ export const createSliceCreationSlice: SliceDomainStateCreator<SliceCreationStat
           range: [previewStart, previewEnd],
           isLocked: false,
           isVisible: true,
+          startDateTimeMs: toDateTimeMs(previewStart),
+          endDateTimeMs: previewEnd === null ? null : toDateTimeMs(previewEnd),
         }
       : {
           id,
@@ -109,6 +122,7 @@ export const createSliceCreationSlice: SliceDomainStateCreator<SliceCreationStat
           time: previewStart,
           isLocked: false,
           isVisible: true,
+          startDateTimeMs: toDateTimeMs(previewStart),
         };
 
     get().addSlice(createdSlice);

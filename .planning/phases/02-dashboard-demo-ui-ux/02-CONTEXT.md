@@ -106,7 +106,7 @@ Phase 2 hardens the `/dashboard-demo` route as a polished UX surface before tech
 
 ### Prior phase context
 - `.planning/phases/01-overview-pattern-summaries/01-CONTEXT.md` — phase 1 overview decisions that carry forward
-- `.planning/phases/03-workflow-isolation/03-01-PLAN.md` — workflow-isolation technical follow-on phase
+- `.planning/phases/03-demo-timeline-rewrite/03-CONTEXT.md` — demo timeline rewrite follow-on phase
 
 ### Codebase maps
 - `.planning/codebase/STRUCTURE.md` — route/component layout and where new demo code belongs

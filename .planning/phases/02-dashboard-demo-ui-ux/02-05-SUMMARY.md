@@ -13,7 +13,7 @@ provides:
   - nested left-anchored WorkflowSkeleton drawer with Explore / Build / Review
   - regression coverage that protects /dashboard and /timeslicing from demo chrome leakage
 affects:
-  - phase 03-workflow-isolation
+  - phase 04-workflow-isolation
   - later dashboard workflow wiring
 
 # Tech tracking

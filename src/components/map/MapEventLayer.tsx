@@ -3,8 +3,6 @@ import type { CircleLayerSpecification, ExpressionSpecification } from 'maplibre
 import { Layer, Source } from 'react-map-gl/maplibre';
 import { CrimeRecord } from '@/types/crime';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { useFilterStore } from '@/store/useFilterStore';
-import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
 import { unproject } from '@/lib/projection';
 import { getCrimeTypeId, getCrimeTypeName, getDistrictId } from '@/lib/category-maps';
@@ -27,22 +25,40 @@ interface MapEventLayerProps {
   colorMode: 'burst' | 'type';
   hoveredTypeId?: number | null;
   records?: CrimeRecord[];
+  selectedTimeRange?: [number, number] | null;
+  selectedTypes?: number[];
+  selectedDistricts?: number[];
+  selectedSpatialBounds?: {
+    minLat: number;
+    maxLat: number;
+    minLon: number;
+    maxLon: number;
+  } | null;
+  densityMap?: Float32Array | null;
+  burstinessMap?: Float32Array | null;
+  burstMetric?: 'density' | 'burstiness';
+  burstCutoff?: number;
+  mapDomain?: [number, number];
 }
 
-export default function MapEventLayer({ colorMode, hoveredTypeId, records = [] }: MapEventLayerProps) {
+export default function MapEventLayer({
+  colorMode,
+  hoveredTypeId,
+  records = [],
+  selectedTimeRange,
+  selectedTypes = [],
+  selectedDistricts = [],
+  selectedSpatialBounds,
+  densityMap,
+  burstinessMap,
+  burstMetric = 'density',
+  burstCutoff = 1,
+  mapDomain = [0, 100],
+}: MapEventLayerProps) {
   const columns = useTimelineDataStore((state) => state.columns);
   const data = useTimelineDataStore((state) => state.data);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
-  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const selectedTypes = useFilterStore((state) => state.selectedTypes);
-  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
-  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
-  const densityMap = useAdaptiveStore((state) => state.densityMap);
-  const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
-  const burstMetric = useAdaptiveStore((state) => state.burstMetric);
-  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const theme = useThemeStore((state) => state.theme);
   const palette = PALETTES[theme];
 

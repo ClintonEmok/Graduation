@@ -13,6 +13,8 @@ export interface TimeSlice {
   type: 'point' | 'range';
   time: number;
   range?: [number, number];
+  startDateTimeMs?: number | null;
+  endDateTimeMs?: number | null;
   isBurst?: boolean;
   burstSliceId?: string;
   isLocked: boolean;

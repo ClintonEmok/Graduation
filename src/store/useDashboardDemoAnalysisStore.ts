@@ -5,6 +5,7 @@ import {
   type StkdeSpatialFilter,
   type StkdeTemporalFilter,
 } from '@/store/useStkdeStore';
+import type { StkdeResponse } from '@/lib/stkde/contracts';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -27,6 +28,7 @@ interface DashboardDemoAnalysisState {
   hoveredHotspotId: string | null;
   spatialFilter: StkdeSpatialFilter | null;
   temporalFilter: StkdeTemporalFilter | null;
+  stkdeResponse: StkdeResponse | null;
   setSelectedDistricts: (districts: string[]) => void;
   toggleDistrict: (district: string) => void;
   setTimeRange: (startEpoch: number, endEpoch: number) => void;
@@ -36,6 +38,7 @@ interface DashboardDemoAnalysisState {
   setHoveredHotspot: (hotspotId: string | null) => void;
   setSpatialFilter: (filter: StkdeSpatialFilter | null) => void;
   setTemporalFilter: (filter: StkdeTemporalFilter | null) => void;
+  setStkdeResponse: (response: StkdeResponse | null) => void;
   resetAnalysis: () => void;
 }
 
@@ -58,6 +61,7 @@ export const useDashboardDemoAnalysisStore = create<DashboardDemoAnalysisState>(
   hoveredHotspotId: null,
   spatialFilter: null,
   temporalFilter: null,
+  stkdeResponse: null,
   setSelectedDistricts: (districts) => set({ selectedDistricts: districts }),
   toggleDistrict: (district) =>
     set((state) => {
@@ -120,6 +124,7 @@ export const useDashboardDemoAnalysisStore = create<DashboardDemoAnalysisState>(
   setHoveredHotspot: (hoveredHotspotId) => set({ hoveredHotspotId }),
   setSpatialFilter: (spatialFilter) => set({ spatialFilter }),
   setTemporalFilter: (temporalFilter) => set({ temporalFilter }),
+  setStkdeResponse: (stkdeResponse) => set({ stkdeResponse }),
   resetAnalysis: () =>
     set({
       selectedDistricts: [],
@@ -140,6 +145,7 @@ export const useDashboardDemoAnalysisStore = create<DashboardDemoAnalysisState>(
       hoveredHotspotId: null,
       spatialFilter: null,
       temporalFilter: null,
+      stkdeResponse: null,
     }),
 }));
 

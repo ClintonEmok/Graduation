@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
+import { useStore } from 'zustand';
 import MapBase from './MapBase';
 import MapEventLayer from './MapEventLayer';
 import MapSelectionOverlay, { LatLonBounds } from './MapSelectionOverlay';
@@ -22,6 +23,17 @@ import { useStkdeStore } from '@/store/useStkdeStore';
 import { useLogger } from '@/hooks/useLogger';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
+import type { StkdeResponse } from '@/lib/stkde/contracts';
+
+interface MapVisualizationProps {
+  stkdeResponse?: StkdeResponse | null;
+  stkdeSelectedHotspotId?: string | null;
+  stkdeVisibleOverride?: boolean;
+  filterStoreOverride?: unknown;
+  coordinationStoreOverride?: unknown;
+  adaptiveStoreOverride?: unknown;
+  mapLayerStoreOverride?: unknown;
+}
 
 type DragPoint = {
   x: number;
@@ -30,7 +42,15 @@ type DragPoint = {
   lon: number;
 };
 
-export default function MapVisualization() {
+export default function MapVisualization({
+  stkdeResponse: demoStkdeResponse = null,
+  stkdeSelectedHotspotId,
+  stkdeVisibleOverride,
+  filterStoreOverride,
+  coordinationStoreOverride,
+  adaptiveStoreOverride,
+  mapLayerStoreOverride,
+}: MapVisualizationProps = {}) {
   const mapRef = useRef<MapRef>(null);
   const { log } = useLogger();
   const formatCount = (value: number) =>
@@ -56,26 +76,39 @@ export default function MapVisualization() {
   const totalMatches = crimeMeta?.totalMatches ?? null;
   const isSampled = Boolean(crimeMeta?.sampled);
   
-  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
-  const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
-  const clearSpatialBounds = useFilterStore((state) => state.clearSpatialBounds);
-  const selectedTypes = useFilterStore((state) => state.selectedTypes);
-  const toggleType = useFilterStore((state) => state.toggleType);
-  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
-  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
-  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
-  const clearSelection = useCoordinationStore((state) => state.clearSelection);
-  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
-  const visibility = useMapLayerStore((state) => state.visibility);
-  const opacity = useMapLayerStore((state) => state.opacity);
+  const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
+  const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
+  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
+  const mapLayerStore = (mapLayerStoreOverride ?? useMapLayerStore) as typeof useMapLayerStore;
 
-  const stkdeResponse = useStkdeStore((state) => state.response);
-  const selectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
-  const activeHotspotCentroid = useMemo<[number, number] | null>(() => {
+  const selectedSpatialBounds = useStore(filterStore, (state) => state.selectedSpatialBounds);
+  const setSpatialBounds = useStore(filterStore, (state) => state.setSpatialBounds);
+  const clearSpatialBounds = useStore(filterStore, (state) => state.clearSpatialBounds);
+  const selectedTypes = useStore(filterStore, (state) => state.selectedTypes);
+  const toggleType = useStore(filterStore, (state) => state.toggleType);
+  const selectedDistricts = useStore(filterStore, (state) => state.selectedDistricts);
+  const selectedTimeRange = useStore(filterStore, (state) => state.selectedTimeRange);
+  const selectedIndex = useStore(coordinationStore, (state) => state.selectedIndex);
+  const setSelectedIndex = useStore(coordinationStore, (state) => state.setSelectedIndex);
+  const clearSelection = useStore(coordinationStore, (state) => state.clearSelection);
+  const densityMapValue = useStore(adaptiveStore, (state) => state.densityMap);
+  const burstinessMapValue = useStore(adaptiveStore, (state) => state.burstinessMap);
+  const burstMetricValue = useStore(adaptiveStore, (state) => state.burstMetric);
+  const burstCutoffValue = useStore(adaptiveStore, (state) => state.burstCutoff);
+  const mapDomainValue = useStore(adaptiveStore, (state) => state.mapDomain);
+  const burstThreshold = useStore(adaptiveStore, (state) => state.burstThreshold);
+  const visibility = useStore(mapLayerStore, (state) => state.visibility);
+  const opacity = useStore(mapLayerStore, (state) => state.opacity);
+
+  const stkdeStoreResponse = useStkdeStore((state) => state.response);
+  const stkdeStoreSelectedHotspotId = useStkdeStore((state) => state.selectedHotspotId);
+  const stkdeResponse = demoStkdeResponse ?? stkdeStoreResponse;
+  const selectedHotspotId = stkdeSelectedHotspotId ?? stkdeStoreSelectedHotspotId;
+  const isStkdeVisible = typeof stkdeVisibleOverride === 'boolean' ? stkdeVisibleOverride : visibility.stkde;
+  const activeHotspotCentroid = useMemo(() => {
     if (!stkdeResponse || !selectedHotspotId) return null;
     const hotspot = stkdeResponse.hotspots.find((row) => row.id === selectedHotspotId);
-    return hotspot ? [hotspot.centroidLng, hotspot.centroidLat] : null;
+    return hotspot ? ([hotspot.centroidLng, hotspot.centroidLat] as [number, number]) : null;
   }, [selectedHotspotId, stkdeResponse]);
 
   const [isSelecting, setIsSelecting] = useState(false);
@@ -252,11 +285,26 @@ export default function MapVisualization() {
         dragPan={!isSelecting}
         cursor={isSelecting ? 'crosshair' : undefined}
       >
-        {visibility.events ? <MapEventLayer colorMode={colorMode} hoveredTypeId={hoveredTypeId} records={data} /> : null}
+        {visibility.events ? (
+          <MapEventLayer
+            colorMode={colorMode}
+            hoveredTypeId={hoveredTypeId}
+            records={data}
+            selectedTimeRange={selectedTimeRange}
+            selectedTypes={selectedTypes}
+            selectedDistricts={selectedDistricts}
+            selectedSpatialBounds={selectedSpatialBounds}
+            densityMap={densityMapValue}
+            burstinessMap={burstinessMapValue}
+            burstMetric={burstMetricValue}
+            burstCutoff={burstCutoffValue}
+            mapDomain={mapDomainValue}
+          />
+        ) : null}
         {visibility.heatmap ? <MapHeatmapOverlay /> : null}
         {visibility.trajectories ? <MapTrajectoryLayer /> : null}
         {visibility.clusters ? <MapClusterHighlights /> : null}
-        {visibility.stkde && stkdeResponse?.heatmap.cells?.length ? (
+        {isStkdeVisible && stkdeResponse?.heatmap.cells?.length ? (
           <MapStkdeHeatmapLayer
             cells={stkdeResponse.heatmap.cells}
             activeHotspotId={selectedHotspotId}
@@ -276,7 +324,7 @@ export default function MapVisualization() {
       <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
         <h2 className="text-sm font-semibold">Overview Map</h2>
         <div className="mt-1 text-[10px] text-muted-foreground">
-          {visibility.stkde ? 'Overview density with hotspot cues' : 'Density-first overview'}
+          {isStkdeVisible ? 'Overview density with hotspot cues' : 'Density-first overview'}
         </div>
         <div className="mt-2 flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">

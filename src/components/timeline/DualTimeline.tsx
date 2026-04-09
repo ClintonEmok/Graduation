@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useStore } from 'zustand';
 import { bin, max } from 'd3-array';
 import { timeDay, timeHour, timeMinute, timeMonth, timeSecond, timeWeek, timeYear } from 'd3-time';
 import { useMeasure } from '@/hooks/useMeasure';
@@ -139,6 +140,20 @@ const resolveSliceColor = (color?: string): { fill: string; stroke: string } => 
 interface DualTimelineProps {
   adaptiveWarpMapOverride?: Float32Array | null;
   adaptiveWarpDomainOverride?: [number, number];
+  warpFactorOverride?: number;
+  timeScaleModeOverride?: 'linear' | 'adaptive';
+  timeStoreOverride?: unknown;
+  filterStoreOverride?: unknown;
+  coordinationStoreOverride?: unknown;
+  adaptiveStoreOverride?: unknown;
+  sliceDomainStoreOverride?: unknown;
+  timeslicingModeStoreOverride?: unknown;
+  warpOverlayBandsOverride?: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    isDebugPreview: boolean;
+  }>;
   domainOverride?: [number, number];
   detailRangeOverride?: [number, number];
   interactive?: boolean;
@@ -153,6 +168,15 @@ interface DualTimelineProps {
 export const DualTimeline: React.FC<DualTimelineProps> = ({
   adaptiveWarpMapOverride,
   adaptiveWarpDomainOverride,
+  warpFactorOverride,
+  timeScaleModeOverride,
+  timeStoreOverride,
+  filterStoreOverride,
+  coordinationStoreOverride,
+  adaptiveStoreOverride,
+  sliceDomainStoreOverride,
+  timeslicingModeStoreOverride,
+  warpOverlayBandsOverride,
   domainOverride,
   detailRangeOverride,
   interactive = true,
@@ -167,31 +191,40 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const columns = useTimelineDataStore((state) => state.columns);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
-  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const setTimeRange = useFilterStore((state) => state.setTimeRange);
-  const currentTime = useTimeStore((state) => state.currentTime);
-  const setTime = useTimeStore((state) => state.setTime);
-  const setRange = useTimeStore((state) => state.setRange);
-  const timeResolution = useTimeStore((state) => state.timeResolution);
-  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
-  const selectedIndex = useCoordinationStore((state) => state.selectedIndex);
-  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
-  const clearSelection = useCoordinationStore((state) => state.clearSelection);
-  const brushRange = useCoordinationStore((state) => state.brushRange);
-  const setBrushRange = useCoordinationStore((state) => state.setBrushRange);
-  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
-  const warpMap = useAdaptiveStore((state) => state.warpMap);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
-  const densityMap = useAdaptiveStore((state) => state.densityMap);
-  const isComputing = useAdaptiveStore((state) => state.isComputing);
-  const slices = useSliceDomainStore(selectSlices);
-  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
-  const activeSliceUpdatedAt = useSliceDomainStore(selectActiveSliceUpdatedAt);
-  const getSliceOverlapCounts = useSliceDomainStore(select((state) => state.getOverlapCounts));
-  const pendingGeneratedBins = useTimeslicingModeStore((state) => state.pendingGeneratedBins);
-  const warpSlices = useWarpSliceStore((state) => state.slices);
+  const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
+  const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
+  const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
+  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
+  const sliceDomainStore = (sliceDomainStoreOverride ?? useSliceDomainStore) as typeof useSliceDomainStore;
+  const timeslicingModeStore = (timeslicingModeStoreOverride ?? useTimeslicingModeStore) as typeof useTimeslicingModeStore;
+
+  const selectedTimeRange = useStore(filterStore, (state) => state.selectedTimeRange);
+  const setTimeRange = useStore(filterStore, (state) => state.setTimeRange);
+  const currentTime = useStore(timeStore, (state) => state.currentTime);
+  const setTime = useStore(timeStore, (state) => state.setTime);
+  const setRange = useStore(timeStore, (state) => state.setRange);
+  const timeResolution = useStore(timeStore, (state) => state.timeResolution);
+  const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
+  const selectedIndex = useStore(coordinationStore, (state) => state.selectedIndex);
+  const setSelectedIndex = useStore(coordinationStore, (state) => state.setSelectedIndex);
+  const clearSelection = useStore(coordinationStore, (state) => state.clearSelection);
+  const brushRange = useStore(coordinationStore, (state) => state.brushRange);
+  const setBrushRange = useStore(coordinationStore, (state) => state.setBrushRange);
+  const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
+  const warpMap = useStore(adaptiveStore, (state) => state.warpMap);
+  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain);
+  const densityMap = useStore(adaptiveStore, (state) => state.densityMap);
+  const isComputing = useStore(adaptiveStore, (state) => state.isComputing);
+  const slices = useStore(sliceDomainStore, selectSlices);
+  const activeSliceId = useStore(sliceDomainStore, selectActiveSliceId);
+  const activeSliceUpdatedAt = useStore(sliceDomainStore, selectActiveSliceUpdatedAt);
+  const getSliceOverlapCounts = useStore(sliceDomainStore, select((state) => state.getOverlapCounts));
+  const pendingGeneratedBins = useStore(timeslicingModeStore, (state) => state.pendingGeneratedBins);
+  const warpSlices = useStore(useWarpSliceStore, (state) => state.slices);
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
+  const effectiveWarpFactor = warpFactorOverride ?? warpFactor;
+  const effectiveTimeScaleMode = timeScaleModeOverride ?? timeScaleMode;
 
   // Get viewport-based crime data
   const { data: viewportCrimes, isLoading: isViewportLoading } = useViewportCrimeData({
@@ -348,8 +381,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       detailRangeSec,
       overviewInnerWidth,
       detailInnerWidth,
-      timeScaleMode,
-      warpFactor,
+      timeScaleMode: effectiveTimeScaleMode,
+      warpFactor: effectiveWarpFactor,
       warpMap: effectiveWarpMap,
       warpDomain: effectiveWarpDomain,
     });
@@ -624,7 +657,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const userWarpOverlayBands = useMemo(
     () =>
-      warpSlices
+      warpOverlayBandsOverride ?? warpSlices
         .filter((slice) => slice.enabled)
         .map((slice) => {
           const startSec = normalizedToEpochSeconds(clamp(slice.range[0], 0, 100), domainStart, domainEnd);
@@ -639,7 +672,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           };
         })
         .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
-    [domainEnd, domainStart, warpSlices]
+    [domainEnd, domainStart, warpOverlayBandsOverride, warpSlices]
   );
 
   const sliceOverlapCounts = getSliceOverlapCounts();

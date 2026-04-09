@@ -1,7 +1,7 @@
 import { useAdaptiveStore } from '../useAdaptiveStore';
 import { useTimelineDataStore } from '../useTimelineDataStore';
 import { calculateRangeTolerance, rangesMatch } from '../../lib/slice-utils';
-import { epochSecondsToNormalized, toEpochSeconds } from '../../lib/time-domain';
+import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '../../lib/time-domain';
 import type { TimeBin } from '@/lib/binning/types';
 import type { SliceCoreState, SliceDomainStateCreator, TimeSlice } from './types';
 
@@ -80,6 +80,26 @@ const toNormalizedBinRange = (bin: TimeBin, domain: [number, number]): [number, 
   return normalizeRange(clampNormalized(start), clampNormalized(end));
 };
 
+const toDateTimeMs = (normalizedValue: number): number | null => {
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+  if (minTimestampSec === null || maxTimestampSec === null || maxTimestampSec <= minTimestampSec) {
+    return null;
+  }
+
+  return normalizedToEpochSeconds(normalizedValue, minTimestampSec, maxTimestampSec) * 1000;
+};
+
+const withDateTimeFields = (
+  slice: TimeSlice,
+  startNormalized: number,
+  endNormalized?: number
+): TimeSlice => ({
+  ...slice,
+  startDateTimeMs: slice.startDateTimeMs ?? toDateTimeMs(startNormalized),
+  endDateTimeMs:
+    slice.endDateTimeMs ?? (endNormalized === undefined ? null : toDateTimeMs(endNormalized)),
+});
+
 export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (set, get) => ({
   slices: [],
   activeSliceId: null,
@@ -129,8 +149,14 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         ...initial,
       };
 
+      const normalizedStart = nextSlice.type === 'range' && nextSlice.range
+        ? nextSlice.range[0]
+        : nextSlice.time;
+      const normalizedEnd = nextSlice.type === 'range' && nextSlice.range ? nextSlice.range[1] : undefined;
+      const hydratedSlice = withDateTimeFields(nextSlice, normalizedStart, normalizedEnd);
+
       return {
-        slices: sortSlices([...state.slices, nextSlice]),
+        slices: sortSlices([...state.slices, hydratedSlice]),
         activeSliceId: id,
         activeSliceUpdatedAt: Date.now(),
       };
@@ -173,13 +199,15 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
       isVisible: true,
     };
 
+    const hydratedBurstSlice = withDateTimeFields(burstSlice, rangeStart, rangeEnd);
+
     set((state) => ({
-      slices: sortSlices([...state.slices, burstSlice]),
+      slices: sortSlices([...state.slices, hydratedBurstSlice]),
       activeSliceId: id,
       activeSliceUpdatedAt: Date.now(),
     }));
 
-    return burstSlice;
+    return hydratedBurstSlice;
   },
   removeSlice: (id) =>
     set((state) => {
@@ -238,9 +266,10 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
       isLocked: false,
       isVisible: true,
     };
+    const hydratedMergedSlice = withDateTimeFields(mergedSlice, mergedRange[0], mergedRange[1]);
 
     set((state) => ({
-      slices: sortSlices([...state.slices.filter((slice) => !uniqueIds.has(slice.id)), mergedSlice]),
+      slices: sortSlices([...state.slices.filter((slice) => !uniqueIds.has(slice.id)), hydratedMergedSlice]),
       activeSliceId: mergedId,
       activeSliceUpdatedAt: Date.now(),
     }));
@@ -281,6 +310,8 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
           notes: `${bin.count} events`,
           isLocked: false,
           isVisible: true,
+          startDateTimeMs: bin.startTime,
+          endDateTimeMs: bin.endTime,
         };
       })
       .filter((slice): slice is TimeSlice => slice !== null);

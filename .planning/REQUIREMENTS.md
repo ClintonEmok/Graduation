@@ -12,7 +12,15 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **T1**: User can perceive broad spatiotemporal patterns, including global trends, high-activity intervals, and spatial clusters.
 - [ ] **T5**: User can generalize from detailed observations to identify recurring behaviors or periodic patterns.
 
-### Workflow Isolation and Dashboard Handoff
+### Demo Stats and STKDE Wiring (Phase 4)
+
+- [ ] **DEMO-07**: User can see compact stats and hotspot analysis inside `/dashboard-demo` instead of only as separate reference routes.
+- [ ] **DEMO-08**: User can change selection or time context and see demo stats/STKDE respond in the same shared analysis state.
+- [ ] **DEMO-09**: User can keep demo-specific analysis state isolated from the stable `/stats` and `/stkde` routes.
+- [ ] **DEMO-10**: User can use the stats/STKDE surfaces without the demo becoming a second architecture or a second dashboard app.
+- [ ] **DEMO-11**: User can keep the demo analysis surfaces ready for the workflow isolation phase that follows.
+
+### Workflow Isolation and Dashboard Handoff (Phase 5)
 
 - [ ] **FLOW-01**: User can open generate slices as a dedicated full-screen step that is separate from the dashboard.
 - [ ] **FLOW-02**: User can review draft bins and warnings in a dedicated full-screen review step.
@@ -44,6 +52,14 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **WFUI-03**: User can recognize that the workflow skeleton is nested under the demo rather than exposed as a separate route.
 - [ ] **WFUI-04**: User can open the workflow skeleton from a left-anchored toggle drawer without it competing with the fixed right STKDE rail.
 - [ ] **WFUI-05**: User can start in an `Explore` step and move into a continuous slice-building and review flow before dashboard handoff.
+
+### Demo Timeline Rewrite (Phase 3)
+
+- [ ] **DTL-01**: User can understand the demo timeline/dual timeline as the primary temporal control surface at a glance.
+- [ ] **DTL-02**: User can see slices and overlays as a clear companion layer rather than a cluttered pile of competing widgets.
+- [ ] **DTL-03**: User can manipulate slices in a polished, demo-specific way without the base timeline becoming busy.
+- [ ] **DTL-04**: User can keep the timeline readable while working with overlays and slice state.
+- [ ] **DTL-05**: User can use the rewritten demo timeline as the foundation for the workflow that follows.
 
 ### Trace and Compare
 
@@ -108,12 +124,17 @@ Explicitly excluded. Documented to prevent scope creep.
 | T5 | Phase 1 | Planned |
 | VIEW-01 | Phase 1 | Planned |
 | VIEW-04 | Phase 1 | Planned |
-| FLOW-01 | Phase 2 | Planned |
-| FLOW-02 | Phase 2 | Planned |
-| FLOW-03 | Phase 2 | Planned |
-| FLOW-04 | Phase 2 | Planned |
-| FLOW-05 | Phase 2 | Planned |
-| FLOW-06 | Phase 2 | Planned |
+| DEMO-07 | Phase 4 | Planned |
+| DEMO-08 | Phase 4 | Planned |
+| DEMO-09 | Phase 4 | Planned |
+| DEMO-10 | Phase 4 | Planned |
+| DEMO-11 | Phase 4 | Planned |
+| FLOW-01 | Phase 5 | Planned |
+| FLOW-02 | Phase 5 | Planned |
+| FLOW-03 | Phase 5 | Planned |
+| FLOW-04 | Phase 5 | Planned |
+| FLOW-05 | Phase 5 | Planned |
+| FLOW-06 | Phase 5 | Planned |
 | DEMO-01 | Phase 2 | Planned |
 | DEMO-02 | Phase 2 | Planned |
 | DEMO-03 | Phase 2 | Planned |
@@ -129,27 +150,32 @@ Explicitly excluded. Documented to prevent scope creep.
 | WFUI-03 | Phase 2 | Planned |
 | WFUI-04 | Phase 2 | Planned |
 | WFUI-05 | Phase 2 | Planned |
-| T2 | Phase 4 | Planned |
-| T3 | Phase 4 | Planned |
-| VIEW-02 | Phase 4 | Planned |
-| VIEW-03 | Phase 4 | Planned |
-| T4 | Phase 5 | Planned |
-| T6 | Phase 5 | Planned |
-| T7 | Phase 5 | Planned |
-| T8 | Phase 5 | Planned |
-| VIEW-05 | Phase 5 | Planned |
-| VIEW-06 | Phase 5 | Planned |
-| TRUST-01 | Phase 6 | Planned |
-| TRUST-02 | Phase 6 | Planned |
-| TRUST-03 | Phase 6 | Planned |
-| TRUST-04 | Phase 6 | Planned |
-| HOTS-01 | Phase 6 | Planned |
-| HOTS-02 | Phase 6 | Planned |
-| SUGG-01 | Phase 6 | Planned |
-| SUGG-02 | Phase 6 | Planned |
-| PERF-01 | Phase 6 | Planned |
-| PERF-02 | Phase 6 | Planned |
+| DTL-01 | Phase 3 | Planned |
+| DTL-02 | Phase 3 | Planned |
+| DTL-03 | Phase 3 | Planned |
+| DTL-04 | Phase 3 | Planned |
+| DTL-05 | Phase 3 | Planned |
+| T2 | Phase 6 | Planned |
+| T3 | Phase 6 | Planned |
+| VIEW-02 | Phase 6 | Planned |
+| VIEW-03 | Phase 6 | Planned |
+| T4 | Phase 7 | Planned |
+| T6 | Phase 7 | Planned |
+| T7 | Phase 7 | Planned |
+| T8 | Phase 7 | Planned |
+| VIEW-05 | Phase 7 | Planned |
+| VIEW-06 | Phase 7 | Planned |
+| TRUST-01 | Phase 8 | Planned |
+| TRUST-02 | Phase 8 | Planned |
+| TRUST-03 | Phase 8 | Planned |
+| TRUST-04 | Phase 8 | Planned |
+| HOTS-01 | Phase 8 | Planned |
+| HOTS-02 | Phase 8 | Planned |
+| SUGG-01 | Phase 8 | Planned |
+| SUGG-02 | Phase 8 | Planned |
+| PERF-01 | Phase 8 | Planned |
+| PERF-02 | Phase 8 | Planned |
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after inserting dashboard-demo UI/UX hardening phase before technical workflow integration*
+*Last updated: 2026-04-09 after inserting the demo stats + STKDE phase before workflow isolation*

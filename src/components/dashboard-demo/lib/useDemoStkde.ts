@@ -44,6 +44,7 @@ export function useDemoStkde(): DemoStkdeResult {
   const setHoveredHotspot = useDashboardDemoAnalysisStore((state) => state.setHoveredHotspot);
   const setStkdeParams = useDashboardDemoAnalysisStore((state) => state.setStkdeParams);
   const setScopeMode = useDashboardDemoAnalysisStore((state) => state.setStkdeScopeMode);
+  const setStkdeResponse = useDashboardDemoAnalysisStore((state) => state.setStkdeResponse);
 
   const queryState = useMemo<StkdeQueryState>(
     () =>
@@ -123,10 +124,12 @@ export function useDemoStkde(): DemoStkdeResult {
         }
 
         setResponse(data);
+        setStkdeResponse(data);
       } catch (requestError) {
         if (controller.signal.aborted) return;
         setError(requestError instanceof Error ? requestError.message : 'Failed to run STKDE');
         setResponse(null);
+        setStkdeResponse(null);
       } finally {
         if (requestId === requestIdRef.current) {
           setIsLoading(false);
