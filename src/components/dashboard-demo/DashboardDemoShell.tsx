@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Layers3, Map, SquareStack } from 'lucide-react';
+import { Map, SquareStack } from 'lucide-react';
 import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
-import { TimelinePanel } from '@/components/timeline/TimelinePanel';
+import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
 import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -56,7 +56,7 @@ export function DashboardDemoShell() {
         </section>
 
         <div className="shrink-0 border-t border-slate-800">
-          <TimelinePanel />
+          <DemoTimelinePanel />
         </div>
       </div>
 
