@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 4 demo stats + STKDE wiring completed
-last_updated: "2026-04-09T14:56:17Z"
+stopped_at: Phase 5 complete
+last_updated: "2026-04-09T18:23:20Z"
 progress:
-  total_phases: 8
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 6
-  percent: 60
+  total_phases: 9
+  completed_phases: 5
+  total_plans: 11
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -20,24 +20,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 5 — Workflow isolation + dashboard handoff
+**Current focus:** Phase 6 — Workflow isolation + dashboard handoff
 
 ## Current Position
 
-Phase: 5
+Phase: 6
 Plan: 01
-Status: Phase 4 complete — demo stats + STKDE wiring ready for workflow isolation
-Last activity: 2026-04-09 - Completed 04-01-PLAN.md
+Status: Phase 5 complete — demo stats + STKDE interaction verified and ready for workflow isolation planning
+Last activity: 2026-04-09 - Completed Phase 5 stats + STKDE interaction execution
 
-Progress: [██████░░░░] 60%
+Progress: [█████████░] 82%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6
+- Total plans completed: 9
 - Average duration: ~4 min
-- Total execution time: 0.1 hours
+- Total execution time: 0.6 hours
 
 **By Phase:**
 
@@ -47,14 +47,15 @@ Progress: [██████░░░░] 60%
 | 2 | 1 | 1 | 4 min |
 | 3 | 1 | 1 | 24 min |
 | 4 | 1 | 1 | 1 min |
-| 5 | 4 | 0 | - |
-| 6 | 0 | 0 | - |
+| 5 | 3 | 3 | - |
+| 6 | 4 | 0 | - |
 | 7 | 0 | 0 | - |
 | 8 | 0 | 0 | - |
+| 9 | 0 | 0 | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-02, 01-03, 02-05, 03-01, 04-01
+- Last 5 plans: 03-01, 04-01, 05-01, 05-02, 05-03
 - Trend: Stable
 
 ## Accumulated Context
@@ -81,13 +82,18 @@ Progress: [██████░░░░] 60%
 - Reuse the stats and STKDE routes as learning foundations for demo-local interaction/state wiring.
 - Keep the demo stats surface compact and the STKDE rail prominent inside the demo shell.
 - Protect the route pivot with source-inspection regression tests that compare demo and stable shell composition.
+- Make the demo stats surface the entry point with friendly district labels and an explicit spatial distribution callout.
+- Thread selected districts one-way from stats into STKDE while keeping hotspot interaction local to the STKDE rail.
+- Keep hotspot/place labels in district-first language and preserve lightweight recovery states inside the demo rail.
+- Lock the Phase 5 contract with source-inspection and API regression tests.
 
 ### Pending Todos
 
 - Phase 2 workflow skeleton plan is complete.
 - Phase 3 demo timeline rewrite is complete.
 - Phase 4 demo stats + STKDE wiring is complete.
-- Phase 5 workflow isolation plan follows the demo stats + STKDE phase and is next in line.
+- Phase 5 demo stats + STKDE interaction is complete.
+- Phase 6 workflow isolation plan follows next.
 
 ### Blockers/Concerns
 
@@ -96,6 +102,6 @@ Progress: [██████░░░░] 60%
 
 ## Session Continuity
 
-Last session: 2026-04-09T14:56:17Z
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/05-workflow-isolation/05-01-PLAN.md
+Last session: 2026-04-09T18:23:20Z
+Stopped at: Phase 5 complete
+Resume file: .planning/phases/05-stats-stkde-interaction/05-CONTEXT.md
