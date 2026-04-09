@@ -52,8 +52,8 @@ export function MapClusterHighlights() {
           'fill-opacity': [
             'case',
             ['get', 'isSelected'],
-            0.3,
-            0.05
+            0.2,
+            0.03
           ]
         }}
       />
@@ -65,10 +65,10 @@ export function MapClusterHighlights() {
           'line-width': [
             'case',
             ['get', 'isSelected'],
-            3,
-            1
+            4,
+            2
           ],
-          'line-opacity': 0.8
+          'line-opacity': 0.9
         }}
       />
     </Source>

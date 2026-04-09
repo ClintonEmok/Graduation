@@ -35,6 +35,7 @@ export function MapTypeLegend({
   return (
     <div className="rounded-md border border-border bg-background/85 backdrop-blur px-3 py-2 text-xs text-muted-foreground shadow-sm">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Crime Types</div>
+      <div className="mt-1 text-[10px] text-muted-foreground/70">Quickly spot recurring patterns</div>
       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
         {ORDERED_TYPES.map((key) => {
           const color = palette.categoryColors[key];
@@ -50,11 +51,11 @@ export function MapTypeLegend({
               onMouseLeave={() => onHoverType?.(null)}
               onClick={() => onToggleType?.(id)}
               className={`flex items-center gap-2 rounded px-1 py-0.5 text-left transition-colors ${
-                isHovered ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                isHovered ? 'bg-muted/80 text-foreground ring-1 ring-foreground/10' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
               }`}
             >
               <span
-                className={`h-2.5 w-2.5 rounded-full ${isActive ? '' : 'opacity-30'}`}
+                className={`h-2.5 w-2.5 rounded-full ${isActive ? 'shadow-sm' : 'opacity-30'}`}
                 style={{ backgroundColor: color }}
               />
               <span className={isActive ? '' : 'opacity-50'}>{LABELS[key] || key}</span>
