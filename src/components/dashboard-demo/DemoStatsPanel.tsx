@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { ChevronUp, Minus } from 'lucide-react';
 import { ALL_DEMO_DISTRICTS, useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { useDemoNeighborhoodStats } from '@/components/dashboard-demo/lib/useDemoNeighborhoodStats';
+import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
 
 const toDateInputValue = (epochSec: number) => new Date(epochSec * 1000).toISOString().slice(0, 10);
 
@@ -33,12 +34,17 @@ export function DemoStatsPanel() {
   const topTypes = useMemo(() => stats?.byType.slice(0, 4) ?? [], [stats]);
   const hourBins = useMemo(() => stats?.byHour ?? [], [stats]);
   const maxHourCount = useMemo(() => Math.max(...hourBins, 1), [hourBins]);
+  const selectedDistrictLabels = useMemo(
+    () => (selectedDistricts.length > 0 ? selectedDistricts.map((district) => getDistrictDisplayName(district)) : ['All districts']),
+    [selectedDistricts]
+  );
 
   return (
     <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100">
       <header className="space-y-1">
         <div className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">Stats Summary</div>
-        <p className="text-[11px] text-slate-400">Compact demo-local analysis driven by the same selection and time context as STKDE.</p>
+        <p className="text-[11px] text-slate-400">District-first entry surface for the demo analysis flow.</p>
+        <div className="text-[11px] text-slate-500">Selected districts: {selectedDistrictLabels.join(', ')}</div>
       </header>
 
       <div className="grid grid-cols-2 gap-2">
@@ -80,6 +86,11 @@ export function DemoStatsPanel() {
             );
           })}
         </div>
+      </div>
+
+      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Spatial distribution</div>
+        <p className="mt-1 text-[11px] text-slate-400">Keep the hotspot map visible as the balanced spatial context for these district summaries.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-800 bg-slate-900/50 p-3 text-[11px]">
