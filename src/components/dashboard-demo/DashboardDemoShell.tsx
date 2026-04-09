@@ -6,6 +6,7 @@ import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { TimelinePanel } from '@/components/timeline/TimelinePanel';
 import { DashboardStkdePanel } from '@/components/stkde/DashboardStkdePanel';
+import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
 import { useTimeslicingModeStore } from '@/store/useTimeslicingModeStore';
 
 type DemoViewport = 'map' | 'cube';
@@ -63,6 +64,8 @@ export function DashboardDemoShell() {
           <TimelinePanel />
         </div>
       </div>
+
+      <WorkflowSkeleton />
 
       <aside className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur">
         <DashboardStkdePanel />

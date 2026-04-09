@@ -7,6 +7,7 @@ describe('/dashboard-demo shell', () => {
     const shellSource = readFileSync(new URL('../../components/dashboard-demo/DashboardDemoShell.tsx', import.meta.url), 'utf8');
 
     expect(pageSource).toMatch(/DashboardDemoShell/);
+    expect(shellSource).toMatch(/WorkflowSkeleton/);
     expect(shellSource).toMatch(/MapVisualization/);
     expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/TimelinePanel/);
