@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Layers3, Map, Square3Stack3D } from 'lucide-react';
+import { Layers3, Map, SquareStack } from 'lucide-react';
 import MapVisualization from '@/components/map/MapVisualization';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { TimelinePanel } from '@/components/timeline/TimelinePanel';
@@ -46,7 +46,7 @@ export function DashboardDemoShell() {
                 activeViewport === 'cube' ? 'bg-violet-500/20 text-violet-100' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Square3Stack3D className="size-3.5" />
+              <SquareStack className="size-3.5" />
               3D cube
             </button>
           </div>

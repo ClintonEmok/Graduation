@@ -30,6 +30,13 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **DEMO-05**: `/dashboard-demo` renders an always-visible fixed right STKDE rail.
 - [ ] **DEMO-06**: `/dashboard-demo` reuses existing primitives/stores (MapVisualization, CubeVisualization, TimelinePanel/DualTimeline, DashboardStkdePanel) without creating a second frontend architecture.
 
+### Dashboard Demo UI/UX Flow Hardening (new Phase 2 focus)
+
+- [ ] **UXF-01**: User can understand the `/dashboard-demo` flow at a glance via clear information hierarchy and consistent panel semantics.
+- [ ] **UXF-02**: User can switch between map and cube in one shared viewport with explicit, unambiguous active-state feedback.
+- [ ] **UXF-03**: User can keep contextual status awareness (applied state, generation status, draft metadata) without obscuring primary analysis controls.
+- [ ] **UXF-04**: User can navigate the desktop-first layout (main viewport, timeline rail, fixed STKDE rail) without visual clutter or competing focal points.
+
 ### Trace and Compare
 
 - [ ] **T2**: User can follow the temporal evolution of selected incidents/records and aggregated clusters over time to understand movement paths and duration.
@@ -105,27 +112,31 @@ Explicitly excluded. Documented to prevent scope creep.
 | DEMO-04 | Phase 2 | Planned |
 | DEMO-05 | Phase 2 | Planned |
 | DEMO-06 | Phase 2 | Planned |
-| T2 | Phase 3 | Planned |
-| T3 | Phase 3 | Planned |
-| VIEW-02 | Phase 3 | Planned |
-| VIEW-03 | Phase 3 | Planned |
-| T4 | Phase 4 | Planned |
-| T6 | Phase 4 | Planned |
-| T7 | Phase 4 | Planned |
-| T8 | Phase 4 | Planned |
-| VIEW-05 | Phase 4 | Planned |
-| VIEW-06 | Phase 4 | Planned |
-| TRUST-01 | Phase 5 | Planned |
-| TRUST-02 | Phase 5 | Planned |
-| TRUST-03 | Phase 5 | Planned |
-| TRUST-04 | Phase 5 | Planned |
-| HOTS-01 | Phase 5 | Planned |
-| HOTS-02 | Phase 5 | Planned |
-| SUGG-01 | Phase 5 | Planned |
-| SUGG-02 | Phase 5 | Planned |
-| PERF-01 | Phase 5 | Planned |
-| PERF-02 | Phase 5 | Planned |
+| UXF-01 | Phase 2 | Planned |
+| UXF-02 | Phase 2 | Planned |
+| UXF-03 | Phase 2 | Planned |
+| UXF-04 | Phase 2 | Planned |
+| T2 | Phase 4 | Planned |
+| T3 | Phase 4 | Planned |
+| VIEW-02 | Phase 4 | Planned |
+| VIEW-03 | Phase 4 | Planned |
+| T4 | Phase 5 | Planned |
+| T6 | Phase 5 | Planned |
+| T7 | Phase 5 | Planned |
+| T8 | Phase 5 | Planned |
+| VIEW-05 | Phase 5 | Planned |
+| VIEW-06 | Phase 5 | Planned |
+| TRUST-01 | Phase 6 | Planned |
+| TRUST-02 | Phase 6 | Planned |
+| TRUST-03 | Phase 6 | Planned |
+| TRUST-04 | Phase 6 | Planned |
+| HOTS-01 | Phase 6 | Planned |
+| HOTS-02 | Phase 6 | Planned |
+| SUGG-01 | Phase 6 | Planned |
+| SUGG-02 | Phase 6 | Planned |
+| PERF-01 | Phase 6 | Planned |
+| PERF-02 | Phase 6 | Planned |
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after workflow-isolation phase insertion*
+*Last updated: 2026-04-09 after inserting dashboard-demo UI/UX hardening phase before technical workflow integration*
