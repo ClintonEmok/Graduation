@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
@@ -44,12 +45,11 @@ export function WarpSliceEditor() {
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
   const slices = useWarpSliceStore((state) => state.slices);
-  const selectedSliceId = useWarpSliceStore((state) => state.selectedSliceId);
-  const setSelectedSliceId = useWarpSliceStore((state) => state.setSelectedSliceId);
   const addSlice = useWarpSliceStore((state) => state.addSlice);
   const updateSlice = useWarpSliceStore((state) => state.updateSlice);
   const removeSlice = useWarpSliceStore((state) => state.removeSlice);
   const clearSlices = useWarpSliceStore((state) => state.clearSlices);
+  const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
   const editableDomain: [number, number] =
     mapDomain[0] === 0 && mapDomain[1] === 100 ? [DATA_MIN_TIMESTAMP, DATA_MAX_TIMESTAMP] : mapDomain;
 
