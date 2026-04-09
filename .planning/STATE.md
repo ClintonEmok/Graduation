@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 2 dashboard demo UI/UX hardening complete
-last_updated: "2026-04-09T10:16:43Z"
+stopped_at: Phase 3 demo timeline rewrite completed
+last_updated: "2026-04-09T11:32:58Z"
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 33
+  total_phases: 7
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -20,22 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 3 — Workflow isolation + dashboard handoff
+**Current focus:** Phase 4 — Workflow isolation + dashboard handoff (technical)
 
 ## Current Position
 
-Phase: 2
-Plan: 05
-Status: Complete — dashboard demo shell and nested workflow drawer shipped
-Last activity: 2026-04-09 - Completed Phase 2 dashboard demo UI/UX hardening
+Phase: 3
+Plan: complete
+Status: Phase 3 complete — demo timeline rewrite finished
+Last activity: 2026-04-09 - Completed Phase 3 demo timeline rewrite
 
-Progress: [██░░░░] 33%
+Progress: [████░░░] 56%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: ~4 min
 - Total execution time: 0.1 hours
 
@@ -45,14 +45,15 @@ Progress: [██░░░░] 33%
 |-------|-------|-------|----------|
 | 1 | 3 | 3 | - |
 | 2 | 1 | 1 | 4 min |
-| 3 | 0 | 0 | - |
-| 4 | 0 | 0 | - |
+| 3 | 1 | 1 | 24 min |
+| 4 | 4 | 0 | - |
 | 5 | 0 | 0 | - |
 | 6 | 0 | 0 | - |
+| 7 | 0 | 0 | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01, 01-02, 01-03, 02-05
+- Last 5 plans: 01-01, 01-02, 01-03, 02-05, 03-01
 - Trend: Stable
 
 ## Accumulated Context
@@ -75,11 +76,16 @@ Progress: [██░░░░] 33%
 - Insert a dedicated dashboard-demo UI/UX hardening phase before technical workflow wiring.
 - Keep `/dashboard-demo` low-density and map-first with an embedded Explore / Build / Review workflow drawer.
 - Protect the stable `/dashboard` and `/timeslicing` shells with source-inspection regression tests.
+- Build the demo timeline as a separate route-specific wrapper and keep the production timeline baseline untouched.
+- Keep slice manipulation in a collapsible companion section above the demo timeline to reduce clutter.
+- Reuse the shared time/slice stores for the demo timeline; no demo-specific store boundary was needed.
+- Protect the route pivot with source-inspection regression tests that compare demo and stable shell composition.
 
 ### Pending Todos
 
-- Phase 2 workflow skeleton plan is drafted and ready for execution.
-- Phase 3 workflow isolation plan is ready to execute next.
+- Phase 2 workflow skeleton plan is complete.
+- Phase 3 demo timeline rewrite is complete.
+- Phase 4 workflow isolation plan is next after the timeline rewrite.
 
 ### Blockers/Concerns
 
@@ -88,6 +94,6 @@ Progress: [██░░░░] 33%
 
 ## Session Continuity
 
-Last session: 2026-04-09T10:16:43Z
-Stopped at: Completed Phase 2 dashboard demo UI/UX hardening
-Resume file: .planning/phases/03-workflow-isolation/03-01-PLAN.md
+Last session: 2026-04-09T11:32:58Z
+Stopped at: Completed 03-01 plan and Phase 3 execution
+Resume file: None
