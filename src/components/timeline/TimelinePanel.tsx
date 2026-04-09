@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTimeStore } from '@/store/useTimeStore';
 import { 
   Play, 
@@ -23,14 +23,12 @@ export function TimelinePanel() {
   const {
     currentTime,
     isPlaying,
-    timeWindow,
+    timeRange,
     speed,
     timeResolution,
     timeScaleMode,
     togglePlay,
     setTime,
-    stepTime,
-    setTimeWindow,
     setTimeResolution,
     setSpeed,
     setTimeScaleMode
@@ -42,6 +40,21 @@ export function TimelinePanel() {
   const { isComputing } = useDebouncedDensity();
   
   const { log } = useLogger();
+
+  const activeWindowLabel = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return null;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const startSec = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec);
+    const endSec = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec);
+
+    return {
+      start: new Date(startSec * 1000).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+      end: new Date(endSec * 1000).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+    };
+  }, [maxTimestampSec, minTimestampSec, timeRange]);
 
   const handleResolutionChange = useCallback(
     (value: number[]) => {
@@ -94,7 +107,26 @@ export function TimelinePanel() {
       className="w-full h-full bg-background border-t p-4 flex flex-col justify-center"
       aria-busy={isComputing}
     >
-      <div className="w-full flex flex-col gap-3">
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border bg-muted/10 px-4 py-3">
+          <div className="space-y-1">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Phase 1 temporal control</div>
+            <div className="text-sm font-semibold">Overview window</div>
+            <div className="max-w-2xl text-xs text-muted-foreground">
+              Brush the timeline to narrow or expand the active overview window. Playback, stepping, and temporal scaling stay available as secondary controls.
+            </div>
+          </div>
+
+          {activeWindowLabel ? (
+            <div className="rounded-md border bg-background/80 px-3 py-2 text-xs shadow-sm">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Active window</div>
+              <div className="font-medium">
+                {activeWindowLabel.start} → {activeWindowLabel.end}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -105,11 +137,11 @@ export function TimelinePanel() {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
+
               <button
                 onClick={handleTogglePlay}
                 className="p-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-sm"
-                title={isPlaying ? "Pause" : "Play"}
+                title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
                   <Pause className="w-6 h-6 fill-current" />
@@ -117,7 +149,7 @@ export function TimelinePanel() {
                   <Play className="w-6 h-6 fill-current ml-1" />
                 )}
               </button>
-              
+
               <button
                 onClick={() => handleStep(1)}
                 className="p-2 hover:bg-accent rounded-full transition-colors"
@@ -146,7 +178,7 @@ export function TimelinePanel() {
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <FastForward className="w-4 h-4" />
-              <select 
+              <select
                 value={speed}
                 onChange={handleSpeedChange}
                 className="bg-transparent border-none focus:ring-0 cursor-pointer font-medium text-foreground"
@@ -162,30 +194,30 @@ export function TimelinePanel() {
 
         <div className="rounded-md border bg-muted/10 px-3 py-2">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pb-2">
-            <span>Timeline Overview + Detail</span>
-            <span>Drag overview to zoom • Click detail to select</span>
+            <span>Overview window • Detail view</span>
+            <span>Brush overview to resize the window • click detail to inspect a moment</span>
           </div>
           <DualTimeline />
         </div>
 
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2 min-w-[120px]">
-              <Settings2 className="w-4 h-4" />
-            <span>Time Resolution</span>
-            </div>
-            <div className="flex-1 max-w-lg">
-              <Slider
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 min-w-[120px]">
+            <Settings2 className="w-4 h-4" />
+            <span>Temporal Resolution</span>
+          </div>
+          <div className="flex-1 max-w-lg">
+            <Slider
               min={0}
               max={6}
               step={1}
               value={[['seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years'].indexOf(timeResolution)]}
               onValueChange={handleResolutionChange}
-              />
-            </div>
-            <div className="w-12 text-right font-mono">
-            {timeResolution}
-            </div>
+            />
           </div>
+          <div className="w-12 text-right font-mono">
+            {timeResolution}
+          </div>
+        </div>
       </div>
     </div>
   );
