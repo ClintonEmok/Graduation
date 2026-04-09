@@ -469,10 +469,22 @@ export default function TimeslicingPage() {
                   <h3 className="text-sm font-medium uppercase tracking-wide text-slate-300">Warnings and apply</h3>
                   <p className="mt-1 text-xs text-slate-400">Warnings stay on screen while you adjust the pending bins.</p>
                 </div>
-                <div className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                  {new Date(rangeStart * 1000).toLocaleDateString()} - {new Date(rangeEnd * 1000).toLocaleDateString()}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                    {pendingGeneratedBins.length} pending bins
+                  </div>
+                  <div className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                    {new Date(rangeStart * 1000).toLocaleDateString()} - {new Date(rangeEnd * 1000).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
+
+              {(generationError ?? lastGeneratedMetadata?.warning) ? (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                  <span className="font-medium text-amber-300">Review warning:</span>{' '}
+                  {generationError ?? lastGeneratedMetadata?.warning}
+                </div>
+              ) : null}
 
                <SuggestionToolbar applyDomain={[rangeStart * 1000, rangeEnd * 1000]} onApply={handleApply} />
 
