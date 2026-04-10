@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { TimeBin } from '@/lib/binning/types';
+import {
+  DEMO_PRESET_BIAS_KEYS,
+  DEFAULT_PRESET_BIASES,
+  clampPresetBias,
+  type DemoPresetBiasKey,
+} from '@/components/dashboard-demo/lib/demo-preset-thresholds';
 
 export type TimeslicingMode = 'auto' | 'manual';
 export type TimeslicePreset =
@@ -34,11 +40,17 @@ export interface GenerationResultMetadata {
   inputs: GenerationInputs;
 }
 
+export type PresetBiases = Record<TimeslicePreset, number>;
+
 interface DashboardDemoTimeslicingState {
   mode: TimeslicingMode;
   setMode: (mode: TimeslicingMode) => void;
   preset: TimeslicePreset;
   setPreset: (preset: TimeslicePreset) => void;
+  presetBiases: PresetBiases;
+  setPresetBias: (preset: TimeslicePreset, bias: number) => void;
+  resetPresetBias: (preset: TimeslicePreset) => void;
+  resetAllPresetBiases: () => void;
   customIntervals: Array<{ name: string; startHour: number; endHour: number }>;
   setCustomIntervals: (intervals: Array<{ name: string; startHour: number; endHour: number }>) => void;
   autoConfig: {
@@ -77,6 +89,35 @@ interface DashboardDemoTimeslicingState {
   deletePendingGeneratedBin: (binId: string) => void;
   applyGeneratedBins: (domain: [number, number]) => boolean;
 }
+
+const createDefaultPresetBiases = (): PresetBiases => ({
+  hourly: DEFAULT_PRESET_BIASES.hourly,
+  daily: DEFAULT_PRESET_BIASES.daily,
+  weekly: DEFAULT_PRESET_BIASES.weekly,
+  monthly: DEFAULT_PRESET_BIASES.monthly,
+  'weekday-weekend': DEFAULT_PRESET_BIASES['weekday-weekend'],
+  'morning-afternoon-evening-night': DEFAULT_PRESET_BIASES['morning-afternoon-evening-night'],
+  'business-hours': DEFAULT_PRESET_BIASES['business-hours'],
+  custom: DEFAULT_PRESET_BIASES.custom,
+});
+
+const sanitizePresetBiases = (candidate: unknown): PresetBiases => {
+  const defaults = createDefaultPresetBiases();
+
+  if (!candidate || typeof candidate !== 'object') {
+    return defaults;
+  }
+
+  const record = candidate as Partial<Record<DemoPresetBiasKey, unknown>>;
+  for (const key of DEMO_PRESET_BIAS_KEYS) {
+    const value = record[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      defaults[key] = clampPresetBias(value);
+    }
+  }
+
+  return defaults;
+};
 
 const PRESET_DEFINITIONS: Record<TimeslicePreset, () => Array<{ name: string; startHour: number; endHour: number }>> = {
   hourly: () => Array.from({ length: 24 }, (_, i) => ({ name: `${i}:00`, startHour: i, endHour: i + 1 })),
@@ -193,6 +234,21 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       setMode: (mode) => set({ mode }),
       preset: 'daily',
       setPreset: (preset) => set({ preset }),
+      presetBiases: createDefaultPresetBiases(),
+      setPresetBias: (preset, bias) => set((state) => ({
+        presetBiases: {
+          ...state.presetBiases,
+          [preset]: clampPresetBias(bias),
+        },
+      })),
+      resetPresetBias: (preset) =>
+        set((state) => ({
+          presetBiases: {
+            ...state.presetBiases,
+            [preset]: DEFAULT_PRESET_BIASES[preset],
+          },
+        })),
+      resetAllPresetBiases: () => set({ presetBiases: createDefaultPresetBiases() }),
       customIntervals: [],
       setCustomIntervals: (intervals) => set({ customIntervals: intervals }),
       autoConfig: {
@@ -280,6 +336,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       partialize: (state) => ({
         mode: state.mode,
         preset: state.preset,
+        presetBiases: state.presetBiases,
         customIntervals: state.customIntervals,
         autoConfig: state.autoConfig,
         isCreatingSlice: state.isCreatingSlice,
@@ -292,6 +349,22 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         lastGeneratedMetadata: state.lastGeneratedMetadata,
         lastAppliedAt: state.lastAppliedAt,
       }),
+      merge: (persistedState, currentState) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return currentState;
+        }
+
+        const typedPersisted = persistedState as Partial<DashboardDemoTimeslicingState>;
+        const merged = {
+          ...currentState,
+          ...typedPersisted,
+        };
+
+        return {
+          ...merged,
+          presetBiases: sanitizePresetBiases(typedPersisted.presetBiases),
+        };
+      },
     }
   )
 );
