@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback } from 'react';
-import { ChevronRight, FastForward, Pause, Play, Settings2 } from 'lucide-react';
+import { ChevronRight, Settings2 } from 'lucide-react';
 
 import { DemoDualTimeline } from '@/components/timeline/DemoDualTimeline';
 import { Slider } from '@/components/ui/slider';
@@ -23,13 +23,9 @@ const TIME_RESOLUTION_OPTIONS: TimeResolution[] = [
 export function DemoTimelinePanel() {
   const {
     currentTime,
-    isPlaying,
-    speed,
     timeResolution,
-    togglePlay,
     setTime,
     setTimeResolution,
-    setSpeed,
   } = useDashboardDemoTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -48,17 +44,6 @@ export function DemoTimelinePanel() {
     },
     [setTimeResolution, timeResolution]
   );
-
-  const handleSpeedChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      setSpeed(Number(event.target.value));
-    },
-    [setSpeed]
-  );
-
-  const handleTogglePlay = useCallback(() => {
-    togglePlay();
-  }, [togglePlay]);
 
   const handleStep = useCallback(
     (direction: number) => {
@@ -113,34 +98,12 @@ export function DemoTimelinePanel() {
             </button>
             <button
               type="button"
-              onClick={handleTogglePlay}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
-            </button>
-            <button
-              type="button"
               onClick={handleStep.bind(null, 1)}
               className="inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
               title="Step forward"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FastForward className="w-4 h-4" />
-            <select
-              value={speed}
-              onChange={handleSpeedChange}
-              className="bg-transparent border-none focus:ring-0 cursor-pointer font-medium text-foreground"
-            >
-              <option value={0.5}>0.5x</option>
-              <option value={1}>1.0x</option>
-              <option value={2}>2.0x</option>
-              <option value={5}>5.0x</option>
-            </select>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

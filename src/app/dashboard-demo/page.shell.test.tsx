@@ -94,6 +94,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).toMatch(/Warp factor/);
     expect(demoTimelinePanelSource).toMatch(/Warp source/);
     expect(demoTimelinePanelSource).toMatch(/Slice-authored|Density/);
+    expect(demoTimelinePanelSource).not.toMatch(/isPlaying|togglePlay|setSpeed|FastForward|Pause|Play|requestAnimationFrame/);
     expect(demoTimelinePanelSource).toMatch(/Focused track above|raw baseline below/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
