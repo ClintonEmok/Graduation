@@ -19,14 +19,17 @@ import {
 } from '@/store/useDashboardDemoSliceStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { resolvePointByIndex } from '@/lib/selection';
-import { useBurstWindows } from '@/components/viz/BurstList';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildDemoSliceAuthoredWarpMap } from '@/components/dashboard-demo/lib/demo-warp-map';
-import { useDensityStripDerivation, DETAIL_DENSITY_RECOMPUTE_MAX_DAYS } from './hooks/useDensityStripDerivation';
+import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
+import {
+  computeDensityMap,
+  useDensityStripDerivation,
+  DETAIL_DENSITY_RECOMPUTE_MAX_DAYS,
+} from './hooks/useDensityStripDerivation';
 import { useScaleTransforms } from './hooks/useScaleTransforms';
 import { useBrushZoomSync } from './hooks/useBrushZoomSync';
 import { usePointSelection } from './hooks/usePointSelection';
@@ -65,6 +68,55 @@ const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
 const clamp = clampToRange;
+
+const buildDensityWarpMap = (
+  densityMap: Float32Array | null,
+  domain: [number, number]
+): Float32Array | null => {
+  if (!densityMap || densityMap.length < 2) {
+    return null;
+  }
+
+  const [start, end] = domain;
+  const span = end - start;
+  if (!Number.isFinite(span) || span <= 0) {
+    return null;
+  }
+
+  let maxDensity = 0;
+  for (let i = 0; i < densityMap.length; i += 1) {
+    const value = densityMap[i] ?? 0;
+    if (Number.isFinite(value) && value > maxDensity) {
+      maxDensity = value;
+    }
+  }
+  if (maxDensity <= 0) {
+    maxDensity = 1;
+  }
+
+  const weights = new Float32Array(densityMap.length);
+  let totalWeight = 0;
+  for (let i = 0; i < densityMap.length; i += 1) {
+    const normalized = (densityMap[i] ?? 0) / maxDensity;
+    const safeNormalized = Number.isFinite(normalized) ? normalized : 0;
+    const weight = 1 + safeNormalized * 5;
+    weights[i] = weight;
+    totalWeight += weight;
+  }
+
+  if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+    return null;
+  }
+
+  const warpMap = new Float32Array(densityMap.length);
+  let accumulated = 0;
+  for (let i = 0; i < densityMap.length; i += 1) {
+    warpMap[i] = start + (accumulated / totalWeight) * span;
+    accumulated += weights[i] ?? 1;
+  }
+
+  return warpMap;
+};
 
 interface ApplyRangeToStoresContractParams {
   interactive: boolean;
@@ -118,6 +170,8 @@ interface TimelineSliceGeometry {
   id: string;
   left: number;
   width: number;
+  rawLeft: number;
+  rawWidth: number;
   isActive: boolean;
   isBurst: boolean;
   isPoint: boolean;
@@ -126,6 +180,8 @@ interface TimelineSliceGeometry {
   isGeneratedApplied: boolean;
   overlapCount: number;
   color: string | undefined;
+  warpEnabled: boolean;
+  warpWeight: number;
 }
 
 const resolveSliceColor = (color?: string): { fill: string; stroke: string } => {
@@ -143,7 +199,6 @@ interface DemoDualTimelineProps {
   detailPointsOverride?: number[];
   detailRenderMode?: 'auto' | 'points' | 'bins';
   detailBinCount?: number;
-  disableAutoBurstSlices?: boolean;
   tickLabelStrategy?: TickLabelStrategy;
 }
 
@@ -155,7 +210,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   detailPointsOverride,
   detailRenderMode = 'auto',
   detailBinCount = 60,
-  disableAutoBurstSlices = false,
   tickLabelStrategy = 'legacy',
 }) => {
   const data = useTimelineDataStore((state) => state.data);
@@ -174,14 +228,19 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const brushRange = useStore(useDashboardDemoCoordinationStore, (state) => state.brushRange);
   const setBrushRange = useStore(useDashboardDemoCoordinationStore, (state) => state.setBrushRange);
   const timeScaleMode = useStore(useDashboardDemoWarpStore, (state) => state.timeScaleMode);
+  const warpSource = useStore(useDashboardDemoWarpStore, (state) => state.warpSource);
   const warpFactor = useStore(useDashboardDemoWarpStore, (state) => state.warpFactor);
+  const densityMap = useStore(useDashboardDemoWarpStore, (state) => state.densityMap);
+  const precomputedWarpMap = useStore(useDashboardDemoWarpStore, (state) => state.warpMap);
+  const precomputedMapDomain = useStore(useDashboardDemoWarpStore, (state) => state.mapDomain);
+  const isComputing = useStore(useDashboardDemoWarpStore, (state) => state.isComputing);
+  const setPrecomputedMaps = useStore(useDashboardDemoWarpStore, (state) => state.setPrecomputedMaps);
+  const setIsComputing = useStore(useDashboardDemoWarpStore, (state) => state.setIsComputing);
   const slices = useStore(useDashboardDemoSliceStore, selectSlices);
   const activeSliceId = useStore(useDashboardDemoSliceStore, selectActiveSliceId);
   const activeSliceUpdatedAt = useStore(useDashboardDemoSliceStore, selectActiveSliceUpdatedAt);
   const getSliceOverlapCounts = useStore(useDashboardDemoSliceStore, select((state) => state.getOverlapCounts));
   const pendingGeneratedBins = useStore(useDashboardDemoTimeslicingModeStore, (state) => state.pendingGeneratedBins);
-  const densityMap = null;
-  const isComputing = false;
 
   const warpDomain = useMemo<[number, number]>(() => {
     if (minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec) {
@@ -195,13 +254,10 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     [slices]
   );
 
-  const effectiveWarpMap = useMemo(
+  const authoredWarpMap = useMemo(
     () => buildDemoSliceAuthoredWarpMap(slices, warpDomain, Math.max(96, slices.length * 8 || 0)),
     [slices, warpDomain]
   );
-  const effectiveWarpDomain = warpDomain;
-  const effectiveWarpFactor = hasVisibleWarpSlices ? (warpFactor > 0 ? warpFactor : 1) : 0;
-  const effectiveTimeScaleMode = hasVisibleWarpSlices ? 'adaptive' : timeScaleMode;
 
   // Get viewport-based crime data
   const { data: viewportCrimes, isLoading: isViewportLoading } = useViewportCrimeData({
@@ -282,6 +338,32 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return [];
   }, [columns, data, minTimestampSec, maxTimestampSec]);
 
+  const nextDensityMap = useMemo(() => {
+    if (!timestampSeconds.length || warpDomain[1] <= warpDomain[0]) {
+      return null;
+    }
+
+    return computeDensityMap(timestampSeconds, warpDomain, ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH);
+  }, [timestampSeconds, warpDomain]);
+
+  const nextDensityWarpMap = useMemo(
+    () => buildDensityWarpMap(nextDensityMap, warpDomain),
+    [nextDensityMap, warpDomain]
+  );
+
+  useEffect(() => {
+    setIsComputing(true);
+    setPrecomputedMaps(nextDensityMap, nextDensityWarpMap, warpDomain);
+  }, [nextDensityMap, nextDensityWarpMap, setIsComputing, setPrecomputedMaps, warpDomain]);
+
+  const usingDensitySource = warpSource === 'density';
+  const shouldForceAdaptiveFromSlices = warpSource === 'slice-authored' && hasVisibleWarpSlices;
+
+  const effectiveWarpMap = usingDensitySource ? precomputedWarpMap : authoredWarpMap;
+  const effectiveWarpDomain = usingDensitySource ? precomputedMapDomain : warpDomain;
+  const effectiveWarpFactor = shouldForceAdaptiveFromSlices ? (warpFactor > 0 ? warpFactor : 1) : warpFactor;
+  const effectiveTimeScaleMode = shouldForceAdaptiveFromSlices ? 'adaptive' : timeScaleMode;
+
   const overviewBins = useMemo(() => {
     const values = timestampSecondsOverride ?? timestampSeconds;
     if (!values.length) return [];
@@ -351,7 +433,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     [detailBins]
   );
 
-  const { overviewInteractionScale, overviewScale, detailScale } =
+  const { overviewInteractionScale, detailInteractionScale, overviewScale, detailScale } =
     useScaleTransforms({
       domainStart,
       domainEnd,
@@ -483,30 +565,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return resolveSelectionX(selectionPoint?.timestampSec, (date) => detailScale(date), detailInnerWidth);
   }, [detailInnerWidth, detailScale, selectionPoint]);
 
-  const burstWindows = useBurstWindows();
-  const burstTaxonomySummary = useMemo(() => {
-    const activeBurstWindows = disableAutoBurstSlices ? [] : burstWindows;
-    const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
-      'prolonged-peak': 0,
-      'isolated-spike': 0,
-      valley: 0,
-      neutral: 0,
-    };
 
-    for (const [index, window] of activeBurstWindows.entries()) {
-      const taxonomy = classifyBurstWindow({
-        value: window.peak,
-        count: window.count,
-        durationSec: window.duration,
-        neighborhood: [activeBurstWindows[index - 1], activeBurstWindows[index + 1]]
-          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
-          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
-      });
-      counts[taxonomy.burstClass] += 1;
-    }
-
-    return counts;
-  }, [burstWindows, disableAutoBurstSlices]);
   const overviewTicks = useMemo(() => {
     if (tickLabelStrategy === 'span-aware') {
       return buildSpanAwareTicks(overviewScale, {
@@ -653,6 +712,33 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     [domainEnd, domainStart, slices]
   );
 
+  const overviewSliceBoxes = useMemo(
+    () =>
+      slices
+        .filter((slice) => slice.isVisible)
+        .map((slice) => {
+          const [normalizedStart, normalizedEnd] =
+            slice.type === 'range' && slice.range
+              ? [Math.min(slice.range[0], slice.range[1]), Math.max(slice.range[0], slice.range[1])]
+              : [Math.max(0, slice.time - 1.5), Math.min(100, slice.time + 1.5)];
+
+          const startSec = normalizedToEpochSeconds(normalizedStart, domainStart, domainEnd);
+          const endSec = normalizedToEpochSeconds(normalizedEnd, domainStart, domainEnd);
+
+          return {
+            id: slice.id,
+            startSec: Math.min(startSec, endSec),
+            endSec: Math.max(startSec, endSec),
+            color: slice.color,
+            isActive: activeSliceId === slice.id,
+            warpEnabled: slice.warpEnabled ?? true,
+            warpWeight: Math.min(3, Math.max(0, slice.warpWeight ?? 1)),
+          };
+        })
+        .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
+    [activeSliceId, domainEnd, domainStart, slices]
+  );
+
   const sliceOverlapCounts = getSliceOverlapCounts();
 
   const sliceGeometries = useMemo<TimelineSliceGeometry[]>(() => {
@@ -674,6 +760,19 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       return Number.isFinite(x) ? x : null;
     };
 
+    const toRawX = (normalized: number): number | null => {
+      if (!Number.isFinite(normalized)) {
+        return null;
+      }
+      const clampedNorm = clamp(normalized, 0, 100);
+      const sec = domainStart + (clampedNorm / 100) * spanSec;
+      if (!Number.isFinite(sec)) {
+        return null;
+      }
+      const x = detailInteractionScale(new Date(sec * 1000));
+      return Number.isFinite(x) ? x : null;
+    };
+
     const geometries = slices
       .filter((slice) => slice.isVisible)
       .map((slice) => {
@@ -683,11 +782,15 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           }
           const startX = toX(Math.min(slice.range[0], slice.range[1]));
           const endX = toX(Math.max(slice.range[0], slice.range[1]));
-          if (startX === null || endX === null) {
+          const rawStartX = toRawX(Math.min(slice.range[0], slice.range[1]));
+          const rawEndX = toRawX(Math.max(slice.range[0], slice.range[1]));
+          if (startX === null || endX === null || rawStartX === null || rawEndX === null) {
             return null;
           }
           const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
           const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
+          const rawLeft = Math.max(0, Math.min(detailInnerWidth, Math.min(rawStartX, rawEndX)));
+          const rawRight = Math.max(0, Math.min(detailInnerWidth, Math.max(rawStartX, rawEndX)));
           if (right <= 0 || left >= detailInnerWidth) {
             return null;
           }
@@ -696,6 +799,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
             id: slice.id,
             left,
             width: Math.max(2, right - left),
+            rawLeft,
+            rawWidth: Math.max(2, rawRight - rawLeft),
             isActive: activeSliceId === slice.id,
             isBurst: !!slice.isBurst,
             isPoint: false,
@@ -704,6 +809,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
             isGeneratedApplied: slice.source === 'generated-applied',
             overlapCount: sliceOverlapCounts[slice.id] ?? 1,
             color: slice.color,
+            warpEnabled: slice.warpEnabled ?? true,
+            warpWeight: Math.min(3, Math.max(0, slice.warpWeight ?? 1)),
           };
         }
 
@@ -711,7 +818,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           return null;
         }
         const x = toX(slice.time);
-        if (x === null || x < 0 || x > detailInnerWidth) {
+        const rawX = toRawX(slice.time);
+        if (x === null || rawX === null || x < 0 || x > detailInnerWidth) {
           return null;
         }
 
@@ -719,6 +827,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           id: slice.id,
           left: Math.max(0, Math.min(detailInnerWidth, x - 1)),
           width: 2,
+          rawLeft: Math.max(0, Math.min(detailInnerWidth, rawX - 1)),
+          rawWidth: 2,
           isActive: activeSliceId === slice.id,
           isBurst: !!slice.isBurst,
           isPoint: true,
@@ -727,12 +837,14 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           isGeneratedApplied: slice.source === 'generated-applied',
           overlapCount: 1,
           color: slice.color,
+          warpEnabled: slice.warpEnabled ?? true,
+          warpWeight: Math.min(3, Math.max(0, slice.warpWeight ?? 1)),
         };
       })
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
 
     return geometries;
-  }, [activeSliceId, detailInnerWidth, detailScale, domainEnd, domainStart, sliceOverlapCounts, slices]);
+  }, [activeSliceId, detailInnerWidth, detailInteractionScale, detailScale, domainEnd, domainStart, sliceOverlapCounts, slices]);
 
   const maxSliceOverlap = useMemo(
     () =>
@@ -786,6 +898,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           id: `pending-${bin.id}`,
           left,
           width: Math.max(2, right - left),
+          rawLeft: left,
+          rawWidth: Math.max(2, right - left),
           isActive: false,
           isBurst: false,
           isPoint: false,
@@ -794,6 +908,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           isGeneratedApplied: false,
           overlapCount: 1,
           color: 'purple',
+          warpEnabled: true,
+          warpWeight: 1,
         };
       })
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
@@ -912,21 +1028,96 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                 />
               );
             })}
+            {overviewSliceBoxes.map((slice) => {
+              const x0 = overviewScale(new Date(slice.startSec * 1000));
+              const x1 = overviewScale(new Date(slice.endSec * 1000));
+              const rawX0 = overviewInteractionScale(new Date(slice.startSec * 1000));
+              const rawX1 = overviewInteractionScale(new Date(slice.endSec * 1000));
+              const left = Math.min(x0, x1);
+              const rawLeft = Math.min(rawX0, rawX1);
+              const widthSpan = Math.max(2, Math.abs(x1 - x0));
+              const rawWidthSpan = Math.max(2, Math.abs(rawX1 - rawX0));
+              const color = resolveSliceColor(slice.color);
+              const warpWeight = slice.warpWeight;
+              const warpEnabled = slice.warpEnabled;
+              const shouldShowWarpReference = effectiveTimeScaleMode === 'adaptive' && warpEnabled;
+              const warpStrength = Math.max(0, Math.min(1, warpWeight / 3));
+              const fillOpacity = warpEnabled
+                ? slice.isActive
+                  ? 0.2 + warpStrength * 0.14
+                  : 0.12 + warpStrength * 0.1
+                : slice.isActive
+                  ? 0.14
+                  : 0.08;
+              const strokeOpacity = warpEnabled
+                ? slice.isActive
+                  ? 0.95
+                  : 0.6 + warpStrength * 0.28
+                : 0.45;
+              const strokeWidth = warpEnabled
+                ? slice.isActive
+                  ? 1.8 + warpStrength * 0.8
+                : 1 + warpStrength * 0.6
+                : slice.isActive
+                  ? 1.4
+                  : 1;
+              return (
+                <g key={`overview-slice-box-${slice.id}`}>
+                  {shouldShowWarpReference ? (
+                    <rect
+                      x={rawLeft}
+                      y={2}
+                      width={rawWidthSpan}
+                      height={Math.max(2, OVERVIEW_HEIGHT - 4)}
+                      rx={2}
+                      fill="rgba(148, 163, 184, 0.06)"
+                      stroke="rgba(148, 163, 184, 0.45)"
+                      strokeWidth={1}
+                      strokeDasharray="2 3"
+                    />
+                  ) : null}
+                  <rect
+                    x={left}
+                    y={2}
+                    width={widthSpan}
+                    height={Math.max(2, OVERVIEW_HEIGHT - 4)}
+                    rx={2}
+                    fill={warpEnabled ? `rgba(15, 23, 42, ${fillOpacity})` : 'rgba(15, 23, 42, 0.08)'}
+                    stroke={warpEnabled ? color.stroke : 'rgba(148, 163, 184, 0.7)'}
+                    strokeOpacity={strokeOpacity}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={warpEnabled ? (slice.isActive ? undefined : '4 2') : '2 3'}
+                  />
+                </g>
+              );
+            })}
             {userWarpOverlayBands.map((slice) => {
               const x0 = overviewScale(new Date(slice.startSec * 1000));
               const x1 = overviewScale(new Date(slice.endSec * 1000));
               const left = Math.min(x0, x1);
               const widthSpan = Math.max(1, Math.abs(x1 - x0));
               return (
-                <rect
-                  key={`overview-user-warp-${slice.id}`}
-                  x={left}
-                  y={Math.max(2, OVERVIEW_HEIGHT - 8)}
-                  width={widthSpan}
-                  height={6}
-                  rx={4}
-                  fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.12)' : 'rgba(139, 92, 246, 0.1)'}
-                />
+                <g key={`overview-user-warp-${slice.id}`}>
+                  <rect
+                    x={left}
+                    y={1}
+                    width={widthSpan}
+                    height={Math.max(2, OVERVIEW_HEIGHT - 2)}
+                    rx={2}
+                    fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.1)' : 'rgba(139, 92, 246, 0.06)'}
+                  />
+                  <rect
+                    x={left}
+                    y={1}
+                    width={widthSpan}
+                    height={Math.max(2, OVERVIEW_HEIGHT - 2)}
+                    rx={2}
+                    fill="none"
+                    stroke={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.45)' : 'rgba(139, 92, 246, 0.32)'}
+                    strokeDasharray="4 3"
+                    strokeWidth={1}
+                  />
+                </g>
               );
             })}
             <g ref={brushRef} className="text-primary/60" />
@@ -968,23 +1159,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
               paddingRight: DETAIL_MARGIN.right
             }}
           >
-            {burstWindows.length > 0 && (
-              <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                <span className="uppercase tracking-[0.18em] text-slate-500">Burst indicators</span>
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">
-                  prolonged-peak: {burstTaxonomySummary['prolonged-peak']}
-                </span>
-                <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-rose-100">
-                  isolated-spike: {burstTaxonomySummary['isolated-spike']}
-                </span>
-                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
-                  valley: {burstTaxonomySummary.valley}
-                </span>
-                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-200">
-                  neutral: {burstTaxonomySummary.neutral}
-                </span>
-              </div>
-            )}
             {width > 0 ? (
               <DensityHeatStrip
                 densityMap={detailDensityMap}
@@ -1055,27 +1229,50 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                 return null;
               }
               return (
-                <rect
-                  key={`detail-user-warp-${slice.id}`}
-                  x={left}
-                  y={Math.max(2, DETAIL_HEIGHT - 12)}
-                  width={widthSpan}
-                  height={8}
-                  rx={5}
-                  fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.12)' : 'rgba(139, 92, 246, 0.1)'}
-                />
+                <g key={`detail-user-warp-${slice.id}`}>
+                  <rect
+                    x={left}
+                    y={3}
+                    width={widthSpan}
+                    height={DETAIL_HEIGHT - 6}
+                    rx={3}
+                    fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.08)' : 'rgba(139, 92, 246, 0.06)'}
+                  />
+                  <rect
+                    x={left}
+                    y={3}
+                    width={widthSpan}
+                    height={DETAIL_HEIGHT - 6}
+                    rx={3}
+                    fill="none"
+                    stroke={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.45)' : 'rgba(139, 92, 246, 0.3)'}
+                    strokeDasharray="4 3"
+                    strokeWidth={1}
+                  />
+                </g>
               );
             })}
 
             {orderedSliceGeometries.map((geometry) => {
               const color = resolveSliceColor(geometry.color);
+              const warpStrength = Math.max(0, Math.min(1, geometry.warpWeight / 3));
+              const warpEnabled = geometry.warpEnabled;
+              const shouldShowWarpReference = effectiveTimeScaleMode === 'adaptive' && warpEnabled;
               const baseOpacity = geometry.isActive
-                ? 0.68
+                ? warpEnabled
+                  ? 0.64 + warpStrength * 0.2
+                  : 0.56
                 : geometry.overlapCount >= 3
-                  ? 0.2
+                  ? warpEnabled
+                    ? 0.16 + warpStrength * 0.1
+                    : 0.14
                   : geometry.overlapCount === 2
-                    ? 0.28
-                    : 0.38;
+                    ? warpEnabled
+                      ? 0.24 + warpStrength * 0.12
+                      : 0.22
+                    : warpEnabled
+                      ? 0.34 + warpStrength * 0.14
+                      : 0.28;
 
               // Suggestion slices get a distinct violet styling
               const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
@@ -1085,6 +1282,19 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
               return (
                 <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
+                  {shouldShowWarpReference ? (
+                    <rect
+                      x={geometry.rawLeft}
+                      y={3}
+                      width={Math.max(2, geometry.rawWidth)}
+                      height={DETAIL_HEIGHT - 6}
+                      rx={3}
+                      fill="rgba(148, 163, 184, 0.06)"
+                      stroke="rgba(148, 163, 184, 0.42)"
+                      strokeWidth={1}
+                      strokeDasharray="2 3"
+                    />
+                  ) : null}
                   <rect
                     x={geometry.left}
                     y={3}
@@ -1095,14 +1305,36 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                       ? 'rgba(16, 185, 129, 0.18)'
                       : isSuggestionSlice
                         ? suggestionFill
-                        : (geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : color.fill)}
+                        : geometry.isBurst
+                          ? 'rgba(251, 146, 60, 0.26)'
+                          : warpEnabled
+                            ? color.fill
+                            : 'rgba(148, 163, 184, 0.16)'}
                     stroke={isGeneratedAppliedSlice
                       ? 'rgba(74, 222, 128, 0.92)'
                       : isSuggestionSlice
                         ? suggestionStroke
-                        : (geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : color.stroke)}
-                    strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1}
-                    strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : isGeneratedAppliedSlice ? '8 2' : undefined}
+                        : geometry.isBurst
+                          ? 'rgba(251, 146, 60, 0.85)'
+                          : warpEnabled
+                            ? color.stroke
+                            : 'rgba(148, 163, 184, 0.78)'}
+                    strokeWidth={
+                      geometry.isActive
+                        ? 2 + (warpEnabled ? warpStrength * 0.9 : 0)
+                        : geometry.overlapCount >= 2
+                          ? 1.4 + (warpEnabled ? warpStrength * 0.5 : 0)
+                          : 1 + (warpEnabled ? warpStrength * 0.35 : 0)
+                    }
+                    strokeDasharray={
+                      !warpEnabled
+                        ? '2 3'
+                        : geometry.overlapCount >= 3 || isSuggestionSlice
+                          ? '5 3'
+                          : isGeneratedAppliedSlice
+                            ? '8 2'
+                            : undefined
+                    }
                     opacity={baseOpacity}
                   />
                   {geometry.overlapCount >= 2 && !geometry.isActive && (

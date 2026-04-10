@@ -18,7 +18,7 @@ import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
+import { epochSecondsToNormalized, normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
 
 const toDateTimeLocalValue = (timestampMs: number | null | undefined) => {
   if (timestampMs === null || timestampMs === undefined || !Number.isFinite(timestampMs)) {
@@ -41,6 +41,7 @@ const parseDateTimeLocalValue = (value: string) => {
 };
 
 const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
+const clampNormalized = (value: number) => Math.min(100, Math.max(0, value));
 
 export function DemoSlicePanel() {
   const { currentTime, timeRange, timeResolution } = useDashboardDemoTimeStore();
@@ -136,6 +137,19 @@ export function DemoSlicePanel() {
     },
     [formatNormalizedValue]
   );
+
+  const toNormalizedFromTimestampMs = useCallback((timestampMs: number | null) => {
+    if (
+      timestampMs === null ||
+      minTimestampSec === null ||
+      maxTimestampSec === null ||
+      maxTimestampSec <= minTimestampSec
+    ) {
+      return null;
+    }
+
+    return clampNormalized(epochSecondsToNormalized(timestampMs / 1000, minTimestampSec, maxTimestampSec));
+  }, [maxTimestampSec, minTimestampSec]);
 
   const handleAddPointSlice = useCallback(() => {
     const startDateTimeMs = minTimestampSec !== null && maxTimestampSec !== null
@@ -269,6 +283,12 @@ export function DemoSlicePanel() {
 
                     <div className="text-xs text-slate-400">{formatSliceLabel(slice, index)}</div>
 
+                    <div className="text-[11px] text-slate-500">
+                      {(slice.warpEnabled ?? true)
+                        ? `Warp x${clampWarpWeight(slice.warpWeight ?? 1).toFixed(1)}`
+                        : 'Warp off'}
+                    </div>
+
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
                       <button
                         type="button"
@@ -310,7 +330,41 @@ export function DemoSlicePanel() {
                           type="datetime-local"
                           value={toDateTimeLocalValue(slice.startDateTimeMs ?? null)}
                           onChange={(event) => {
-                            updateSlice(slice.id, { startDateTimeMs: parseDateTimeLocalValue(event.target.value) });
+                            const nextStartMs = parseDateTimeLocalValue(event.target.value);
+
+                            if (slice.type === 'point') {
+                              const nextTime = toNormalizedFromTimestampMs(nextStartMs);
+                              updateSlice(slice.id, {
+                                startDateTimeMs: nextStartMs,
+                                ...(nextTime !== null ? { time: nextTime } : {}),
+                              });
+                              return;
+                            }
+
+                            const currentStartMs = slice.startDateTimeMs ?? (slice.range && minTimestampSec !== null && maxTimestampSec !== null
+                              ? normalizedToEpochSeconds(slice.range[0], minTimestampSec, maxTimestampSec) * 1000
+                              : null);
+                            const currentEndMs = slice.endDateTimeMs ?? (slice.range && minTimestampSec !== null && maxTimestampSec !== null
+                              ? normalizedToEpochSeconds(slice.range[1], minTimestampSec, maxTimestampSec) * 1000
+                              : null);
+
+                            const resolvedStartMs = nextStartMs ?? currentStartMs;
+                            const resolvedEndMs = currentEndMs;
+                            const nextStartNorm = toNormalizedFromTimestampMs(resolvedStartMs);
+                            const nextEndNorm = toNormalizedFromTimestampMs(resolvedEndMs);
+
+                            if (nextStartNorm !== null && nextEndNorm !== null) {
+                              const start = Math.min(nextStartNorm, nextEndNorm);
+                              const end = Math.max(nextStartNorm, nextEndNorm);
+                              updateSlice(slice.id, {
+                                startDateTimeMs: nextStartMs,
+                                range: [start, end],
+                                time: (start + end) / 2,
+                              });
+                              return;
+                            }
+
+                            updateSlice(slice.id, { startDateTimeMs: nextStartMs });
                           }}
                           className="border-slate-700 bg-slate-950 text-slate-100"
                         />
@@ -323,7 +377,27 @@ export function DemoSlicePanel() {
                             type="datetime-local"
                             value={toDateTimeLocalValue(slice.endDateTimeMs ?? null)}
                             onChange={(event) => {
-                              updateSlice(slice.id, { endDateTimeMs: parseDateTimeLocalValue(event.target.value) });
+                              const nextEndMs = parseDateTimeLocalValue(event.target.value);
+                              const currentStartMs = slice.startDateTimeMs ?? (slice.range && minTimestampSec !== null && maxTimestampSec !== null
+                                ? normalizedToEpochSeconds(slice.range[0], minTimestampSec, maxTimestampSec) * 1000
+                                : null);
+                              const resolvedStartMs = currentStartMs;
+                              const resolvedEndMs = nextEndMs;
+                              const nextStartNorm = toNormalizedFromTimestampMs(resolvedStartMs);
+                              const nextEndNorm = toNormalizedFromTimestampMs(resolvedEndMs);
+
+                              if (nextStartNorm !== null && nextEndNorm !== null) {
+                                const start = Math.min(nextStartNorm, nextEndNorm);
+                                const end = Math.max(nextStartNorm, nextEndNorm);
+                                updateSlice(slice.id, {
+                                  endDateTimeMs: nextEndMs,
+                                  range: [start, end],
+                                  time: (start + end) / 2,
+                                });
+                                return;
+                              }
+
+                              updateSlice(slice.id, { endDateTimeMs: nextEndMs });
                             }}
                             className="border-slate-700 bg-slate-950 text-slate-100"
                           />

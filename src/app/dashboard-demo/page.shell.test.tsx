@@ -92,6 +92,8 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoTimelinePanelSource).toMatch(/Warp factor/);
+    expect(demoTimelinePanelSource).toMatch(/Warp source/);
+    expect(demoTimelinePanelSource).toMatch(/Slice-authored|Density/);
     expect(demoTimelinePanelSource).toMatch(/Focused track above|raw baseline below/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
@@ -104,10 +106,15 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
     expect(demoSlicePanelSource).toMatch(/warpWeight|Warp strength/);
+    expect(demoSlicePanelSource).toMatch(/Warp x|Warp off/);
+    expect(demoSlicePanelSource).toMatch(/epochSecondsToNormalized/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
     expect(demoDualTimelineSource).toMatch(/DemoDualTimeline/);
     expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoWarpStore/);
+    expect(demoDualTimelineSource).toMatch(/warpSource/);
+    expect(demoDualTimelineSource).toMatch(/computeDensityMap/);
+    expect(demoDualTimelineSource).toMatch(/setPrecomputedMaps/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoSliceStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoFilterStore/);
@@ -115,7 +122,8 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoDualTimelineSource).toMatch(/hasVisibleWarpSlices/);
     expect(demoDualTimelineSource).toMatch(/warpEnabled/);
-    expect(demoDualTimelineSource).toMatch(/disableAutoBurstSlices/);
+    expect(demoDualTimelineSource).toMatch(/shouldShowWarpReference/);
+    expect(demoDualTimelineSource).toMatch(/overviewInteractionScale|detailInteractionScale/);
     expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);
     expect(demoDualTimelineSource).not.toMatch(/timeStoreOverride|filterStoreOverride|coordinationStoreOverride|adaptiveStoreOverride|sliceDomainStoreOverride|timeslicingModeStoreOverride/);
     expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle/);

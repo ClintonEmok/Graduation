@@ -35,8 +35,10 @@ export function DemoTimelinePanel() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
+  const warpSource = useDashboardDemoWarpStore((state) => state.warpSource);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
+  const setWarpSource = useDashboardDemoWarpStore((state) => state.setWarpSource);
 
   const handleResolutionChange = useCallback(
     (value: number[]) => {
@@ -149,6 +151,31 @@ export function DemoTimelinePanel() {
               className="rounded bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/20"
             >
               {warpMode === 'linear' ? 'Linear' : 'Adaptive'}
+            </button>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Warp source</span>
+            <button
+              type="button"
+              onClick={() => setWarpSource('slice-authored')}
+              className={`rounded px-2 py-1 font-medium transition-colors ${
+                warpSource === 'slice-authored'
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
+              }`}
+            >
+              Slice-authored
+            </button>
+            <button
+              type="button"
+              onClick={() => setWarpSource('density')}
+              className={`rounded px-2 py-1 font-medium transition-colors ${
+                warpSource === 'density'
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
+              }`}
+            >
+              Density
             </button>
           </div>
           {warpMode === 'adaptive' ? (
