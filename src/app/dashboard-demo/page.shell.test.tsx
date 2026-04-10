@@ -35,6 +35,10 @@ describe('/dashboard-demo shell', () => {
       'utf8'
     );
     const timeslicingModeStoreSource = readFileSync(new URL('../../store/useTimeslicingModeStore.ts', import.meta.url), 'utf8');
+    const demoTimeslicingModeStoreSource = readFileSync(
+      new URL('../../store/useDashboardDemoTimeslicingModeStore.ts', import.meta.url),
+      'utf8'
+    );
     const timesliceToolbarSource = readFileSync(
       new URL('../../components/timeslicing/TimesliceToolbar.tsx', import.meta.url),
       'utf8'
@@ -119,6 +123,9 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/Reset preset/);
     expect(demoSlicePanelSource).toMatch(/Reset all/);
     expect(demoSlicePanelSource).toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
+    expect(demoSlicePanelSource).toMatch(/generateBinsFromActivePresetBias/);
+    expect(demoSlicePanelSource).toMatch(/Generate \(/);
+    expect(demoSlicePanelSource).toMatch(/Last generate:/);
     expect(demoSlicePanelSource).toMatch(/window\.confirm/);
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
@@ -127,10 +134,15 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/epochSecondsToNormalized/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
     expect(demoPresetThresholdsSource).toMatch(/DEFAULT_PRESET_BIASES/);
+    expect(demoPresetThresholdsSource).toMatch(/PRESET_GENERATION_PROFILES/);
+    expect(demoPresetThresholdsSource).toMatch(/resolvePresetBiasBinTarget/);
     expect(demoPresetThresholdsSource).toMatch(/PRESET_BIAS_RANGE/);
     expect(demoPresetThresholdsSource).toMatch(/PRESET_BIAS_HELPERS/);
     expect(demoPresetThresholdsSource).toMatch(/buildPresetBiasSummary/);
+    expect(demoTimeslicingModeStoreSource).toMatch(/generateBinsFromActivePresetBias/);
+    expect(demoTimeslicingModeStoreSource).toMatch(/presetBiases\[preset\]/);
     expect(timeslicingModeStoreSource).not.toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
+    expect(timeslicingModeStoreSource).not.toMatch(/generateBinsFromActivePresetBias|PRESET_GENERATION_PROFILES|resolvePresetBiasBinTarget/);
     expect(timesliceToolbarSource).not.toMatch(/Bias|Active|Reset preset|Reset all/);
     expect(demoDualTimelineSource).toMatch(/DemoDualTimeline/);
     expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);

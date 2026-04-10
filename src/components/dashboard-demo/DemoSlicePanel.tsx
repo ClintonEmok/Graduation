@@ -12,7 +12,6 @@ import {
 
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
@@ -51,6 +50,12 @@ const parseDateTimeLocalValue = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const formatRange = (start: number, end: number) => {
+  const startDate = new Date(start).toLocaleString();
+  const endDate = new Date(end).toLocaleString();
+  return `${startDate} → ${endDate}`;
+};
+
 const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
 const clampNormalized = (value: number) => Math.min(100, Math.max(0, value));
 
@@ -76,7 +81,12 @@ export function DemoSlicePanel() {
   const resetPresetBias = useDashboardDemoTimeslicingModeStore((state) => state.resetPresetBias);
   const resetAllPresetBiases = useDashboardDemoTimeslicingModeStore((state) => state.resetAllPresetBiases);
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
+  const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
+  const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
+  const generateBinsFromActivePresetBias = useDashboardDemoTimeslicingModeStore((state) => state.generateBinsFromActivePresetBias);
+  const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
+  const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
@@ -228,6 +238,25 @@ export function DemoSlicePanel() {
     resetAllPresetBiases();
   }, [resetAllPresetBiases]);
 
+  const handleGenerateFromPresetBias = useCallback(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
+    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+    setGenerationInputs({
+      timeWindow: {
+        start,
+        end,
+      },
+    });
+
+    generateBinsFromActivePresetBias();
+  }, [generateBinsFromActivePresetBias, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
+
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100" aria-busy={isComputing}>
       <header className="mb-3 space-y-1">
@@ -258,115 +287,137 @@ export function DemoSlicePanel() {
           </div>
         ) : null}
 
-        <Accordion type="multiple" defaultValue={['preset-bias', 'slice-tools']} className="rounded-md border border-slate-800 bg-slate-900/40 px-3">
-          <AccordionItem value="preset-bias" className="border-slate-800">
-            <AccordionTrigger className="py-3 hover:no-underline">
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-2 text-xs">
-                <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Preset Bias</span>
-                <span className="truncate text-[11px] text-slate-500">{PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pb-3">
-              <div className="space-y-2">
-                {DEMO_PRESET_BIAS_KEYS.map((presetKey) => {
-                  const helper = PRESET_BIAS_HELPERS[presetKey];
-                  const biasValue = presetBiases[presetKey];
-                  const isActive = presetKey === preset;
+        <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
+          <details open>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1 text-xs">
+              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Preset Bias</span>
+              <span className="truncate text-[11px] text-slate-500">{PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}</span>
+            </summary>
+            <div className="space-y-2 pt-2">
+              {DEMO_PRESET_BIAS_KEYS.map((presetKey) => {
+                const helper = PRESET_BIAS_HELPERS[presetKey];
+                const biasValue = presetBiases[presetKey];
+                const isActive = presetKey === preset;
 
-                  return (
-                    <div
-                      key={presetKey}
-                      className={`rounded-md border px-3 py-2 ${
-                        isActive
-                          ? 'border-emerald-400/60 bg-emerald-500/10'
-                          : 'border-slate-800 bg-slate-950/50'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPreset(presetKey)}
-                            className="truncate text-left text-xs font-semibold text-slate-100 underline-offset-2 hover:underline"
-                          >
-                            {helper.label}
-                          </button>
-                          {isActive ? (
-                            <span className="rounded-full border border-emerald-400/70 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
-                              Active
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="text-[11px] text-slate-300">{buildPresetBiasSummary(biasValue)}</div>
+                return (
+                  <div
+                    key={presetKey}
+                    className={`rounded-md border px-3 py-2 ${
+                      isActive
+                        ? 'border-emerald-400/60 bg-emerald-500/10'
+                        : 'border-slate-800 bg-slate-950/50'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPreset(presetKey)}
+                          className="truncate text-left text-xs font-semibold text-slate-100 underline-offset-2 hover:underline"
+                        >
+                          {helper.label}
+                        </button>
+                        {isActive ? (
+                          <span className="rounded-full border border-emerald-400/70 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                            Active
+                          </span>
+                        ) : null}
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">{helper.helperText}</div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[11px] font-medium text-slate-400">Bias</span>
-                        <Slider
-                          min={PRESET_BIAS_RANGE.min}
-                          max={PRESET_BIAS_RANGE.max}
-                          step={PRESET_BIAS_RANGE.step}
-                          value={[biasValue]}
-                          onValueChange={(value) => setPresetBias(presetKey, value[0] ?? biasValue)}
-                        />
-                      </div>
+                      <div className="text-[11px] text-slate-300">{buildPresetBiasSummary(biasValue)}</div>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => handleResetPresetBias(preset)}
-                  className="rounded border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-900"
-                >
-                  Reset preset
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetAllPresetBiases}
-                  className="rounded border border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-amber-200 transition-colors hover:border-amber-400"
-                >
-                  Reset all
-                </button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                    <div className="mt-1 text-[11px] text-slate-500">{helper.helperText}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[11px] font-medium text-slate-400">Bias</span>
+                      <Slider
+                        min={PRESET_BIAS_RANGE.min}
+                        max={PRESET_BIAS_RANGE.max}
+                        step={PRESET_BIAS_RANGE.step}
+                        value={[biasValue]}
+                        onValueChange={(value) => setPresetBias(presetKey, value[0] ?? biasValue)}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 text-[11px]">
+              <button
+                type="button"
+                onClick={() => handleResetPresetBias(preset)}
+                className="rounded border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-900"
+              >
+                Reset preset
+              </button>
+              <button
+                type="button"
+                onClick={handleResetAllPresetBiases}
+                className="rounded border border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-amber-200 transition-colors hover:border-amber-400"
+              >
+                Reset all
+              </button>
+            </div>
+          </details>
 
-          <AccordionItem value="slice-tools" className="border-slate-800">
-            <AccordionTrigger className="py-3 hover:no-underline">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Slice tools</div>
-            </AccordionTrigger>
-            <AccordionContent className="pb-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleAddPointSlice}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Point
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddRangeSlice}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Range
-                </button>
-                <button
-                  type="button"
-                  onClick={clearSlices}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Clear
-                </button>
+          <details open className="mt-2 border-t border-slate-800 pt-2">
+            <summary className="cursor-pointer list-none py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Slice tools</summary>
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleGenerateFromPresetBias}
+                disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
+                className="inline-flex items-center gap-2 rounded-md border border-violet-500/50 bg-violet-500/15 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition-colors hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {generationStatus === 'generating' ? 'Generating…' : `Generate (${PRESET_BIAS_HELPERS[preset].label} • ${presetBiases[preset]}%)`}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddPointSlice}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Point
+              </button>
+              <button
+                type="button"
+                onClick={handleAddRangeSlice}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Range
+              </button>
+              <button
+                type="button"
+                onClick={clearSlices}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear
+              </button>
+            </div>
+            {lastGeneratedMetadata ? (
+              <div className="mt-2 rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
+                <div>
+                  Last generate: {lastGeneratedMetadata.binCount} draft bins from {PRESET_BIAS_HELPERS[lastGeneratedMetadata.preset].label} at {lastGeneratedMetadata.presetBias}% Bias
+                </div>
+                {generationInputs.timeWindow.start !== null && generationInputs.timeWindow.end !== null ? (
+                  <div className="text-slate-500">
+                    Window {formatRange(generationInputs.timeWindow.start, generationInputs.timeWindow.end)}
+                  </div>
+                ) : null}
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+            ) : null}
+            {generationError ? (
+              <div className="mt-2 rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
+                {generationError}
+              </div>
+            ) : null}
+            {lastGeneratedMetadata?.warning ? (
+              <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100">
+                {lastGeneratedMetadata.warning}
+              </div>
+            ) : null}
+          </details>
+        </div>
 
         <div className="space-y-2">
           {slices.length === 0 ? (
