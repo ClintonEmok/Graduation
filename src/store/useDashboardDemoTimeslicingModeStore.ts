@@ -5,6 +5,7 @@ import {
   DEMO_PRESET_BIAS_KEYS,
   DEFAULT_PRESET_BIASES,
   clampPresetBias,
+  resolvePresetBiasBinTarget,
   type DemoPresetBiasKey,
 } from '@/components/dashboard-demo/lib/demo-preset-thresholds';
 
@@ -37,6 +38,8 @@ export interface GenerationResultMetadata {
   binCount: number;
   eventCount: number;
   warning: string | null;
+  preset: TimeslicePreset;
+  presetBias: number;
   inputs: GenerationInputs;
 }
 
@@ -81,6 +84,7 @@ interface DashboardDemoTimeslicingState {
   setGenerationInputs: (inputs: Partial<GenerationInputs>) => void;
   setGenerationStatus: (status: GenerationStatus) => void;
   setPendingGeneratedBins: (bins: TimeBin[], metadata: Omit<GenerationResultMetadata, 'generatedAt'>) => void;
+  generateBinsFromActivePresetBias: () => boolean;
   setGenerationError: (message: string | null) => void;
   clearPendingGeneratedBins: () => void;
   replacePendingGeneratedBins: (bins: TimeBin[]) => void;
@@ -227,6 +231,86 @@ const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[]
 
 const deleteBin = (bins: TimeBin[], binId: string): TimeBin[] => bins.filter((bin) => bin.id !== binId);
 
+const createGeneratedBin = (
+  startTime: number,
+  endTime: number,
+  count: number,
+  inputCrimeTypes: string[],
+  neighbourhood: string | null,
+  index: number,
+): TimeBin => ({
+  id: `demo-generated-${Date.now()}-${index}`,
+  startTime,
+  endTime,
+  count,
+  crimeTypes: inputCrimeTypes.length > 0 ? inputCrimeTypes : ['all-crime-types'],
+  districts: neighbourhood ? [neighbourhood] : [],
+  avgTimestamp: (startTime + endTime) / 2,
+});
+
+const generateDemoBinsFromPresetBias = (
+  preset: TimeslicePreset,
+  bias: number,
+  generationInputs: GenerationInputs,
+): { bins: TimeBin[]; warning: string | null; eventCount: number } => {
+  const start = generationInputs.timeWindow.start;
+  const end = generationInputs.timeWindow.end;
+
+  if (start === null || end === null) {
+    return {
+      bins: [],
+      warning: 'Choose a valid time window before generating.',
+      eventCount: 0,
+    };
+  }
+
+  const windowStart = Math.min(start, end);
+  const windowEnd = Math.max(start, end);
+
+  if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd) || windowEnd <= windowStart) {
+    return {
+      bins: [],
+      warning: 'Choose a valid time window before generating.',
+      eventCount: 0,
+    };
+  }
+
+  const clampedBias = clampPresetBias(bias);
+  const targetBins = resolvePresetBiasBinTarget(preset, clampedBias);
+  const totalDuration = windowEnd - windowStart;
+  const baseWidth = totalDuration / targetBins;
+  const eventCount = Math.max(1, targetBins * 12 + clampedBias);
+
+  const bins = Array.from({ length: targetBins }, (_, index) => {
+    const isEdgeBin = index === 0 || index === targetBins - 1;
+    const edgeCompression = 1 - (clampedBias / 100) * 0.25;
+    const widthFactor = isEdgeBin ? edgeCompression : 1;
+
+    const binStart = windowStart + baseWidth * index;
+    const fallbackEnd = index === targetBins - 1 ? windowEnd : windowStart + baseWidth * (index + 1);
+    const scaledEnd = binStart + baseWidth * widthFactor;
+    const binEnd = index === targetBins - 1 ? windowEnd : Math.min(fallbackEnd, scaledEnd);
+    const safeEnd = Math.max(binStart + 1, binEnd);
+
+    return createGeneratedBin(
+      Math.round(binStart),
+      Math.round(safeEnd),
+      Math.max(1, Math.round(eventCount / targetBins)),
+      generationInputs.crimeTypes,
+      generationInputs.neighbourhood,
+      index,
+    );
+  });
+
+  return {
+    bins,
+    warning: bins.length <= 1
+      ? 'The selected preset and Bias produced a single slice. Try a broader window or lower Bias.'
+      : null,
+    eventCount,
+  };
+};
+
 export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslicingState>()(
   persist(
     (set, get) => ({
@@ -316,6 +400,40 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           generationStatus: 'ready',
           generationError: null,
         }),
+      generateBinsFromActivePresetBias: () => {
+        const { preset, presetBiases, generationInputs } = get();
+        const presetBias = clampPresetBias(presetBiases[preset]);
+
+        set({ generationStatus: 'generating', generationError: null });
+
+        const generated = generateDemoBinsFromPresetBias(preset, presetBias, generationInputs);
+
+        if (generated.bins.length === 0) {
+          set({
+            pendingGeneratedBins: [],
+            generationStatus: 'error',
+            generationError: generated.warning ?? 'Could not generate draft slices from this preset.',
+          });
+          return false;
+        }
+
+        set({
+          pendingGeneratedBins: generated.bins,
+          generationStatus: 'ready',
+          generationError: null,
+          lastGeneratedMetadata: {
+            generatedAt: Date.now(),
+            binCount: generated.bins.length,
+            eventCount: generated.eventCount,
+            warning: generated.warning,
+            preset,
+            presetBias,
+            inputs: generationInputs,
+          },
+        });
+
+        return true;
+      },
       setGenerationError: (message) => set({ generationError: message, generationStatus: message ? 'error' : 'idle' }),
       clearPendingGeneratedBins: () => set({ pendingGeneratedBins: [], generationStatus: 'idle' }),
       replacePendingGeneratedBins: (bins) => set({ pendingGeneratedBins: bins }),

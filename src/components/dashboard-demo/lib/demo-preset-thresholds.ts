@@ -11,6 +11,11 @@ export const DEMO_PRESET_BIAS_KEYS = [
 
 export type DemoPresetBiasKey = (typeof DEMO_PRESET_BIAS_KEYS)[number];
 
+export type DemoPresetGenerationProfile = {
+  minBins: number;
+  maxBins: number;
+};
+
 export const PRESET_BIAS_RANGE = {
   min: 0,
   max: 100,
@@ -77,9 +82,28 @@ export const DEFAULT_PRESET_BIASES: Record<DemoPresetBiasKey, number> = {
   custom: PRESET_BIAS_HELPERS.custom.recommendedBias,
 };
 
+export const PRESET_GENERATION_PROFILES: Record<DemoPresetBiasKey, DemoPresetGenerationProfile> = {
+  hourly: { minBins: 12, maxBins: 24 },
+  daily: { minBins: 3, maxBins: 8 },
+  weekly: { minBins: 3, maxBins: 7 },
+  monthly: { minBins: 4, maxBins: 8 },
+  'weekday-weekend': { minBins: 2, maxBins: 5 },
+  'morning-afternoon-evening-night': { minBins: 4, maxBins: 8 },
+  'business-hours': { minBins: 3, maxBins: 6 },
+  custom: { minBins: 2, maxBins: 8 },
+};
+
 export const clampPresetBias = (value: number) => {
   const rounded = Math.round(value / PRESET_BIAS_RANGE.step) * PRESET_BIAS_RANGE.step;
   return Math.min(PRESET_BIAS_RANGE.max, Math.max(PRESET_BIAS_RANGE.min, rounded));
+};
+
+export const resolvePresetBiasBinTarget = (preset: DemoPresetBiasKey, bias: number) => {
+  const clampedBias = clampPresetBias(bias);
+  const profile = PRESET_GENERATION_PROFILES[preset];
+  const ratio = clampedBias / PRESET_BIAS_RANGE.max;
+  const target = profile.minBins + (profile.maxBins - profile.minBins) * ratio;
+  return Math.max(1, Math.round(target));
 };
 
 const describeBiasTone = (value: number) => {
