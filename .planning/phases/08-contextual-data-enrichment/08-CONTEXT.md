@@ -42,6 +42,9 @@ Add demo-local contextual layers beyond districts so crime patterns can be inter
 - `.planning/phases/06-demo-timeline-polish/06-CONTEXT.md` — demo timeline polish and demo-local warp follow-up.
 - `.planning/phases/05-stats-stkde-interaction/05-CONTEXT.md` — district-first analysis language and demo-local stats/STKDE interaction rules.
 
+### Phase discussion
+- `.planning/phases/08-contextual-data-enrichment/08-DISCUSSION-LOG.md` — selected context categories, presentation style, and demo-local scope guardrails.
+
 </canonical_refs>
 
 <code_context>
