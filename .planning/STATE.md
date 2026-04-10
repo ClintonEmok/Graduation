@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 7 context gathered
-last_updated: "2026-04-10T08:20:52Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-04-10T08:40:27Z"
 progress:
   total_phases: 12
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -24,18 +24,18 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 
 ## Current Position
 
-Phase: 6
-Plan: 02
-Status: Phase 6 complete — demo timeline polish and warp follow-up executed
-Last activity: 2026-04-10 - Completed Phase 6 warp follow-up
+Phase: 7 of 12 (dashboard-demo preset thresholds)
+Plan: 1 of 1
+Status: Phase 7 complete
+Last activity: 2026-04-10 - Completed 07-01-PLAN.md
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: ~4 min
 - Total execution time: 0.7 hours
 
@@ -49,7 +49,7 @@ Progress: [███████░░░] 73%
 | 4 | 1 | 1 | 1 min |
 | 5 | 3 | 3 | - |
 | 6 | 2 | 2 | 20 min |
-| 7 | 1 | 0 | - |
+| 7 | 1 | 1 | 6 min |
 | 8 | 1 | 0 | - |
 | 9 | 4 | 0 | - |
 | 10 | 0 | 0 | - |
@@ -58,7 +58,7 @@ Progress: [███████░░░] 73%
 
 **Recent Trend:**
 
-- Last 5 plans: 05-01, 05-02, 05-03, 06-01, 06-02
+- Last 5 plans: 05-02, 05-03, 06-01, 06-02, 07-01
 - Trend: Stable
 
 ## Accumulated Context
@@ -95,6 +95,9 @@ Progress: [███████░░░] 73%
 - Keep the Phase 6 warp follow-up demo-local, but simplify the visible warp language to a quieter bands-first presentation.
 - Use the proven slice-authored warp-map path from `timeline-test` as the source of truth for demo slice warping.
 - Keep the demo warp cue as subtle bands-first presentation layered over the existing slice-authored warp map.
+- Keep per-preset Bias state fully demo-local in `useDashboardDemoTimeslicingModeStore` and avoid coupling with stable `/timeslicing` stores.
+- Use coarse 0-100 Bias sliders in 5-point steps with friendly labels and compact helper summaries for fast preset tuning.
+- Require confirmation for both per-preset and reset-all actions while restoring recommended defaults.
 
 ### Pending Todos
 
@@ -104,7 +107,7 @@ Progress: [███████░░░] 73%
 - Phase 5 demo stats + STKDE interaction is complete.
 - Phase 6 demo timeline polish is complete.
 - Phase 6 warp follow-up is complete.
-- Phase 7 dashboard-demo preset thresholds context is gathered.
+- Phase 7 dashboard-demo preset thresholds is complete.
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
 - Phase 9 workflow isolation plan follows after the contextual phase.
 
@@ -115,6 +118,6 @@ Progress: [███████░░░] 73%
 
 ## Session Continuity
 
-Last session: 2026-04-10T08:20:52Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-dashboard-demo-preset-thresholds/07-CONTEXT.md
+Last session: 2026-04-10T08:40:27Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
