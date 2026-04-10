@@ -30,6 +30,15 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/dashboard-demo/DemoSlicePanel.tsx', import.meta.url),
       'utf8'
     );
+    const demoPresetThresholdsSource = readFileSync(
+      new URL('../../components/dashboard-demo/lib/demo-preset-thresholds.ts', import.meta.url),
+      'utf8'
+    );
+    const timeslicingModeStoreSource = readFileSync(new URL('../../store/useTimeslicingModeStore.ts', import.meta.url), 'utf8');
+    const timesliceToolbarSource = readFileSync(
+      new URL('../../components/timeslicing/TimesliceToolbar.tsx', import.meta.url),
+      'utf8'
+    );
     const mapVisualizationSource = readFileSync(new URL('../../components/map/MapVisualization.tsx', import.meta.url), 'utf8');
     const demoDualTimelineSource = readFileSync(
       new URL('../../components/timeline/DemoDualTimeline.tsx', import.meta.url),
@@ -104,12 +113,25 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
+    expect(demoSlicePanelSource).toMatch(/Preset Bias/);
+    expect(demoSlicePanelSource).toMatch(/Bias/);
+    expect(demoSlicePanelSource).toMatch(/Active/);
+    expect(demoSlicePanelSource).toMatch(/Reset preset/);
+    expect(demoSlicePanelSource).toMatch(/Reset all/);
+    expect(demoSlicePanelSource).toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
+    expect(demoSlicePanelSource).toMatch(/window\.confirm/);
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
     expect(demoSlicePanelSource).toMatch(/warpWeight|Warp strength/);
     expect(demoSlicePanelSource).toMatch(/Warp x|Warp off/);
     expect(demoSlicePanelSource).toMatch(/epochSecondsToNormalized/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
+    expect(demoPresetThresholdsSource).toMatch(/DEFAULT_PRESET_BIASES/);
+    expect(demoPresetThresholdsSource).toMatch(/PRESET_BIAS_RANGE/);
+    expect(demoPresetThresholdsSource).toMatch(/PRESET_BIAS_HELPERS/);
+    expect(demoPresetThresholdsSource).toMatch(/buildPresetBiasSummary/);
+    expect(timeslicingModeStoreSource).not.toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
+    expect(timesliceToolbarSource).not.toMatch(/Bias|Active|Reset preset|Reset all/);
     expect(demoDualTimelineSource).toMatch(/DemoDualTimeline/);
     expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoWarpStore/);

@@ -11,14 +11,25 @@ import {
 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
-import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import {
+  type TimeslicePreset,
+  useDashboardDemoTimeslicingModeStore,
+} from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
+import {
+  DEMO_PRESET_BIAS_KEYS,
+  PRESET_BIAS_HELPERS,
+  PRESET_BIAS_RANGE,
+  buildPresetBiasSummary,
+} from '@/components/dashboard-demo/lib/demo-preset-thresholds';
 
 const toDateTimeLocalValue = (timestampMs: number | null | undefined) => {
   if (timestampMs === null || timestampMs === undefined || !Number.isFinite(timestampMs)) {
@@ -58,6 +69,12 @@ export function DemoSlicePanel() {
   const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
 
   const mode = useDashboardDemoTimeslicingModeStore((state) => state.mode);
+  const preset = useDashboardDemoTimeslicingModeStore((state) => state.preset);
+  const setPreset = useDashboardDemoTimeslicingModeStore((state) => state.setPreset);
+  const presetBiases = useDashboardDemoTimeslicingModeStore((state) => state.presetBiases);
+  const setPresetBias = useDashboardDemoTimeslicingModeStore((state) => state.setPresetBias);
+  const resetPresetBias = useDashboardDemoTimeslicingModeStore((state) => state.resetPresetBias);
+  const resetAllPresetBiases = useDashboardDemoTimeslicingModeStore((state) => state.resetAllPresetBiases);
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
@@ -194,6 +211,23 @@ export function DemoSlicePanel() {
     });
   }, [addSlice, currentTime, maxTimestampSec, minTimestampSec, timeRange, timeResolution]);
 
+  const handleResetPresetBias = useCallback((targetPreset: TimeslicePreset) => {
+    const helper = PRESET_BIAS_HELPERS[targetPreset];
+    const shouldReset = window.confirm(`Reset ${helper.label} Bias to ${helper.recommendedBias}%?`);
+    if (!shouldReset) {
+      return;
+    }
+    resetPresetBias(targetPreset);
+  }, [resetPresetBias]);
+
+  const handleResetAllPresetBiases = useCallback(() => {
+    const shouldReset = window.confirm('Reset all preset Bias values to recommended defaults?');
+    if (!shouldReset) {
+      return;
+    }
+    resetAllPresetBiases();
+  }, [resetAllPresetBiases]);
+
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100" aria-busy={isComputing}>
       <header className="mb-3 space-y-1">
@@ -224,32 +258,115 @@ export function DemoSlicePanel() {
           </div>
         ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAddPointSlice}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Point
-            </button>
-            <button
-              type="button"
-              onClick={handleAddRangeSlice}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Range
-            </button>
-            <button
-              type="button"
-              onClick={clearSlices}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear
-            </button>
-        </div>
+        <Accordion type="multiple" defaultValue={['preset-bias', 'slice-tools']} className="rounded-md border border-slate-800 bg-slate-900/40 px-3">
+          <AccordionItem value="preset-bias" className="border-slate-800">
+            <AccordionTrigger className="py-3 hover:no-underline">
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-2 text-xs">
+                <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Preset Bias</span>
+                <span className="truncate text-[11px] text-slate-500">{PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-3">
+              <div className="space-y-2">
+                {DEMO_PRESET_BIAS_KEYS.map((presetKey) => {
+                  const helper = PRESET_BIAS_HELPERS[presetKey];
+                  const biasValue = presetBiases[presetKey];
+                  const isActive = presetKey === preset;
+
+                  return (
+                    <div
+                      key={presetKey}
+                      className={`rounded-md border px-3 py-2 ${
+                        isActive
+                          ? 'border-emerald-400/60 bg-emerald-500/10'
+                          : 'border-slate-800 bg-slate-950/50'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreset(presetKey)}
+                            className="truncate text-left text-xs font-semibold text-slate-100 underline-offset-2 hover:underline"
+                          >
+                            {helper.label}
+                          </button>
+                          {isActive ? (
+                            <span className="rounded-full border border-emerald-400/70 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                              Active
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-[11px] text-slate-300">{buildPresetBiasSummary(biasValue)}</div>
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-500">{helper.helperText}</div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-slate-400">Bias</span>
+                        <Slider
+                          min={PRESET_BIAS_RANGE.min}
+                          max={PRESET_BIAS_RANGE.max}
+                          step={PRESET_BIAS_RANGE.step}
+                          value={[biasValue]}
+                          onValueChange={(value) => setPresetBias(presetKey, value[0] ?? biasValue)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => handleResetPresetBias(preset)}
+                  className="rounded border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-900"
+                >
+                  Reset preset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetAllPresetBiases}
+                  className="rounded border border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-amber-200 transition-colors hover:border-amber-400"
+                >
+                  Reset all
+                </button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="slice-tools" className="border-slate-800">
+            <AccordionTrigger className="py-3 hover:no-underline">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Slice tools</div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddPointSlice}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Point
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddRangeSlice}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Range
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSlices}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear
+                </button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <div className="space-y-2">
           {slices.length === 0 ? (
