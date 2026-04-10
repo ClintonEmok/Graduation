@@ -26,13 +26,25 @@ Add demo-local, per-preset threshold controls to `/dashboard-demo` for the exist
 - **D-06:** The demo slice rail is the primary place to edit preset thresholds because it already hosts the demo-local generation workflow.
 - **D-07:** The active preset should expose its own controls directly in the rail instead of hiding them behind a generic global setting.
 
+### Control shape and tone
+- **D-08:** Use sliders for threshold entry, with compact summary text instead of always-visible raw numbers.
+- **D-09:** Threshold changes should update live as the user edits them.
+- **D-10:** Keep the steps coarse so tuning feels quick and exploratory rather than overly technical.
+- **D-11:** Label the threshold concept as `Bias` in the demo rail.
+- **D-12:** Show friendlier preset names with short helper text, and use an `Active` badge for the currently edited preset.
+
+### Reset behavior
+- **D-13:** Provide both per-preset reset and reset-all behavior.
+- **D-14:** Reset should restore the recommended starting value for each preset.
+- **D-15:** Put reset actions in the rail footer and confirm before resetting.
+
 ### Stable-route isolation
-- **D-08:** `/timeslicing` remains the stable reference route and should not gain demo-local preset threshold controls.
+- **D-16:** `/timeslicing` remains the stable reference route and should not gain demo-local preset threshold controls.
 
 ### the agent's Discretion
-- Exact threshold names and grouping labels for each preset family.
-- Whether the controls are sliders, steppers, or compact numeric inputs so long as they remain preset-scoped.
-- Minor copy differences needed to keep the rail readable.
+- Exact helper copy for each preset family.
+- The precise slider range and default starting value for each preset, as long as the phase stays preset-scoped.
+- Minor copy and spacing choices needed to keep the rail readable.
 
 </decisions>
 
@@ -54,12 +66,13 @@ Add demo-local, per-preset threshold controls to `/dashboard-demo` for the exist
 - `.planning/STATE.md` — current focus and phase counts.
 
 ### Existing demo-local code
-- `src/store/useDashboardDemoTimeslicingModeStore.ts` — demo-local generation state that will hold per-preset threshold values.
+- `src/store/useDashboardDemoTimeslicingModeStore.ts` — demo-local generation state that already owns preset selection and generation workflow state.
 - `src/components/dashboard-demo/DemoSlicePanel.tsx` — demo rail where the controls should surface.
 - `src/app/dashboard-demo/page.shell.test.tsx` — source-inspection regression coverage for demo-local shell behavior.
 
 ### Stable reference code
 - `src/store/useTimeslicingModeStore.ts` — stable timeslicing store to keep unchanged.
+- `src/components/binning/BinningControls.tsx` — existing generation context controls and granularity vocabulary.
 - `src/components/timeslicing/TimesliceToolbar.tsx` — existing preset vocabulary and stable route concepts.
 
 ### Vocabulary reference
@@ -74,6 +87,7 @@ Add demo-local, per-preset threshold controls to `/dashboard-demo` for the exist
 - `src/store/useDashboardDemoTimeslicingModeStore.ts` — already owns demo-local preset selection and generation workflow state.
 - `src/components/dashboard-demo/DemoSlicePanel.tsx` — already renders the slice companion rail and is the natural place for preset-scoped controls.
 - `src/app/dashboard-demo/page.shell.test.tsx` — already checks that the demo shell stays demo-local and can be extended to cover the new controls.
+- `src/components/binning/BinningControls.tsx` — shows the generation controls and preset/granularity language that the demo can mirror.
 
 ### Established Patterns
 - Demo-local state is preferred when the feature is specific to `/dashboard-demo`.
