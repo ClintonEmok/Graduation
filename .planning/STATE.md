@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: in_progress
 stopped_at: Phase 6 timeline polish completed; warp follow-up completed
-last_updated: "2026-04-10T00:18:57Z"
+last_updated: "2026-04-10T01:00:00Z"
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 6
-  total_plans: 14
+  total_plans: 15
   completed_plans: 11
-  percent: 79
+  percent: 73
 ---
 
 # Project State
@@ -20,7 +20,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 7 — contextual data enrichment
+**Current focus:** Phase 7 — dashboard-demo preset thresholds
 
 ## Current Position
 
@@ -29,7 +29,7 @@ Plan: 02
 Status: Phase 6 complete — demo timeline polish and warp follow-up executed
 Last activity: 2026-04-10 - Completed Phase 6 warp follow-up
 
-Progress: [████████░░] 79%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -50,10 +50,11 @@ Progress: [████████░░] 79%
 | 5 | 3 | 3 | - |
 | 6 | 2 | 2 | 20 min |
 | 7 | 1 | 0 | - |
-| 8 | 4 | 0 | - |
-| 9 | 0 | 0 | - |
+| 8 | 1 | 0 | - |
+| 9 | 4 | 0 | - |
 | 10 | 0 | 0 | - |
 | 11 | 0 | 0 | - |
+| 12 | 0 | 0 | - |
 
 **Recent Trend:**
 
@@ -103,8 +104,9 @@ Progress: [████████░░] 79%
 - Phase 5 demo stats + STKDE interaction is complete.
 - Phase 6 demo timeline polish is complete.
 - Phase 6 warp follow-up is complete.
-- Phase 7 contextual data enrichment plan is drafted.
-- Phase 8 workflow isolation plan follows after the two inserted phases.
+- Phase 7 dashboard-demo preset thresholds plan is drafted.
+- Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
+- Phase 9 workflow isolation plan follows after the contextual phase.
 
 ### Blockers/Concerns
 

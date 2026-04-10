@@ -29,7 +29,31 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **STAT-05**: User can read hotspot/place labels in plain-language district terms.
 - [ ] **STAT-06**: User can keep STKDE hotspot selection from altering stats summary state.
 
-### Workflow Isolation and Dashboard Handoff (Phase 6)
+### Demo Timeline Polish (Phase 6)
+
+- [ ] **TPL-01**: User can read the demo timeline as a clean primary temporal surface at a glance.
+- [ ] **TPL-02**: User can keep slices and overlays visible without them overwhelming the main timeline.
+- [ ] **TPL-03**: User can use playback, scrubbing, and temporal controls without clutter.
+- [ ] **TPL-04**: User can distinguish edit, review, and analysis cues in the timeline.
+- [ ] **TPL-05**: User can use the polished timeline as a foundation for later contextual layers.
+
+### Dashboard-Demo Preset Thresholds (Phase 7)
+
+- [ ] **PTH-01**: User can adjust threshold values separately for each context-aware generation preset inside `/dashboard-demo`.
+- [ ] **PTH-02**: User can switch presets and see each preset restore its own threshold values.
+- [ ] **PTH-03**: User can compare context-aware presets without threshold changes bleeding across presets.
+- [ ] **PTH-04**: User can keep threshold controls demo-local and separate from `/timeslicing`.
+- [ ] **PTH-05**: User can reuse existing preset families and interval concepts without introducing a new algorithm family.
+
+### Contextual Data Enrichment (Phase 8)
+
+- [ ] **CTX-01**: User can see contextual layers such as socioeconomic signals, holidays, events, or traffic context alongside the demo analysis.
+- [ ] **CTX-02**: User can interpret the added context as explanatory rather than noisy.
+- [ ] **CTX-03**: User can keep contextual layers demo-local and separate from the stable routes.
+- [ ] **CTX-04**: User can enable or disable context without breaking the core crime analysis flow.
+- [ ] **CTX-05**: User can use contextual enrichment to better explain patterns before workflow isolation.
+
+### Workflow Isolation and Dashboard Handoff (Phase 9)
 
 - [ ] **FLOW-01**: User can open generate slices as a dedicated full-screen step that is separate from the dashboard.
 - [ ] **FLOW-02**: User can review draft bins and warnings in a dedicated full-screen review step.
@@ -144,12 +168,27 @@ Explicitly excluded. Documented to prevent scope creep.
 | STAT-04 | Phase 5 | Planned |
 | STAT-05 | Phase 5 | Planned |
 | STAT-06 | Phase 5 | Planned |
-| FLOW-01 | Phase 6 | Planned |
-| FLOW-02 | Phase 6 | Planned |
-| FLOW-03 | Phase 6 | Planned |
-| FLOW-04 | Phase 6 | Planned |
-| FLOW-05 | Phase 6 | Planned |
-| FLOW-06 | Phase 6 | Planned |
+| TPL-01 | Phase 6 | Planned |
+| TPL-02 | Phase 6 | Planned |
+| TPL-03 | Phase 6 | Planned |
+| TPL-04 | Phase 6 | Planned |
+| TPL-05 | Phase 6 | Planned |
+| PTH-01 | Phase 7 | Planned |
+| PTH-02 | Phase 7 | Planned |
+| PTH-03 | Phase 7 | Planned |
+| PTH-04 | Phase 7 | Planned |
+| PTH-05 | Phase 7 | Planned |
+| CTX-01 | Phase 8 | Planned |
+| CTX-02 | Phase 8 | Planned |
+| CTX-03 | Phase 8 | Planned |
+| CTX-04 | Phase 8 | Planned |
+| CTX-05 | Phase 8 | Planned |
+| FLOW-01 | Phase 9 | Planned |
+| FLOW-02 | Phase 9 | Planned |
+| FLOW-03 | Phase 9 | Planned |
+| FLOW-04 | Phase 9 | Planned |
+| FLOW-05 | Phase 9 | Planned |
+| FLOW-06 | Phase 9 | Planned |
 | DEMO-01 | Phase 2 | Planned |
 | DEMO-02 | Phase 2 | Planned |
 | DEMO-03 | Phase 2 | Planned |
@@ -170,27 +209,27 @@ Explicitly excluded. Documented to prevent scope creep.
 | DTL-03 | Phase 3 | Planned |
 | DTL-04 | Phase 3 | Planned |
 | DTL-05 | Phase 3 | Planned |
-| T2 | Phase 7 | Planned |
-| T3 | Phase 7 | Planned |
-| VIEW-02 | Phase 7 | Planned |
-| VIEW-03 | Phase 7 | Planned |
-| T4 | Phase 8 | Planned |
-| T6 | Phase 8 | Planned |
-| T7 | Phase 8 | Planned |
-| T8 | Phase 8 | Planned |
-| VIEW-05 | Phase 8 | Planned |
-| VIEW-06 | Phase 8 | Planned |
-| TRUST-01 | Phase 9 | Planned |
-| TRUST-02 | Phase 9 | Planned |
-| TRUST-03 | Phase 9 | Planned |
-| TRUST-04 | Phase 9 | Planned |
-| HOTS-01 | Phase 9 | Planned |
-| HOTS-02 | Phase 9 | Planned |
-| SUGG-01 | Phase 9 | Planned |
-| SUGG-02 | Phase 9 | Planned |
-| PERF-01 | Phase 9 | Planned |
-| PERF-02 | Phase 9 | Planned |
+| T2 | Phase 10 | Planned |
+| T3 | Phase 10 | Planned |
+| VIEW-02 | Phase 10 | Planned |
+| VIEW-03 | Phase 10 | Planned |
+| T4 | Phase 11 | Planned |
+| T6 | Phase 11 | Planned |
+| T7 | Phase 11 | Planned |
+| T8 | Phase 11 | Planned |
+| VIEW-05 | Phase 11 | Planned |
+| VIEW-06 | Phase 11 | Planned |
+| TRUST-01 | Phase 12 | Planned |
+| TRUST-02 | Phase 12 | Planned |
+| TRUST-03 | Phase 12 | Planned |
+| TRUST-04 | Phase 12 | Planned |
+| HOTS-01 | Phase 12 | Planned |
+| HOTS-02 | Phase 12 | Planned |
+| SUGG-01 | Phase 12 | Planned |
+| SUGG-02 | Phase 12 | Planned |
+| PERF-01 | Phase 12 | Planned |
+| PERF-02 | Phase 12 | Planned |
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after inserting the demo stats + STKDE phase before workflow isolation*
+*Last updated: 2026-04-10 after inserting the demo-local preset-threshold phase before contextual enrichment*
