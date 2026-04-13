@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-04-13T13:59:15Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-04-13T14:00:43Z"
 progress:
   total_phases: 15
   completed_phases: 7
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 ## Current Position
 
 Phase: 09 (burstiness-driven-slice-generation) — EXECUTING
-Plan: 4 of 4
+Plan: 3 of 4
 
 Progress: ███████░░░ 73%
 
@@ -107,6 +107,9 @@ Progress: ███████░░░ 73%
 - Keep burst draft generation deliberately user-triggered, with a visible fallback path when no burst windows overlap.
 - Surface pending generated bins as burst-first drafts in both the rail and the timeline before apply.
 - Route demo apply through the slice-domain replacement API before clearing pending burst drafts.
+- Keep pending burst drafts in a dedicated review surface so merge, split, and delete stay pre-apply only.
+- Mirror the editable draft state in the workflow shell and timeline copy so the demo reads consistently.
+- Lock pending-draft edit wiring with source-inspection coverage instead of route behavior changes.
 
 ### Pending Todos
 
@@ -128,6 +131,6 @@ Progress: ███████░░░ 73%
 
 ## Session Continuity
 
-Last session: 2026-04-13T13:59:15Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-04-13T14:00:43Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
