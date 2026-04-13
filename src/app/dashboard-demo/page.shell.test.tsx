@@ -55,7 +55,8 @@ describe('/dashboard-demo shell', () => {
 
     expect(pageSource).toMatch(/DashboardDemoShell/);
     expect(shellSource).toMatch(/WorkflowSkeleton/);
-    expect(workflowSkeletonSource).toMatch(/Generate from active Bias/);
+    expect(workflowSkeletonSource).toMatch(/Review before apply/);
+    expect(workflowSkeletonSource).toMatch(/Generate editable draft set/);
     expect(workflowSkeletonSource).toMatch(/generateBinsFromActivePresetBias/);
     expect(workflowSkeletonSource).toMatch(/Generate burst drafts/);
     expect(workflowSkeletonSource).toMatch(/useBurstWindows/);
@@ -64,6 +65,7 @@ describe('/dashboard-demo shell', () => {
     expect(workflowSkeletonSource).toMatch(/Apply draft slices/);
     expect(workflowSkeletonSource).toMatch(/applyGeneratedBins/);
     expect(workflowSkeletonSource).toMatch(/Clear draft/);
+    expect(workflowSkeletonSource).toMatch(/Editable draft bins/);
     expect(workflowSkeletonSource).toMatch(/pendingGeneratedBins/);
     expect(workflowSkeletonSource).toMatch(/fallback/);
     expect(shellSource).toMatch(/DemoMapVisualization/);
@@ -132,6 +134,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
+    expect(demoSlicePanelSource).toMatch(/Pending burst drafts/);
+    expect(demoSlicePanelSource).toMatch(/Review before apply/);
+    expect(demoSlicePanelSource).toMatch(/editable before apply/);
+    expect(demoSlicePanelSource).toMatch(/mergePendingGeneratedBins|splitPendingGeneratedBin|deletePendingGeneratedBin/);
     expect(demoSlicePanelSource).toMatch(/Bin Parameters/);
     expect(demoSlicePanelSource).toMatch(/Bias/);
     expect(demoSlicePanelSource).toMatch(/Active/);
@@ -174,7 +180,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/hasVisibleWarpSlices/);
     expect(demoDualTimelineSource).toMatch(/warpEnabled/);
     expect(demoDualTimelineSource).toMatch(/shouldShowWarpReference/);
-    expect(demoDualTimelineSource).toMatch(/Burst draft/);
+    expect(demoDualTimelineSource).toMatch(/Editable burst draft/);
     expect(demoDualTimelineSource).toMatch(/isGeneratedDraft/);
     expect(demoDualTimelineSource).toMatch(/overviewInteractionScale|detailInteractionScale/);
     expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);
