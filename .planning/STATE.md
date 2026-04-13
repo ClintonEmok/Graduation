@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-04-10T08:52:35Z"
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-04-13T13:43:00.618Z"
 progress:
-  total_phases: 12
+  total_phases: 15
   completed_phases: 7
-  total_plans: 18
-  completed_plans: 13
-  percent: 72
+  total_plans: 20
+  completed_plans: 14
 ---
 
 # Project State
@@ -20,22 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 7 — dashboard-demo preset thresholds
+**Current focus:** Phase 09 — burstiness-driven-slice-generation
 
 ## Current Position
 
-Phase: 7 of 12 (dashboard-demo preset thresholds)
+Phase: 09 (burstiness-driven-slice-generation) — EXECUTING
 Plan: 2 of 2
-Status: Phase 7 complete
-Last activity: 2026-04-10 - Completed 07-02-PLAN.md
-
-Progress: [███████░░░] 72%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: ~4 min
 - Total execution time: 0.7 hours
 
@@ -51,10 +46,11 @@ Progress: [███████░░░] 72%
 | 6 | 2 | 2 | 20 min |
 | 7 | 2 | 2 | 5 min |
 | 8 | 1 | 0 | - |
-| 9 | 4 | 0 | - |
-| 10 | 0 | 0 | - |
+| 9 | 0 | 0 | - |
+| 10 | 4 | 0 | - |
 | 11 | 0 | 0 | - |
 | 12 | 0 | 0 | - |
+| 13 | 0 | 0 | - |
 
 **Recent Trend:**
 
@@ -62,6 +58,10 @@ Progress: [███████░░░] 72%
 - Trend: Stable
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 9 added: Burstiness-driven slice generation
 
 ### Decisions
 
@@ -101,6 +101,7 @@ Progress: [███████░░░] 72%
 - Add first-iteration demo-local generation wiring through active preset plus `presetBiases[preset]` in the dashboard-demo store.
 - Keep preset-driven generation profile mapping coarse and demo-focused, deferring deeper algorithm work.
 - Surface generation controls inside the workflow skeleton slice rail while preserving `/timeslicing` isolation.
+- Convert burst windows into draft bins in the dashboard-demo store, with preset-bias fallback and burst metadata preserved on apply.
 
 ### Pending Todos
 
@@ -112,7 +113,8 @@ Progress: [███████░░░] 72%
 - Phase 6 warp follow-up is complete.
 - Phase 7 dashboard-demo preset thresholds is complete.
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
-- Phase 9 workflow isolation plan follows after the contextual phase.
+- Phase 9 burstiness-driven slice generation plan 1 is complete; plan 2 follows.
+- Phase 10 workflow isolation plan follows after burstiness generation.
 
 ### Blockers/Concerns
 
@@ -121,6 +123,6 @@ Progress: [███████░░░] 72%
 
 ## Session Continuity
 
-Last session: 2026-04-10T08:52:35Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-04-13T13:43:00.615Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
