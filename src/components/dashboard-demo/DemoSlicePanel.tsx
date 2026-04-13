@@ -86,6 +86,9 @@ export function DemoSlicePanel() {
   const generateBinsFromActivePresetBias = useDashboardDemoTimeslicingModeStore((state) => state.generateBinsFromActivePresetBias);
   const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
+  const mergePendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.mergePendingGeneratedBins);
+  const splitPendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.splitPendingGeneratedBin);
+  const deletePendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.deletePendingGeneratedBin);
   const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
@@ -267,6 +270,34 @@ export function DemoSlicePanel() {
     generateBinsFromActivePresetBias();
   }, [generateBinsFromActivePresetBias, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
 
+  const handleMergePendingDraft = useCallback((index: number) => {
+    const current = pendingGeneratedBins[index];
+    if (!current) {
+      return;
+    }
+
+    const adjacent = pendingGeneratedBins[index - 1] ?? pendingGeneratedBins[index + 1];
+    if (!adjacent) {
+      return;
+    }
+
+    mergePendingGeneratedBins([adjacent.id, current.id]);
+  }, [mergePendingGeneratedBins, pendingGeneratedBins]);
+
+  const handleSplitPendingDraft = useCallback((binId: string) => {
+    const target = pendingGeneratedBins.find((bin) => bin.id === binId);
+    if (!target) {
+      return;
+    }
+
+    const splitPoint = Math.round((target.startTime + target.endTime) / 2);
+    splitPendingGeneratedBin(binId, splitPoint);
+  }, [pendingGeneratedBins, splitPendingGeneratedBin]);
+
+  const handleDeletePendingDraft = useCallback((binId: string) => {
+    deletePendingGeneratedBin(binId);
+  }, [deletePendingGeneratedBin]);
+
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100" aria-busy={isComputing}>
       <header className="mb-3 space-y-1">
@@ -297,6 +328,78 @@ export function DemoSlicePanel() {
             <div className="mt-1 text-amber-100/90">{burstDraftSummary}</div>
           </div>
         ) : null}
+
+        <section className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200">Pending burst drafts</div>
+              <div className="mt-1 text-xs text-slate-300">These draft bins stay editable before apply.</div>
+            </div>
+            <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+              Review before apply
+            </span>
+          </div>
+
+          {pendingGeneratedBins.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {pendingGeneratedBins.map((bin, index) => {
+                const isMergeable = pendingGeneratedBins.length > 1;
+                const label = bin.districts?.length
+                  ? bin.districts.join(', ')
+                  : bin.crimeTypes.length > 0
+                    ? bin.crimeTypes.join(', ')
+                    : 'All crimes';
+
+                return (
+                  <div key={bin.id} className="rounded-md border border-amber-500/20 bg-slate-900/70 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                          Draft {String(index + 1).padStart(2, '0')}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-100">{formatRange(bin.startTime, bin.endTime)}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">{bin.count} events • {label}</div>
+                      </div>
+                      <div className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-amber-100">
+                        Editable
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => handleMergePendingDraft(index)}
+                        disabled={!isMergeable}
+                        className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-100 transition-colors hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Merge
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSplitPendingDraft(bin.id)}
+                        disabled={bin.endTime <= bin.startTime}
+                        className="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-medium text-slate-200 transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Split
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePendingDraft(bin.id)}
+                        className="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-medium text-slate-200 transition-colors hover:bg-slate-900"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-3 rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-3 text-[11px] text-slate-400">
+              Generate burst drafts to review and edit them here before apply.
+            </div>
+          )}
+        </section>
 
         {activeWindowLabel ? (
           <div className="rounded-md border border-slate-800 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-300">
