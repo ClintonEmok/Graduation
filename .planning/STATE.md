@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-04-13T13:49:20.940Z"
+status: executing
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-04-13T13:59:15Z"
 progress:
   total_phases: 15
-  completed_phases: 8
-  total_plans: 20
-  completed_plans: 15
+  completed_phases: 7
+  total_plans: 22
+  completed_plans: 16
 ---
 
 # Project State
@@ -19,12 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 10 — workflow-isolation
+**Current focus:** Phase 09 — burstiness-driven-slice-generation
 
 ## Current Position
 
-Phase: 09 (burstiness-driven-slice-generation) — COMPLETE
-Plan: 2 of 2
+Phase: 09 (burstiness-driven-slice-generation) — EXECUTING
+Plan: 4 of 4
+
+Progress: ███████░░░ 73%
 
 ## Performance Metrics
 
@@ -104,6 +106,7 @@ Plan: 2 of 2
 - Convert burst windows into draft bins in the dashboard-demo store, with preset-bias fallback and burst metadata preserved on apply.
 - Keep burst draft generation deliberately user-triggered, with a visible fallback path when no burst windows overlap.
 - Surface pending generated bins as burst-first drafts in both the rail and the timeline before apply.
+- Route demo apply through the slice-domain replacement API before clearing pending burst drafts.
 
 ### Pending Todos
 
@@ -115,7 +118,7 @@ Plan: 2 of 2
 - Phase 6 warp follow-up is complete.
 - Phase 7 dashboard-demo preset thresholds is complete.
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
-- Phase 9 burstiness-driven slice generation is complete.
+- Phase 9 burstiness-driven slice generation remains in progress.
 - Phase 10 workflow isolation plan follows after burstiness generation.
 
 ### Blockers/Concerns
@@ -125,6 +128,6 @@ Plan: 2 of 2
 
 ## Session Continuity
 
-Last session: 2026-04-13T13:49:20.937Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-04-13T13:59:15Z
+Stopped at: Completed 09-04-PLAN.md
 Resume file: None

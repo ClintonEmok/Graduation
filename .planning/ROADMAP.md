@@ -141,10 +141,12 @@ Plans:
 **Goal**: Turn burst windows into draft slices so the demo can point users toward bursty periods without treating burst mode as a standalone map state.
 **Depends on**: Phase 8
 **Requirements**: TBD
-**Plans:** 2
+**Plans:** 4
 Plans:
 - `.planning/phases/09-burstiness-driven-slice-generation/09-01-PLAN.md` — turn existing burst windows into draft slices and preserve burst metadata when they are applied.
 - `.planning/phases/09-burstiness-driven-slice-generation/09-02-PLAN.md` — expose burst draft generation in the workflow shell and lock the burst preview contract.
+- `.planning/phases/09-burstiness-driven-slice-generation/09-03-PLAN.md` — expose editable pending burst drafts in the dashboard-demo workflow before apply.
+- `.planning/phases/09-burstiness-driven-slice-generation/09-04-PLAN.md` — wire the demo apply path so burst drafts actually replace the active slice set.
 
 ### Phase 10: Workflow isolation + dashboard handoff (technical)
 **Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after burst-driven slice generation is established, so the workflow stays separate from dashboard analysis until Apply.
