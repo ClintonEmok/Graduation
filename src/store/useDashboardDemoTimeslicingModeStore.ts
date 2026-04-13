@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { BurstWindow } from '@/components/viz/BurstList';
+import { buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import type { TimeBin } from '@/lib/binning/types';
 import {
   DEMO_PRESET_BIAS_KEYS,
@@ -38,6 +40,7 @@ export interface GenerationResultMetadata {
   binCount: number;
   eventCount: number;
   warning: string | null;
+  generationSource: 'burst-windows' | 'preset-bias';
   preset: TimeslicePreset;
   presetBias: number;
   inputs: GenerationInputs;
@@ -85,6 +88,7 @@ interface DashboardDemoTimeslicingState {
   setGenerationStatus: (status: GenerationStatus) => void;
   setPendingGeneratedBins: (bins: TimeBin[], metadata: Omit<GenerationResultMetadata, 'generatedAt'>) => void;
   generateBinsFromActivePresetBias: () => boolean;
+  generateBurstDraftBinsFromWindows: (burstWindows: BurstWindow[]) => boolean;
   setGenerationError: (message: string | null) => void;
   clearPendingGeneratedBins: () => void;
   replacePendingGeneratedBins: (bins: TimeBin[]) => void;
@@ -426,10 +430,35 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
             binCount: generated.bins.length,
             eventCount: generated.eventCount,
             warning: generated.warning,
+            generationSource: 'preset-bias',
             preset,
             presetBias,
             inputs: generationInputs,
           },
+        });
+
+        return true;
+      },
+      generateBurstDraftBinsFromWindows: (burstWindows) => {
+        const { preset, presetBiases, generationInputs } = get();
+        const presetBias = clampPresetBias(presetBiases[preset]);
+
+        set({ generationStatus: 'generating', generationError: null });
+
+        const generated = buildBurstDraftBinsFromWindows(burstWindows, generationInputs);
+
+        if (generated.shouldFallbackToPresetBias || generated.bins.length === 0) {
+          return get().generateBinsFromActivePresetBias();
+        }
+
+        get().setPendingGeneratedBins(generated.bins, {
+          binCount: generated.bins.length,
+          eventCount: generated.eventCount,
+          warning: generated.warning,
+          generationSource: 'burst-windows',
+          preset,
+          presetBias,
+          inputs: generationInputs,
         });
 
         return true;
