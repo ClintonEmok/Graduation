@@ -2,6 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { PRESET_BIAS_HELPERS, buildPresetBiasSummary } from '@/components/dashboard-demo/lib/demo-preset-thresholds';
+import { buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
+import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { useBurstWindows } from '@/components/viz/BurstList';
 
 export type WorkflowSkeletonStep = 'explore' | 'build' | 'review';
 
@@ -34,12 +41,95 @@ const STEP_ICONS: Record<WorkflowSkeletonStep, typeof Layers3> = {
 export function WorkflowSkeleton() {
   const [isOpen, setIsOpen] = useState(true);
   const [activeStep, setActiveStep] = useState<WorkflowSkeletonStep>('explore');
+  const preset = useDashboardDemoTimeslicingModeStore((state) => state.preset);
+  const presetBiases = useDashboardDemoTimeslicingModeStore((state) => state.presetBiases);
+  const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
+  const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
+  const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
+  const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
+  const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
+  const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
+  const generateBinsFromActivePresetBias = useDashboardDemoTimeslicingModeStore((state) => state.generateBinsFromActivePresetBias);
+  const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
+  const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
+  const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
+  const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
+  const burstWindows = useBurstWindows();
 
   const activeIndex = STEP_ORDER.indexOf(activeStep);
   const previousStep = STEP_ORDER[Math.max(0, activeIndex - 1)] ?? activeStep;
   const nextStep = STEP_ORDER[Math.min(STEP_ORDER.length - 1, activeIndex + 1)] ?? activeStep;
 
   const StepIcon = useMemo(() => STEP_ICONS[activeStep], [activeStep]);
+
+  const burstDraftPreview = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return null;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
+    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+    return buildBurstDraftBinsFromWindows(burstWindows, {
+      crimeTypes: [],
+      neighbourhood: null,
+      timeWindow: {
+        start,
+        end,
+      },
+      granularity: 'daily',
+    });
+  }, [burstWindows, maxTimestampSec, minTimestampSec, timeRange]);
+
+  const handleGenerateFromPresetBias = () => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
+    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+    setGenerationInputs({
+      timeWindow: {
+        start,
+        end,
+      },
+    });
+
+    generateBinsFromActivePresetBias();
+  };
+
+  const handleGenerateBurstDrafts = () => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
+    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+    setGenerationInputs({
+      timeWindow: {
+        start,
+        end,
+      },
+    });
+
+    generateBurstDraftBinsFromWindows(burstWindows);
+  };
+
+  const handleApplyDraftSlices = () => {
+    if (pendingGeneratedBins.length === 0 || minTimestampSec === null || maxTimestampSec === null) {
+      return;
+    }
+
+    const domain: [number, number] = [minTimestampSec * 1000, maxTimestampSec * 1000];
+    applyGeneratedBins(domain);
+  };
 
   return (
     <aside className="fixed left-4 top-4 z-30 h-[calc(100vh-2rem)] text-slate-100">
@@ -123,6 +213,73 @@ export function WorkflowSkeleton() {
                       {activeStep === 'build' && 'Refine the slices in place without breaking the flow into a separate route.'}
                       {activeStep === 'review' && 'Confirm the final state before the demo hands off to the dashboard.'}
                     </p>
+                    {activeStep === 'build' ? (
+                      <div className="mt-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Preset generate</p>
+                          <span className="text-[10px] text-violet-200">
+                            {PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleGenerateFromPresetBias}
+                          disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
+                          className="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-400/60 bg-violet-500/20 px-2.5 py-1.5 text-xs font-medium text-violet-50 transition-colors hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {generationStatus === 'generating' ? 'Generating…' : 'Generate from active Bias'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleGenerateBurstDrafts}
+                            disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
+                            className="mt-2 inline-flex items-center gap-2 rounded-md border border-amber-400/60 bg-amber-500/15 px-2.5 py-1.5 text-xs font-medium text-amber-50 transition-colors hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Generate burst drafts
+                          </button>
+                          <div className="mt-2 text-[11px] text-amber-100/90">
+                            {burstDraftPreview?.warning
+                              ? burstDraftPreview.warning
+                              : burstDraftPreview?.bins.length
+                                ? `${burstDraftPreview.bins.length} burst draft${burstDraftPreview.bins.length === 1 ? '' : 's'} ready in the current selection.`
+                                : 'Burst draft generation stays user-triggered, with preset-bias fallback ready if no burst windows overlap.'}
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleApplyDraftSlices}
+                            disabled={pendingGeneratedBins.length === 0 || minTimestampSec === null || maxTimestampSec === null}
+                            className="inline-flex items-center gap-2 rounded-md border border-emerald-400/60 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-medium text-emerald-50 transition-colors hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Apply draft slices
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearPendingGeneratedBins}
+                            disabled={pendingGeneratedBins.length === 0}
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Clear draft
+                          </button>
+                          <span className="text-[10px] text-violet-200/90">Draft bins: {pendingGeneratedBins.length}</span>
+                        </div>
+                        {lastGeneratedMetadata ? (
+                          <div className="mt-2 text-[11px] text-violet-100/90">
+                            Last generate: {lastGeneratedMetadata.binCount} draft bins ({lastGeneratedMetadata.presetBias}% Bias)
+                          </div>
+                        ) : null}
+                        {lastAppliedAt ? (
+                          <div className="mt-1 text-[10px] text-emerald-200/90">
+                            Last apply: {new Date(lastAppliedAt).toLocaleTimeString()}
+                          </div>
+                        ) : null}
+                        {generationError ? (
+                          <div className="mt-2 rounded border border-red-500/50 bg-red-500/10 px-2 py-1 text-[11px] text-red-100">
+                            {generationError}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
                     <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Next</p>
