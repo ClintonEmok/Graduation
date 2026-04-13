@@ -1369,16 +1369,35 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
             {pendingGeneratedGeometries.map((geometry) => (
               <g key={geometry.id}>
+                <text
+                  x={geometry.left + 4}
+                  y={6}
+                  fontSize={9}
+                  fill="rgba(254, 243, 199, 0.95)"
+                  className="uppercase tracking-[0.18em]"
+                >
+                  Burst draft
+                </text>
                 <rect
                   x={geometry.left}
                   y={8}
                   width={Math.max(2, geometry.width)}
                   height={DETAIL_HEIGHT - 16}
                   rx={3}
-                  fill="rgba(245, 158, 11, 0.16)"
-                  stroke="rgba(251, 191, 36, 0.92)"
+                  fill={geometry.isGeneratedDraft ? 'rgba(245, 158, 11, 0.18)' : 'rgba(148, 163, 184, 0.12)'}
+                  stroke={geometry.isGeneratedDraft ? 'rgba(251, 191, 36, 0.95)' : 'rgba(148, 163, 184, 0.75)'}
                   strokeWidth={1.5}
-                  strokeDasharray="4 3"
+                  strokeDasharray={geometry.isGeneratedDraft ? '4 2' : '2 3'}
+                  opacity={geometry.isGeneratedDraft ? 0.95 : 0.65}
+                />
+                <rect
+                  x={geometry.left + 1}
+                  y={9}
+                  width={Math.max(0, Math.max(2, geometry.width) - 2)}
+                  height={2}
+                  rx={1}
+                  fill="rgba(251, 191, 36, 0.8)"
+                  opacity={geometry.isGeneratedDraft ? 0.8 : 0.35}
                 />
               </g>
             ))}

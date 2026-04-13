@@ -94,6 +94,16 @@ export function DemoSlicePanel() {
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
 
+  const burstDraftSourceLabel = lastGeneratedMetadata?.generationSource === 'burst-windows'
+    ? 'Burst-first'
+    : lastGeneratedMetadata
+      ? 'Preset-bias fallback'
+      : 'Draft queue';
+
+  const burstDraftSummary = lastGeneratedMetadata
+    ? `${lastGeneratedMetadata.binCount} bin${lastGeneratedMetadata.binCount === 1 ? '' : 's'} • ${lastGeneratedMetadata.eventCount} events • ${burstDraftSourceLabel}`
+    : `${pendingGeneratedBins.length} pending draft${pendingGeneratedBins.length === 1 ? '' : 's'} ready for review`;
+
   const visibleWarpSliceCount = useMemo(
     () => slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true)).length,
     [slices]
@@ -278,6 +288,16 @@ export function DemoSlicePanel() {
           <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Draft bins {pendingGeneratedBins.length}</span>
         </div>
 
+        {pendingGeneratedBins.length > 0 ? (
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-50">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold uppercase tracking-[0.18em] text-amber-100">{burstDraftSourceLabel}</span>
+              <span>{pendingGeneratedBins.length} draft bins before apply</span>
+            </div>
+            <div className="mt-1 text-amber-100/90">{burstDraftSummary}</div>
+          </div>
+        ) : null}
+
         {activeWindowLabel ? (
           <div className="rounded-md border border-slate-800 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-300">
             <div className="uppercase tracking-[0.24em] text-slate-500">Active window</div>
@@ -290,7 +310,7 @@ export function DemoSlicePanel() {
         <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
           <details open>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1 text-xs">
-              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Preset Bias</span>
+              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Bin Parameters</span>
               <span className="truncate text-[11px] text-slate-500">{PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}</span>
             </summary>
             <div className="space-y-2 pt-2">
@@ -302,11 +322,10 @@ export function DemoSlicePanel() {
                 return (
                   <div
                     key={presetKey}
-                    className={`rounded-md border px-3 py-2 ${
-                      isActive
+                    className={`rounded-md border px-3 py-2 ${isActive
                         ? 'border-emerald-400/60 bg-emerald-500/10'
                         : 'border-slate-800 bg-slate-950/50'
-                    }`}
+                      }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
@@ -404,6 +423,11 @@ export function DemoSlicePanel() {
                     Window {formatRange(generationInputs.timeWindow.start, generationInputs.timeWindow.end)}
                   </div>
                 ) : null}
+                <div className="mt-1 text-slate-400">
+                  {lastGeneratedMetadata.generationSource === 'burst-windows'
+                    ? 'Burst-first drafts stay visible here before apply.'
+                    : 'Preset-bias fallback keeps the draft rail populated when no burst windows overlap.'}
+                </div>
               </div>
             ) : null}
             {generationError ? (
@@ -461,11 +485,10 @@ export function DemoSlicePanel() {
                       <button
                         type="button"
                         onClick={() => updateSlice(slice.id, { warpEnabled: !(slice.warpEnabled ?? true) })}
-                        className={`rounded border px-2 py-1 font-medium transition ${
-                          (slice.warpEnabled ?? true)
+                        className={`rounded border px-2 py-1 font-medium transition ${(slice.warpEnabled ?? true)
                             ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400'
                             : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
-                        }`}
+                          }`}
                         title={(slice.warpEnabled ?? true) ? 'Disable warp influence' : 'Enable warp influence'}
                       >
                         {(slice.warpEnabled ?? true) ? 'Warp enabled' : 'Warp disabled'}
