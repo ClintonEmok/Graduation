@@ -48,9 +48,24 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/timeline/DemoDualTimeline.tsx', import.meta.url),
       'utf8'
     );
+    const workflowSkeletonSource = readFileSync(
+      new URL('../../components/dashboard-demo/WorkflowSkeleton.tsx', import.meta.url),
+      'utf8'
+    );
 
     expect(pageSource).toMatch(/DashboardDemoShell/);
     expect(shellSource).toMatch(/WorkflowSkeleton/);
+    expect(workflowSkeletonSource).toMatch(/Generate from active Bias/);
+    expect(workflowSkeletonSource).toMatch(/generateBinsFromActivePresetBias/);
+    expect(workflowSkeletonSource).toMatch(/Generate burst drafts/);
+    expect(workflowSkeletonSource).toMatch(/useBurstWindows/);
+    expect(workflowSkeletonSource).toMatch(/generateBurstDraftBinsFromWindows/);
+    expect(workflowSkeletonSource).toMatch(/buildPresetBiasSummary/);
+    expect(workflowSkeletonSource).toMatch(/Apply draft slices/);
+    expect(workflowSkeletonSource).toMatch(/applyGeneratedBins/);
+    expect(workflowSkeletonSource).toMatch(/Clear draft/);
+    expect(workflowSkeletonSource).toMatch(/pendingGeneratedBins/);
+    expect(workflowSkeletonSource).toMatch(/fallback/);
     expect(shellSource).toMatch(/DemoMapVisualization/);
     expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/DemoTimelinePanel/);
@@ -117,7 +132,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
-    expect(demoSlicePanelSource).toMatch(/Preset Bias/);
+    expect(demoSlicePanelSource).toMatch(/Bin Parameters/);
     expect(demoSlicePanelSource).toMatch(/Bias/);
     expect(demoSlicePanelSource).toMatch(/Active/);
     expect(demoSlicePanelSource).toMatch(/Reset preset/);
@@ -126,6 +141,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/generateBinsFromActivePresetBias/);
     expect(demoSlicePanelSource).toMatch(/Generate \(/);
     expect(demoSlicePanelSource).toMatch(/Last generate:/);
+    expect(demoSlicePanelSource).toMatch(/Burst-first|Preset-bias fallback|Burst draft review/);
     expect(demoSlicePanelSource).toMatch(/window\.confirm/);
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
@@ -158,6 +174,8 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/hasVisibleWarpSlices/);
     expect(demoDualTimelineSource).toMatch(/warpEnabled/);
     expect(demoDualTimelineSource).toMatch(/shouldShowWarpReference/);
+    expect(demoDualTimelineSource).toMatch(/Burst draft/);
+    expect(demoDualTimelineSource).toMatch(/isGeneratedDraft/);
     expect(demoDualTimelineSource).toMatch(/overviewInteractionScale|detailInteractionScale/);
     expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);
     expect(demoDualTimelineSource).not.toMatch(/timeStoreOverride|filterStoreOverride|coordinationStoreOverride|adaptiveStoreOverride|sliceDomainStoreOverride|timeslicingModeStoreOverride/);
@@ -198,5 +216,6 @@ describe('/dashboard-demo shell', () => {
     expect(workflowShellSource).toMatch(/Workflow shell/);
     expect(workflowShellSource).toMatch(/Generate → Review → Apply/);
     expect(timeslicingPageSource).not.toMatch(/DashboardDemoShell|Map-first shared viewport|WorkflowSkeleton/);
+    expect(timeslicingPageSource).not.toMatch(/Generate burst drafts|generateBurstDraftBinsFromWindows|Burst draft/);
   });
 });
