@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { BurstWindow } from '@/components/viz/BurstList';
 import { buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import type { TimeBin } from '@/lib/binning/types';
+import { useSliceDomainStore } from './useSliceDomainStore';
 import {
   DEMO_PRESET_BIAS_KEYS,
   DEFAULT_PRESET_BIASES,
@@ -469,12 +470,21 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       mergePendingGeneratedBins: (binIds) => set((state) => ({ pendingGeneratedBins: mergeBins(state.pendingGeneratedBins, binIds) })),
       splitPendingGeneratedBin: (binId, splitPoint) => set((state) => ({ pendingGeneratedBins: splitBin(state.pendingGeneratedBins, binId, splitPoint) })),
       deletePendingGeneratedBin: (binId) => set((state) => ({ pendingGeneratedBins: deleteBin(state.pendingGeneratedBins, binId) })),
-      applyGeneratedBins: () => {
+      applyGeneratedBins: (domain) => {
+        const { pendingGeneratedBins } = get();
+
+        if (!pendingGeneratedBins.length) {
+          return false;
+        }
+
+        useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
+
         set({
           lastAppliedAt: Date.now(),
           generationStatus: 'applied',
           pendingGeneratedBins: [],
         });
+
         return true;
       },
     }),
