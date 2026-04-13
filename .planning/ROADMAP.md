@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, demo timeline rewrite, demo stats/STKDE wiring, demo stats/STKDE interaction, demo timeline polish, demo-local preset thresholds, contextual data enrichment, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. A dedicated UX-first phase now comes before the demo timeline rewrite so visual flow decisions are stabilized before later interaction wiring.
+This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, demo timeline rewrite, demo stats/STKDE wiring, demo stats/STKDE interaction, demo timeline polish, demo-local preset thresholds, contextual data enrichment, burstiness-driven slice generation, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. The demo slice pipeline now adds a burstiness-first generation phase before workflow isolation so burst windows can drive draft slice creation directly.
 
 ## Phases
 
@@ -14,10 +14,11 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 - [ ] **Phase 6: Demo timeline polish** — tighten the timeline/dual timeline UX so the demo's temporal controls feel readable, calm, and analysis-first.
 - [ ] **Phase 7: Dashboard-demo preset thresholds** — add demo-local, user-parameterized threshold controls for each existing context-aware generation preset in `/dashboard-demo`.
 - [ ] **Phase 8: Contextual data enrichment** — add demo-local contextual layers beyond districts, such as socioeconomic signals, events, holidays, or traffic context.
-- [ ] **Phase 9: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after the demo analysis surfaces are stabilized.
-- [ ] **Phase 10: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
-- [ ] **Phase 11: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
-- [ ] **Phase 12: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
+- [ ] **Phase 9: Burstiness-driven slice generation** — turn burst windows into draft slices so the demo can point users toward bursty periods without treating burst mode as a standalone map state.
+- [ ] **Phase 10: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after burst-driven slice generation is established.
+- [ ] **Phase 11: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
+- [ ] **Phase 12: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
+- [ ] **Phase 13: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
 
 ## Phase Details
 
@@ -136,25 +137,34 @@ Plans:
    3. User can keep contextual layers demo-local and separate from the stable routes.
    4. The contextual enrichment is ready for the workflow isolation phase that follows.
 
-### Phase 9: Workflow isolation + dashboard handoff (technical)
-**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after the demo analysis surfaces are validated, so the workflow stays separate from dashboard analysis until Apply.
+### Phase 9: Burstiness-driven slice generation
+**Goal**: Turn burst windows into draft slices so the demo can point users toward bursty periods without treating burst mode as a standalone map state.
 **Depends on**: Phase 8
+**Requirements**: TBD
+**Plans:** 2
+Plans:
+- `.planning/phases/09-burstiness-driven-slice-generation/09-01-PLAN.md` — turn existing burst windows into draft slices and preserve burst metadata when they are applied.
+- `.planning/phases/09-burstiness-driven-slice-generation/09-02-PLAN.md` — expose burst draft generation in the workflow shell and lock the burst preview contract.
+
+### Phase 10: Workflow isolation + dashboard handoff (technical)
+**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after burst-driven slice generation is established, so the workflow stays separate from dashboard analysis until Apply.
+**Depends on**: Phase 9
 **Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
 **Plans:** 4
 Plans:
-- `.planning/phases/09-workflow-isolation/09-01-PLAN.md` — isolate the workflow into a dedicated shell.
-- `.planning/phases/09-workflow-isolation/09-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
-- `.planning/phases/09-workflow-isolation/09-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
-- `.planning/phases/09-workflow-isolation/09-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
+- `.planning/phases/10-workflow-isolation/10-01-PLAN.md` — isolate the workflow into a dedicated shell.
+- `.planning/phases/10-workflow-isolation/10-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
+- `.planning/phases/10-workflow-isolation/10-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
+- `.planning/phases/10-workflow-isolation/10-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
 **Success Criteria** (what must be TRUE):
    1. User can open generate slices as a dedicated full-screen step separate from dashboard analysis.
    2. User can review and edit draft bins with warnings visible before apply.
    3. Apply transitions directly into dashboard analysis without dead-end confirmation screens.
    4. Dashboard receives only applied state and remains isolated from pre-apply workflow concerns.
 
-### Phase 10: Trace trajectories + compare behaviors
+### Phase 11: Trace trajectories + compare behaviors
 **Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
-**Depends on**: Phase 9
+**Depends on**: Phase 10
 **Requirements**: T2, T3, VIEW-02, VIEW-03
 **Success Criteria** (what must be TRUE):
    1. User can follow the temporal evolution of selected incidents/records and aggregated clusters over time.
@@ -162,9 +172,9 @@ Plans:
    3. User can inspect a coordinated 3D Space-Time Cube with time mapped to the vertical axis.
    4. User can synchronize navigation, selection, and brushing/linking between the 2D and 3D views.
 
-### Phase 11: Detect events + decode bursts
+### Phase 12: Detect events + decode bursts
 **Goal**: Non-uniform temporal scaling makes anomalies and burst structure readable while preserving metric duration.
-**Depends on**: Phase 10
+**Depends on**: Phase 11
 **Requirements**: T4, T6, T7, T8, VIEW-05, VIEW-06
 **Success Criteria** (what must be TRUE):
    1. User can identify intersections, pauses, or abrupt changes in activity that deviate from the norm.
@@ -174,9 +184,9 @@ Plans:
    5. User can use non-uniform temporal scaling to expand dense intervals while keeping metric duration visible.
    6. User can distinguish categorical structure with hue and low-confidence events with transparency.
 
-### Phase 12: Support overlays + hardening
+### Phase 13: Support overlays + hardening
 **Goal**: Trust, hotspot, guidance, and performance support stay explicit without undermining the core analytical workflow.
-**Depends on**: Phase 11
+**Depends on**: Phase 12
 **Requirements**: TRUST-01, TRUST-02, TRUST-03, TRUST-04, HOTS-01, HOTS-02, SUGG-01, SUGG-02, PERF-01, PERF-02
 **Success Criteria** (what must be TRUE):
    1. User can see whether the app is loading, ready, or degraded during startup.
@@ -191,7 +201,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13
 
 | Phase | Requirements | Status | Completed |
 |-------|--------------|--------|-----------|
@@ -203,7 +213,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Demo timeline polish | 5 | In progress | - |
 | 7. Dashboard-demo preset thresholds | 5 | Not started | - |
 | 8. Contextual data enrichment | 5 | Not started | - |
-| 9. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
-| 10. Trace trajectories + compare behaviors | 4 | Not started | - |
-| 11. Detect events + decode bursts | 6 | Not started | - |
-| 12. Support overlays + hardening | 10 | Not started | - |
+| 9. Burstiness-driven slice generation | 0 | Not started | - |
+| 10. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
+| 11. Trace trajectories + compare behaviors | 4 | Not started | - |
+| 12. Detect events + decode bursts | 6 | Not started | - |
+| 13. Support overlays + hardening | 10 | Not started | - |
