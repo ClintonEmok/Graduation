@@ -12,6 +12,14 @@ export interface TimeSlice {
   source?: TimeSliceSource;
   warpEnabled?: boolean;
   warpWeight?: number;
+  burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+  burstRuleVersion?: string;
+  burstScore?: number;
+  burstConfidence?: number;
+  burstProvenance?: string;
+  tieBreakReason?: string;
+  thresholdSource?: string;
+  neighborhoodSummary?: string;
   type: 'point' | 'range';
   time: number;
   range?: [number, number];

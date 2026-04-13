@@ -80,6 +80,16 @@ const toNormalizedBinRange = (bin: TimeBin, domain: [number, number]): [number, 
   return normalizeRange(clampNormalized(start), clampNormalized(end));
 };
 
+const hasBurstTaxonomy = (bin: TimeBin): boolean =>
+  bin.burstClass !== undefined
+  || bin.burstRuleVersion !== undefined
+  || bin.burstScore !== undefined
+  || bin.burstConfidence !== undefined
+  || bin.burstProvenance !== undefined
+  || bin.tieBreakReason !== undefined
+  || bin.thresholdSource !== undefined
+  || bin.neighborhoodSummary !== undefined;
+
 const toDateTimeMs = (normalizedValue: number): number | null => {
   const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
   if (minTimestampSec === null || maxTimestampSec === null || maxTimestampSec <= minTimestampSec) {
@@ -304,6 +314,36 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         const [start, end] = toNormalizedBinRange(bin, domain);
         if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
           return null;
+        }
+
+        const burstTaxonomyPresent = hasBurstTaxonomy(bin);
+
+        if (burstTaxonomyPresent) {
+          return {
+            id: crypto.randomUUID(),
+            name: `Burst ${index + 1}`,
+            source: 'generated-applied' as const,
+            type: 'range' as const,
+            time: (start + end) / 2,
+            range: [start, end] as [number, number],
+            warpEnabled: true,
+            warpWeight: 1.25,
+            notes: `${bin.count} events`,
+            isBurst: true,
+            burstSliceId: buildBurstSliceId(start, end),
+            burstClass: bin.burstClass,
+            burstRuleVersion: bin.burstRuleVersion,
+            burstScore: bin.burstScore,
+            burstConfidence: bin.burstConfidence,
+            burstProvenance: bin.burstProvenance,
+            tieBreakReason: bin.tieBreakReason,
+            thresholdSource: bin.thresholdSource,
+            neighborhoodSummary: bin.neighborhoodSummary,
+            isLocked: false,
+            isVisible: true,
+            startDateTimeMs: bin.startTime,
+            endDateTimeMs: bin.endTime,
+          };
         }
 
         return {
