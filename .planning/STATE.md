@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-04-13T13:43:00.618Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-04-13T13:49:20.940Z"
 progress:
   total_phases: 15
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 20
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -19,20 +19,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 09 — burstiness-driven-slice-generation
+**Current focus:** Phase 10 — workflow-isolation
 
 ## Current Position
 
-Phase: 09 (burstiness-driven-slice-generation) — EXECUTING
+Phase: 09 (burstiness-driven-slice-generation) — COMPLETE
 Plan: 2 of 2
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: ~4 min
-- Total execution time: 0.7 hours
+- Total execution time: 0.8 hours
 
 **By Phase:**
 
@@ -54,7 +54,7 @@ Plan: 2 of 2
 
 **Recent Trend:**
 
-- Last 5 plans: 05-03, 06-01, 06-02, 07-01, 07-02
+- Last 5 plans: 06-01, 06-02, 07-01, 07-02, 09-01
 - Trend: Stable
 
 ## Accumulated Context
@@ -102,6 +102,8 @@ Plan: 2 of 2
 - Keep preset-driven generation profile mapping coarse and demo-focused, deferring deeper algorithm work.
 - Surface generation controls inside the workflow skeleton slice rail while preserving `/timeslicing` isolation.
 - Convert burst windows into draft bins in the dashboard-demo store, with preset-bias fallback and burst metadata preserved on apply.
+- Keep burst draft generation deliberately user-triggered, with a visible fallback path when no burst windows overlap.
+- Surface pending generated bins as burst-first drafts in both the rail and the timeline before apply.
 
 ### Pending Todos
 
@@ -113,7 +115,7 @@ Plan: 2 of 2
 - Phase 6 warp follow-up is complete.
 - Phase 7 dashboard-demo preset thresholds is complete.
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
-- Phase 9 burstiness-driven slice generation plan 1 is complete; plan 2 follows.
+- Phase 9 burstiness-driven slice generation is complete.
 - Phase 10 workflow isolation plan follows after burstiness generation.
 
 ### Blockers/Concerns
@@ -123,6 +125,6 @@ Plan: 2 of 2
 
 ## Session Continuity
 
-Last session: 2026-04-13T13:43:00.615Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-04-13T13:49:20.937Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
