@@ -1376,7 +1376,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                   fill="rgba(254, 243, 199, 0.95)"
                   className="uppercase tracking-[0.18em]"
                 >
-                  Burst draft
+                  Editable burst draft
                 </text>
                 <rect
                   x={geometry.left}

@@ -22,14 +22,14 @@ const STEP_LABELS: Record<WorkflowSkeletonStep, string> = {
 
 const STEP_SUMMARIES: Record<WorkflowSkeletonStep, string> = {
   explore: 'Orient to the data field and the shared viewport before editing slices.',
-  build: 'Keep the slice-building and review loop continuous while you refine the draft.',
-  review: 'Confirm the slice set, scan warnings, and hand the result off to the dashboard.',
+  build: 'Keep the slice-building and review loop continuous while you refine editable drafts.',
+  review: 'Confirm the slice set, inspect pending drafts, and hand the result off to the dashboard.',
 };
 
 const STEP_DETAIL_LINES: Record<WorkflowSkeletonStep, string[]> = {
   explore: ['Read the overview surface', 'Keep the workflow lightweight', 'Start with context, not edits'],
-  build: ['Adjust slices in place', 'Treat review as part of the builder', 'Avoid route-level handoffs'],
-  review: ['Check the final slice list', 'Keep warnings visible', 'Proceed to dashboard handoff'],
+  build: ['Adjust slices in place', 'Treat review as part of the builder', 'Keep drafts editable before apply'],
+  review: ['Check the final slice list', 'Keep warnings visible', 'Review pending burst drafts before apply'],
 };
 
 const STEP_ICONS: Record<WorkflowSkeletonStep, typeof Layers3> = {
@@ -210,13 +210,13 @@ export function WorkflowSkeleton() {
                     <p className="mt-1 text-sm text-slate-100">{STEP_LABELS[activeStep]}</p>
                     <p className="mt-2 text-[12px] leading-5 text-slate-400">
                       {activeStep === 'explore' && 'Use this stage to understand the data field and decide where to begin.'}
-                      {activeStep === 'build' && 'Refine the slices in place without breaking the flow into a separate route.'}
-                      {activeStep === 'review' && 'Confirm the final state before the demo hands off to the dashboard.'}
+                      {activeStep === 'build' && 'Refine the slices in place and keep pending burst drafts editable before apply.'}
+                      {activeStep === 'review' && 'Confirm the final state while the pending burst drafts remain open for edits.'}
                     </p>
                     {activeStep === 'build' ? (
                       <div className="mt-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Preset generate</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Review before apply</p>
                           <span className="text-[10px] text-violet-200">
                             {PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}
                           </span>
@@ -227,7 +227,7 @@ export function WorkflowSkeleton() {
                           disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
                           className="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-400/60 bg-violet-500/20 px-2.5 py-1.5 text-xs font-medium text-violet-50 transition-colors hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {generationStatus === 'generating' ? 'Generating…' : 'Generate from active Bias'}
+                            {generationStatus === 'generating' ? 'Generating…' : 'Generate editable draft set'}
                           </button>
                           <button
                             type="button"
@@ -241,7 +241,7 @@ export function WorkflowSkeleton() {
                             {burstDraftPreview?.warning
                               ? burstDraftPreview.warning
                               : burstDraftPreview?.bins.length
-                                ? `${burstDraftPreview.bins.length} burst draft${burstDraftPreview.bins.length === 1 ? '' : 's'} ready in the current selection.`
+                                ? `${burstDraftPreview.bins.length} editable burst draft${burstDraftPreview.bins.length === 1 ? '' : 's'} ready in the current selection.`
                                 : 'Burst draft generation stays user-triggered, with preset-bias fallback ready if no burst windows overlap.'}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -261,11 +261,11 @@ export function WorkflowSkeleton() {
                           >
                             Clear draft
                           </button>
-                          <span className="text-[10px] text-violet-200/90">Draft bins: {pendingGeneratedBins.length}</span>
+                          <span className="text-[10px] text-violet-200/90">Editable draft bins: {pendingGeneratedBins.length}</span>
                         </div>
                         {lastGeneratedMetadata ? (
                           <div className="mt-2 text-[11px] text-violet-100/90">
-                            Last generate: {lastGeneratedMetadata.binCount} draft bins ({lastGeneratedMetadata.presetBias}% Bias)
+                            Last generate: {lastGeneratedMetadata.binCount} editable draft bins ({lastGeneratedMetadata.presetBias}% Bias)
                           </div>
                         ) : null}
                         {lastAppliedAt ? (
