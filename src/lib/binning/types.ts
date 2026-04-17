@@ -37,6 +37,15 @@ export interface TimeBin {
   burstinessFormula?: string;
   /** Human-readable burstiness calculation */
   burstinessCalculation?: string;
+  /** Per-type burstiness breakdown for generalized event analysis */
+  burstinessByType?: Array<{
+    type: string;
+    count: number;
+    coefficient: number;
+    normalizedScore: number;
+    formula: string;
+    calculation: string;
+  }>;
   /** Burst taxonomy confidence */
   burstConfidence?: number;
   /** Warp weight used by non-uniform slicing */

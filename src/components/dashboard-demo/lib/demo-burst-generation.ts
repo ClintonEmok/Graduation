@@ -44,6 +44,7 @@ export interface NonUniformDraftGenerationInputs {
   };
   granularity: DemoSelectionGranularity;
   eventTimestamps?: number[];
+  eventTypes?: string[];
 }
 
 const getGranularityStepMs = (granularity: DemoSelectionGranularity): number =>
@@ -78,16 +79,25 @@ export const partitionSelectionByGranularity = (
   return partitions;
 };
 
-const filterAndSortEventsWithinSelection = (events: number[], selectionRange: [number, number]): number[] => {
+const filterAndSortEventsWithinSelection = (events: TimedEvent[], selectionRange: [number, number]): TimedEvent[] => {
   const [selectionStart, selectionEnd] = selectionRange;
   const sortedEvents = [...events]
-    .filter((eventTime) => isValidNumber(eventTime) && eventTime >= selectionStart && eventTime <= selectionEnd)
-    .sort((left, right) => left - right);
+    .filter((event) => isValidNumber(event.time) && event.time >= selectionStart && event.time <= selectionEnd)
+    .sort((left, right) => left.time - right.time);
 
   return sortedEvents;
 };
 
 const BURSTINESS_FORMULA = 'B = (σ - μ) / (σ + μ)';
+
+const normalizeTypeFilters = (crimeTypes: string[]): Set<string> =>
+  new Set(
+    crimeTypes
+      .map((type) => type.trim().toLowerCase())
+      .filter((type) => type.length > 0 && type !== 'all-crime-types')
+  );
+
+const normalizeEventType = (type: string | undefined | null): string => String(type ?? 'Unknown').trim();
 
 const formatInterval = (milliseconds: number): string => {
   if (milliseconds >= HOUR_MS) {
@@ -118,9 +128,22 @@ interface PartitionBurstinessAnalysis {
   formula: string;
   calculation: string;
   intervals: number[];
+  byType: Array<{
+    type: string;
+    count: number;
+    coefficient: number;
+    normalizedScore: number;
+    formula: string;
+    calculation: string;
+  }>;
 }
 
-const calculatePartitionBurstiness = (eventTimes: number[]): PartitionBurstinessAnalysis => {
+interface TimedEvent {
+  time: number;
+  type: string;
+}
+
+const calculateBurstinessFromTimes = (eventTimes: number[]): Omit<PartitionBurstinessAnalysis, 'byType'> => {
   if (eventTimes.length < 2) {
     return {
       coefficient: 0,
@@ -149,15 +172,44 @@ const calculatePartitionBurstiness = (eventTimes: number[]): PartitionBurstiness
   };
 };
 
+const calculatePartitionBurstiness = (events: TimedEvent[]): PartitionBurstinessAnalysis => {
+  const byType = Array.from(
+    events.reduce((map, event) => {
+      const key = normalizeEventType(event.type);
+      const next = map.get(key) ?? [];
+      next.push(event.time);
+      map.set(key, next);
+      return map;
+    }, new Map<string, number[]>())
+  ).map(([type, typeEventTimes]) => {
+    const typeAnalysis = calculateBurstinessFromTimes(typeEventTimes.slice().sort((left, right) => left - right));
+    return {
+      type,
+      count: typeEventTimes.length,
+      coefficient: typeAnalysis.coefficient,
+      normalizedScore: typeAnalysis.normalizedScore,
+      formula: typeAnalysis.formula,
+      calculation: typeAnalysis.calculation,
+    };
+  });
+
+  const overallAnalysis = calculateBurstinessFromTimes(events.map((event) => event.time));
+
+  return {
+    ...overallAnalysis,
+    byType,
+  };
+};
+
 const groupEventsByPartition = (
-  events: number[],
+  events: TimedEvent[],
   partitions: DemoSelectionPartition[],
-): number[][] => {
-  const groupedEvents = partitions.map(() => [] as number[]);
+): TimedEvent[][] => {
+  const groupedEvents = partitions.map(() => [] as TimedEvent[]);
   let partitionIndex = 0;
 
   events.forEach((eventTime) => {
-    while (partitionIndex < partitions.length - 1 && eventTime >= partitions[partitionIndex].endTime) {
+    while (partitionIndex < partitions.length - 1 && eventTime.time >= partitions[partitionIndex].endTime) {
       partitionIndex += 1;
     }
 
@@ -167,7 +219,7 @@ const groupEventsByPartition = (
     }
 
     const isLastPartition = partitionIndex === partitions.length - 1;
-    const withinPartition = eventTime >= partition.startTime && (isLastPartition ? eventTime <= partition.endTime : eventTime < partition.endTime);
+    const withinPartition = eventTime.time >= partition.startTime && (isLastPartition ? eventTime.time <= partition.endTime : eventTime.time < partition.endTime);
     if (withinPartition) {
       groupedEvents[partitionIndex].push(eventTime);
     }
@@ -180,7 +232,7 @@ const buildNeutralPartitionBin = (
   partition: DemoSelectionPartition,
   generationInputs: NonUniformDraftGenerationInputs,
   index: number,
-  events: number[],
+  events: TimedEvent[],
   analysis: PartitionBurstinessAnalysis,
 ): TimeBin => ({
   id: `non-uniform-draft-${generationInputs.granularity}-${index}`,
@@ -197,6 +249,7 @@ const buildNeutralPartitionBin = (
   burstinessCoefficient: analysis.coefficient,
   burstinessFormula: analysis.formula,
   burstinessCalculation: analysis.calculation,
+  burstinessByType: analysis.byType,
   burstConfidence: 0,
   burstProvenance: analysis.intervals.length > 0 ? `intervals=${analysis.intervals.length}; coefficient=${analysis.coefficient.toFixed(2)}` : 'neutral-partition',
   tieBreakReason: 'no bin stands out; keep the brushed selection evenly partitioned',
@@ -209,7 +262,7 @@ const buildBurstPartitionBin = (
   partition: DemoSelectionPartition,
   generationInputs: NonUniformDraftGenerationInputs,
   index: number,
-  events: number[],
+  events: TimedEvent[],
   analysis: PartitionBurstinessAnalysis,
   maxCoefficient: number,
   secondMaxCoefficient: number,
@@ -232,6 +285,7 @@ const buildBurstPartitionBin = (
     burstinessCoefficient: coefficient,
     burstinessFormula: analysis.formula,
     burstinessCalculation: analysis.calculation,
+    burstinessByType: analysis.byType,
     burstConfidence: Math.round(clamp01(Math.max(0, coefficient)) * 100),
     burstProvenance: `coefficient=${coefficient.toFixed(2)}; avgCoefficient=${averageCoefficient.toFixed(2)}`,
     tieBreakReason: coefficient === maxCoefficient
@@ -274,10 +328,18 @@ export const buildNonUniformDraftBinsFromSelection = (
     };
   }
 
-  const events = filterAndSortEventsWithinSelection(generationInputs.eventTimestamps ?? [], activeSelection);
+  const typeFilters = normalizeTypeFilters(generationInputs.crimeTypes);
+  const events = filterAndSortEventsWithinSelection(
+    (generationInputs.eventTimestamps ?? []).map((time, index) => ({
+      time,
+      type: normalizeEventType(generationInputs.eventTypes?.[index]),
+    })),
+    activeSelection,
+  ).filter((event) => typeFilters.size === 0 || typeFilters.has(event.type.toLowerCase()));
+
   const groupedEvents = groupEventsByPartition(events, partitions);
   const analyses = groupedEvents.map(calculatePartitionBurstiness);
-  const totalCount = groupedEvents.reduce((sum: number, partitionEvents: number[]) => sum + partitionEvents.length, 0);
+  const totalCount = groupedEvents.reduce((sum, partitionEvents) => sum + partitionEvents.length, 0);
 
   if (totalCount === 0) {
     return {
@@ -286,7 +348,7 @@ export const buildNonUniformDraftBinsFromSelection = (
         generationInputs,
         index,
         groupedEvents[index] ?? [],
-        analyses[index] ?? calculatePartitionBurstiness([]),
+        analyses[index] ?? calculatePartitionBurstiness([] as TimedEvent[]),
       )),
       eventCount: 0,
       warning: null,
@@ -309,7 +371,7 @@ export const buildNonUniformDraftBinsFromSelection = (
         generationInputs,
         index,
         groupedEvents[index] ?? [],
-        analyses[index] ?? calculatePartitionBurstiness([]),
+        analyses[index] ?? calculatePartitionBurstiness([] as TimedEvent[]),
       )),
       eventCount: totalCount,
       warning: null,

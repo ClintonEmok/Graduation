@@ -115,6 +115,31 @@ describe('buildNonUniformDraftBinsFromSelection', () => {
     expect(result.bins.reduce((sum, bin) => sum + (bin.endTime - bin.startTime), 0)).toBe(DAY_MS + 30 * 60 * 1000);
   });
 
+  test('filters burstiness calculations to the selected crime type', () => {
+    const result = buildNonUniformDraftBinsFromSelection({
+      crimeTypes: ['THEFT'],
+      neighbourhood: null,
+      timeWindow: {
+        start: 0,
+        end: 2 * HOUR_MS,
+      },
+      granularity: 'daily',
+      eventTimestamps: [
+        5 * 60 * 1000,
+        25 * 60 * 1000,
+        45 * 60 * 1000,
+        65 * 60 * 1000,
+      ],
+      eventTypes: ['THEFT', 'ASSAULT', 'THEFT', 'ASSAULT'],
+    });
+
+    expect(result.warning).toBeNull();
+    expect(result.eventCount).toBe(2);
+    expect(result.bins).toHaveLength(1);
+    expect(result.bins[0]?.crimeTypes).toEqual(['THEFT']);
+    expect(result.bins[0]?.burstinessByType?.map((item) => item.type)).toEqual(['THEFT']);
+  });
+
   test('returns a neutral partition when no bin stands out', () => {
     const result = buildNonUniformDraftBinsFromSelection({
       crimeTypes: [],
@@ -147,24 +172,26 @@ describe('buildNonUniformDraftBinsFromSelection', () => {
       },
       granularity: 'hourly',
       eventTimestamps: [
+        1 * 60 * 1000,
+        2 * 60 * 1000,
+        3 * 60 * 1000,
+        4 * 60 * 1000,
         5 * 60 * 1000,
-        25 * 60 * 1000,
+        59 * 60 * 1000,
         70 * 60 * 1000,
-        71 * 60 * 1000,
-        110 * 60 * 1000,
-        111 * 60 * 1000,
         150 * 60 * 1000,
-        151 * 60 * 1000,
       ],
+      eventTypes: ['BURGLARY', 'BURGLARY', 'BURGLARY', 'BURGLARY', 'BURGLARY', 'BURGLARY', 'BURGLARY', 'BURGLARY'],
     });
 
     expect(result.bins).toHaveLength(3);
     expect(result.bins.every((bin) => typeof bin.burstScore === 'number')).toBe(true);
     expect(result.bins.every((bin) => typeof bin.burstinessFormula === 'string')).toBe(true);
     expect(result.bins.every((bin) => typeof bin.burstinessCalculation === 'string')).toBe(true);
-    expect(result.bins[1]?.warpWeight ?? 1).toBeGreaterThan(result.bins[0]?.warpWeight ?? 1);
-    expect(result.bins[1]?.warpWeight ?? 1).toBeGreaterThan(result.bins[2]?.warpWeight ?? 1);
-    expect(result.bins[1]?.burstClass).not.toBe('neutral');
-    expect(result.bins[1]?.burstScore ?? 0).toBeGreaterThan(0);
+    const burstiestBin = result.bins.reduce((best, bin) => ((bin.warpWeight ?? 1) > (best.warpWeight ?? 1) ? bin : best), result.bins[0]!);
+    expect(burstiestBin.burstClass).not.toBe('neutral');
+    expect(burstiestBin.burstScore ?? 0).toBeGreaterThan(0);
+    expect(burstiestBin.warpWeight ?? 1).toBeGreaterThan(result.bins[1]?.warpWeight ?? 1);
+    expect(burstiestBin.warpWeight ?? 1).toBeGreaterThan(result.bins[2]?.warpWeight ?? 1);
   });
 });

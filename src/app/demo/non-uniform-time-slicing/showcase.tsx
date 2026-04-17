@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getCrimeTypeName } from '@/lib/category-maps';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { toEpochSeconds } from '@/lib/time-domain';
 import {
@@ -90,23 +91,30 @@ const formatBurstinessState = (value: number | undefined): string => {
   return 'neutral';
 };
 
-const formatBurstCalculation = (value: string | undefined): string => value ?? 'No calculation available';
+interface EventSeriesEntry {
+  time: number;
+  type: string;
+}
 
-const buildTimestampSeconds = (
+const buildEventSeries = (
   timestamps: Float32Array | null,
+  types: Uint8Array | null,
   minTimestampSec: number | null,
   maxTimestampSec: number | null,
-): number[] => {
+): EventSeriesEntry[] => {
   if (!timestamps || minTimestampSec === null || maxTimestampSec === null || timestamps.length === 0) {
     return [];
   }
 
-  const result = new Array<number>(timestamps.length);
+  const result = new Array<EventSeriesEntry>(timestamps.length);
   for (let i = 0; i < timestamps.length; i += 1) {
-    result[i] = toEpochSeconds(timestamps[i]) * 1000;
+    result[i] = {
+      time: toEpochSeconds(timestamps[i]) * 1000,
+      type: getCrimeTypeName(types?.[i] ?? 0),
+    };
   }
 
-  return result.sort((left, right) => left - right);
+  return result.sort((left, right) => left.time - right.time);
 };
 
 const pickScenarioWindow = (
@@ -175,6 +183,7 @@ export function NonUniformTimeSlicingShowcase() {
   const [granularity, setGranularity] = useState<DemoSelectionGranularity>('daily');
   const [scenario, setScenario] = useState<ScenarioKey>('clustered');
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('auto');
+  const [selectedCrimeTypes, setSelectedCrimeTypes] = useState<string[]>([]);
   const [startDate, setStartDate] = useState('');
   const [startHour, setStartHour] = useState('00');
   const [endDate, setEndDate] = useState('');
@@ -191,10 +200,50 @@ export function NonUniformTimeSlicingShowcase() {
     void loadRealData();
   }, [loadRealData]);
 
-  const eventTimestamps = useMemo(
-    () => buildTimestampSeconds(columns?.timestamp ?? null, minTimestampSec, maxTimestampSec),
-    [columns, maxTimestampSec, minTimestampSec]
+  const eventSeries = useMemo(
+    () => buildEventSeries(columns?.timestamp ?? null, columns?.type ?? null, minTimestampSec, maxTimestampSec),
+    [columns?.timestamp, columns?.type, maxTimestampSec, minTimestampSec]
   );
+
+  const eventTimestamps = useMemo(
+    () => eventSeries.map((entry) => entry.time),
+    [eventSeries]
+  );
+
+  const eventTypes = useMemo(
+    () => eventSeries.map((entry) => entry.type),
+    [eventSeries]
+  );
+
+  const availableCrimeTypes = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    eventSeries.forEach((entry) => {
+      counts.set(entry.type, (counts.get(entry.type) ?? 0) + 1);
+    });
+
+    return [...counts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 8)
+      .map(([type, count]) => ({ type, count }));
+  }, [eventSeries]);
+
+  const crimeTypesForCalculation = useMemo(
+    () => (selectedCrimeTypes.length > 0 ? selectedCrimeTypes : ['all-crime-types']),
+    [selectedCrimeTypes]
+  );
+
+  const toggleCrimeType = (type: string) => {
+    setSelectedCrimeTypes((current) => (
+      current.includes(type)
+        ? current.filter((item) => item !== type)
+        : [...current, type]
+    ));
+  };
+
+  const clearCrimeTypeSelection = () => setSelectedCrimeTypes([]);
+
+  const typeScopeLabel = selectedCrimeTypes.length > 0 ? selectedCrimeTypes.join(', ') : 'All crime types';
 
   const autoSelectionRange = useMemo(
     () => pickScenarioWindow(eventTimestamps, scenario, granularity),
@@ -211,6 +260,21 @@ export function NonUniformTimeSlicingShowcase() {
     ? 'Pick an end date/time after the start date/time.'
     : null;
 
+  const filteredEventCount = useMemo(
+    () => {
+      if (!selectionRange) {
+        return 0;
+      }
+
+      return eventSeries.filter((entry) => {
+        const inSelection = entry.time >= selectionRange[0] && entry.time <= selectionRange[1];
+        const inScope = selectedCrimeTypes.length === 0 || selectedCrimeTypes.includes(entry.type);
+        return inSelection && inScope;
+      }).length;
+    },
+    [eventSeries, selectionRange, selectedCrimeTypes]
+  );
+
   const result = useMemo(
     () =>
       selectionWarning
@@ -221,7 +285,7 @@ export function NonUniformTimeSlicingShowcase() {
           }
         : selectionRange
         ? buildNonUniformDraftBinsFromSelection({
-            crimeTypes: ['all-crime-types'],
+            crimeTypes: crimeTypesForCalculation,
             neighbourhood: 'Demo corridor',
             timeWindow: {
               start: selectionRange[0],
@@ -229,13 +293,14 @@ export function NonUniformTimeSlicingShowcase() {
             },
             granularity,
             eventTimestamps,
+            eventTypes,
           })
         : {
             bins: [],
             eventCount: 0,
             warning: 'Loading real crime data before building the demo route.',
           },
-    [eventTimestamps, granularity, selectionRange, selectionWarning]
+    [crimeTypesForCalculation, eventTimestamps, eventTypes, granularity, selectionRange, selectionWarning]
   );
 
   const partitions = useMemo(
@@ -419,6 +484,39 @@ export function NonUniformTimeSlicingShowcase() {
                     </Button>
                   </div>
                 </div>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-slate-300">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="uppercase tracking-[0.24em] text-slate-500">Crime type scope</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-slate-50"
+                      onClick={clearCrimeTypeSelection}
+                    >
+                      All types
+                    </Button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {availableCrimeTypes.map(({ type, count }) => {
+                      const selected = selectedCrimeTypes.includes(type);
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => toggleCrimeType(type)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            selected
+                              ? 'border-cyan-400/50 bg-cyan-400/15 text-cyan-100'
+                              : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10'
+                          }`}
+                        >
+                          {type} · {count}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-[11px] uppercase tracking-[0.24em] text-slate-500">Scope: {typeScopeLabel}</p>
+                </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-xs leading-6 text-slate-300">
                   <p className="uppercase tracking-[0.24em] text-slate-500">Burstiness formula</p>
                   <p className="mt-2 font-mono text-slate-100">{burstinessFormula}</p>
@@ -481,22 +579,31 @@ export function NonUniformTimeSlicingShowcase() {
                           <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">warp {formatWarpWeight(bin.warpWeight)}</span>
                           <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">burstiness {formatBurstinessCoefficient(bin.burstinessCoefficient)}</span>
                           <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">state {formatBurstinessState(bin.burstinessCoefficient)}</span>
-                          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">confidence {bin.burstConfidence ?? 0}</span>
                           {bin.isNeutralPartition ? (
                             <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">neutral fallback</span>
                           ) : null}
                         </div>
 
-                        <div className="mt-4 grid gap-2 rounded-2xl border border-white/10 bg-black/15 p-3 text-xs text-slate-300">
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="uppercase tracking-[0.24em] text-slate-500">Formula</span>
-                            <span className="text-right font-mono text-slate-200">{bin.burstinessFormula ?? burstinessFormula}</span>
+                        {bin.burstinessByType && bin.burstinessByType.length > 0 ? (
+                          <div className="mt-4 rounded-2xl border border-white/10 bg-black/15 p-3 text-xs text-slate-300">
+                            <p className="uppercase tracking-[0.24em] text-slate-500">Type breakdown</p>
+                            <div className="mt-3 grid gap-2">
+                              {bin.burstinessByType.map((item) => (
+                                <div key={item.type} className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+                                  <div>
+                                    <p className="font-medium text-slate-100">{item.type}</p>
+                                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{item.count} event{item.count === 1 ? '' : 's'}</p>
+                                  </div>
+                                  <div className="text-right font-mono text-slate-200">
+                                    <p>{item.coefficient.toFixed(2)}</p>
+                                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">B</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="uppercase tracking-[0.24em] text-slate-500">Calculation</span>
-                            <span className="text-right font-mono text-slate-200">{formatBurstCalculation(bin.burstinessCalculation)}</span>
-                          </div>
-                        </div>
+                        ) : null}
+
                       </div>
                     );
                   })}
@@ -524,11 +631,17 @@ export function NonUniformTimeSlicingShowcase() {
                 </div>
                 <div className="flex items-start gap-3">
                   <Gauge className="mt-0.5 size-4 shrink-0 text-fuchsia-300" />
-                  <p>Positive burstiness means bursty, negative means regular, and the route shows the formula plus each bin’s calculation.</p>
+                  <p>Positive burstiness means bursty, negative means regular, and the route keeps the validated coefficient visible on each bin.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <TimerReset className="mt-0.5 size-4 shrink-0 text-emerald-300" />
                   <p>When no bin stands out, the route still returns a neutral partition set.</p>
+                </div>
+                <Separator className="bg-white/10" />
+                <div className="space-y-2 text-sm text-slate-300">
+                  <p className="uppercase tracking-[0.24em] text-slate-500">Type-scoped calculation</p>
+                  <p>Pick one or more crime types to recalculate burstiness on only those event timestamps.</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Selected events: {filteredEventCount}</p>
                 </div>
               </CardContent>
             </Card>
@@ -543,6 +656,10 @@ export function NonUniformTimeSlicingShowcase() {
                 <div className="flex items-center justify-between gap-3">
                   <span>Events inside brush</span>
                   <span className="font-medium text-slate-50">{result.eventCount}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Events in selected types</span>
+                  <span className="font-medium text-slate-50">{filteredEventCount}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span>Covered duration</span>
