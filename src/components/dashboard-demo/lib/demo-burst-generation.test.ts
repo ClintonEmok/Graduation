@@ -130,6 +130,9 @@ describe('buildNonUniformDraftBinsFromSelection', () => {
     expect(result.bins).toHaveLength(3);
     expect(result.warning).toBeNull();
     expect(result.bins.every((bin) => bin.isNeutralPartition)).toBe(true);
+    expect(result.bins.every((bin) => typeof bin.burstScore === 'number')).toBe(true);
+    expect(result.bins.every((bin) => typeof bin.burstinessFormula === 'string')).toBe(true);
+    expect(result.bins.every((bin) => typeof bin.burstinessCalculation === 'string')).toBe(true);
     expect(result.bins.every((bin) => (bin.warpWeight ?? 1) === 1)).toBe(true);
     expect(result.bins.every((bin) => bin.burstClass === 'neutral')).toBe(true);
   });
@@ -145,17 +148,20 @@ describe('buildNonUniformDraftBinsFromSelection', () => {
       granularity: 'hourly',
       eventTimestamps: [
         5 * 60 * 1000,
-        12 * 60 * 1000,
+        25 * 60 * 1000,
         70 * 60 * 1000,
-        72 * 60 * 1000,
-        78 * 60 * 1000,
-        85 * 60 * 1000,
-        90 * 60 * 1000,
-        95 * 60 * 1000,
+        71 * 60 * 1000,
+        110 * 60 * 1000,
+        111 * 60 * 1000,
+        150 * 60 * 1000,
+        151 * 60 * 1000,
       ],
     });
 
     expect(result.bins).toHaveLength(3);
+    expect(result.bins.every((bin) => typeof bin.burstScore === 'number')).toBe(true);
+    expect(result.bins.every((bin) => typeof bin.burstinessFormula === 'string')).toBe(true);
+    expect(result.bins.every((bin) => typeof bin.burstinessCalculation === 'string')).toBe(true);
     expect(result.bins[1]?.warpWeight ?? 1).toBeGreaterThan(result.bins[0]?.warpWeight ?? 1);
     expect(result.bins[1]?.warpWeight ?? 1).toBeGreaterThan(result.bins[2]?.warpWeight ?? 1);
     expect(result.bins[1]?.burstClass).not.toBe('neutral');

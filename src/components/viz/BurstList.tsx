@@ -36,7 +36,89 @@ export type BurstWindow = {
   neighborhoodSummary?: string;
 };
 
-export const useBurstWindows = () => {
+export interface BurstWindowSeriesInput {
+  densityMap: Float32Array | null;
+  burstinessMap: Float32Array | null;
+  countMap: Float32Array | null;
+  burstMetric: 'density' | 'burstiness';
+  burstCutoff: number;
+  mapDomain: [number, number];
+  selectionRange?: [number, number] | null;
+}
+
+export const buildBurstWindowsFromSeries = ({
+  densityMap,
+  burstinessMap,
+  countMap,
+  burstMetric,
+  burstCutoff,
+  mapDomain,
+  selectionRange,
+}: BurstWindowSeriesInput): BurstWindow[] => {
+  if (!Number.isFinite(mapDomain[0]) || !Number.isFinite(mapDomain[1]) || mapDomain[1] <= mapDomain[0]) {
+    return [] as BurstWindow[];
+  }
+
+  const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
+  if (!selectedMap || selectedMap.length === 0) return [] as BurstWindow[];
+
+  const span = Math.max(0.0001, mapDomain[1] - mapDomain[0]);
+  const step = span / Math.max(1, selectedMap.length - 1);
+  const hasSelection =
+    selectionRange !== null &&
+    selectionRange !== undefined &&
+    Number.isFinite(selectionRange[0]) &&
+    Number.isFinite(selectionRange[1]) &&
+    selectionRange[1] > selectionRange[0];
+  const selectionStart = hasSelection ? Math.max(mapDomain[0], Math.min(selectionRange[0], selectionRange[1])) : mapDomain[0];
+  const selectionEnd = hasSelection ? Math.min(mapDomain[1], Math.max(selectionRange[0], selectionRange[1])) : mapDomain[1];
+
+  if (!Number.isFinite(selectionStart) || !Number.isFinite(selectionEnd) || selectionEnd <= selectionStart) {
+    return [] as BurstWindow[];
+  }
+
+  const startIndex = Math.max(0, Math.floor((selectionStart - mapDomain[0]) / step));
+  const endIndexExclusive = Math.min(selectedMap.length, Math.floor((selectionEnd - mapDomain[0]) / step) + 1);
+  if (endIndexExclusive <= startIndex) {
+    return [] as BurstWindow[];
+  }
+
+  const windows: BurstWindow[] = [];
+
+  let runStartIdx: number | null = null;
+  let peak = 0;
+  let windowCount = 0;
+
+  for (let i = startIndex; i < endIndexExclusive; i += 1) {
+    const value = Number.isFinite(selectedMap[i]) ? selectedMap[i] : 0;
+    if (value >= burstCutoff) {
+      if (countMap && Number.isFinite(countMap[i])) {
+        windowCount += countMap[i];
+      } else {
+        windowCount += 1;
+      }
+      if (runStartIdx === null) runStartIdx = i;
+      peak = Math.max(peak, value);
+    } else if (runStartIdx !== null) {
+      const start = Math.max(selectionStart, mapDomain[0] + runStartIdx * step);
+      const end = Math.min(selectionEnd, mapDomain[0] + i * step);
+      windows.push({ id: `${runStartIdx}-${i}`, start, end, peak, count: Math.round(windowCount), duration: end - start });
+      runStartIdx = null;
+      peak = 0;
+      windowCount = 0;
+    }
+  }
+
+  if (runStartIdx !== null) {
+    const start = Math.max(selectionStart, mapDomain[0] + runStartIdx * step);
+    const end = selectionEnd;
+    windows.push({ id: `${runStartIdx}-end`, start, end, peak, count: Math.round(windowCount), duration: end - start });
+  }
+
+  return windows.sort((a, b) => b.peak - a.peak).slice(0, 10);
+};
+
+export const useBurstWindows = (selectionRange?: [number, number] | null) => {
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
   const countMap = useAdaptiveStore((state) => state.countMap);
@@ -45,47 +127,16 @@ export const useBurstWindows = () => {
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   return useMemo(() => {
-    if (!Number.isFinite(mapDomain[0]) || !Number.isFinite(mapDomain[1]) || mapDomain[1] <= mapDomain[0]) {
-      return [] as BurstWindow[];
-    }
-
-    const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
-    if (!selectedMap || selectedMap.length === 0) return [] as BurstWindow[];
-
-    const span = Math.max(0.0001, mapDomain[1] - mapDomain[0]);
-    const step = span / Math.max(1, selectedMap.length - 1);
-    const windows: BurstWindow[] = [];
-
-    let startIdx: number | null = null;
-    let peak = 0;
-    let windowCount = 0;
-
-    for (let i = 0; i < selectedMap.length; i += 1) {
-      const value = Number.isFinite(selectedMap[i]) ? selectedMap[i] : 0;
-      if (countMap && Number.isFinite(countMap[i])) {
-        windowCount += countMap[i];
-      }
-      if (value >= burstCutoff) {
-        if (startIdx === null) startIdx = i;
-        peak = Math.max(peak, value);
-      } else if (startIdx !== null) {
-        const start = mapDomain[0] + startIdx * step;
-        const end = mapDomain[0] + i * step;
-        windows.push({ id: `${startIdx}-${i}`, start, end, peak, count: Math.round(windowCount), duration: end - start });
-        startIdx = null;
-        peak = 0;
-        windowCount = 0;
-      }
-    }
-
-    if (startIdx !== null) {
-      const start = mapDomain[0] + startIdx * step;
-      const end = mapDomain[1];
-      windows.push({ id: `${startIdx}-end`, start, end, peak, count: Math.round(windowCount), duration: end - start });
-    }
-
-    return windows.sort((a, b) => b.peak - a.peak).slice(0, 10);
-  }, [burstCutoff, burstMetric, burstinessMap, countMap, densityMap, mapDomain]);
+    return buildBurstWindowsFromSeries({
+      densityMap,
+      burstinessMap,
+      countMap,
+      burstMetric,
+      burstCutoff,
+      mapDomain,
+      selectionRange,
+    });
+  }, [burstCutoff, burstMetric, burstinessMap, countMap, densityMap, mapDomain, selectionRange]);
 };
 
 export function BurstList() {

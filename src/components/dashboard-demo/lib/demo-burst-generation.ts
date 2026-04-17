@@ -87,54 +87,121 @@ const filterAndSortEventsWithinSelection = (events: number[], selectionRange: [n
   return sortedEvents;
 };
 
-const countEventsPerPartition = (
+const BURSTINESS_FORMULA = 'B = (σ - μ) / (σ + μ)';
+
+const formatInterval = (milliseconds: number): string => {
+  if (milliseconds >= HOUR_MS) {
+    return `${roundToTwoDecimals(milliseconds / HOUR_MS)}h`;
+  }
+
+  if (milliseconds >= 60 * 1000) {
+    return `${roundToTwoDecimals(milliseconds / (60 * 1000))}m`;
+  }
+
+  return `${roundToTwoDecimals(milliseconds / 1000)}s`;
+};
+
+const calculateMean = (values: number[]): number => values.reduce((sum, value) => sum + value, 0) / values.length;
+
+const calculateStandardDeviation = (values: number[], mean: number): number => {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const variance = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
+  return Math.sqrt(variance);
+};
+
+interface PartitionBurstinessAnalysis {
+  coefficient: number;
+  normalizedScore: number;
+  formula: string;
+  calculation: string;
+  intervals: number[];
+}
+
+const calculatePartitionBurstiness = (eventTimes: number[]): PartitionBurstinessAnalysis => {
+  if (eventTimes.length < 2) {
+    return {
+      coefficient: 0,
+      normalizedScore: 50,
+      formula: BURSTINESS_FORMULA,
+      calculation: 'fewer than 2 events -> no inter-event intervals; B = 0',
+      intervals: [],
+    };
+  }
+
+  const intervals = eventTimes.slice(1).map((eventTime, index) => eventTime - eventTimes[index]);
+  const mean = calculateMean(intervals);
+  const standardDeviation = calculateStandardDeviation(intervals, mean);
+  const denominator = standardDeviation + mean;
+  const coefficient = denominator === 0 ? 0 : (standardDeviation - mean) / denominator;
+  const normalizedScore = Math.round(((coefficient + 1) / 2) * 100);
+  const formattedMean = formatInterval(mean);
+  const formattedStdDev = formatInterval(standardDeviation);
+
+  return {
+    coefficient,
+    normalizedScore,
+    formula: BURSTINESS_FORMULA,
+    calculation: `intervals=[${intervals.map(formatInterval).join(', ')}], μ=${formattedMean}, σ=${formattedStdDev} -> B = (${formattedStdDev} - ${formattedMean}) / (${formattedStdDev} + ${formattedMean}) = ${coefficient.toFixed(2)}`,
+    intervals,
+  };
+};
+
+const groupEventsByPartition = (
   events: number[],
   partitions: DemoSelectionPartition[],
-): number[] => {
-  const counts = partitions.map(() => 0);
-  let eventIndex = 0;
+): number[][] => {
+  const groupedEvents = partitions.map(() => [] as number[]);
+  let partitionIndex = 0;
 
-  partitions.forEach((partition, partitionIndex) => {
-    while (eventIndex < events.length && events[eventIndex] < partition.startTime) {
-      eventIndex += 1;
+  events.forEach((eventTime) => {
+    while (partitionIndex < partitions.length - 1 && eventTime >= partitions[partitionIndex].endTime) {
+      partitionIndex += 1;
     }
 
-    while (
-      eventIndex < events.length
-      && (partitionIndex === partitions.length - 1
-        ? events[eventIndex] <= partition.endTime
-        : events[eventIndex] < partition.endTime)
-    ) {
-      counts[partitionIndex] += 1;
-      eventIndex += 1;
+    const partition = partitions[partitionIndex];
+    if (!partition) {
+      return;
+    }
+
+    const isLastPartition = partitionIndex === partitions.length - 1;
+    const withinPartition = eventTime >= partition.startTime && (isLastPartition ? eventTime <= partition.endTime : eventTime < partition.endTime);
+    if (withinPartition) {
+      groupedEvents[partitionIndex].push(eventTime);
     }
   });
 
-  return counts;
+  return groupedEvents;
 };
 
 const buildNeutralPartitionBin = (
   partition: DemoSelectionPartition,
   generationInputs: NonUniformDraftGenerationInputs,
   index: number,
-  count: number,
+  events: number[],
+  analysis: PartitionBurstinessAnalysis,
 ): TimeBin => ({
   id: `non-uniform-draft-${generationInputs.granularity}-${index}`,
   startTime: partition.startTime,
   endTime: partition.endTime,
-  count,
+  count: events.length,
   crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : ['all-crime-types'],
   districts: generationInputs.neighbourhood ? [generationInputs.neighbourhood] : undefined,
   avgTimestamp: (partition.startTime + partition.endTime) / 2,
   warpWeight: 1,
   burstClass: 'neutral',
   burstRuleVersion: BURST_TAXONOMY_RULE_VERSION,
-  burstScore: 0,
+  burstScore: analysis.normalizedScore,
+  burstinessCoefficient: analysis.coefficient,
+  burstinessFormula: analysis.formula,
+  burstinessCalculation: analysis.calculation,
   burstConfidence: 0,
-  burstProvenance: 'neutral-partition',
+  burstProvenance: analysis.intervals.length > 0 ? `intervals=${analysis.intervals.length}; coefficient=${analysis.coefficient.toFixed(2)}` : 'neutral-partition',
   tieBreakReason: 'no bin stands out; keep the brushed selection evenly partitioned',
   thresholdSource: `granularity:${generationInputs.granularity}`,
-  neighborhoodSummary: `count=${count}; partition=${index + 1}`,
+  neighborhoodSummary: `count=${events.length}; partition=${index + 1}`,
   isNeutralPartition: true,
 });
 
@@ -142,37 +209,36 @@ const buildBurstPartitionBin = (
   partition: DemoSelectionPartition,
   generationInputs: NonUniformDraftGenerationInputs,
   index: number,
-  count: number,
-  maxCount: number,
-  secondMaxCount: number,
-  averageCount: number,
+  events: number[],
+  analysis: PartitionBurstinessAnalysis,
+  maxCoefficient: number,
+  secondMaxCoefficient: number,
+  averageCoefficient: number,
 ): TimeBin => {
-  const normalizedStrength = maxCount === 0 ? 0 : count / maxCount;
-  const relativeGap = maxCount === 0 ? 0 : (count - secondMaxCount) / Math.max(1, maxCount);
-  const burstScore = Math.round(clamp01(normalizedStrength * 0.65 + Math.max(0, (count - averageCount) / Math.max(1, maxCount)) * 0.35) * 100);
-  const warpWeight = count === maxCount
-    ? roundToTwoDecimals(1 + clamp01(normalizedStrength * 0.85 + relativeGap * 0.65))
-    : 1;
+  const coefficient = analysis.coefficient;
 
   return {
     id: `non-uniform-draft-${generationInputs.granularity}-${index}`,
     startTime: partition.startTime,
     endTime: partition.endTime,
-    count,
+    count: events.length,
     crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : ['all-crime-types'],
     districts: generationInputs.neighbourhood ? [generationInputs.neighbourhood] : undefined,
     avgTimestamp: (partition.startTime + partition.endTime) / 2,
-    warpWeight,
-    burstClass: count === maxCount && count > secondMaxCount ? 'isolated-spike' : 'prolonged-peak',
+    warpWeight: roundToTwoDecimals(1 + Math.max(0, coefficient)),
+    burstClass: coefficient === maxCoefficient && coefficient > secondMaxCoefficient ? 'isolated-spike' : 'prolonged-peak',
     burstRuleVersion: BURST_TAXONOMY_RULE_VERSION,
-    burstScore,
-    burstConfidence: Math.round(clamp01(relativeGap + normalizedStrength * 0.25) * 100),
-    burstProvenance: `count=${count}; max=${maxCount}; avg=${roundToTwoDecimals(averageCount)}`,
-    tieBreakReason: count === maxCount
-      ? 'highest-count partition gets the warp lead'
-      : 'lower-count partition stays near-neutral',
-    thresholdSource: `granularity:${generationInputs.granularity}; contrast:${Math.round(relativeGap * 100)}%`,
-    neighborhoodSummary: `count=${count}; partition=${index + 1}; max=${maxCount}`,
+    burstScore: analysis.normalizedScore,
+    burstinessCoefficient: coefficient,
+    burstinessFormula: analysis.formula,
+    burstinessCalculation: analysis.calculation,
+    burstConfidence: Math.round(clamp01(Math.max(0, coefficient)) * 100),
+    burstProvenance: `coefficient=${coefficient.toFixed(2)}; avgCoefficient=${averageCoefficient.toFixed(2)}`,
+    tieBreakReason: coefficient === maxCoefficient
+      ? 'highest burstiness coefficient gets the warp lead'
+      : 'lower burstiness stays near-neutral',
+    thresholdSource: `granularity:${generationInputs.granularity}; contrast:${Math.round(Math.max(0, coefficient - secondMaxCoefficient) * 100)}%`,
+    neighborhoodSummary: `count=${events.length}; partition=${index + 1}; coefficient=${coefficient.toFixed(2)}`,
   };
 };
 
@@ -209,49 +275,70 @@ export const buildNonUniformDraftBinsFromSelection = (
   }
 
   const events = filterAndSortEventsWithinSelection(generationInputs.eventTimestamps ?? [], activeSelection);
-  const counts = countEventsPerPartition(events, partitions);
-  const totalCount = counts.reduce((sum, count) => sum + count, 0);
+  const groupedEvents = groupEventsByPartition(events, partitions);
+  const analyses = groupedEvents.map(calculatePartitionBurstiness);
+  const totalCount = groupedEvents.reduce((sum: number, partitionEvents: number[]) => sum + partitionEvents.length, 0);
 
   if (totalCount === 0) {
-    const bins = partitions.map((partition, index) => buildNeutralPartitionBin(partition, generationInputs, index, counts[index] ?? 0));
     return {
-      bins,
+      bins: partitions.map((partition, index) => buildNeutralPartitionBin(
+        partition,
+        generationInputs,
+        index,
+        groupedEvents[index] ?? [],
+        analyses[index] ?? calculatePartitionBurstiness([]),
+      )),
       eventCount: 0,
       warning: null,
     };
   }
 
-  const maxCount = Math.max(...counts);
-  const sortedCounts = [...counts].sort((left, right) => right - left);
-  const secondMaxCount = sortedCounts[1] ?? 0;
-  const averageCount = totalCount / counts.length;
-  const noStandout = maxCount <= 0
-    || maxCount <= averageCount * 1.25
-    || (maxCount - secondMaxCount) < Math.max(1, Math.ceil(maxCount * 0.25));
+  const coefficientValues = analyses.map((analysis) => analysis.coefficient);
+  const maxCoefficient = Math.max(...coefficientValues);
+  const sortedCoefficients = [...coefficientValues].sort((left, right) => right - left);
+  const secondMaxCoefficient = sortedCoefficients[1] ?? 0;
+  const averageCoefficient = coefficientValues.reduce((sum, value) => sum + value, 0) / coefficientValues.length;
+  const noStandout = maxCoefficient <= 0
+    || maxCoefficient <= averageCoefficient + 0.05
+    || (maxCoefficient - secondMaxCoefficient) < 0.15;
 
   if (noStandout) {
-    const bins = partitions.map((partition, index) => buildNeutralPartitionBin(partition, generationInputs, index, counts[index] ?? 0));
     return {
-      bins,
+      bins: partitions.map((partition, index) => buildNeutralPartitionBin(
+        partition,
+        generationInputs,
+        index,
+        groupedEvents[index] ?? [],
+        analyses[index] ?? calculatePartitionBurstiness([]),
+      )),
       eventCount: totalCount,
       warning: null,
     };
   }
 
-  const bins = partitions.map((partition, index) => {
-    const count = counts[index] ?? 0;
-    if (count === maxCount) {
-      return buildBurstPartitionBin(partition, generationInputs, index, count, maxCount, secondMaxCount, averageCount);
-    }
-
-    return {
-      ...buildNeutralPartitionBin(partition, generationInputs, index, count),
-      warpWeight: roundToTwoDecimals(Math.max(0.9, 1 - clamp01((averageCount - count) / Math.max(1, maxCount)) * 0.1)),
-    };
-  });
-
   return {
-    bins,
+    bins: partitions.map((partition, index) => {
+      const partitionEvents = groupedEvents[index] ?? [];
+      const analysis = analyses[index] ?? calculatePartitionBurstiness(partitionEvents);
+
+      if (analysis.coefficient === maxCoefficient) {
+        return buildBurstPartitionBin(
+          partition,
+          generationInputs,
+          index,
+          partitionEvents,
+          analysis,
+          maxCoefficient,
+          secondMaxCoefficient,
+          averageCoefficient,
+        );
+      }
+
+      return {
+        ...buildNeutralPartitionBin(partition, generationInputs, index, partitionEvents, analysis),
+        warpWeight: roundToTwoDecimals(1 + Math.max(0, analysis.coefficient) * 0.25),
+      };
+    }),
     eventCount: totalCount,
     warning: null,
   };

@@ -9,26 +9,19 @@ import {
   Trash2,
   Unlock,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
+import { buildDemoBurstWindowsFromSelection, buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
+import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
-import {
-  type TimeslicePreset,
-  useDashboardDemoTimeslicingModeStore,
-} from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
-import {
-  DEMO_PRESET_BIAS_KEYS,
-  PRESET_BIAS_HELPERS,
-  PRESET_BIAS_RANGE,
-  buildPresetBiasSummary,
-} from '@/components/dashboard-demo/lib/demo-preset-thresholds';
 
 const toDateTimeLocalValue = (timestampMs: number | null | undefined) => {
   if (timestampMs === null || timestampMs === undefined || !Number.isFinite(timestampMs)) {
@@ -58,6 +51,13 @@ const formatRange = (start: number, end: number) => {
 
 const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
 const clampNormalized = (value: number) => Math.min(100, Math.max(0, value));
+const formatBurstCoefficient = (value: number | undefined) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value.toFixed(2);
+};
 
 export function DemoSlicePanel() {
   const { currentTime, timeRange, timeResolution } = useDashboardDemoTimeStore();
@@ -74,16 +74,11 @@ export function DemoSlicePanel() {
   const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
 
   const mode = useDashboardDemoTimeslicingModeStore((state) => state.mode);
-  const preset = useDashboardDemoTimeslicingModeStore((state) => state.preset);
-  const setPreset = useDashboardDemoTimeslicingModeStore((state) => state.setPreset);
-  const presetBiases = useDashboardDemoTimeslicingModeStore((state) => state.presetBiases);
-  const setPresetBias = useDashboardDemoTimeslicingModeStore((state) => state.setPresetBias);
-  const resetPresetBias = useDashboardDemoTimeslicingModeStore((state) => state.resetPresetBias);
-  const resetAllPresetBiases = useDashboardDemoTimeslicingModeStore((state) => state.resetAllPresetBiases);
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
-  const generateBinsFromActivePresetBias = useDashboardDemoTimeslicingModeStore((state) => state.generateBinsFromActivePresetBias);
+  const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
+  const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
   const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const mergePendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.mergePendingGeneratedBins);
@@ -93,15 +88,34 @@ export function DemoSlicePanel() {
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
+  const densityMap = useDashboardDemoWarpStore((state) => state.densityMap);
+  const mapDomain = useDashboardDemoWarpStore((state) => state.mapDomain);
+  const burstThreshold = useDashboardDemoAdaptiveStore((state) => state.burstThreshold);
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
+  const selectedBurstRangeSec = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return null;
+    }
 
-  const burstDraftSourceLabel = lastGeneratedMetadata?.generationSource === 'burst-windows'
-    ? 'Burst-first'
-    : lastGeneratedMetadata
-      ? 'Preset-bias fallback'
-      : 'Draft queue';
+    const [windowStart, windowEnd] = timeRange;
+    return [
+      normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec),
+      normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec),
+    ] as [number, number];
+  }, [maxTimestampSec, minTimestampSec, timeRange]);
+
+  const burstWindows = useMemo(() => {
+    return buildDemoBurstWindowsFromSelection({
+      densityMap,
+      burstThreshold,
+      mapDomain,
+      selectionRange: selectedBurstRangeSec,
+    });
+  }, [burstThreshold, densityMap, mapDomain, selectedBurstRangeSec]);
+
+  const burstDraftSourceLabel = lastGeneratedMetadata ? 'Burst-first' : 'Burst draft queue';
 
   const burstDraftSummary = lastGeneratedMetadata
     ? `${lastGeneratedMetadata.binCount} bin${lastGeneratedMetadata.binCount === 1 ? '' : 's'} • ${lastGeneratedMetadata.eventCount} events • ${burstDraftSourceLabel}`
@@ -166,7 +180,7 @@ export function DemoSlicePanel() {
 
   const formatSliceLabel = useCallback(
     (slice: TimeSlice, index: number) => {
-      const fallback = slice.type === 'point' ? `Slice ${index + 1}` : `Range ${index + 1}`;
+      const fallback = slice.isBurst ? `Burst ${index + 1}` : slice.type === 'point' ? `Slice ${index + 1}` : `Range ${index + 1}`;
       const title = slice.name?.trim() || fallback;
 
       if (slice.type === 'range' && slice.range) {
@@ -234,25 +248,11 @@ export function DemoSlicePanel() {
     });
   }, [addSlice, currentTime, maxTimestampSec, minTimestampSec, timeRange, timeResolution]);
 
-  const handleResetPresetBias = useCallback((targetPreset: TimeslicePreset) => {
-    const helper = PRESET_BIAS_HELPERS[targetPreset];
-    const shouldReset = window.confirm(`Reset ${helper.label} Bias to ${helper.recommendedBias}%?`);
-    if (!shouldReset) {
-      return;
-    }
-    resetPresetBias(targetPreset);
-  }, [resetPresetBias]);
-
-  const handleResetAllPresetBiases = useCallback(() => {
-    const shouldReset = window.confirm('Reset all preset Bias values to recommended defaults?');
-    if (!shouldReset) {
-      return;
-    }
-    resetAllPresetBiases();
-  }, [resetAllPresetBiases]);
-
-  const handleGenerateFromPresetBias = useCallback(() => {
+  const handleGenerateBurstDrafts = useCallback(() => {
     if (minTimestampSec === null || maxTimestampSec === null) {
+      toast.error('Burst draft generation failed', {
+        description: 'Choose a valid time window before generating burst drafts.',
+      });
       return;
     }
 
@@ -267,8 +267,21 @@ export function DemoSlicePanel() {
       },
     });
 
-    generateBinsFromActivePresetBias();
-  }, [generateBinsFromActivePresetBias, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
+    const generated = generateBurstDraftBinsFromWindows(burstWindows);
+    const generationState = useDashboardDemoTimeslicingModeStore.getState();
+
+    if (generated && generationState.lastGeneratedMetadata) {
+      const { binCount, eventCount, warning } = generationState.lastGeneratedMetadata;
+      toast.success('Burst drafts generated', {
+        description: `${binCount} draft bin${binCount === 1 ? '' : 's'} from ${eventCount} events${warning ? ` • ${warning}` : ''}`,
+      });
+      return;
+    }
+
+    toast.error('Burst draft generation failed', {
+      description: generationState.generationError ?? 'No burst windows overlap the selected range.',
+    });
+  }, [burstWindows, generateBurstDraftBinsFromWindows, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
 
   const handleMergePendingDraft = useCallback((index: number) => {
     const current = pendingGeneratedBins[index];
@@ -359,6 +372,11 @@ export function DemoSlicePanel() {
                         </div>
                         <div className="mt-1 text-sm text-slate-100">{formatRange(bin.startTime, bin.endTime)}</div>
                         <div className="mt-1 text-[11px] text-slate-400">{bin.count} events • {label}</div>
+                        {formatBurstCoefficient(bin.burstScore) ? (
+                          <div className="mt-1 text-[11px] text-amber-200">
+                            Burstiness coefficient {formatBurstCoefficient(bin.burstScore)}
+                          </div>
+                        ) : null}
                       </div>
                       <div className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-amber-100">
                         Editable
@@ -413,84 +431,57 @@ export function DemoSlicePanel() {
         <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
           <details open>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1 text-xs">
-              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Bin Parameters</span>
-              <span className="truncate text-[11px] text-slate-500">{PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}</span>
+              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Burst drafts</span>
+              <span className="truncate text-[11px] text-slate-500">{burstDraftSummary}</span>
             </summary>
             <div className="space-y-2 pt-2">
-              {DEMO_PRESET_BIAS_KEYS.map((presetKey) => {
-                const helper = PRESET_BIAS_HELPERS[presetKey];
-                const biasValue = presetBiases[presetKey];
-                const isActive = presetKey === preset;
-
-                return (
-                  <div
-                    key={presetKey}
-                    className={`rounded-md border px-3 py-2 ${isActive
-                        ? 'border-emerald-400/60 bg-emerald-500/10'
-                        : 'border-slate-800 bg-slate-950/50'
-                      }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPreset(presetKey)}
-                          className="truncate text-left text-xs font-semibold text-slate-100 underline-offset-2 hover:underline"
-                        >
-                          {helper.label}
-                        </button>
-                        {isActive ? (
-                          <span className="rounded-full border border-emerald-400/70 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
-                            Active
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-[11px] text-slate-300">{buildPresetBiasSummary(biasValue)}</div>
-                    </div>
-                    <div className="mt-1 text-[11px] text-slate-500">{helper.helperText}</div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] font-medium text-slate-400">Bias</span>
-                      <Slider
-                        min={PRESET_BIAS_RANGE.min}
-                        max={PRESET_BIAS_RANGE.max}
-                        step={PRESET_BIAS_RANGE.step}
-                        value={[biasValue]}
-                        onValueChange={(value) => setPresetBias(presetKey, value[0] ?? biasValue)}
-                      />
-                    </div>
+              <div className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
+                Burstiness is the primary driver now. Generate burst drafts, edit them, then apply to replace the active slice set.
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={handleGenerateBurstDrafts}
+                  disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
+                  className="inline-flex items-center gap-2 rounded-md border border-violet-500/50 bg-violet-500/15 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition-colors hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {generationStatus === 'generating' ? 'Generating…' : 'Generate burst drafts'}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearPendingGeneratedBins}
+                  disabled={pendingGeneratedBins.length === 0}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Clear draft
+                </button>
+              </div>
+              {lastGeneratedMetadata ? (
+                <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
+                  <div>
+                    Last generate: {lastGeneratedMetadata.binCount} burst draft bins from burst windows
                   </div>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 text-[11px]">
-              <button
-                type="button"
-                onClick={() => handleResetPresetBias(preset)}
-                className="rounded border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-900"
-              >
-                Reset preset
-              </button>
-              <button
-                type="button"
-                onClick={handleResetAllPresetBiases}
-                className="rounded border border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-amber-200 transition-colors hover:border-amber-400"
-              >
-                Reset all
-              </button>
+                  {generationInputs.timeWindow.start !== null && generationInputs.timeWindow.end !== null ? (
+                    <div className="text-slate-500">
+                      Window {formatRange(generationInputs.timeWindow.start, generationInputs.timeWindow.end)}
+                    </div>
+                  ) : null}
+                  <div className="mt-1 text-slate-400">
+                    Burst draft review stays visible here before apply.
+                  </div>
+                </div>
+              ) : null}
+              {generationError ? (
+                <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
+                  {generationError}
+                </div>
+              ) : null}
             </div>
           </details>
 
           <details open className="mt-2 border-t border-slate-800 pt-2">
             <summary className="cursor-pointer list-none py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Slice tools</summary>
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleGenerateFromPresetBias}
-                disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
-                className="inline-flex items-center gap-2 rounded-md border border-violet-500/50 bg-violet-500/15 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition-colors hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {generationStatus === 'generating' ? 'Generating…' : `Generate (${PRESET_BIAS_HELPERS[preset].label} • ${presetBiases[preset]}%)`}
-              </button>
               <button
                 type="button"
                 onClick={handleAddPointSlice}
@@ -516,28 +507,6 @@ export function DemoSlicePanel() {
                 Clear
               </button>
             </div>
-            {lastGeneratedMetadata ? (
-              <div className="mt-2 rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
-                <div>
-                  Last generate: {lastGeneratedMetadata.binCount} draft bins from {PRESET_BIAS_HELPERS[lastGeneratedMetadata.preset].label} at {lastGeneratedMetadata.presetBias}% Bias
-                </div>
-                {generationInputs.timeWindow.start !== null && generationInputs.timeWindow.end !== null ? (
-                  <div className="text-slate-500">
-                    Window {formatRange(generationInputs.timeWindow.start, generationInputs.timeWindow.end)}
-                  </div>
-                ) : null}
-                <div className="mt-1 text-slate-400">
-                  {lastGeneratedMetadata.generationSource === 'burst-windows'
-                    ? 'Burst-first drafts stay visible here before apply.'
-                    : 'Preset-bias fallback keeps the draft rail populated when no burst windows overlap.'}
-                </div>
-              </div>
-            ) : null}
-            {generationError ? (
-              <div className="mt-2 rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
-                {generationError}
-              </div>
-            ) : null}
             {lastGeneratedMetadata?.warning ? (
               <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100">
                 {lastGeneratedMetadata.warning}
@@ -559,8 +528,13 @@ export function DemoSlicePanel() {
                 <div key={slice.id} className="grid gap-2 rounded-md border border-slate-800 bg-slate-900/70 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                   <div className="space-y-2">
                     {slice.isBurst ? (
-                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
                         <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1">burst</span>
+                        {formatBurstCoefficient(slice.burstScore) ? (
+                          <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-slate-300 normal-case tracking-[0.12em]">
+                            Burstiness coefficient {formatBurstCoefficient(slice.burstScore)}
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
 

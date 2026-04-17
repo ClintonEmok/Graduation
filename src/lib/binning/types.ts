@@ -31,8 +31,18 @@ export interface TimeBin {
   burstRuleVersion?: string;
   /** Burst taxonomy score */
   burstScore?: number;
+  /** Inter-event burstiness coefficient */
+  burstinessCoefficient?: number;
+  /** Human-readable burstiness formula */
+  burstinessFormula?: string;
+  /** Human-readable burstiness calculation */
+  burstinessCalculation?: string;
   /** Burst taxonomy confidence */
   burstConfidence?: number;
+  /** Warp weight used by non-uniform slicing */
+  warpWeight?: number;
+  /** True when the bin is a neutral fallback partition */
+  isNeutralPartition?: boolean;
   /** Burst taxonomy provenance */
   burstProvenance?: string;
   /** Tie-break explanation */

@@ -915,6 +915,18 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
   }, [detailInnerWidth, detailScale, pendingGeneratedBins]);
 
+  const pendingGeneratedBinsByGeometryId = useMemo(() => {
+    return new Map(pendingGeneratedBins.map((bin) => [`pending-${bin.id}`, bin] as const));
+  }, [pendingGeneratedBins]);
+
+  const formatBurstCoefficient = (value: number | undefined) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return null;
+    }
+
+    return value.toFixed(2);
+  };
+
   const isTimelineLoading = isViewportLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
 
@@ -1369,20 +1381,41 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
             {pendingGeneratedGeometries.map((geometry) => (
               <g key={geometry.id}>
+                {(() => {
+                  const pendingDraft = pendingGeneratedBinsByGeometryId.get(geometry.id);
+                  const burstCoefficient = formatBurstCoefficient(pendingDraft?.burstScore);
+                  const draftLabelY = 6;
+                  const draftRectY = burstCoefficient ? 18 : 8;
+                  const draftRectHeight = burstCoefficient ? DETAIL_HEIGHT - 26 : DETAIL_HEIGHT - 16;
+                  const accentY = burstCoefficient ? 19 : 9;
+
+                  return (
+                    <>
                 <text
                   x={geometry.left + 4}
-                  y={6}
+                  y={draftLabelY}
                   fontSize={9}
                   fill="rgba(254, 243, 199, 0.95)"
                   className="uppercase tracking-[0.18em]"
                 >
                   Editable burst draft
                 </text>
+                {burstCoefficient ? (
+                  <text
+                    x={geometry.left + 4}
+                    y={16}
+                    fontSize={9}
+                    fill="rgba(254, 243, 199, 0.9)"
+                    className="uppercase tracking-[0.16em]"
+                  >
+                    Burstiness coefficient {burstCoefficient}
+                  </text>
+                ) : null}
                 <rect
                   x={geometry.left}
-                  y={8}
+                  y={draftRectY}
                   width={Math.max(2, geometry.width)}
-                  height={DETAIL_HEIGHT - 16}
+                  height={draftRectHeight}
                   rx={3}
                   fill={geometry.isGeneratedDraft ? 'rgba(245, 158, 11, 0.18)' : 'rgba(148, 163, 184, 0.12)'}
                   stroke={geometry.isGeneratedDraft ? 'rgba(251, 191, 36, 0.95)' : 'rgba(148, 163, 184, 0.75)'}
@@ -1392,13 +1425,16 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                 />
                 <rect
                   x={geometry.left + 1}
-                  y={9}
+                  y={accentY}
                   width={Math.max(0, Math.max(2, geometry.width) - 2)}
                   height={2}
                   rx={1}
                   fill="rgba(251, 191, 36, 0.8)"
                   opacity={geometry.isGeneratedDraft ? 0.8 : 0.35}
                 />
+                    </>
+                  );
+                })()}
               </g>
             ))}
 

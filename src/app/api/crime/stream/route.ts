@@ -71,8 +71,6 @@ export async function GET(request: Request) {
       // Parse as epoch seconds and convert to date range
       const startTs = parseInt(startDate, 10);
       const endTs = parseInt(endDate, 10);
-      const startDt = new Date(startTs * 1000).toISOString().split('T')[0];
-      const endDt = new Date(endTs * 1000).toISOString().split('T')[0];
       dateFilter = `AND EXTRACT(EPOCH FROM "Date") >= ${startTs} AND EXTRACT(EPOCH FROM "Date") <= ${endTs}`;
     }
 
@@ -82,10 +80,10 @@ export async function GET(request: Request) {
       typeFilter = `AND "Primary Type" IN (${types})`;
     }
 
-    // Query the CSV file directly with date parsing and coordinate filtering
+    // Query the CSV file directly with date parsing and coordinate filtering.
+    // If this endpoint needs to scale further, add paging instead of a hard cap.
     // Using read_csv_auto for automatic type inference
     // Date column is already parsed as TIMESTAMP, extract epoch directly
-    // LIMIT 50000 added for visualization performance - prevents timeout with 8.3M records
     const query = `
       SELECT 
         EXTRACT(EPOCH FROM "Date") as timestamp,
@@ -101,7 +99,6 @@ export async function GET(request: Request) {
         AND "Longitude" IS NOT NULL
         ${dateFilter}
         ${typeFilter}
-      LIMIT 50000
     `;
 
      // Manually fetch data and serialize to Arrow

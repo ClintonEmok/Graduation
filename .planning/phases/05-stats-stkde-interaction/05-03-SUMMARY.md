@@ -12,7 +12,7 @@ provides:
   - source-inspection coverage for the demo shell contract
   - API regression coverage for district-filtered STKDE requests
   - locked one-way stats-to-STKDE contract verification
-affects: [dashboard-demo route, /api/stkde/hotspots, phase-06-workflow-isolation]
+affects: [dashboard-demo route, /api/stkde/hotspots, phase-08-workflow-isolation]
 
 # Tech tracking
 tech-stack:

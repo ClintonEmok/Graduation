@@ -30,8 +30,8 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/dashboard-demo/DemoSlicePanel.tsx', import.meta.url),
       'utf8'
     );
-    const demoPresetThresholdsSource = readFileSync(
-      new URL('../../components/dashboard-demo/lib/demo-preset-thresholds.ts', import.meta.url),
+    const demoBurstGenerationSource = readFileSync(
+      new URL('../../components/dashboard-demo/lib/demo-burst-generation.ts', import.meta.url),
       'utf8'
     );
     const timeslicingModeStoreSource = readFileSync(new URL('../../store/useTimeslicingModeStore.ts', import.meta.url), 'utf8');
@@ -55,19 +55,17 @@ describe('/dashboard-demo shell', () => {
 
     expect(pageSource).toMatch(/DashboardDemoShell/);
     expect(shellSource).toMatch(/WorkflowSkeleton/);
-    expect(workflowSkeletonSource).toMatch(/Review before apply/);
-    expect(workflowSkeletonSource).toMatch(/Generate editable draft set/);
-    expect(workflowSkeletonSource).toMatch(/generateBinsFromActivePresetBias/);
+    expect(workflowSkeletonSource).toMatch(/Burst drafts/);
     expect(workflowSkeletonSource).toMatch(/Generate burst drafts/);
-    expect(workflowSkeletonSource).toMatch(/useBurstWindows/);
+    expect(workflowSkeletonSource).toMatch(/toast\.(success|error)/);
+    expect(workflowSkeletonSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(workflowSkeletonSource).toMatch(/generateBurstDraftBinsFromWindows/);
-    expect(workflowSkeletonSource).toMatch(/buildPresetBiasSummary/);
     expect(workflowSkeletonSource).toMatch(/Apply draft slices/);
     expect(workflowSkeletonSource).toMatch(/applyGeneratedBins/);
     expect(workflowSkeletonSource).toMatch(/Clear draft/);
     expect(workflowSkeletonSource).toMatch(/Editable draft bins/);
     expect(workflowSkeletonSource).toMatch(/pendingGeneratedBins/);
-    expect(workflowSkeletonSource).toMatch(/fallback/);
+    expect(workflowSkeletonSource).toMatch(/Burst-first generation/);
     expect(shellSource).toMatch(/DemoMapVisualization/);
     expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/DemoTimelinePanel/);
@@ -131,38 +129,30 @@ describe('/dashboard-demo shell', () => {
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoSliceStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoWarpStore/);
+    expect(demoSlicePanelSource).toMatch(/useDashboardDemoAdaptiveStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
+    expect(demoSlicePanelSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
     expect(demoSlicePanelSource).toMatch(/Pending burst drafts/);
-    expect(demoSlicePanelSource).toMatch(/Review before apply/);
+    expect(demoSlicePanelSource).toMatch(/Burst drafts/);
     expect(demoSlicePanelSource).toMatch(/editable before apply/);
     expect(demoSlicePanelSource).toMatch(/mergePendingGeneratedBins|splitPendingGeneratedBin|deletePendingGeneratedBin/);
-    expect(demoSlicePanelSource).toMatch(/Bin Parameters/);
-    expect(demoSlicePanelSource).toMatch(/Bias/);
-    expect(demoSlicePanelSource).toMatch(/Active/);
-    expect(demoSlicePanelSource).toMatch(/Reset preset/);
-    expect(demoSlicePanelSource).toMatch(/Reset all/);
-    expect(demoSlicePanelSource).toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
-    expect(demoSlicePanelSource).toMatch(/generateBinsFromActivePresetBias/);
-    expect(demoSlicePanelSource).toMatch(/Generate \(/);
+    expect(demoSlicePanelSource).toMatch(/Burstiness coefficient/);
+    expect(demoSlicePanelSource).toMatch(/Generate burst drafts/);
+    expect(demoSlicePanelSource).toMatch(/toast\.(success|error)/);
     expect(demoSlicePanelSource).toMatch(/Last generate:/);
-    expect(demoSlicePanelSource).toMatch(/Burst-first|Preset-bias fallback|Burst draft review/);
-    expect(demoSlicePanelSource).toMatch(/window\.confirm/);
+    expect(demoSlicePanelSource).toMatch(/Burst-first|Burst draft review|Burstiness is the primary driver now/);
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
     expect(demoSlicePanelSource).toMatch(/warpWeight|Warp strength/);
     expect(demoSlicePanelSource).toMatch(/Warp x|Warp off/);
     expect(demoSlicePanelSource).toMatch(/epochSecondsToNormalized/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
-    expect(demoPresetThresholdsSource).toMatch(/DEFAULT_PRESET_BIASES/);
-    expect(demoPresetThresholdsSource).toMatch(/PRESET_GENERATION_PROFILES/);
-    expect(demoPresetThresholdsSource).toMatch(/resolvePresetBiasBinTarget/);
-    expect(demoPresetThresholdsSource).toMatch(/PRESET_BIAS_RANGE/);
-    expect(demoPresetThresholdsSource).toMatch(/PRESET_BIAS_HELPERS/);
-    expect(demoPresetThresholdsSource).toMatch(/buildPresetBiasSummary/);
-    expect(demoTimeslicingModeStoreSource).toMatch(/generateBinsFromActivePresetBias/);
-    expect(demoTimeslicingModeStoreSource).toMatch(/presetBiases\[preset\]/);
+    expect(demoBurstGenerationSource).not.toMatch(/preset-bias|fallback to preset-bias/i);
+    expect(demoBurstGenerationSource).toMatch(/buildDemoBurstWindowsFromSelection/);
+    expect(demoBurstGenerationSource).toMatch(/buildBurstWindowsFromSeries/);
+    expect(demoTimeslicingModeStoreSource).toMatch(/generateBurstDraftBinsFromWindows/);
     expect(timeslicingModeStoreSource).not.toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
     expect(timeslicingModeStoreSource).not.toMatch(/generateBinsFromActivePresetBias|PRESET_GENERATION_PROFILES|resolvePresetBiasBinTarget/);
     expect(timesliceToolbarSource).not.toMatch(/Bias|Active|Reset preset|Reset all/);
@@ -181,11 +171,15 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/warpEnabled/);
     expect(demoDualTimelineSource).toMatch(/shouldShowWarpReference/);
     expect(demoDualTimelineSource).toMatch(/Editable burst draft/);
+    expect(demoDualTimelineSource).toMatch(/Burstiness coefficient/);
     expect(demoDualTimelineSource).toMatch(/isGeneratedDraft/);
     expect(demoDualTimelineSource).toMatch(/overviewInteractionScale|detailInteractionScale/);
     expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);
     expect(demoDualTimelineSource).not.toMatch(/timeStoreOverride|filterStoreOverride|coordinationStoreOverride|adaptiveStoreOverride|sliceDomainStoreOverride|timeslicingModeStoreOverride/);
     expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle/);
+    expect(workflowSkeletonSource).toMatch(/useDashboardDemoWarpStore/);
+    expect(workflowSkeletonSource).toMatch(/useDashboardDemoAdaptiveStore/);
+    expect(workflowSkeletonSource).not.toMatch(/useBurstWindows/);
   });
 
   test('keeps the stable dashboard route on Phase 1 composition', () => {

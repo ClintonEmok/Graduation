@@ -2,13 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import { BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
+import { toast } from 'sonner';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
-import { PRESET_BIAS_HELPERS, buildPresetBiasSummary } from '@/components/dashboard-demo/lib/demo-preset-thresholds';
-import { buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
+import {
+  buildDemoBurstWindowsFromSelection,
+  buildBurstDraftBinsFromWindows,
+} from '@/components/dashboard-demo/lib/demo-burst-generation';
+import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { useBurstWindows } from '@/components/viz/BurstList';
+import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 
 export type WorkflowSkeletonStep = 'explore' | 'build' | 'review';
 
@@ -41,22 +45,41 @@ const STEP_ICONS: Record<WorkflowSkeletonStep, typeof Layers3> = {
 export function WorkflowSkeleton() {
   const [isOpen, setIsOpen] = useState(true);
   const [activeStep, setActiveStep] = useState<WorkflowSkeletonStep>('explore');
-  const preset = useDashboardDemoTimeslicingModeStore((state) => state.preset);
-  const presetBiases = useDashboardDemoTimeslicingModeStore((state) => state.presetBiases);
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
-  const generateBinsFromActivePresetBias = useDashboardDemoTimeslicingModeStore((state) => state.generateBinsFromActivePresetBias);
   const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
+  const densityMap = useDashboardDemoWarpStore((state) => state.densityMap);
+  const mapDomain = useDashboardDemoWarpStore((state) => state.mapDomain);
+  const burstThreshold = useDashboardDemoAdaptiveStore((state) => state.burstThreshold);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
-  const burstWindows = useBurstWindows();
+  const selectedBurstRangeSec = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return null;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    return [
+      normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec),
+      normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec),
+    ] as [number, number];
+  }, [maxTimestampSec, minTimestampSec, timeRange]);
+
+  const burstWindows = useMemo(() => {
+    return buildDemoBurstWindowsFromSelection({
+      densityMap,
+      burstThreshold,
+      mapDomain,
+      selectionRange: selectedBurstRangeSec,
+    });
+  }, [burstThreshold, densityMap, mapDomain, selectedBurstRangeSec]);
 
   const activeIndex = STEP_ORDER.indexOf(activeStep);
   const previousStep = STEP_ORDER[Math.max(0, activeIndex - 1)] ?? activeStep;
@@ -84,27 +107,11 @@ export function WorkflowSkeleton() {
     });
   }, [burstWindows, maxTimestampSec, minTimestampSec, timeRange]);
 
-  const handleGenerateFromPresetBias = () => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      return;
-    }
-
-    const [windowStart, windowEnd] = timeRange;
-    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
-
-    setGenerationInputs({
-      timeWindow: {
-        start,
-        end,
-      },
-    });
-
-    generateBinsFromActivePresetBias();
-  };
-
   const handleGenerateBurstDrafts = () => {
     if (minTimestampSec === null || maxTimestampSec === null) {
+      toast.error('Burst draft generation failed', {
+        description: 'Choose a valid time window before generating burst drafts.',
+      });
       return;
     }
 
@@ -119,7 +126,20 @@ export function WorkflowSkeleton() {
       },
     });
 
-    generateBurstDraftBinsFromWindows(burstWindows);
+    const generated = generateBurstDraftBinsFromWindows(burstWindows);
+    const generationState = useDashboardDemoTimeslicingModeStore.getState();
+
+    if (generated && generationState.lastGeneratedMetadata) {
+      const { binCount, eventCount, warning } = generationState.lastGeneratedMetadata;
+      toast.success('Burst drafts generated', {
+        description: `${binCount} draft bin${binCount === 1 ? '' : 's'} from ${eventCount} events${warning ? ` • ${warning}` : ''}`,
+      });
+      return;
+    }
+
+    toast.error('Burst draft generation failed', {
+      description: generationState.generationError ?? 'No burst windows overlap the selected range.',
+    });
   };
 
   const handleApplyDraftSlices = () => {
@@ -216,38 +236,28 @@ export function WorkflowSkeleton() {
                     {activeStep === 'build' ? (
                       <div className="mt-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Review before apply</p>
-                          <span className="text-[10px] text-violet-200">
-                            {PRESET_BIAS_HELPERS[preset].label} • {buildPresetBiasSummary(presetBiases[preset])}
-                          </span>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Burst drafts</p>
+                          <span className="text-[10px] text-violet-200">Burst-first generation</span>
                         </div>
                         <button
                           type="button"
-                          onClick={handleGenerateFromPresetBias}
+                          onClick={handleGenerateBurstDrafts}
                           disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
                           className="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-400/60 bg-violet-500/20 px-2.5 py-1.5 text-xs font-medium text-violet-50 transition-colors hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {generationStatus === 'generating' ? 'Generating…' : 'Generate editable draft set'}
-                          </button>
+                        >
+                          {generationStatus === 'generating' ? 'Generating…' : 'Generate burst drafts'}
+                        </button>
+                        <div className="mt-2 text-[11px] text-amber-100/90">
+                          {burstDraftPreview?.warning
+                            ? burstDraftPreview.warning
+                            : burstDraftPreview?.bins.length
+                              ? `${burstDraftPreview.bins.length} editable burst draft${burstDraftPreview.bins.length === 1 ? '' : 's'} ready in the current selection.`
+                              : 'Burst draft generation stays user-triggered.'}
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
                           <button
                             type="button"
-                            onClick={handleGenerateBurstDrafts}
-                            disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
-                            className="mt-2 inline-flex items-center gap-2 rounded-md border border-amber-400/60 bg-amber-500/15 px-2.5 py-1.5 text-xs font-medium text-amber-50 transition-colors hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            Generate burst drafts
-                          </button>
-                          <div className="mt-2 text-[11px] text-amber-100/90">
-                            {burstDraftPreview?.warning
-                              ? burstDraftPreview.warning
-                              : burstDraftPreview?.bins.length
-                                ? `${burstDraftPreview.bins.length} editable burst draft${burstDraftPreview.bins.length === 1 ? '' : 's'} ready in the current selection.`
-                                : 'Burst draft generation stays user-triggered, with preset-bias fallback ready if no burst windows overlap.'}
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleApplyDraftSlices}
+                            onClick={handleApplyDraftSlices}
                             disabled={pendingGeneratedBins.length === 0 || minTimestampSec === null || maxTimestampSec === null}
                             className="inline-flex items-center gap-2 rounded-md border border-emerald-400/60 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-medium text-emerald-50 transition-colors hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
                           >
@@ -265,7 +275,7 @@ export function WorkflowSkeleton() {
                         </div>
                         {lastGeneratedMetadata ? (
                           <div className="mt-2 text-[11px] text-violet-100/90">
-                            Last generate: {lastGeneratedMetadata.binCount} editable draft bins ({lastGeneratedMetadata.presetBias}% Bias)
+                            Last generate: {lastGeneratedMetadata.binCount} burst draft bins
                           </div>
                         ) : null}
                         {lastAppliedAt ? (

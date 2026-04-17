@@ -112,11 +112,11 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
 
       const parquetX = table.getChild('x');
       const parquetZ = table.getChild('z');
-      const parquetY = table.getChild('y');
+      const timestampCol = table.getChild('timestamp') || table.getChild('y');
 
       const xDataFinal = parquetX ? new Float32Array(parquetX.toArray()) : new Float32Array(count);
       const zDataFinal = parquetZ ? new Float32Array(parquetZ.toArray()) : new Float32Array(count);
-      const timestampData = parquetY ? new Float32Array(parquetY.toArray()) : new Float32Array(count);
+      const timestampData = timestampCol ? new Float32Array(timestampCol.toArray()) : new Float32Array(count);
 
       const latData = latCol ? new Float32Array(latCol.toArray()) : undefined;
       const lonData = lonCol ? new Float32Array(lonCol.toArray()) : undefined;

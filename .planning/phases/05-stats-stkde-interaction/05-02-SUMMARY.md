@@ -14,7 +14,7 @@ provides:
   - district-aware STKDE request contract
   - SQL filtering for district-scoped full-population STKDE
   - one-way demo hook that forwards selected districts into STKDE
-affects: [dashboard-demo route, /api/stkde/hotspots, phase-06-workflow-isolation]
+affects: [dashboard-demo route, /api/stkde/hotspots, phase-08-workflow-isolation]
 
 # Tech tracking
 tech-stack:

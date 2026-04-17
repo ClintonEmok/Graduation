@@ -15,7 +15,7 @@ provides:
   - compact stats summary panel driven by demo-local crime aggregation
   - primary STKDE rail with hotspot selection and parameter wiring
   - regression coverage that protects stable /stats and /stkde route isolation
-affects: [phase-06-workflow-isolation, dashboard-demo route, future workflow handoff]
+affects: [phase-08-workflow-isolation, dashboard-demo route, future workflow handoff]
 
 # Tech tracking
 tech-stack:

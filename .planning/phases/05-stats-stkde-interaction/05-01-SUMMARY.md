@@ -12,7 +12,7 @@ provides:
   - stats-first demo rail defaulting to the Stats tab
   - district-first stats copy with friendly district names
   - explicit spatial distribution context inside the stats panel
-affects: [dashboard-demo route, phase-06-workflow-isolation]
+affects: [dashboard-demo route, phase-08-workflow-isolation]
 
 # Tech tracking
 tech-stack:

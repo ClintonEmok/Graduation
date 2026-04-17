@@ -45,6 +45,18 @@ export default function Home() {
             >
               Open timeslicing algos
             </Link>
+            <Link
+              href="/demo/non-uniform-time-slicing"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#22d3ee]/60 bg-[#061a1f] px-7 py-3 text-sm font-semibold text-[#a5f3fc] transition hover:border-[#67e8f9] hover:bg-[#08262c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2"
+            >
+              Open non-uniform demo
+            </Link>
+            <Link
+              href="/docs"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#d4d4d8]/50 bg-[#111113] px-7 py-3 text-sm font-semibold text-[#f5f5f7] transition hover:border-[#f5f5f7] hover:bg-[#19191d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4d4d8] focus-visible:ring-offset-2"
+            >
+              Open docs
+            </Link>
             <span className="text-sm text-[#8e8e93]">Built for current QA cycle.</span>
           </div>
         </div>

@@ -58,9 +58,6 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
         binCount: 2,
         eventCount: 30,
         warning: null,
-        generationSource: 'burst-windows',
-        preset: 'daily',
-        presetBias: 55,
         inputs: {
           crimeTypes: ['THEFT', 'BATTERY'],
           neighbourhood: '001',
