@@ -4,15 +4,10 @@ import { useMemo, useState } from 'react';
 import { BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
 import { toast } from 'sonner';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
-import {
-  buildDemoBurstWindowsFromSelection,
-  buildBurstDraftBinsFromWindows,
-} from '@/components/dashboard-demo/lib/demo-burst-generation';
-import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
+import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 
 export type WorkflowSkeletonStep = 'explore' | 'build' | 'review';
 
@@ -26,14 +21,14 @@ const STEP_LABELS: Record<WorkflowSkeletonStep, string> = {
 
 const STEP_SUMMARIES: Record<WorkflowSkeletonStep, string> = {
   explore: 'Orient to the data field and the shared viewport before editing slices.',
-  build: 'Keep the slice-building and review loop continuous while you refine editable drafts.',
-  review: 'Confirm the slice set, inspect pending drafts, and hand the result off to the dashboard.',
+  build: 'Keep the selection-first build loop continuous while you refine editable drafts.',
+  review: 'Confirm the slice set, inspect pending selection-first drafts, and hand the result off to the dashboard.',
 };
 
 const STEP_DETAIL_LINES: Record<WorkflowSkeletonStep, string[]> = {
   explore: ['Read the overview surface', 'Keep the workflow lightweight', 'Start with context, not edits'],
-  build: ['Adjust slices in place', 'Treat review as part of the builder', 'Keep drafts editable before apply'],
-  review: ['Check the final slice list', 'Keep warnings visible', 'Review pending burst drafts before apply'],
+  build: ['Adjust slices in place', 'Treat review as part of the builder', 'Keep selection-first drafts editable before apply'],
+  review: ['Check the final slice list', 'Keep warnings visible', 'Review pending selection-first drafts before apply'],
 };
 
 const STEP_ICONS: Record<WorkflowSkeletonStep, typeof Layers3> = {
@@ -48,38 +43,21 @@ export function WorkflowSkeleton() {
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
-  const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
   const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
-  const densityMap = useDashboardDemoWarpStore((state) => state.densityMap);
-  const mapDomain = useDashboardDemoWarpStore((state) => state.mapDomain);
-  const burstThreshold = useDashboardDemoAdaptiveStore((state) => state.burstThreshold);
+  const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
+  const timelineData = useTimelineDataStore((state) => state.data);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
-  const selectedBurstRangeSec = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      return null;
-    }
-
-    const [windowStart, windowEnd] = timeRange;
-    return [
-      normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec),
-      normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec),
-    ] as [number, number];
-  }, [maxTimestampSec, minTimestampSec, timeRange]);
-
-  const burstWindows = useMemo(() => {
-    return buildDemoBurstWindowsFromSelection({
-      densityMap,
-      burstThreshold,
-      mapDomain,
-      selectionRange: selectedBurstRangeSec,
-    });
-  }, [burstThreshold, densityMap, mapDomain, selectedBurstRangeSec]);
+  const availableCrimeTypes = useMemo(
+    () => Array.from(new Set(timelineData.map((point) => point.type).filter((type) => type.trim().length > 0))).sort(),
+    [timelineData]
+  );
+  const selectedCrimeTypes = generationInputs.crimeTypes;
 
   const activeIndex = STEP_ORDER.indexOf(activeStep);
   const previousStep = STEP_ORDER[Math.max(0, activeIndex - 1)] ?? activeStep;
@@ -87,30 +65,31 @@ export function WorkflowSkeleton() {
 
   const StepIcon = useMemo(() => STEP_ICONS[activeStep], [activeStep]);
 
-  const burstDraftPreview = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      return null;
-    }
+  const selectionStateLabel = pendingGeneratedBins.length === 0
+    ? 'idle'
+    : pendingGeneratedBins.every((bin) => bin.isNeutralPartition)
+      ? 'neutral'
+      : 'expanded';
 
-    const [windowStart, windowEnd] = timeRange;
-    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+  const selectionBLabel = useMemo(() => {
+    const bestBin = pendingGeneratedBins.reduce<TimeBin | null>((best, bin) => {
+      if (!best) {
+        return bin;
+      }
 
-    return buildBurstDraftBinsFromWindows(burstWindows, {
-      crimeTypes: [],
-      neighbourhood: null,
-      timeWindow: {
-        start,
-        end,
-      },
-      granularity: 'daily',
-    });
-  }, [burstWindows, maxTimestampSec, minTimestampSec, timeRange]);
+      const bestScore = Math.abs(best?.burstinessCoefficient ?? best?.burstScore ?? 0);
+      const currentScore = Math.abs(bin.burstinessCoefficient ?? bin.burstScore ?? 0);
+      return currentScore > bestScore ? bin : best;
+    }, null);
+
+    const coefficient = bestBin?.burstinessCoefficient ?? bestBin?.burstScore;
+    return typeof coefficient === 'number' && Number.isFinite(coefficient) ? coefficient.toFixed(2) : '—';
+  }, [pendingGeneratedBins]);
 
   const handleGenerateBurstDrafts = () => {
     if (minTimestampSec === null || maxTimestampSec === null) {
-      toast.error('Burst draft generation failed', {
-        description: 'Choose a valid time window before generating burst drafts.',
+      toast.error('Selection-first generation failed', {
+        description: 'Choose a valid brushed selection before generating selection-first drafts.',
       });
       return;
     }
@@ -126,19 +105,19 @@ export function WorkflowSkeleton() {
       },
     });
 
-    const generated = generateBurstDraftBinsFromWindows(burstWindows);
+    const generated = generateBurstDraftBinsFromWindows([]);
     const generationState = useDashboardDemoTimeslicingModeStore.getState();
 
     if (generated && generationState.lastGeneratedMetadata) {
-      const { binCount, eventCount, warning } = generationState.lastGeneratedMetadata;
+      const { warning } = generationState.lastGeneratedMetadata;
       toast.success('Burst drafts generated', {
-        description: `${binCount} draft bin${binCount === 1 ? '' : 's'} from ${eventCount} events${warning ? ` • ${warning}` : ''}`,
+        description: warning ?? 'Selection-first drafts are ready for review.',
       });
       return;
     }
 
-    toast.error('Burst draft generation failed', {
-      description: generationState.generationError ?? 'No burst windows overlap the selected range.',
+    toast.error('Selection-first generation failed', {
+      description: generationState.generationError ?? 'Could not build drafts from the brushed selection.',
     });
   };
 
@@ -236,25 +215,95 @@ export function WorkflowSkeleton() {
                     {activeStep === 'build' ? (
                       <div className="mt-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Burst drafts</p>
-                          <span className="text-[10px] text-violet-200">Burst-first generation</span>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Selection-first drafts</p>
+                          <span className="text-[10px] text-violet-200">Brushed selection is canonical</span>
                         </div>
+                        <p className="mt-2 text-[11px] text-violet-100/90">Daily is the default granularity; crime types are optional inputs.</p>
+
+                        <div className="mt-3 space-y-2">
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
+                          <div className="flex flex-wrap gap-2">
+                            {(['hourly', 'daily'] as const).map((granularity) => {
+                              const isActive = generationInputs.granularity === granularity;
+
+                              return (
+                                <button
+                                  key={granularity}
+                                  type="button"
+                                  onClick={() => setGenerationInputs({ granularity })}
+                                  className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                                    isActive
+                                      ? 'border-violet-300 bg-violet-500/20 text-violet-50'
+                                      : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
+                                  }`}
+                                >
+                                  {granularity === 'daily' ? 'Daily' : 'Hourly'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                            <span>Crime types</span>
+                            <button
+                              type="button"
+                              onClick={() => setGenerationInputs({ crimeTypes: [] })}
+                              className="text-[10px] text-slate-400 hover:text-slate-200"
+                            >
+                              All crime types
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {availableCrimeTypes.length > 0 ? availableCrimeTypes.map((crimeType) => {
+                              const isActive = selectedCrimeTypes.includes(crimeType);
+                              return (
+                                <button
+                                  key={crimeType}
+                                  type="button"
+                                  onClick={() => setGenerationInputs({
+                                    crimeTypes: isActive
+                                      ? selectedCrimeTypes.filter((type) => type !== crimeType)
+                                      : [...selectedCrimeTypes, crimeType],
+                                  })}
+                                  className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                                    isActive
+                                      ? 'border-violet-300 bg-violet-500/20 text-violet-50'
+                                      : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
+                                  }`}
+                                >
+                                  {crimeType}
+                                </button>
+                              );
+                            }) : (
+                              <span className="text-[11px] text-slate-500">All crime types are included by default.</span>
+                            )}
+                          </div>
+                        </div>
+
                         <button
                           type="button"
                           onClick={handleGenerateBurstDrafts}
                           disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
-                          className="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-400/60 bg-violet-500/20 px-2.5 py-1.5 text-xs font-medium text-violet-50 transition-colors hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mt-3 inline-flex items-center gap-2 rounded-md border border-violet-400/60 bg-violet-500/20 px-2.5 py-1.5 text-xs font-medium text-violet-50 transition-colors hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {generationStatus === 'generating' ? 'Generating…' : 'Generate burst drafts'}
+                          {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
                         </button>
-                        <div className="mt-2 text-[11px] text-amber-100/90">
-                          {burstDraftPreview?.warning
-                            ? burstDraftPreview.warning
-                            : burstDraftPreview?.bins.length
-                              ? `${burstDraftPreview.bins.length} editable burst draft${burstDraftPreview.bins.length === 1 ? '' : 's'} ready in the current selection.`
-                              : 'Burst draft generation stays user-triggered.'}
+
+                        <div className="mt-3 rounded-md border border-slate-800/80 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>B {selectionBLabel}</span>
+                            <span>State {selectionStateLabel}</span>
+                          </div>
+                          {selectionStateLabel === 'neutral' ? (
+                            <p className="mt-1 text-slate-500">Muted neutral partition keeps the brushed selection evenly split.</p>
+                          ) : (
+                            <p className="mt-1 text-slate-400">Selection-first drafts stay editable before apply.</p>
+                          )}
                         </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={handleApplyDraftSlices}
@@ -271,15 +320,10 @@ export function WorkflowSkeleton() {
                           >
                             Clear draft
                           </button>
-                          <span className="text-[10px] text-violet-200/90">Editable draft bins: {pendingGeneratedBins.length}</span>
                         </div>
-                        {lastGeneratedMetadata ? (
-                          <div className="mt-2 text-[11px] text-violet-100/90">
-                            Last generate: {lastGeneratedMetadata.binCount} burst draft bins
-                          </div>
-                        ) : null}
+
                         {lastAppliedAt ? (
-                          <div className="mt-1 text-[10px] text-emerald-200/90">
+                          <div className="mt-2 text-[10px] text-emerald-200/90">
                             Last apply: {new Date(lastAppliedAt).toLocaleTimeString()}
                           </div>
                         ) : null}

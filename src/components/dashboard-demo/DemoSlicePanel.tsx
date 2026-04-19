@@ -13,10 +13,9 @@ import { toast } from 'sonner';
 
 import { Input } from '@/components/ui/input';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
-import { buildDemoBurstWindowsFromSelection, buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
-import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
+import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
@@ -43,12 +42,6 @@ const parseDateTimeLocalValue = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const formatRange = (start: number, end: number) => {
-  const startDate = new Date(start).toLocaleString();
-  const endDate = new Date(end).toLocaleString();
-  return `${startDate} → ${endDate}`;
-};
-
 const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
 const clampNormalized = (value: number) => Math.min(100, Math.max(0, value));
 const formatBurstCoefficient = (value: number | undefined) => {
@@ -73,7 +66,6 @@ export function DemoSlicePanel() {
   const toggleVisibility = useDashboardDemoSliceStore((state) => state.toggleVisibility);
   const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
 
-  const mode = useDashboardDemoTimeslicingModeStore((state) => state.mode);
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
@@ -88,38 +80,35 @@ export function DemoSlicePanel() {
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
-  const densityMap = useDashboardDemoWarpStore((state) => state.densityMap);
-  const mapDomain = useDashboardDemoWarpStore((state) => state.mapDomain);
-  const burstThreshold = useDashboardDemoAdaptiveStore((state) => state.burstThreshold);
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
-  const selectedBurstRangeSec = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      return null;
-    }
 
-    const [windowStart, windowEnd] = timeRange;
-    return [
-      normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec),
-      normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec),
-    ] as [number, number];
-  }, [maxTimestampSec, minTimestampSec, timeRange]);
+  const selectionStateLabel = pendingGeneratedBins.length === 0
+    ? 'idle'
+    : pendingGeneratedBins.every((bin) => bin.isNeutralPartition)
+      ? 'neutral'
+      : 'expanded';
 
-  const burstWindows = useMemo(() => {
-    return buildDemoBurstWindowsFromSelection({
-      densityMap,
-      burstThreshold,
-      mapDomain,
-      selectionRange: selectedBurstRangeSec,
-    });
-  }, [burstThreshold, densityMap, mapDomain, selectedBurstRangeSec]);
+  const selectionBLabel = useMemo(() => {
+    const bestBin = pendingGeneratedBins.reduce<TimeBin | null>((best, bin) => {
+      if (!best) {
+        return bin;
+      }
 
-  const burstDraftSourceLabel = lastGeneratedMetadata ? 'Burst-first' : 'Burst draft queue';
+      const bestScore = Math.abs(best?.burstinessCoefficient ?? best?.burstScore ?? 0);
+      const currentScore = Math.abs(bin.burstinessCoefficient ?? bin.burstScore ?? 0);
+      return currentScore > bestScore ? bin : best;
+    }, null);
 
-  const burstDraftSummary = lastGeneratedMetadata
-    ? `${lastGeneratedMetadata.binCount} bin${lastGeneratedMetadata.binCount === 1 ? '' : 's'} • ${lastGeneratedMetadata.eventCount} events • ${burstDraftSourceLabel}`
-    : `${pendingGeneratedBins.length} pending draft${pendingGeneratedBins.length === 1 ? '' : 's'} ready for review`;
+    const coefficient = bestBin?.burstinessCoefficient ?? bestBin?.burstScore;
+    return typeof coefficient === 'number' && Number.isFinite(coefficient) ? coefficient.toFixed(2) : '—';
+  }, [pendingGeneratedBins]);
+
+  const selectionDraftSummary = `B ${selectionBLabel} · State ${selectionStateLabel}`;
+  const neutralDraftHint = selectionStateLabel === 'neutral'
+    ? 'Muted neutral partition keeps the brushed selection evenly split.'
+    : 'Selection-first drafts stay editable before apply.';
 
   const visibleWarpSliceCount = useMemo(
     () => slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true)).length,
@@ -141,30 +130,6 @@ export function DemoSlicePanel() {
       resetWarp();
     }
   }, [resetWarp, setTimeScaleMode, setWarpFactor, visibleWarpSliceCount, warpFactor, warpMode]);
-
-  const activeWindowLabel = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      return null;
-    }
-
-    const [windowStart, windowEnd] = timeRange;
-    const startSec = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec);
-    const endSec = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec);
-
-    return {
-      start: new Date(startSec * 1000).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-      end: new Date(endSec * 1000).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-    };
-  }, [maxTimestampSec, minTimestampSec, timeRange]);
-
-  const sliceStats = useMemo(() => {
-    return {
-      total: slices.length,
-      visible: slices.filter((slice) => slice.isVisible).length,
-      locked: slices.filter((slice) => slice.isLocked).length,
-      burst: slices.filter((slice) => slice.isBurst).length,
-    };
-  }, [slices]);
 
   const formatNormalizedValue = useCallback(
     (value: number) => {
@@ -250,8 +215,8 @@ export function DemoSlicePanel() {
 
   const handleGenerateBurstDrafts = useCallback(() => {
     if (minTimestampSec === null || maxTimestampSec === null) {
-      toast.error('Burst draft generation failed', {
-        description: 'Choose a valid time window before generating burst drafts.',
+      toast.error('Selection-first generation failed', {
+        description: 'Choose a valid brushed selection before generating selection-first drafts.',
       });
       return;
     }
@@ -267,21 +232,20 @@ export function DemoSlicePanel() {
       },
     });
 
-    const generated = generateBurstDraftBinsFromWindows(burstWindows);
+    const generated = generateBurstDraftBinsFromWindows([]);
     const generationState = useDashboardDemoTimeslicingModeStore.getState();
 
     if (generated && generationState.lastGeneratedMetadata) {
-      const { binCount, eventCount, warning } = generationState.lastGeneratedMetadata;
       toast.success('Burst drafts generated', {
-        description: `${binCount} draft bin${binCount === 1 ? '' : 's'} from ${eventCount} events${warning ? ` • ${warning}` : ''}`,
+        description: generationState.lastGeneratedMetadata.warning ?? 'Selection-first drafts are ready for review.',
       });
       return;
     }
 
-    toast.error('Burst draft generation failed', {
-      description: generationState.generationError ?? 'No burst windows overlap the selected range.',
+    toast.error('Selection-first generation failed', {
+      description: generationState.generationError ?? 'Could not build drafts from the brushed selection.',
     });
-  }, [burstWindows, generateBurstDraftBinsFromWindows, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
+  }, [generateBurstDraftBinsFromWindows, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
 
   const handleMergePendingDraft = useCallback((index: number) => {
     const current = pendingGeneratedBins[index];
@@ -322,30 +286,28 @@ export function DemoSlicePanel() {
       </header>
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-300">
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Slices {sliceStats.total}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Visible {sliceStats.visible}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Locked {sliceStats.locked}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Burst {sliceStats.burst}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Mode {mode}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Status {generationStatus}</span>
-          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-2 py-0.5">Draft bins {pendingGeneratedBins.length}</span>
+        <div className="rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2 text-[11px] text-slate-300">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold uppercase tracking-[0.18em] text-slate-200">Selection-first drafts</span>
+            <span>{selectionDraftSummary}</span>
+          </div>
+          <div className="mt-1 text-slate-500">{neutralDraftHint}</div>
         </div>
 
         {pendingGeneratedBins.length > 0 ? (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-50">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold uppercase tracking-[0.18em] text-amber-100">{burstDraftSourceLabel}</span>
-              <span>{pendingGeneratedBins.length} draft bins before apply</span>
+              <span className="font-semibold uppercase tracking-[0.18em] text-amber-100">Editable before apply</span>
+              <span>{selectionStateLabel}</span>
             </div>
-            <div className="mt-1 text-amber-100/90">{burstDraftSummary}</div>
+            <div className="mt-1 text-amber-100/90">Selection-first drafts are ready for review.</div>
           </div>
         ) : null}
 
         <section className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200">Pending burst drafts</div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200">Pending selection-first drafts</div>
               <div className="mt-1 text-xs text-slate-300">These draft bins stay editable before apply.</div>
             </div>
             <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
@@ -357,26 +319,19 @@ export function DemoSlicePanel() {
             <div className="mt-3 space-y-2">
               {pendingGeneratedBins.map((bin, index) => {
                 const isMergeable = pendingGeneratedBins.length > 1;
-                const label = bin.districts?.length
-                  ? bin.districts.join(', ')
-                  : bin.crimeTypes.length > 0
-                    ? bin.crimeTypes.join(', ')
-                    : 'All crimes';
 
                 return (
                   <div key={bin.id} className="rounded-md border border-amber-500/20 bg-slate-900/70 p-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                          Draft {String(index + 1).padStart(2, '0')}
+                          Selection-first draft {String(index + 1).padStart(2, '0')}
                         </div>
-                        <div className="mt-1 text-sm text-slate-100">{formatRange(bin.startTime, bin.endTime)}</div>
-                        <div className="mt-1 text-[11px] text-slate-400">{bin.count} events • {label}</div>
-                        {formatBurstCoefficient(bin.burstScore) ? (
-                          <div className="mt-1 text-[11px] text-amber-200">
-                            Burstiness coefficient {formatBurstCoefficient(bin.burstScore)}
-                          </div>
-                        ) : null}
+                        <div className="mt-1 text-[11px] text-slate-400">B {formatBurstCoefficient(bin.burstinessCoefficient ?? bin.burstScore) ?? '—'}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">State {bin.isNeutralPartition ? 'neutral' : 'expanded'}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          {bin.isNeutralPartition ? 'Muted neutral partition keeps the brushed selection evenly split.' : 'Selection-first draft stays editable before apply.'}
+                        </div>
                       </div>
                       <div className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-amber-100">
                         Editable
@@ -414,29 +369,20 @@ export function DemoSlicePanel() {
             </div>
           ) : (
             <div className="mt-3 rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-3 text-[11px] text-slate-400">
-              Generate burst drafts to review and edit them here before apply.
+              Generate selection-first drafts to review and edit them here before apply.
             </div>
           )}
         </section>
 
-        {activeWindowLabel ? (
-          <div className="rounded-md border border-slate-800 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-300">
-            <div className="uppercase tracking-[0.24em] text-slate-500">Active window</div>
-            <div className="mt-1 font-medium text-slate-100">
-              {activeWindowLabel.start} → {activeWindowLabel.end}
-            </div>
-          </div>
-        ) : null}
-
         <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
           <details open>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1 text-xs">
-              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Burst drafts</span>
-              <span className="truncate text-[11px] text-slate-500">{burstDraftSummary}</span>
+              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Selection-first drafts</span>
+              <span className="truncate text-[11px] text-slate-500">{selectionDraftSummary}</span>
             </summary>
             <div className="space-y-2 pt-2">
               <div className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
-                Burstiness is the primary driver now. Generate burst drafts, edit them, then apply to replace the active slice set.
+                Brushed selection is canonical. Daily is the default granularity, crime types stay optional, and the neutral state stays muted.
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 <button
@@ -445,7 +391,7 @@ export function DemoSlicePanel() {
                   disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
                   className="inline-flex items-center gap-2 rounded-md border border-violet-500/50 bg-violet-500/15 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition-colors hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {generationStatus === 'generating' ? 'Generating…' : 'Generate burst drafts'}
+                  {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
                 </button>
                 <button
                   type="button"
@@ -456,21 +402,10 @@ export function DemoSlicePanel() {
                   Clear draft
                 </button>
               </div>
-              {lastGeneratedMetadata ? (
-                <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
-                  <div>
-                    Last generate: {lastGeneratedMetadata.binCount} burst draft bins from burst windows
-                  </div>
-                  {generationInputs.timeWindow.start !== null && generationInputs.timeWindow.end !== null ? (
-                    <div className="text-slate-500">
-                      Window {formatRange(generationInputs.timeWindow.start, generationInputs.timeWindow.end)}
-                    </div>
-                  ) : null}
-                  <div className="mt-1 text-slate-400">
-                    Burst draft review stays visible here before apply.
-                  </div>
-                </div>
-              ) : null}
+              <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
+                <div>{selectionDraftSummary}</div>
+                <div className="mt-1 text-slate-400">Selection-first draft review stays visible here before apply.</div>
+              </div>
               {generationError ? (
                 <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
                   {generationError}
