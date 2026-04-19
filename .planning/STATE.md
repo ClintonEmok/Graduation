@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-04-16T23:36:38Z"
+status: executing
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-04-19T07:15:32Z"
 progress:
-  total_phases: 15
+  total_phases: 16
   completed_phases: 8
-  total_plans: 22
-  completed_plans: 18
-  percent: 82
+  total_plans: 25
+  completed_plans: 19
 ---
 
 # Project State
@@ -20,20 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 10 — non-uniform-time-slicing
+**Current focus:** Phase 10 — selection-first-burst-slice-generation
 
 ## Current Position
 
-Phase: 10
-Plan: 01 of 4 complete
-
-Progress: ████████░░ 82%
+Phase: 10 (selection-first-burst-slice-generation) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: ~4 min
 - Total execution time: 0.8 hours
 
@@ -114,6 +111,9 @@ Progress: ████████░░ 82%
 - Lock pending-draft edit wiring with source-inspection coverage instead of route behavior changes.
 - Partition brushed selections first for the phase 10 helper layer, then use burst scoring only to tune warp metadata.
 - Preserve exact coverage of the brushed interval and return a neutral partition when no bin stands out.
+- Treat the brushed selection as the canonical input for demo draft generation.
+- Default the demo generator to daily granularity and all crime types unless narrowed.
+- Preserve burst metadata and warp weight through merge, split, and apply operations.
 
 ### Pending Todos
 
@@ -126,7 +126,7 @@ Progress: ████████░░ 82%
 - Phase 7 dashboard-demo preset thresholds is complete.
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
 - Phase 9 burstiness-driven slice generation remains in progress.
-- Phase 10 non-uniform time slicing has started with the helper layer complete for plan 01.
+- Phase 10 non-uniform time slicing has the helper layer and workflow wiring complete for plans 01-02.
 - Phase 11 workflow isolation plan follows after the redesigned burst phase.
 
 ### Blockers/Concerns
@@ -136,6 +136,6 @@ Progress: ████████░░ 82%
 
 ## Session Continuity
 
-Last session: 2026-04-16T23:36:38Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-04-19T07:15:32Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None

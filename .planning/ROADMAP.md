@@ -233,7 +233,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Dashboard-demo preset thresholds | 5 | Not started | - |
 | 8. Contextual data enrichment | 5 | Not started | - |
 | 9. Burstiness-driven slice generation | 0 | In progress  | - |
-| 10. Selection-first burst-slice generation | 0 | Not started | - |
+| 10. Selection-first burst-slice generation | 0 | In progress | - |
 | 11. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
 | 12. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 13. Detect events + decode bursts | 6 | Not started | - |
