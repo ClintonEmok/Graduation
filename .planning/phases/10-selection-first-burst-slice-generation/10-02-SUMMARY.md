@@ -66,7 +66,7 @@ Each task was committed atomically:
 1. **Task 1: Make the demo store generate selection-first drafts from the brushed selection** - `24ca849` (fix)
 2. **Task 2: Surface selection-first controls and neutral-partition guidance in the demo workflow** - `b141a9d` (fix)
 
-**Plan metadata:** _pending_
+**Plan metadata:** `c926d61`
 
 ## Files Created/Modified
 - `src/store/useDashboardDemoTimeslicingModeStore.ts` - Selection-first generation path and draft-state helpers.
