@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { BurstWindow } from '@/components/viz/BurstList';
-import { buildBurstDraftBinsFromWindows } from '@/components/dashboard-demo/lib/demo-burst-generation';
+import { buildNonUniformDraftBinsFromSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import type { TimeBin } from '@/lib/binning/types';
+import { useTimelineDataStore } from './useTimelineDataStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
 
 export type TimeslicingMode = 'auto' | 'manual';
@@ -60,7 +60,7 @@ interface DashboardDemoTimeslicingState {
   setGenerationInputs: (inputs: Partial<GenerationInputs>) => void;
   setGenerationStatus: (status: GenerationStatus) => void;
   setPendingGeneratedBins: (bins: TimeBin[], metadata: Omit<GenerationResultMetadata, 'generatedAt'>) => void;
-  generateBurstDraftBinsFromWindows: (burstWindows: BurstWindow[]) => boolean;
+  generateBurstDraftBinsFromWindows: (_burstWindows: unknown[]) => boolean;
   setGenerationError: (message: string | null) => void;
   clearPendingGeneratedBins: () => void;
   replacePendingGeneratedBins: (bins: TimeBin[]) => void;
@@ -80,6 +80,9 @@ const mergeBins = (bins: TimeBin[], binIds: string[]): TimeBin[] => {
 
   if (selected.length < 2) return bins;
 
+  const preservedMetadataSource = selected.find(hasBurstMetadata) ?? selected[0];
+  const preservedWarpWeight = Math.max(...selected.map((bin) => bin.warpWeight ?? 1));
+
   const totalCount = selected.reduce((sum, bin) => sum + bin.count, 0);
   const merged: TimeBin = {
     id: `pending-merged-${Date.now()}`,
@@ -92,6 +95,9 @@ const mergeBins = (bins: TimeBin[], binIds: string[]): TimeBin[] => {
       totalCount > 0
         ? selected.reduce((sum, bin) => sum + bin.avgTimestamp * bin.count, 0) / totalCount
         : (selected[0].startTime + selected[selected.length - 1].endTime) / 2,
+    ...copyBurstMetadata(preservedMetadataSource),
+    warpWeight: preservedWarpWeight,
+    isNeutralPartition: selected.every((bin) => bin.isNeutralPartition),
     isModified: true,
     mergedFrom: selected.map((bin) => bin.id),
   };
@@ -110,6 +116,7 @@ const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[]
   const leftCount = Math.floor(target.count / 2);
   const rightCount = target.count - leftCount;
   const now = Date.now();
+  const inheritedMetadata = copyBurstMetadata(target);
 
   const left: TimeBin = {
     id: `pending-split-1-${now}`,
@@ -119,6 +126,7 @@ const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[]
     crimeTypes: target.crimeTypes,
     districts: target.districts,
     avgTimestamp: (target.startTime + splitPoint) / 2,
+    ...inheritedMetadata,
     isModified: true,
   };
 
@@ -130,6 +138,7 @@ const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[]
     crimeTypes: target.crimeTypes,
     districts: target.districts,
     avgTimestamp: (splitPoint + target.endTime) / 2,
+    ...inheritedMetadata,
     isModified: true,
   };
 
@@ -140,6 +149,38 @@ const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[]
 };
 
 const deleteBin = (bins: TimeBin[], binId: string): TimeBin[] => bins.filter((bin) => bin.id !== binId);
+
+const BURST_METADATA_KEYS = [
+  'burstClass',
+  'burstRuleVersion',
+  'burstScore',
+  'burstinessCoefficient',
+  'burstinessFormula',
+  'burstinessCalculation',
+  'burstinessByType',
+  'burstConfidence',
+  'warpWeight',
+  'isNeutralPartition',
+  'burstProvenance',
+  'tieBreakReason',
+  'thresholdSource',
+  'neighborhoodSummary',
+] as const;
+
+const hasBurstMetadata = (bin: TimeBin): boolean => BURST_METADATA_KEYS.some((key) => bin[key] !== undefined);
+
+const copyBurstMetadata = (bin: TimeBin | undefined): Partial<TimeBin> => {
+  if (!bin) {
+    return {};
+  }
+
+  return BURST_METADATA_KEYS.reduce<Partial<TimeBin>>((metadata, key) => {
+    if (bin[key] !== undefined) {
+      (metadata as Record<string, unknown>)[key] = bin[key];
+    }
+    return metadata;
+  }, {});
+};
 
 export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslicingState>()(
   persist(
@@ -205,12 +246,20 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           generationStatus: 'ready',
           generationError: null,
         }),
-      generateBurstDraftBinsFromWindows: (burstWindows) => {
+      generateBurstDraftBinsFromWindows: () => {
         const { generationInputs } = get();
 
         set({ generationStatus: 'generating', generationError: null });
 
-        const generated = buildBurstDraftBinsFromWindows(burstWindows, generationInputs);
+        const timelineData = useTimelineDataStore.getState().data;
+        const generated = buildNonUniformDraftBinsFromSelection({
+          crimeTypes: generationInputs.crimeTypes,
+          neighbourhood: generationInputs.neighbourhood,
+          timeWindow: generationInputs.timeWindow,
+          granularity: generationInputs.granularity === 'hourly' ? 'hourly' : 'daily',
+          eventTimestamps: timelineData.map((point) => point.timestamp),
+          eventTypes: timelineData.map((point) => point.type),
+        });
 
         if (generated.bins.length === 0) {
           set({

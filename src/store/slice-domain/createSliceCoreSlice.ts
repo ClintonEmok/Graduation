@@ -327,7 +327,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
             time: (start + end) / 2,
             range: [start, end] as [number, number],
             warpEnabled: true,
-            warpWeight: 1.25,
+            warpWeight: bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25),
             notes: `${bin.count} events`,
             isBurst: true,
             burstSliceId: buildBurstSliceId(start, end),
