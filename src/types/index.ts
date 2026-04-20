@@ -23,6 +23,7 @@ export interface Bin {
 export interface ColumnarData {
   x: Float32Array;
   z: Float32Array;
+  timestampSec: Float64Array;
   timestamp: Float32Array;
   type: Uint8Array;
   district: Uint8Array;

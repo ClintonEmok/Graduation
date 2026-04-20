@@ -5,12 +5,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Clock3, Gauge, Orbit, TimerReset } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getCrimeTypeName } from '@/lib/category-maps';
+import type { TimeBin } from '@/lib/binning/types';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { toEpochSeconds } from '@/lib/time-domain';
 import {
   buildNonUniformDraftBinsFromSelection,
   partitionSelectionByGranularity,
@@ -96,20 +97,23 @@ interface EventSeriesEntry {
   type: string;
 }
 
+interface BinDetail {
+  bin: TimeBin;
+  index: number;
+}
+
 const buildEventSeries = (
-  timestamps: Float32Array | null,
+  timestampSeconds: Float64Array | null,
   types: Uint8Array | null,
-  minTimestampSec: number | null,
-  maxTimestampSec: number | null,
 ): EventSeriesEntry[] => {
-  if (!timestamps || minTimestampSec === null || maxTimestampSec === null || timestamps.length === 0) {
+  if (!timestampSeconds || timestampSeconds.length === 0) {
     return [];
   }
 
-  const result = new Array<EventSeriesEntry>(timestamps.length);
-  for (let i = 0; i < timestamps.length; i += 1) {
+  const result = new Array<EventSeriesEntry>(timestampSeconds.length);
+  for (let i = 0; i < timestampSeconds.length; i += 1) {
     result[i] = {
-      time: toEpochSeconds(timestamps[i]) * 1000,
+      time: timestampSeconds[i] * 1000,
       type: getCrimeTypeName(types?.[i] ?? 0),
     };
   }
@@ -184,14 +188,13 @@ export function NonUniformTimeSlicingShowcase() {
   const [scenario, setScenario] = useState<ScenarioKey>('clustered');
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('auto');
   const [selectedCrimeTypes, setSelectedCrimeTypes] = useState<string[]>([]);
+  const [detailBin, setDetailBin] = useState<BinDetail | null>(null);
   const [startDate, setStartDate] = useState('');
   const [startHour, setStartHour] = useState('00');
   const [endDate, setEndDate] = useState('');
   const [endHour, setEndHour] = useState('00');
   const loadRealData = useTimelineDataStore((state) => state.loadRealData);
   const columns = useTimelineDataStore((state) => state.columns);
-  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
-  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const isLoading = useTimelineDataStore((state) => state.isLoading);
   const isMock = useTimelineDataStore((state) => state.isMock);
   const dataCount = useTimelineDataStore((state) => state.dataCount);
@@ -201,8 +204,8 @@ export function NonUniformTimeSlicingShowcase() {
   }, [loadRealData]);
 
   const eventSeries = useMemo(
-    () => buildEventSeries(columns?.timestamp ?? null, columns?.type ?? null, minTimestampSec, maxTimestampSec),
-    [columns?.timestamp, columns?.type, maxTimestampSec, minTimestampSec]
+    () => buildEventSeries(columns?.timestampSec ?? null, columns?.type ?? null),
+    [columns?.timestampSec, columns?.type]
   );
 
   const eventTimestamps = useMemo(
@@ -249,6 +252,16 @@ export function NonUniformTimeSlicingShowcase() {
     () => pickScenarioWindow(eventTimestamps, scenario, granularity),
     [eventTimestamps, granularity, scenario]
   );
+
+  const autoStartDate = autoSelectionRange ? formatSelectionDateInput(autoSelectionRange[0]) : '';
+  const autoStartHour = autoSelectionRange ? formatSelectionHourInput(autoSelectionRange[0]) : '00';
+  const autoEndDate = autoSelectionRange ? formatSelectionDateInput(autoSelectionRange[1]) : '';
+  const autoEndHour = autoSelectionRange ? formatSelectionHourInput(autoSelectionRange[1]) : '00';
+
+  const startDateValue = selectionMode === 'manual' ? startDate : autoStartDate;
+  const startHourValue = selectionMode === 'manual' ? startHour : autoStartHour;
+  const endDateValue = selectionMode === 'manual' ? endDate : autoEndDate;
+  const endHourValue = selectionMode === 'manual' ? endHour : autoEndHour;
 
   const manualSelectionRange = useMemo(
     () => buildSelectionRangeFromDateHourInputs(startDate, startHour, endDate, endHour),
@@ -411,7 +424,7 @@ export function NonUniformTimeSlicingShowcase() {
                     <span className="uppercase tracking-[0.24em] text-slate-500">Start date</span>
                     <input
                       type="date"
-                      value={startDate}
+                      value={startDateValue}
                       onChange={(event) => {
                         setSelectionMode('manual');
                         setStartDate(event.target.value);
@@ -422,7 +435,7 @@ export function NonUniformTimeSlicingShowcase() {
                   <label className="space-y-2">
                     <span className="uppercase tracking-[0.24em] text-slate-500">Start hour</span>
                     <select
-                      value={startHour}
+                      value={startHourValue}
                       onChange={(event) => {
                         setSelectionMode('manual');
                         setStartHour(event.target.value);
@@ -440,7 +453,7 @@ export function NonUniformTimeSlicingShowcase() {
                     <span className="uppercase tracking-[0.24em] text-slate-500">End date</span>
                     <input
                       type="date"
-                      value={endDate}
+                      value={endDateValue}
                       onChange={(event) => {
                         setSelectionMode('manual');
                         setEndDate(event.target.value);
@@ -451,7 +464,7 @@ export function NonUniformTimeSlicingShowcase() {
                   <label className="space-y-2">
                     <span className="uppercase tracking-[0.24em] text-slate-500">End hour</span>
                     <select
-                      value={endHour}
+                      value={endHourValue}
                       onChange={(event) => {
                         setSelectionMode('manual');
                         setEndHour(event.target.value);
@@ -563,9 +576,20 @@ export function NonUniformTimeSlicingShowcase() {
                               {formatDuration(duration)} · {bin.count} event{bin.count === 1 ? '' : 's'}
                             </p>
                           </div>
-                          <Badge className={`rounded-full ${bin.isNeutralPartition ? 'bg-slate-500/15 text-slate-200' : 'bg-cyan-400/15 text-cyan-100'}`}>
-                            {bin.burstClass ?? 'neutral'}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`rounded-full ${bin.isNeutralPartition ? 'bg-slate-500/15 text-slate-200' : 'bg-cyan-400/15 text-cyan-100'}`}>
+                              {bin.burstClass ?? 'neutral'}
+                            </Badge>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="outline"
+                              className="rounded-full border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
+                              onClick={() => setDetailBin({ bin, index })}
+                            >
+                              Details
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="mt-4 h-3 rounded-full bg-slate-900/80">
@@ -693,6 +717,99 @@ export function NonUniformTimeSlicingShowcase() {
             </div>
           </div>
         </div>
+
+        <Dialog
+          open={detailBin !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDetailBin(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-3xl border-white/10 bg-[#07101c] text-slate-50">
+            <DialogHeader>
+              <DialogTitle>Calculation details</DialogTitle>
+              <DialogDescription className="text-slate-300">
+                {detailBin
+                  ? `${detailBin.index + 1}. ${formatDateTime(detailBin.bin.startTime)} → ${formatDateTime(detailBin.bin.endTime)}`
+                  : 'Verification view for the selected bin.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {detailBin ? (
+              <div className="space-y-4 pt-2 text-sm text-slate-300">
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Burstiness</p>
+                    <p className="mt-2 font-mono text-slate-50">{formatBurstinessCoefficient(detailBin.bin.burstinessCoefficient)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">State</p>
+                    <p className="mt-2 text-slate-50">{formatBurstinessState(detailBin.bin.burstinessCoefficient)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Warp</p>
+                    <p className="mt-2 font-mono text-slate-50">{formatWarpWeight(detailBin.bin.warpWeight)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Coverage</p>
+                    <p className="mt-2 text-slate-50">{formatDuration(detailBin.bin.endTime - detailBin.bin.startTime)}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Formula</p>
+                  <div className="mt-2 rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-xs leading-6 text-slate-100 whitespace-pre-wrap">
+                    {detailBin.bin.burstinessFormula ?? 'B = (σ - μ) / (σ + μ)'}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Calculation</p>
+                  <div className="mt-2 rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-xs leading-6 text-slate-100 whitespace-pre-wrap">
+                    {detailBin.bin.burstinessCalculation ?? 'No calculation available.'}
+                  </div>
+                </div>
+
+                {detailBin.bin.burstinessByType && detailBin.bin.burstinessByType.length > 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Type breakdown</p>
+                    <div className="mt-3 space-y-3">
+                      {detailBin.bin.burstinessByType.map((item) => (
+                        <div key={item.type} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-slate-50">{item.type}</p>
+                              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{item.count} event{item.count === 1 ? '' : 's'}</p>
+                            </div>
+                            <div className="text-right font-mono text-slate-100">
+                              <p>{item.coefficient.toFixed(2)}</p>
+                              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">B</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid gap-3">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Formula</p>
+                              <div className="mt-1 rounded-lg border border-white/10 bg-black/25 p-2 font-mono text-[11px] leading-5 text-slate-100 whitespace-pre-wrap">
+                                {item.formula}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Calculation</p>
+                              <div className="mt-1 rounded-lg border border-white/10 bg-black/25 p-2 font-mono text-[11px] leading-5 text-slate-100 whitespace-pre-wrap">
+                                {item.calculation}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
       </section>
     </main>
   );

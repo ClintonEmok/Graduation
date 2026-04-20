@@ -54,6 +54,8 @@ const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
 const roundToTwoDecimals = (value: number): number => Math.round(value * 100) / 100;
 
+const NEUTRAL_COEFFICIENT_EPSILON = 0.03;
+
 export const partitionSelectionByGranularity = (
   selectionRange: [number, number],
   granularity: DemoSelectionGranularity,
@@ -286,12 +288,50 @@ const buildBurstPartitionBin = (
     burstinessFormula: analysis.formula,
     burstinessCalculation: analysis.calculation,
     burstinessByType: analysis.byType,
-    burstConfidence: Math.round(clamp01(Math.max(0, coefficient)) * 100),
+    burstConfidence: Math.round(clamp01(Math.abs(coefficient)) * 100),
     burstProvenance: `coefficient=${coefficient.toFixed(2)}; avgCoefficient=${averageCoefficient.toFixed(2)}`,
     tieBreakReason: coefficient === maxCoefficient
       ? 'highest burstiness coefficient gets the warp lead'
       : 'lower burstiness stays near-neutral',
     thresholdSource: `granularity:${generationInputs.granularity}; contrast:${Math.round(Math.max(0, coefficient - secondMaxCoefficient) * 100)}%`,
+    neighborhoodSummary: `count=${events.length}; partition=${index + 1}; coefficient=${coefficient.toFixed(2)}`,
+  };
+};
+
+const buildValleyPartitionBin = (
+  partition: DemoSelectionPartition,
+  generationInputs: NonUniformDraftGenerationInputs,
+  index: number,
+  events: TimedEvent[],
+  analysis: PartitionBurstinessAnalysis,
+  minCoefficient: number,
+  secondMinCoefficient: number,
+  averageCoefficient: number,
+): TimeBin => {
+  const coefficient = analysis.coefficient;
+
+  return {
+    id: `non-uniform-draft-${generationInputs.granularity}-${index}`,
+    startTime: partition.startTime,
+    endTime: partition.endTime,
+    count: events.length,
+    crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : ['all-crime-types'],
+    districts: generationInputs.neighbourhood ? [generationInputs.neighbourhood] : undefined,
+    avgTimestamp: (partition.startTime + partition.endTime) / 2,
+    warpWeight: roundToTwoDecimals(Math.max(0.75, 1 + coefficient * 0.25)),
+    burstClass: 'valley',
+    burstRuleVersion: BURST_TAXONOMY_RULE_VERSION,
+    burstScore: analysis.normalizedScore,
+    burstinessCoefficient: coefficient,
+    burstinessFormula: analysis.formula,
+    burstinessCalculation: analysis.calculation,
+    burstinessByType: analysis.byType,
+    burstConfidence: Math.round(clamp01(Math.abs(coefficient)) * 100),
+    burstProvenance: `coefficient=${coefficient.toFixed(2)}; avgCoefficient=${averageCoefficient.toFixed(2)}`,
+    tieBreakReason: coefficient === minCoefficient
+      ? 'lowest burstiness coefficient gets the valley lead'
+      : 'lower burstiness stays in valley form',
+    thresholdSource: `granularity:${generationInputs.granularity}; contrast:${Math.round(Math.abs(coefficient - secondMinCoefficient) * 100)}%`,
     neighborhoodSummary: `count=${events.length}; partition=${index + 1}; coefficient=${coefficient.toFixed(2)}`,
   };
 };
@@ -356,15 +396,18 @@ export const buildNonUniformDraftBinsFromSelection = (
   }
 
   const coefficientValues = analyses.map((analysis) => analysis.coefficient);
-  const maxCoefficient = Math.max(...coefficientValues);
-  const sortedCoefficients = [...coefficientValues].sort((left, right) => right - left);
-  const secondMaxCoefficient = sortedCoefficients[1] ?? 0;
+  const positiveCoefficients = coefficientValues.filter((value) => value > NEUTRAL_COEFFICIENT_EPSILON);
+  const negativeCoefficients = coefficientValues.filter((value) => value < -NEUTRAL_COEFFICIENT_EPSILON);
+  const maxCoefficient = positiveCoefficients.length > 0 ? Math.max(...positiveCoefficients) : Math.max(...coefficientValues);
+  const sortedPositiveCoefficients = [...positiveCoefficients].sort((left, right) => right - left);
+  const secondMaxCoefficient = sortedPositiveCoefficients[1] ?? 0;
+  const minCoefficient = negativeCoefficients.length > 0 ? Math.min(...negativeCoefficients) : Math.min(...coefficientValues);
+  const sortedNegativeCoefficients = [...negativeCoefficients].sort((left, right) => left - right);
+  const secondMinCoefficient = sortedNegativeCoefficients[1] ?? 0;
   const averageCoefficient = coefficientValues.reduce((sum, value) => sum + value, 0) / coefficientValues.length;
-  const noStandout = maxCoefficient <= 0
-    || maxCoefficient <= averageCoefficient + 0.05
-    || (maxCoefficient - secondMaxCoefficient) < 0.15;
+  const noMeaningfulSignal = coefficientValues.every((value) => Math.abs(value) <= NEUTRAL_COEFFICIENT_EPSILON);
 
-  if (noStandout) {
+  if (noMeaningfulSignal) {
     return {
       bins: partitions.map((partition, index) => buildNeutralPartitionBin(
         partition,
@@ -382,16 +425,41 @@ export const buildNonUniformDraftBinsFromSelection = (
     bins: partitions.map((partition, index) => {
       const partitionEvents = groupedEvents[index] ?? [];
       const analysis = analyses[index] ?? calculatePartitionBurstiness(partitionEvents);
+      const coefficient = analysis.coefficient;
 
-      if (analysis.coefficient === maxCoefficient) {
-        return buildBurstPartitionBin(
+      if (coefficient > NEUTRAL_COEFFICIENT_EPSILON) {
+        if (coefficient === maxCoefficient && coefficient > secondMaxCoefficient) {
+          return buildBurstPartitionBin(
+            partition,
+            generationInputs,
+            index,
+            partitionEvents,
+            analysis,
+            maxCoefficient,
+            secondMaxCoefficient,
+            averageCoefficient,
+          );
+        }
+
+        return {
+          ...buildNeutralPartitionBin(partition, generationInputs, index, partitionEvents, analysis),
+          burstClass: 'prolonged-peak',
+          warpWeight: roundToTwoDecimals(1 + coefficient),
+          burstConfidence: Math.round(clamp01(Math.abs(coefficient)) * 100),
+          tieBreakReason: 'positive burstiness stays in prolonged-peak form',
+          thresholdSource: `granularity:${generationInputs.granularity}; contrast:${Math.round(Math.max(0, coefficient - secondMaxCoefficient) * 100)}%`,
+        };
+      }
+
+      if (coefficient < -NEUTRAL_COEFFICIENT_EPSILON) {
+        return buildValleyPartitionBin(
           partition,
           generationInputs,
           index,
           partitionEvents,
           analysis,
-          maxCoefficient,
-          secondMaxCoefficient,
+          minCoefficient,
+          secondMinCoefficient,
           averageCoefficient,
         );
       }

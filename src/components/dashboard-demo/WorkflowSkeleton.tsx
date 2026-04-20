@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
 import { toast } from 'sonner';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { getCrimeTypeName } from '@/lib/category-maps';
 import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
@@ -49,13 +50,22 @@ export function WorkflowSkeleton() {
   const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
+  const timelineColumns = useTimelineDataStore((state) => state.columns);
   const timelineData = useTimelineDataStore((state) => state.data);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
   const availableCrimeTypes = useMemo(
-    () => Array.from(new Set(timelineData.map((point) => point.type).filter((type) => type.trim().length > 0))).sort(),
-    [timelineData]
+    () => {
+      if (timelineColumns?.type && timelineColumns.type.length > 0) {
+        return Array.from(
+          new Set(Array.from(timelineColumns.type, (typeId) => getCrimeTypeName(typeId)).filter((type) => type.trim().length > 0))
+        ).sort();
+      }
+
+      return Array.from(new Set(timelineData.map((point) => point.type).filter((type) => type.trim().length > 0))).sort();
+    },
+    [timelineColumns?.type, timelineData]
   );
   const selectedCrimeTypes = generationInputs.crimeTypes;
 

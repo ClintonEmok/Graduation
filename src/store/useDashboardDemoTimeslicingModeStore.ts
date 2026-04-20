@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getCrimeTypeName } from '@/lib/category-maps';
 import { buildNonUniformDraftBinsFromSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import type { TimeBin } from '@/lib/binning/types';
 import { useTimelineDataStore } from './useTimelineDataStore';
@@ -150,6 +151,22 @@ const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[]
 
 const deleteBin = (bins: TimeBin[], binId: string): TimeBin[] => bins.filter((bin) => bin.id !== binId);
 
+const buildTimelineEvents = () => {
+  const { columns, data } = useTimelineDataStore.getState();
+
+  if (columns?.timestampSec && columns.type) {
+    return {
+      eventTimestamps: Array.from(columns.timestampSec, (timestampSec) => timestampSec * 1000),
+      eventTypes: Array.from(columns.type, (typeId) => getCrimeTypeName(typeId)),
+    };
+  }
+
+  return {
+    eventTimestamps: data.map((point) => point.timestamp),
+    eventTypes: data.map((point) => point.type),
+  };
+};
+
 const BURST_METADATA_KEYS = [
   'burstClass',
   'burstRuleVersion',
@@ -251,14 +268,14 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
 
         set({ generationStatus: 'generating', generationError: null });
 
-        const timelineData = useTimelineDataStore.getState().data;
+        const { eventTimestamps, eventTypes } = buildTimelineEvents();
         const generated = buildNonUniformDraftBinsFromSelection({
           crimeTypes: generationInputs.crimeTypes,
           neighbourhood: generationInputs.neighbourhood,
           timeWindow: generationInputs.timeWindow,
           granularity: generationInputs.granularity === 'hourly' ? 'hourly' : 'daily',
-          eventTimestamps: timelineData.map((point) => point.timestamp),
-          eventTypes: timelineData.map((point) => point.type),
+          eventTimestamps,
+          eventTypes,
         });
 
         if (generated.bins.length === 0) {

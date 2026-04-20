@@ -63,6 +63,7 @@ const formatBurstCoefficient = (value: number | undefined) => {
 
 export function DemoSlicePanel() {
   const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const { currentTime, timeRange, timeResolution } = useDashboardDemoTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -98,6 +99,11 @@ export function DemoSlicePanel() {
     [selectedSliceId, slices]
   );
 
+  const selectedDraft = useMemo(
+    () => pendingGeneratedBins.find((bin) => bin.id === selectedDraftId) ?? null,
+    [pendingGeneratedBins, selectedDraftId]
+  );
+
   const selectionStateLabel = pendingGeneratedBins.length === 0
     ? 'idle'
     : pendingGeneratedBins.every((bin) => bin.isNeutralPartition)
@@ -127,6 +133,10 @@ export function DemoSlicePanel() {
   const selectedSliceLabel = selectedSlice
     ? `${selectedSlice.name?.trim() || (selectedSlice.type === 'range' ? 'Range slice' : 'Point slice')} · ${selectedSlice.type}`
     : 'Read-only metadata for the selected slice.';
+
+  const selectedDraftLabel = selectedDraft
+    ? `${selectedDraft.isNeutralPartition ? 'Neutral draft' : 'Selection-first draft'} · ${selectedDraft.burstClass ?? 'neutral'} · ${selectedDraft.id}`
+    : 'Read-only metadata for the selected draft.';
 
   const visibleWarpSliceCount = useMemo(
     () => slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true)).length,
@@ -290,8 +300,17 @@ export function DemoSlicePanel() {
   }, [pendingGeneratedBins, splitPendingGeneratedBin]);
 
   const handleDeletePendingDraft = useCallback((binId: string) => {
+    if (selectedDraftId === binId) {
+      setSelectedDraftId(null);
+    }
+
     deletePendingGeneratedBin(binId);
-  }, [deletePendingGeneratedBin]);
+  }, [deletePendingGeneratedBin, selectedDraftId]);
+
+  const handleClearPendingDrafts = useCallback(() => {
+    setSelectedDraftId(null);
+    clearPendingGeneratedBins();
+  }, [clearPendingGeneratedBins]);
 
   const handleRemoveSlice = useCallback((sliceId: string) => {
     if (selectedSliceId === sliceId) {
@@ -372,6 +391,17 @@ export function DemoSlicePanel() {
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                       <button
                         type="button"
+                        onClick={() => {
+                          setSelectedSliceId(null);
+                          setSelectedDraftId(bin.id);
+                        }}
+                        className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-100 transition-colors hover:border-amber-400"
+                        title="Open draft details"
+                      >
+                        Details
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleMergePendingDraft(index)}
                         disabled={!isMergeable}
                         className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-100 transition-colors hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
@@ -424,14 +454,14 @@ export function DemoSlicePanel() {
                 >
                   {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
                 </button>
-                <button
-                  type="button"
-                  onClick={clearPendingGeneratedBins}
-                  disabled={pendingGeneratedBins.length === 0}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Clear draft
-                </button>
+                 <button
+                   type="button"
+                   onClick={handleClearPendingDrafts}
+                   disabled={pendingGeneratedBins.length === 0}
+                   className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                 >
+                   Clear draft
+                 </button>
               </div>
               <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
                 <div>{selectionDraftSummary}</div>
@@ -643,7 +673,10 @@ export function DemoSlicePanel() {
                   <div className="flex items-center gap-1 md:justify-end">
                     <button
                       type="button"
-                      onClick={() => setSelectedSliceId(slice.id)}
+                      onClick={() => {
+                        setSelectedDraftId(null);
+                        setSelectedSliceId(slice.id);
+                      }}
                       className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-950 px-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
                       title="Open slice details"
                     >
@@ -760,6 +793,113 @@ export function DemoSlicePanel() {
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">End datetime</div>
                 <div className="mt-2 text-sm text-slate-100">{formatDateTime(selectedSlice.endDateTimeMs)}</div>
               </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={selectedDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedDraftId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl border-slate-800 bg-slate-950 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Draft details</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {selectedDraftLabel}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDraft ? (
+            <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Draft / span</div>
+                <div className="mt-2 text-sm text-slate-100">{selectedDraft.id}</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {formatDateTime(selectedDraft.startTime)} → {formatDateTime(selectedDraft.endTime)}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
+                <div className="mt-2 text-sm text-slate-100">{selectedDraft.burstClass ?? '—'}</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  Burstiness {formatBurstCoefficient(selectedDraft.burstinessCoefficient ?? selectedDraft.burstScore) ?? '—'} · Score {formatBurstCoefficient(selectedDraft.burstScore) ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Warp / state</div>
+                <div className="mt-2 text-sm text-slate-100">Warp weight {(selectedDraft.warpWeight ?? 1).toFixed(2)}</div>
+                <div className="mt-1 text-xs text-slate-400">{selectedDraft.isNeutralPartition ? 'Neutral fallback partition' : 'Expanded partition'}</div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst confidence</div>
+                <div className="mt-2 text-sm text-slate-100">{formatBurstCoefficient(selectedDraft.burstConfidence) ?? '—'}</div>
+                <div className="mt-1 text-xs text-slate-400">{selectedDraft.count} events</div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Crime types</div>
+                <div className="mt-2 text-sm text-slate-100">
+                  {selectedDraft.crimeTypes.includes('all-crime-types') ? 'All crime types' : selectedDraft.crimeTypes.join(', ') || '—'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {selectedDraft.districts?.length ? selectedDraft.districts.join(', ') : 'No district scope'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Provenance / threshold</div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
+                  {selectedDraft.burstProvenance ?? '—'}
+                </div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">
+                  {selectedDraft.thresholdSource ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Tie-break / neighborhood</div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
+                  {selectedDraft.tieBreakReason ?? '—'}
+                </div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">
+                  {selectedDraft.neighborhoodSummary ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burstiness formula</div>
+                <div className="mt-2 font-mono text-sm text-slate-100">{selectedDraft.burstinessFormula ?? 'B = (σ - μ) / (σ + μ)'}</div>
+                <div className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-slate-400">
+                  {selectedDraft.burstinessCalculation ?? '—'}
+                </div>
+              </div>
+
+              {selectedDraft.burstinessByType?.length ? (
+                <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Type breakdown</div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedDraft.burstinessByType.map((item) => (
+                      <div key={item.type} className="rounded border border-slate-800 bg-slate-950/70 p-2">
+                        <div className="text-sm text-slate-100">{item.type}</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          Count {item.count} · B {formatBurstCoefficient(item.coefficient) ?? '—'} · Score {item.normalizedScore}
+                        </div>
+                        <div className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-slate-500">
+                          {item.calculation}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </DialogContent>

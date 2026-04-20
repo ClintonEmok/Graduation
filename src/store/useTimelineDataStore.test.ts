@@ -43,7 +43,7 @@ describe('useTimelineDataStore.loadRealData', () => {
       numRows: 2,
       getChild: (name: string) => {
         if (name === 'timestamp') {
-          return { toArray: () => [1_700_000_000, 1_700_003_600] };
+          return { toArray: () => [1_700_000_000, 1_700_086_400] };
         }
 
         if (name === 'x') {
@@ -105,7 +105,8 @@ describe('useTimelineDataStore.loadRealData', () => {
 
     const { columns, minTimestampSec, maxTimestampSec, isMock, dataCount } = useTimelineDataStore.getState();
 
-    expect(columns?.timestamp).toEqual(new Float32Array([1_700_000_000, 1_700_003_600]));
+    expect(columns?.timestampSec).toEqual(new Float64Array([1_700_000_000, 1_700_086_400]));
+    expect(columns?.timestamp).toEqual(new Float32Array([0, 100]));
     expect(minTimestampSec).toBe(1_700_000_000);
     expect(maxTimestampSec).toBe(1_700_086_400);
     expect(isMock).toBe(false);

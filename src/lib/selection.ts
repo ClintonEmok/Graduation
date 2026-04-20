@@ -15,8 +15,14 @@ const getTimestampSec = (
   index: number,
   minTimestampSec: number | null,
   maxTimestampSec: number | null,
+  columnsTimestampSec?: Float64Array,
   columnsTimestamp?: Float32Array
 ): number | null => {
+  if (columnsTimestampSec) {
+    const value = columnsTimestampSec[index];
+    return Number.isFinite(value) ? value : null;
+  }
+
   if (columnsTimestamp) {
     const value = columnsTimestamp[index];
     if (minTimestampSec !== null && maxTimestampSec !== null) {
@@ -50,7 +56,7 @@ export const resolvePointByIndex = (index: number): SelectionPoint | null => {
     if (index < 0 || index >= columns.length) return null;
     const x = columns.x[index];
     const z = columns.z[index];
-    const timestampSec = getTimestampSec(index, minTimestampSec, maxTimestampSec, columns.timestamp);
+    const timestampSec = getTimestampSec(index, minTimestampSec, maxTimestampSec, columns.timestampSec, columns.timestamp);
     const [lat, lon] = resolveLatLon(x, z, index, columns);
     return { index, x, z, lat, lon, timestampSec };
   }
@@ -79,7 +85,7 @@ export const findNearestIndexByTime = (
     let bestDistance = Number.POSITIVE_INFINITY;
 
     for (let i = 0; i < count; i += 1) {
-      const timestampSec = getTimestampSec(i, minTimestampSec, maxTimestampSec, columns.timestamp);
+      const timestampSec = getTimestampSec(i, minTimestampSec, maxTimestampSec, columns.timestampSec, columns.timestamp);
       if (timestampSec === null) continue;
       const distance = Math.abs(timestampSec - targetSec);
       if (distance < bestDistance) {

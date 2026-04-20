@@ -14,6 +14,7 @@ export interface ColumnarData {
   z: Float32Array;
   lat?: Float32Array;
   lon?: Float32Array;
+  timestampSec: Float64Array;
   timestamp: Float32Array;
   type: Uint8Array;
   district: Uint8Array;

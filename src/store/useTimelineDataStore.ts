@@ -3,6 +3,7 @@ import { MOCK_END_MS, MOCK_END_SEC, MOCK_START_MS, MOCK_START_SEC } from '@/lib/
 import { RecordBatchReader, Table } from 'apache-arrow';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { ColumnarData, DataPoint } from '@/lib/data/types';
+import { epochSecondsToNormalized, toEpochSeconds } from '@/lib/time-domain';
 
 export interface TimelineDataState {
   data: DataPoint[];
@@ -116,7 +117,13 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
 
       const xDataFinal = parquetX ? new Float32Array(parquetX.toArray()) : new Float32Array(count);
       const zDataFinal = parquetZ ? new Float32Array(parquetZ.toArray()) : new Float32Array(count);
-      const timestampData = timestampCol ? new Float32Array(timestampCol.toArray()) : new Float32Array(count);
+      const timestampSecData = timestampCol
+        ? Float64Array.from(timestampCol.toArray().map((value: number) => toEpochSeconds(value)))
+        : new Float64Array(count);
+
+      const timestampData = Float32Array.from(
+        timestampSecData.map((value) => epochSecondsToNormalized(value, minTimeSec, maxTimeSec))
+      );
 
       const latData = latCol ? new Float32Array(latCol.toArray()) : undefined;
       const lonData = lonCol ? new Float32Array(lonCol.toArray()) : undefined;
@@ -144,6 +151,7 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         z: zDataFinal,
         lat: latData,
         lon: lonData,
+        timestampSec: timestampSecData,
         timestamp: timestampData,
         type: typeData,
         district: districtData,
