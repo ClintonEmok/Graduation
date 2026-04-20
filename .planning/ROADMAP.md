@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, demo timeline rewrite, demo stats/STKDE wiring, demo stats/STKDE interaction, demo timeline polish, demo-local preset thresholds, contextual data enrichment, burstiness-driven slice generation, non-uniform time slicing, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. The demo slice pipeline now adds a granularity-driven non-uniform time slicing redesign before workflow isolation so the brushed selection can partition into hourly or daily draft slices that expand bursty intervals while preserving full coverage.
+This roadmap rebuilds the current Next.js modular-monolith around the paper's conceptual tasks plus an isolated slice workflow: overview, dashboard demo UX hardening, demo timeline rewrite, demo stats/STKDE wiring, demo stats/STKDE interaction, demo timeline polish, demo-local preset thresholds, contextual data enrichment, burstiness-driven slice generation, non-uniform time slicing, warping metric scaling, workflow skeleton, workflow handoff, trace, compare, detect, summarize, and burst analysis. The visualization strategy remains a hybrid 2D density projection + 3D Space-Time Cube environment. The demo slice pipeline now adds a granularity-driven non-uniform time slicing redesign plus a warping metric phase before workflow isolation so brushed selections can partition into hourly, daily, weekly, or monthly draft slices that expand and compress bursty intervals while preserving full coverage.
 
 ## Phases
 
@@ -16,10 +16,11 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 - [ ] **Phase 8: Contextual data enrichment** — add demo-local contextual layers beyond districts, such as socioeconomic signals, events, holidays, or traffic context.
 - [ ] **Phase 9: Burstiness-driven slice generation** — turn burst windows into draft slices so the demo can point users toward bursty periods without treating burst mode as a standalone map state.
 - [ ] **Phase 10: Non-uniform time slicing** — partition the brushed selection into hourly or daily bins, score each bin, and expand bursty intervals while preserving full coverage.
-- [ ] **Phase 11: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after burst-driven slice generation is established.
-- [ ] **Phase 12: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
-- [ ] **Phase 13: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
-- [ ] **Phase 14: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
+- [ ] **Phase 11: Warping metric for adaptive time bin scaling** — score same-granularity bins so width warping can expand or compress them without reordering or collapsing the selection.
+- [ ] **Phase 12: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after burst-driven slice generation is established.
+- [ ] **Phase 13: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
+- [ ] **Phase 14: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
+- [ ] **Phase 15: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
 
 ## Phase Details
 
@@ -150,7 +151,7 @@ Plans:
 - `.planning/phases/09-burstiness-driven-slice-generation/09-04-PLAN.md` — wire the demo apply path so burst drafts actually replace the active slice set.
 
 ### Phase 10: Non-uniform time slicing
-**Goal**: Turn the brushed selection into hourly or daily draft slices that expand bursty intervals while still covering the full selected range exactly once.
+**Goal**: Turn the brushed selection into hourly, daily, weekly, or monthly draft slices that expand bursty intervals while still covering the full selected range exactly once.
 **Depends on**: Phase 9
 **Requirements**: VIEW-05, VIEW-06, T4, T6, T7, T8
 **Plans:** 3
@@ -159,31 +160,46 @@ Plans:
 - `.planning/phases/10-selection-first-burst-slice-generation/10-02-PLAN.md` — wire the helper into the demo store and workflow, keep editable draft slices, and show neutral-partition guidance.
 - `.planning/phases/10-selection-first-burst-slice-generation/10-03-PLAN.md` — verify the non-uniform time slicing workflow end to end before workflow isolation resumes.
 **Success Criteria** (what must be TRUE):
-   1. User can choose hourly or daily granularity for the brushed selection.
+   1. User can choose hourly, daily, weekly, or monthly granularity for the brushed selection.
    2. Every timestamp in the brushed range belongs to exactly one generated slice.
    3. Burstiness controls expansion or warp weight rather than dropping sparse bins.
    4. The demo shows neutral-partition guidance instead of silent failure when nothing stands out.
    5. The demo burst workflow is ready for the workflow isolation phase that follows.
 
-### Phase 11: Workflow isolation + dashboard handoff (technical)
-**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after the non-uniform time slicing phase is established, so the workflow stays separate from dashboard analysis until Apply.
+### Phase 11: Warping metric for adaptive time bin scaling
+**Goal**: Define a reusable score engine for same-granularity bins so later warping can expand or compress widths without reordering or collapsing the selection.
 **Depends on**: Phase 10
+**Requirements**: TBD
+**Plans:** 3
+Plans:
+- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-01-PLAN.md` — build a pure comparable-bin warp-scoring helper with test-driven order and minimum-width guarantees.
+- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-02-PLAN.md` — wire the shared helper into the authored warp preview and the non-uniform showcase route.
+- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-03-PLAN.md` — visually verify the shared warp-scoring contract in the browser.
+**Success Criteria** (what must be TRUE):
+   1. User can score bins relative to peer bins of the same granularity.
+   2. User can derive expand/compress factors from the score without changing order.
+   3. User can keep minimum width above zero so bins never collapse away.
+   4. The scoring layer is ready for later automatic and manual warping controls.
+
+### Phase 12: Workflow isolation + dashboard handoff (technical)
+**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after the non-uniform time slicing phase is established, so the workflow stays separate from dashboard analysis until Apply.
+**Depends on**: Phase 11
 **Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
 **Plans:** 4
 Plans:
-- `.planning/phases/11-workflow-isolation/11-01-PLAN.md` — isolate the workflow into a dedicated shell.
-- `.planning/phases/11-workflow-isolation/11-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
-- `.planning/phases/11-workflow-isolation/11-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
-- `.planning/phases/11-workflow-isolation/11-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
+- `.planning/phases/12-workflow-isolation/12-01-PLAN.md` — isolate the workflow into a dedicated shell.
+- `.planning/phases/12-workflow-isolation/12-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
+- `.planning/phases/12-workflow-isolation/12-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
+- `.planning/phases/12-workflow-isolation/12-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
 **Success Criteria** (what must be TRUE):
    1. User can open generate slices as a dedicated full-screen step separate from dashboard analysis.
    2. User can review and edit draft bins with warnings visible before apply.
    3. Apply transitions directly into dashboard analysis without dead-end confirmation screens.
    4. Dashboard receives only applied state and remains isolated from pre-apply workflow concerns.
 
-### Phase 12: Trace trajectories + compare behaviors
+### Phase 13: Trace trajectories + compare behaviors
 **Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
-**Depends on**: Phase 11
+**Depends on**: Phase 12
 **Requirements**: T2, T3, VIEW-02, VIEW-03
 **Success Criteria** (what must be TRUE):
    1. User can follow the temporal evolution of selected incidents/records and aggregated clusters over time.
@@ -191,9 +207,9 @@ Plans:
    3. User can inspect a coordinated 3D Space-Time Cube with time mapped to the vertical axis.
    4. User can synchronize navigation, selection, and brushing/linking between the 2D and 3D views.
 
-### Phase 13: Detect events + decode bursts
+### Phase 14: Detect events + decode bursts
 **Goal**: Non-uniform temporal scaling makes anomalies and burst structure readable while preserving metric duration.
-**Depends on**: Phase 12
+**Depends on**: Phase 13
 **Requirements**: T4, T6, T7, T8, VIEW-05, VIEW-06
 **Success Criteria** (what must be TRUE):
    1. User can identify intersections, pauses, or abrupt changes in activity that deviate from the norm.
@@ -203,9 +219,9 @@ Plans:
    5. User can use non-uniform temporal scaling to expand dense intervals while keeping metric duration visible.
    6. User can distinguish categorical structure with hue and low-confidence events with transparency.
 
-### Phase 14: Support overlays + hardening
+### Phase 15: Support overlays + hardening
 **Goal**: Trust, hotspot, guidance, and performance support stay explicit without undermining the core analytical workflow.
-**Depends on**: Phase 13
+**Depends on**: Phase 14
 **Requirements**: TRUST-01, TRUST-02, TRUST-03, TRUST-04, HOTS-01, HOTS-02, SUGG-01, SUGG-02, PERF-01, PERF-02
 **Success Criteria** (what must be TRUE):
    1. User can see whether the app is loading, ready, or degraded during startup.
@@ -220,7 +236,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15
 
 | Phase | Requirements | Status | Completed |
 |-------|--------------|--------|-----------|
@@ -233,8 +249,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Dashboard-demo preset thresholds | 5 | Not started | - |
 | 8. Contextual data enrichment | 5 | Not started | - |
 | 9. Burstiness-driven slice generation | 0 | In progress  | - |
-| 10. Selection-first burst-slice generation | 0 | In progress | - |
-| 11. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
-| 12. Trace trajectories + compare behaviors | 4 | Not started | - |
-| 13. Detect events + decode bursts | 6 | Not started | - |
-| 14. Support overlays + hardening | 10 | Not started | - |
+| 10. Non-uniform time slicing | 0 | In progress | - |
+| 11. Warping metric for adaptive time bin scaling | 0 | Not started | - |
+| 12. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
+| 13. Trace trajectories + compare behaviors | 4 | Not started | - |
+| 14. Detect events + decode bursts | 6 | Not started | - |
+| 15. Support overlays + hardening | 10 | Not started | - |
