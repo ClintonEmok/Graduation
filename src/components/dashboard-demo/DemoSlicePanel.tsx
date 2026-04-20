@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Eye,
   EyeOff,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
@@ -44,6 +45,14 @@ const parseDateTimeLocalValue = (value: string) => {
 
 const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
 const clampNormalized = (value: number) => Math.min(100, Math.max(0, value));
+const formatDateTime = (value: number | null | undefined) => {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '—';
+  }
+
+  return new Date(value).toLocaleString();
+};
+
 const formatBurstCoefficient = (value: number | undefined) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return null;
@@ -53,6 +62,7 @@ const formatBurstCoefficient = (value: number | undefined) => {
 };
 
 export function DemoSlicePanel() {
+  const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
   const { currentTime, timeRange, timeResolution } = useDashboardDemoTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -67,7 +77,6 @@ export function DemoSlicePanel() {
   const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
 
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
-  const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
   const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
@@ -83,6 +92,11 @@ export function DemoSlicePanel() {
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
+
+  const selectedSlice = useMemo(
+    () => slices.find((slice) => slice.id === selectedSliceId) ?? null,
+    [selectedSliceId, slices]
+  );
 
   const selectionStateLabel = pendingGeneratedBins.length === 0
     ? 'idle'
@@ -109,6 +123,10 @@ export function DemoSlicePanel() {
   const neutralDraftHint = selectionStateLabel === 'neutral'
     ? 'Muted neutral partition keeps the brushed selection evenly split.'
     : 'Selection-first drafts stay editable before apply.';
+
+  const selectedSliceLabel = selectedSlice
+    ? `${selectedSlice.name?.trim() || (selectedSlice.type === 'range' ? 'Range slice' : 'Point slice')} · ${selectedSlice.type}`
+    : 'Read-only metadata for the selected slice.';
 
   const visibleWarpSliceCount = useMemo(
     () => slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true)).length,
@@ -275,6 +293,19 @@ export function DemoSlicePanel() {
     deletePendingGeneratedBin(binId);
   }, [deletePendingGeneratedBin]);
 
+  const handleRemoveSlice = useCallback((sliceId: string) => {
+    if (selectedSliceId === sliceId) {
+      setSelectedSliceId(null);
+    }
+
+    removeSlice(sliceId);
+  }, [removeSlice, selectedSliceId]);
+
+  const handleClearSlices = useCallback(() => {
+    setSelectedSliceId(null);
+    clearSlices();
+  }, [clearSlices]);
+
   return (
     <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100" aria-busy={isComputing}>
       <header className="mb-3 space-y-1">
@@ -435,7 +466,7 @@ export function DemoSlicePanel() {
               </button>
               <button
                 type="button"
-                onClick={clearSlices}
+                onClick={handleClearSlices}
                 className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -612,6 +643,14 @@ export function DemoSlicePanel() {
                   <div className="flex items-center gap-1 md:justify-end">
                     <button
                       type="button"
+                      onClick={() => setSelectedSliceId(slice.id)}
+                      className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-950 px-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
+                      title="Open slice details"
+                    >
+                      Details
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => toggleVisibility(slice.id)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-950 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
                       title={slice.isVisible ? 'Hide slice' : 'Show slice'}
@@ -628,7 +667,7 @@ export function DemoSlicePanel() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => removeSlice(slice.id)}
+                      onClick={() => handleRemoveSlice(slice.id)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-950 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
                       title="Remove slice"
                     >
@@ -641,6 +680,90 @@ export function DemoSlicePanel() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={selectedSlice !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedSliceId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl border-slate-800 bg-slate-950 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Slice details</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {selectedSliceLabel}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSlice ? (
+            <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Name / type</div>
+                <div className="mt-2 text-sm text-slate-100">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
+                <div className="mt-1 text-xs text-slate-400">{selectedSlice.type}</div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
+                <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  Score {formatBurstCoefficient(selectedSlice.burstScore) ?? '—'} · Burstiness {formatBurstCoefficient(selectedSlice.burstinessCoefficient) ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst confidence</div>
+                <div className="mt-2 text-sm text-slate-100">{formatBurstCoefficient(selectedSlice.burstConfidence) ?? '—'}</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  Warp {(selectedSlice.warpEnabled ?? true) ? 'enabled' : 'disabled'} · Strength {(selectedSlice.warpWeight ?? 1).toFixed(2)}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Visibility / lock</div>
+                <div className="mt-2 text-sm text-slate-100">{selectedSlice.isVisible ? 'Visible' : 'Hidden'}</div>
+                <div className="mt-1 text-xs text-slate-400">{selectedSlice.isLocked ? 'Locked' : 'Unlocked'}</div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst provenance</div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
+                  {selectedSlice.burstProvenance ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Tie-break / threshold</div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
+                  {selectedSlice.tieBreakReason ?? '—'}
+                </div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">
+                  {selectedSlice.thresholdSource ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Neighborhood summary</div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
+                  {selectedSlice.neighborhoodSummary ?? '—'}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Start datetime</div>
+                <div className="mt-2 text-sm text-slate-100">{formatDateTime(selectedSlice.startDateTimeMs)}</div>
+              </div>
+
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">End datetime</div>
+                <div className="mt-2 text-sm text-slate-100">{formatDateTime(selectedSlice.endDateTimeMs)}</div>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

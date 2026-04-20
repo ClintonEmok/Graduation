@@ -138,6 +138,9 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
     expect(demoSlicePanelSource).toMatch(/Pending selection-first drafts/);
     expect(demoSlicePanelSource).toMatch(/editable before apply/);
+    expect(demoSlicePanelSource).toMatch(/Details/);
+    expect(demoSlicePanelSource).toMatch(/DialogContent|DialogTitle|DialogDescription/);
+    expect(demoSlicePanelSource).toMatch(/selectedSliceId/);
     expect(demoSlicePanelSource).toMatch(/mergePendingGeneratedBins|splitPendingGeneratedBin|deletePendingGeneratedBin/);
     expect(demoSlicePanelSource).toMatch(/B \{formatBurstCoefficient\(|State /);
     expect(demoSlicePanelSource).toMatch(/Generate selection-first drafts/);
