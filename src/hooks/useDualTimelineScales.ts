@@ -1,6 +1,6 @@
 /**
  * DualTimeline scale transform hook
- * Provides scale computations for dual timeline visualization
+ * Extracts scale computation logic from DualTimeline.tsx
  */
 import { useMemo } from 'react';
 import { scaleLinear, scaleTime, type ScaleLinear, type ScaleTime } from 'd3-scale';
@@ -21,8 +21,8 @@ export interface UseDualTimelineScalesOptions {
 }
 
 /**
- * Creates scale transforms for dual timeline visualization.
- * Provides xScale for pixel mapping and timeScale for temporal mapping.
+ * Creates linear and time scales for the dual timeline visualization.
+ * Used by DualTimeline.tsx for scale computations.
  */
 export function useDualTimelineScales({
   width,
@@ -42,10 +42,8 @@ export function useDualTimelineScales({
     return {
       xScale,
       timeScale,
-      xDomain: [0, width] as [number, number],
+      xDomain: [0, width],
       timeDomain: [new Date(startEpoch * 1000), new Date(endEpoch * 1000)],
     };
   }, [width, height, startEpoch, endEpoch]);
 }
-
-export type { ScaleLinear, ScaleTime };
