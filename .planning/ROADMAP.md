@@ -185,7 +185,7 @@ Plans:
 **Goal:** Refactor god files, extract business logic from components, fix type duplication, create missing utilities, and improve overall code quality following Finoit software architecture best practices.
 **Depends on:** Phase 11
 **Requirements**: TBD
-**Plans:** 5 plans
+**Plans:** 8 plans
 
 Plans:
 - `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-01-PLAN.md` — Type system consolidation
@@ -193,6 +193,9 @@ Plans:
 - `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-03-PLAN.md` — useSuggestionStore split
 - `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-04-PLAN.md` — DualTimeline refactor
 - `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-05-PLAN.md` — DemoDualTimeline refactor
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-06-PLAN.md` — wire the suggestion generator to shared utilities and lock bounds semantics
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-07-PLAN.md` — split DualTimeline into a shared surface and thinner wrapper
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-08-PLAN.md` — apply the shared surface to DemoDualTimeline
 
 ### Phase 13: Trace trajectories + compare behaviors
 **Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
