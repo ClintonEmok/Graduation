@@ -9,18 +9,8 @@ export interface DataPoint {
   [key: string]: any;
 }
 
-export interface ColumnarData {
-  x: Float32Array;
-  z: Float32Array;
-  lat?: Float32Array;
-  lon?: Float32Array;
-  timestampSec: Float64Array;
-  timestamp: Float32Array;
-  type: Uint8Array;
-  district: Uint8Array;
-  block: string[];
-  length: number;
-}
+// Re-export ColumnarData from canonical location
+export type { ColumnarData } from '@/types/data';
 
 export interface FilteredPoint {
   x: number;

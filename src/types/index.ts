@@ -1,3 +1,4 @@
+// Crime visualization types
 export type CrimeType = 'Theft' | 'Assault' | 'Burglary' | 'Robbery' | 'Vandalism' | string;
 
 export interface CrimeEvent {
@@ -20,13 +21,11 @@ export interface Bin {
   dominantType: string;
 }
 
-export interface ColumnarData {
-  x: Float32Array;
-  z: Float32Array;
-  timestampSec: Float64Array;
-  timestamp: Float32Array;
-  type: Uint8Array;
-  district: Uint8Array;
-  block: string[];
-  length: number;
-}
+// Re-export crime types from canonical location
+export type { CrimeRecord, CrimeRecordInput, CrimeViewport, UseCrimeDataOptions, CrimeDataMeta } from './crime';
+
+// Re-export data types from canonical location
+export type { ColumnarData } from './data';
+
+// Re-export adaptive types from canonical location
+export type { AdaptiveBinningMode } from './adaptive';
