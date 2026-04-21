@@ -1,6 +1,7 @@
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
 import {
   buildComparableWarpMap,
+  scoreComparableWarpBins,
   type ComparableWarpBinInput,
   type ComparableWarpMapResult,
 } from '@/lib/binning/warp-scaling';
@@ -85,7 +86,8 @@ export const buildDemoSliceAuthoredWarpMap = (
     } satisfies ComparableWarpBinInput];
   });
 
-  const comparableWarp = buildComparableWarpMap(comparableBins, domain, { minimumWidthShare: 0.08 });
+  const comparableScores = scoreComparableWarpBins(comparableBins);
+  const comparableWarp = buildComparableWarpMap(comparableScores.bins, domain, { minimumWidthShare: 0.08 });
   if (!comparableWarp || comparableWarp.bins.length === 0) {
     return null;
   }
