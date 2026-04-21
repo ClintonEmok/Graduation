@@ -264,6 +264,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     }
     return [0, 100];
   }, [domainOverride, minTimestampSec, maxTimestampSec]);
+  const hasLoadedDomain = minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec;
 
   // Viewport bounds for initial selection (first year)
   const viewportStart = useViewportStore((state) => state.startDate);
@@ -422,6 +423,9 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   useEffect(() => {
     if (!interactive) return;
+    if (!hasLoadedDomain) return;
+
+    // Avoid syncing the normalized fallback range into epoch-backed stores.
     const resolutionSeconds: Record<typeof timeResolution, number> = {
       seconds: 1,
       minutes: 60,
@@ -447,7 +451,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     isSyncingRef.current = true;
     applyRangeToStores(centerSec - span / 2, centerSec + span / 2);
     isSyncingRef.current = false;
-  }, [applyRangeToStores, currentTime, domainEnd, domainStart, interactive, timeResolution]);
+  }, [applyRangeToStores, currentTime, domainEnd, domainStart, hasLoadedDomain, interactive, timeResolution]);
 
   useBrushZoomSync({
     interactive,

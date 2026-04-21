@@ -80,6 +80,8 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/DemoTimelinePanel/);
     expect(shellSource).toMatch(/DashboardDemoRailTabs/);
     expect(shellSource).toMatch(/loadRealData/);
+    expect(shellSource).toMatch(/useViewportStore/);
+    expect(shellSource).toMatch(/setViewport/);
     expect(shellSource).toMatch(/z-40/);
     expect(shellSource).toMatch(/Show map viewport/);
     expect(shellSource).toMatch(/Show cube viewport/);
@@ -184,6 +186,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoFilterStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
+    expect(demoDualTimelineSource).toMatch(/hasLoadedDomain/);
     expect(demoDualTimelineSource).toMatch(/hasVisibleWarpSlices/);
     expect(demoDualTimelineSource).toMatch(/warpEnabled/);
     expect(demoDualTimelineSource).toMatch(/shouldShowWarpReference/);

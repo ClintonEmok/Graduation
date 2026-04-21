@@ -10,6 +10,7 @@ describe('DualTimeline tick rollout wiring', () => {
     expect(source).toMatch(/buildSpanAwareTicks/);
     expect(source).toMatch(/formatSpanAwareTickLabel/);
     expect(source).toMatch(/if \(tickLabelStrategy === 'span-aware'\)/);
+    expect(source).toMatch(/hasLoadedDomain/);
   });
 
   it('requires explicit tick strategy ownership at all audited route callsites', () => {

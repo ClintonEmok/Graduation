@@ -8,16 +8,32 @@ import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 
 type DemoViewport = 'map' | 'cube';
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
   const loadRealData = useTimelineDataStore((state) => state.loadRealData);
+  const setViewport = useViewportStore((state) => state.setViewport);
 
   useEffect(() => {
-    void loadRealData();
-  }, [loadRealData]);
+    let cancelled = false;
+
+    void (async () => {
+      await loadRealData();
+      if (cancelled) return;
+
+      const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+      if (minTimestampSec !== null && maxTimestampSec !== null) {
+        setViewport(minTimestampSec, maxTimestampSec);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRealData, setViewport]);
 
   return (
     <main
