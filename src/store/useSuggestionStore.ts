@@ -3,6 +3,7 @@ import { getCurrentContext, type ContextMode } from '@/hooks/useContextExtractor
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useContextProfileStore } from '@/store/useContextProfileStore';
+import { usePresetStore } from '@/store/usePresetStore';
 import type { AutoProposalSet, RankedAutoProposalSets } from '@/types/autoProposalSet';
 import type {
   SuggestionType,
@@ -16,8 +17,6 @@ import type {
   Suggestion,
   HistoryEntry,
 } from '@/types/suggestion';
-
-const PRESETS_STORAGE_KEY = 'timeslicing-generation-presets-v1';
 
 type UndoAction = {
   id: string;
@@ -42,10 +41,6 @@ interface SuggestionStore {
   
   // Bulk selection state
   selectedIds: Set<string>;
-  
-  // Presets state
-  presets: GenerationPreset[];
-  activePresetId: string | null;
 
   // Undo state
   lastAction: UndoAction | null;
@@ -84,13 +79,7 @@ interface SuggestionStore {
   deselectAll: () => void;
   acceptSelected: () => void;
   rejectSelected: () => void;
-  
-  // Preset actions
-  savePreset: (name: string) => void;
-  deletePreset: (id: string) => void;
-  setActivePreset: (id: string | null) => void;
-  loadPreset: (preset: GenerationPreset) => void;
-  
+
   setPanelOpen: (open: boolean) => void;
   setActiveSuggestion: (id: string | null) => void;
   setHoveredSuggestion: (id: string | null) => void;
@@ -104,7 +93,6 @@ interface SuggestionStore {
   setMinConfidence: (minConfidence: number) => void;
   setGenerationError: (message: string | null) => void;
   setContextMode: (mode: ContextMode) => void;
-  loadPresetsFromStorage: () => void;
 
   // Full-auto package actions
   setFullAutoProposalResults: (result: RankedAutoProposalSets | null) => void;
@@ -119,45 +107,6 @@ interface SuggestionStore {
   addToHistory: (suggestion: Suggestion) => void;
   clearHistory: () => void;
   reapplyFromHistory: (historyId: string) => void;
-}
-
-function persistPresets(presets: GenerationPreset[]): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
-}
-
-function readStoredPresets(): GenerationPreset[] {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
-  const raw = window.localStorage.getItem(PRESETS_STORAGE_KEY);
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as GenerationPreset[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed.filter(
-      (preset) =>
-        typeof preset.id === 'string' &&
-        typeof preset.name === 'string' &&
-        typeof preset.warpCount === 'number' &&
-        typeof preset.intervalCount === 'number' &&
-        (preset.snapToUnit === 'none' || preset.snapToUnit === 'hour' || preset.snapToUnit === 'day') &&
-        (preset.boundaryMethod === 'peak' ||
-          preset.boundaryMethod === 'change-point' ||
-          preset.boundaryMethod === 'rule-based')
-    );
-  } catch {
-    return [];
-  }
 }
 
 export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
@@ -177,10 +126,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
 
   // Bulk selection
   selectedIds: new Set<string>(),
-
-  // Presets
-  presets: [],
-  activePresetId: null,
 
   // Undo state
   lastAction: null,
@@ -445,50 +390,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       ),
       selectedIds: new Set(),
     })),
-  
-  // Preset actions
-  savePreset: (name) =>
-    set((state) => {
-      const preset: GenerationPreset = {
-        id: crypto.randomUUID(),
-        name,
-        warpCount: state.warpCount,
-        intervalCount: state.intervalCount,
-        snapToUnit: state.snapToUnit,
-        boundaryMethod: state.boundaryMethod,
-      };
-      const presets = [...state.presets, preset];
-      persistPresets(presets);
-      return { presets, activePresetId: preset.id };
-    }),
-    
-  deletePreset: (id) =>
-    set((state) => {
-      const presets = state.presets.filter((p) => p.id !== id);
-      persistPresets(presets);
-      return {
-        presets,
-        activePresetId: state.activePresetId === id ? null : state.activePresetId,
-      };
-    }),
-    
-  setActivePreset: (id) => set({ activePresetId: id }),
-  
-  loadPreset: (preset) =>
-    set({
-      warpCount: preset.warpCount,
-      intervalCount: preset.intervalCount,
-      snapToUnit: preset.snapToUnit,
-      boundaryMethod: preset.boundaryMethod,
-      activePresetId: preset.id,
-    }),
-
-  loadPresetsFromStorage: () => {
-    const presets = readStoredPresets();
-    if (presets.length > 0) {
-      set({ presets });
-    }
-  },
 
   setPanelOpen: (open) => set({ isPanelOpen: open }),
 
@@ -553,15 +454,26 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   },
 
   setEmptyState: (empty) => set({ isEmptyState: empty }),
-  
-  setWarpCount: (count) => set({ warpCount: Math.max(0, Math.min(6, count)), activePresetId: null }),
-  
-  setIntervalCount: (count) =>
-    set({ intervalCount: Math.max(0, Math.min(6, count)), activePresetId: null }),
 
-  setSnapToUnit: (value) => set({ snapToUnit: value, activePresetId: null }),
+  setWarpCount: (count) => {
+    usePresetStore.getState().setActivePreset(null);
+    return set({ warpCount: Math.max(0, Math.min(6, count)) });
+  },
 
-  setBoundaryMethod: (value) => set({ boundaryMethod: value, activePresetId: null }),
+  setIntervalCount: (count) => {
+    usePresetStore.getState().setActivePreset(null);
+    return set({ intervalCount: Math.max(0, Math.min(6, count)) });
+  },
+
+  setSnapToUnit: (value) => {
+    usePresetStore.getState().setActivePreset(null);
+    return set({ snapToUnit: value });
+  },
+
+  setBoundaryMethod: (value) => {
+    usePresetStore.getState().setActivePreset(null);
+    return set({ boundaryMethod: value });
+  },
   
   setMinConfidence: (minConfidence) => set({ minConfidence: Math.max(0, Math.min(100, minConfidence)) }),
 
