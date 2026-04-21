@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
+import { clampComparableWarpWeight, type ComparableWarpGranularity } from '@/lib/binning/warp-scaling';
 
 export type AdaptiveBinningMode = 'uniform-time' | 'uniform-events';
 
@@ -10,6 +11,10 @@ interface ComputeMapsOptions {
 interface AdaptiveState {
   warpFactor: number; // 0 = Linear, 1 = Fully Adaptive
   warpSource: 'density' | 'slice-authored' | 'proposal-applied';
+  warpControlMode: 'automatic' | 'manual';
+  warpGranularity: ComparableWarpGranularity;
+  peerRelativeWarping: boolean;
+  manualWarpWeightOverrides: Record<string, number>;
   densityScope: 'viewport' | 'global';
   densityMap: Float32Array | null;
   burstinessMap: Float32Array | null;
@@ -23,6 +28,11 @@ interface AdaptiveState {
   
   setWarpFactor: (v: number) => void;
   setWarpSource: (source: AdaptiveState['warpSource']) => void;
+  setWarpControlMode: (mode: AdaptiveState['warpControlMode']) => void;
+  setWarpGranularity: (granularity: ComparableWarpGranularity) => void;
+  setPeerRelativeWarping: (enabled: boolean) => void;
+  setManualWarpWeightOverride: (binId: string, weight: number) => void;
+  clearManualWarpWeightOverrides: () => void;
   setDensityScope: (scope: AdaptiveState['densityScope']) => void;
   setBurstMetric: (metric: AdaptiveState['burstMetric']) => void;
   setBurstThreshold: (v: number) => void;
@@ -89,6 +99,10 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
     return {
       warpFactor: 0,
       warpSource: 'density',
+      warpControlMode: 'automatic',
+      warpGranularity: 'daily',
+      peerRelativeWarping: true,
+      manualWarpWeightOverrides: {},
       densityScope: 'viewport',
       densityMap: null,
       burstinessMap: null,
@@ -102,6 +116,17 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
       
       setWarpFactor: (v) => set({ warpFactor: v }),
       setWarpSource: (source) => set({ warpSource: source }),
+      setWarpControlMode: (mode) => set({ warpControlMode: mode }),
+      setWarpGranularity: (granularity) => set({ warpGranularity: granularity }),
+      setPeerRelativeWarping: (enabled) => set({ peerRelativeWarping: enabled }),
+      setManualWarpWeightOverride: (binId, weight) =>
+        set((state) => ({
+          manualWarpWeightOverrides: {
+            ...state.manualWarpWeightOverrides,
+            [binId]: clampComparableWarpWeight(weight),
+          },
+        })),
+      clearManualWarpWeightOverrides: () => set({ manualWarpWeightOverrides: {} }),
       setDensityScope: (scope) => {
         activeRequestId += 1;
         set({ densityScope: scope, isComputing: false });
@@ -127,6 +152,10 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           return {
             warpFactor: 0,
             warpSource: 'density',
+            warpControlMode: 'automatic',
+            warpGranularity: 'daily',
+            peerRelativeWarping: true,
+            manualWarpWeightOverrides: {},
             densityScope: 'viewport',
             burstMetric: 'density',
             burstThreshold: nextThreshold,
