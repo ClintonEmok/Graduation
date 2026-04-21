@@ -10,6 +10,9 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
+import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
+import { useDualTimelineScales } from '@/hooks/useDualTimelineScales';
+import { formatDateByResolution, type DateResolution } from '@/lib/date-formatting';
 import {
   select,
   selectActiveSliceId,
@@ -50,17 +53,6 @@ const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
 const TIME_CURSOR_COLOR = '#10b981';
-
-const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
-  amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
-  blue: { fill: 'rgba(59, 130, 246, 0.24)', stroke: 'rgba(96, 165, 250, 0.9)' },
-  green: { fill: 'rgba(34, 197, 94, 0.26)', stroke: 'rgba(74, 222, 128, 0.9)' },
-  red: { fill: 'rgba(248, 113, 113, 0.26)', stroke: 'rgba(252, 165, 165, 0.9)' },
-  purple: { fill: 'rgba(167, 139, 250, 0.24)', stroke: 'rgba(196, 181, 253, 0.9)' },
-  cyan: { fill: 'rgba(34, 211, 238, 0.24)', stroke: 'rgba(103, 232, 249, 0.9)' },
-  pink: { fill: 'rgba(244, 114, 182, 0.26)', stroke: 'rgba(251, 207, 232, 0.9)' },
-  gray: { fill: 'rgba(148, 163, 184, 0.24)', stroke: 'rgba(203, 213, 225, 0.9)' },
-};
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
@@ -129,13 +121,6 @@ interface TimelineSliceGeometry {
   overlapCount: number;
   color: string | undefined;
 }
-
-const resolveSliceColor = (color?: string): { fill: string; stroke: string } => {
-  if (!color) {
-    return { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
-  }
-  return SLICE_COLOR_PALETTE[color] ?? { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
-};
 
 interface DualTimelineProps {
   adaptiveWarpMapOverride?: Float32Array | null;
