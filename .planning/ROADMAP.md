@@ -172,7 +172,7 @@ Plans:
 **Requirements**: TBD
 **Plans:** 3
 Plans:
-- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-01-PLAN.md` — build a pure comparable-bin warp-scoring helper with test-driven order and minimum-width guarantees.
+- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-01-PLAN.md` — done: build a pure comparable-bin warp-scoring helper with test-driven order and minimum-width guarantees.
 - `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-02-PLAN.md` — wire the shared helper into the authored warp preview and the non-uniform showcase route.
 - `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-03-PLAN.md` — visually verify the shared warp-scoring contract in the browser.
 **Success Criteria** (what must be TRUE):
@@ -250,8 +250,18 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Contextual data enrichment | 5 | Not started | - |
 | 9. Burstiness-driven slice generation | 0 | In progress  | - |
 | 10. Non-uniform time slicing | 0 | In progress | - |
-| 11. Warping metric for adaptive time bin scaling | 0 | Not started | - |
+| 11. Warping metric for adaptive time bin scaling | 0 | In progress | - |
 | 12. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
 | 13. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 14. Detect events + decode bursts | 6 | Not started | - |
 | 15. Support overlays + hardening | 10 | Not started | - |
+
+### Phase 16: Codebase rewrite to improve code quality and proper seperation of logic from UI where possible.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16 to break down)

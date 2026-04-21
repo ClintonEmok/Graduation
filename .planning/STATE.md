@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-04-19T07:15:32Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-04-21T13:11:53Z"
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 8
-  total_plans: 25
-  completed_plans: 19
+  total_plans: 28
+  completed_plans: 20
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 10 — selection-first-burst-slice-generation
+**Current focus:** Phase 11 — warping-metric-for-adaptive-time-bin-scaling
 
 ## Current Position
 
-Phase: 10 (selection-first-burst-slice-generation) — EXECUTING
+Phase: 11 (warping-metric-for-adaptive-time-bin-scaling) — EXECUTING
 Plan: 2 of 3
 
 ## Performance Metrics
@@ -51,6 +51,8 @@ Plan: 2 of 3
 | 11 | 0 | 0 | - |
 | 12 | 0 | 0 | - |
 | 13 | 0 | 0 | - |
+| 14 | 0 | 0 | - |
+| 15 | 0 | 0 | - |
 
 **Recent Trend:**
 
@@ -63,6 +65,8 @@ Plan: 2 of 3
 
 - Phase 9 added: Burstiness-driven slice generation
 - Phase 10 reworked: Non-uniform time slicing.
+- Phase 11 added: Warping metric for adaptive time bin scaling.
+- Phase 16 added: Codebase rewrite to improve code quality and proper seperation of logic from UI where possible.
 
 ### Decisions
 
@@ -111,6 +115,7 @@ Plan: 2 of 3
 - Lock pending-draft edit wiring with source-inspection coverage instead of route behavior changes.
 - Partition brushed selections first for the phase 10 helper layer, then use burst scoring only to tune warp metadata.
 - Preserve exact coverage of the brushed interval and return a neutral partition when no bin stands out.
+- Expand the shared comparable-bin scorer to support monthly granularity alongside hourly, daily, and weekly bins.
 - Treat the brushed selection as the canonical input for demo draft generation.
 - Default the demo generator to daily granularity and all crime types unless narrowed.
 - Preserve burst metadata and warp weight through merge, split, and apply operations.
@@ -127,7 +132,8 @@ Plan: 2 of 3
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
 - Phase 9 burstiness-driven slice generation remains in progress.
 - Phase 10 non-uniform time slicing has the helper layer and workflow wiring complete for plans 01-02.
-- Phase 11 workflow isolation plan follows after the redesigned burst phase.
+- Phase 11 warping metric plan 01 is complete; plans 02-03 remain queued before workflow isolation.
+- Phase 12 workflow isolation plan follows after the redesigned burst phase.
 
 ### Blockers/Concerns
 
