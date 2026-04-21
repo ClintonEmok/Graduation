@@ -21,6 +21,30 @@ describe('comparable warp scaling', () => {
     expect(result.bins[1]?.peerRelativeScore).toBeGreaterThan(1);
   });
 
+  test('scores monthly peers without falling back to neutral', () => {
+    const result = scoreComparableWarpBins([
+      { id: 'a', startTime: 0, endTime: 31, count: 3, granularity: 'monthly' },
+      { id: 'b', startTime: 31, endTime: 62, count: 15, granularity: 'monthly' },
+      { id: 'c', startTime: 62, endTime: 93, count: 3, granularity: 'monthly' },
+    ]);
+
+    expect(result.neutralFallback).toBe(false);
+    expect(result.granularity).toBe('monthly');
+    expect(result.bins.map((bin) => bin.id)).toEqual(['a', 'b', 'c']);
+    expect(result.bins[1]?.warpWeight).toBeGreaterThan(result.bins[0]?.warpWeight ?? 0);
+  });
+
+  test('keeps mixed-granularity input on the neutral fallback path', () => {
+    const result = scoreComparableWarpBins([
+      { id: 'a', startTime: 0, endTime: 10, count: 4, granularity: 'daily' },
+      { id: 'b', startTime: 10, endTime: 20, count: 9, granularity: 'weekly' },
+    ]);
+
+    expect(result.neutralFallback).toBe(true);
+    expect(result.bins.every((bin) => bin.warpWeight === 1)).toBe(true);
+    expect(result.bins.every((bin) => bin.isNeutralPartition)).toBe(true);
+  });
+
   test('keeps visible minimum widths when building the warp map', () => {
     const result = buildComparableWarpMap([
       { id: 'a', startTime: 0, endTime: 10, count: 1, granularity: 'daily' },

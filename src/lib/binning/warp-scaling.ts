@@ -3,7 +3,7 @@ const MAX_WARP_WEIGHT = 4;
 const DEFAULT_MINIMUM_WIDTH_SHARE = 0.08;
 const EPSILON = 1e-9;
 
-export type ComparableWarpGranularity = 'hourly' | 'daily' | 'weekly';
+export type ComparableWarpGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly';
 
 export interface ComparableWarpBinInput {
   id: string;
@@ -42,7 +42,7 @@ export interface ComparableWarpMapOptions {
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
 const isComparableWarpGranularity = (value: string): value is ComparableWarpGranularity =>
-  value === 'hourly' || value === 'daily' || value === 'weekly';
+  value === 'hourly' || value === 'daily' || value === 'weekly' || value === 'monthly';
 
 const normalizeGranularity = (value: unknown): ComparableWarpGranularity | null =>
   typeof value === 'string' && isComparableWarpGranularity(value) ? value : null;
