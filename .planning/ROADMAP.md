@@ -16,7 +16,7 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 - [ ] **Phase 8: Contextual data enrichment** — add demo-local contextual layers beyond districts, such as socioeconomic signals, events, holidays, or traffic context.
 - [ ] **Phase 9: Burstiness-driven slice generation** — turn burst windows into draft slices so the demo can point users toward bursty periods without treating burst mode as a standalone map state.
 - [ ] **Phase 10: Non-uniform time slicing** — partition the brushed selection into hourly or daily bins, score each bin, and expand bursty intervals while preserving full coverage.
-- [ ] **Phase 11: Warping metric for adaptive time bin scaling** — score same-granularity bins so width warping can expand or compress them without reordering or collapsing the selection.
+- [x] **Phase 11: Warping metric for adaptive time bin scaling** — score same-granularity bins so width warping can expand or compress them without reordering or collapsing the selection. (completed 2026-04-21)
 - [ ] **Phase 12: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after burst-driven slice generation is established.
 - [ ] **Phase 13: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
 - [ ] **Phase 14: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
@@ -170,7 +170,7 @@ Plans:
 **Goal**: Define a reusable score engine for same-granularity bins so later warping can expand or compress widths without reordering or collapsing the selection.
 **Depends on**: Phase 10
 **Requirements**: TBD
-**Plans:** 3
+**Plans:** 3/3 plans complete
 Plans:
 - `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-01-PLAN.md` — done: build a pure comparable-bin warp-scoring helper with test-driven order and minimum-width guarantees.
 - `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-02-PLAN.md` — done: wire the shared helper into the authored warp preview and the non-uniform showcase route.
@@ -250,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Contextual data enrichment | 5 | Not started | - |
 | 9. Burstiness-driven slice generation | 0 | In progress  | - |
 | 10. Non-uniform time slicing | 0 | In progress | - |
-| 11. Warping metric for adaptive time bin scaling | 0 | In progress | - |
+| 11. Warping metric for adaptive time bin scaling | 0 | Complete    | 2026-04-21 |
 | 12. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
 | 13. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 14. Detect events + decode bursts | 6 | Not started | - |

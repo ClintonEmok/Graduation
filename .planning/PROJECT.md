@@ -28,6 +28,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 - Synchronized navigation, selection, and brushing/linking between 2D and 3D views.
 - Timeline slider to define active temporal windows.
 - Non-uniform temporal scaling to expand dense intervals without hiding metric duration.
+- Comparable-bin warp scoring for demo preview surfaces so same-granularity bins stay ordered and visible.
 - Hue for categorical discrimination and transparency for low-confidence events.
 
 ### Support Features
@@ -69,6 +70,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 | Keep the App Router modular monolith structure | Matches the existing codebase and keeps feature boundaries clear | ✓ Good |
 | Pair 2D density with 3D STC views | Matches the paper's hybrid visualization design and supports overview + trace tasks | ✓ Good |
 | Use non-uniform temporal scaling for burst analysis | Preserves metric duration while making burst order legible | ✓ Good |
+| Use shared comparable-bin warp scoring for demo previews | Keeps same-granularity warp widths visible without reordering or collapsing bins | ✓ Good |
 | Keep hotspot and guidance features as support features | They help analysis without becoming the main task model | ✓ Good |
 | Run adaptive-time computation in Web Workers | Prevents expensive warp calculations from blocking interaction | ✓ Good |
 | Keep generate, review, and apply isolated from the dashboard | Keeps the workflow focused and makes the conceptual tasks easier to test | ✓ Good |
@@ -91,4 +93,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-09 after paper-task remap*
+*Last updated: 2026-04-21 after phase 11 warp-scoring validation*
