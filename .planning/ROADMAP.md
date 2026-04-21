@@ -173,7 +173,7 @@ Plans:
 **Plans:** 3
 Plans:
 - `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-01-PLAN.md` — done: build a pure comparable-bin warp-scoring helper with test-driven order and minimum-width guarantees.
-- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-02-PLAN.md` — wire the shared helper into the authored warp preview and the non-uniform showcase route.
+- `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-02-PLAN.md` — done: wire the shared helper into the authored warp preview and the non-uniform showcase route.
 - `.planning/phases/11-warping-metric-for-adaptive-time-bin-scaling/11-03-PLAN.md` — visually verify the shared warp-scoring contract in the browser.
 **Success Criteria** (what must be TRUE):
    1. User can score bins relative to peer bins of the same granularity.
