@@ -3,17 +3,8 @@ export type QueryFragment = {
   params: unknown[];
 };
 
-export interface CrimeRecord {
-  timestamp: number;
-  type: string;
-  lat: number;
-  lon: number;
-  x: number;
-  z: number;
-  iucr: string;
-  district: string;
-  year: number;
-}
+// Re-export CrimeRecord and related types from canonical location
+export type { CrimeRecord, CrimeRecordInput, CrimeViewport, UseCrimeDataOptions, CrimeDataMeta } from '@/types/crime';
 
 export interface QueryCrimesOptions {
   limit?: number;
@@ -27,7 +18,8 @@ export interface QueryFilters {
   districts?: string[];
 }
 
-export type AdaptiveBinningMode = 'uniform-time' | 'uniform-events';
+// Re-export AdaptiveBinningMode from canonical location
+export type { AdaptiveBinningMode } from '@/types/adaptive';
 
 export interface GlobalAdaptiveMaps {
   binCount: number;

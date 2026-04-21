@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { clampComparableWarpWeight, type ComparableWarpGranularity } from '@/lib/binning/warp-scaling';
-
-export type AdaptiveBinningMode = 'uniform-time' | 'uniform-events';
+import { type AdaptiveBinningMode } from '@/types/adaptive';
 
 interface ComputeMapsOptions {
   binningMode?: AdaptiveBinningMode;
