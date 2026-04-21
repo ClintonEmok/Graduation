@@ -1,6 +1,6 @@
 /**
  * Slice geometry computation utilities
- * Extracted from DualTimeline.tsx slice geometry computation
+ * Extracted from DualTimeline.tsx for reusable slice rendering logic
  */
 import type { TimeSlice } from '@/store/slice-domain/types';
 
@@ -21,8 +21,7 @@ export interface ComputeSliceGeometryOptions {
 }
 
 /**
- * Computes geometry (position, dimensions, opacity) for a single slice.
- * Maps normalized slice coordinates to pixel space using provided scales.
+ * Compute geometry for a single time slice
  */
 export function computeSliceGeometry({
   slice,
@@ -51,8 +50,7 @@ export interface SliceCluster {
 }
 
 /**
- * Groups slices into clusters based on gap threshold.
- * Slices with gaps smaller than threshold are grouped together.
+ * Group slices into clusters based on gap threshold
  */
 export function clusterSlices(
   slices: TimeSlice[],
@@ -95,24 +93,7 @@ export function clusterSlices(
 }
 
 /**
- * Timeline slice geometry interface for DualTimeline rendering
- */
-export interface TimelineSliceGeometry {
-  id: string;
-  left: number;
-  width: number;
-  isActive: boolean;
-  isBurst: boolean;
-  isPoint: boolean;
-  isSuggestion: boolean;
-  isGeneratedDraft: boolean;
-  isGeneratedApplied: boolean;
-  overlapCount: number;
-  color: string | undefined;
-}
-
-/**
- * Slice color palette for visualization
+ * Slice color palette for timeline visualization
  */
 export const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
   amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
@@ -126,16 +107,16 @@ export const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string 
 };
 
 /**
- * Resolves slice color from palette or returns default
+ * Default slice color when none specified
+ */
+export const DEFAULT_SLICE_COLOR = { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+
+/**
+ * Resolve slice color from color name
  */
 export function resolveSliceColor(color?: string): { fill: string; stroke: string } {
   if (!color) {
-    return { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+    return DEFAULT_SLICE_COLOR;
   }
-  return SLICE_COLOR_PALETTE[color] ?? { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
+  return SLICE_COLOR_PALETTE[color] ?? DEFAULT_SLICE_COLOR;
 }
-
-/**
- * Default slice color used when no color specified
- */
-export const DEFAULT_SLICE_COLOR = { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
