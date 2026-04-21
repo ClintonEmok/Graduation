@@ -43,6 +43,9 @@ import {
   formatSpanAwareTickLabel,
   type TickLabelStrategy,
 } from './lib/tick-ux';
+import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
+import { useDualTimelineScales } from '@/hooks/useDualTimelineScales';
+import { formatDateByResolution } from '@/lib/date-formatting';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -52,17 +55,6 @@ const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
 const TIME_CURSOR_COLOR = '#10b981';
-
-const SLICE_COLOR_PALETTE: Record<string, { fill: string; stroke: string }> = {
-  amber: { fill: 'rgba(251, 191, 36, 0.28)', stroke: 'rgba(251, 191, 36, 0.9)' },
-  blue: { fill: 'rgba(59, 130, 246, 0.24)', stroke: 'rgba(96, 165, 250, 0.9)' },
-  green: { fill: 'rgba(34, 197, 94, 0.26)', stroke: 'rgba(74, 222, 128, 0.9)' },
-  red: { fill: 'rgba(248, 113, 113, 0.26)', stroke: 'rgba(252, 165, 165, 0.9)' },
-  purple: { fill: 'rgba(167, 139, 250, 0.24)', stroke: 'rgba(196, 181, 253, 0.9)' },
-  cyan: { fill: 'rgba(34, 211, 238, 0.24)', stroke: 'rgba(103, 232, 249, 0.9)' },
-  pink: { fill: 'rgba(244, 114, 182, 0.26)', stroke: 'rgba(251, 207, 232, 0.9)' },
-  gray: { fill: 'rgba(148, 163, 184, 0.24)', stroke: 'rgba(203, 213, 225, 0.9)' },
-};
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
@@ -184,13 +176,6 @@ interface TimelineSliceGeometry {
   warpWeight: number;
 }
 
-const resolveSliceColor = (color?: string): { fill: string; stroke: string } => {
-  if (!color) {
-    return { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
-  }
-  return SLICE_COLOR_PALETTE[color] ?? { fill: 'rgba(34, 211, 238, 0.22)', stroke: 'rgba(103, 232, 249, 0.8)' };
-};
-
 interface DemoDualTimelineProps {
   domainOverride?: [number, number];
   detailRangeOverride?: [number, number];
@@ -266,7 +251,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
   // Get viewport store for brush/zoom sync
   const setViewport = useViewportStore((state) => state.setViewport);
-  
+
   // NOTE: Viewport stays at initial default (2001-2002) until user zooms/brushes
   // This enables fast initial load - only fetching first year of data
   // The useViewportCrimeData hook fetches data for the current viewport range
@@ -376,7 +361,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   }, [timestampSecondsOverride, timestampSeconds, domainStart, domainEnd]);
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
-  
+
   // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
     if (detailPointsOverride) {
@@ -393,7 +378,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       const step = Math.ceil(points.length / maxPoints);
       return points.filter((_, index) => index % step === 0);
     }
-    
+
     // Fallback to computed timestampSeconds
     if (!timestampSeconds.length) return [];
     const [start, end] = detailRangeSec;
@@ -1073,7 +1058,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
               const strokeWidth = warpEnabled
                 ? slice.isActive
                   ? 1.8 + warpStrength * 0.8
-                : 1 + warpStrength * 0.6
+                  : 1 + warpStrength * 0.6
                 : slice.isActive
                   ? 1.4
                   : 1;
@@ -1200,8 +1185,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
               </pattern>
             </defs>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
-            {resolvedDetailRenderMode === 'points'
-              ? detailPoints.map((timestamp, index) => {
+              {resolvedDetailRenderMode === 'points'
+                ? detailPoints.map((timestamp, index) => {
                   const x = detailScale(new Date(timestamp * 1000));
                   return (
                     <circle
@@ -1213,7 +1198,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                     />
                   );
                 })
-              : detailBins.map((bucket, index) => {
+                : detailBins.map((bucket, index) => {
                   if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
                   const x0 = detailScale(new Date(bucket.x0 * 1000));
                   const x1 = detailScale(new Date(bucket.x1 * 1000));
@@ -1230,323 +1215,314 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
                     />
                   );
                 })}
-            {userWarpOverlayBands.map((slice) => {
-              if (!Number.isFinite(slice.startSec) || !Number.isFinite(slice.endSec)) {
-                return null;
-              }
-              const x0 = detailScale(new Date(slice.startSec * 1000));
-              const x1 = detailScale(new Date(slice.endSec * 1000));
-              if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
-                return null;
-              }
-              const left = Math.min(x0, x1);
-              const widthSpan = Math.max(1, Math.abs(x1 - x0));
-              if (!Number.isFinite(left) || !Number.isFinite(widthSpan)) {
-                return null;
-              }
-              return (
-                <g key={`detail-user-warp-${slice.id}`}>
-                  <rect
-                    x={left}
-                    y={3}
-                    width={widthSpan}
-                    height={DETAIL_HEIGHT - 6}
-                    rx={3}
-                    fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.08)' : 'rgba(139, 92, 246, 0.06)'}
-                  />
-                  <rect
-                    x={left}
-                    y={3}
-                    width={widthSpan}
-                    height={DETAIL_HEIGHT - 6}
-                    rx={3}
-                    fill="none"
-                    stroke={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.45)' : 'rgba(139, 92, 246, 0.3)'}
-                    strokeDasharray="4 3"
-                    strokeWidth={1}
-                  />
-                </g>
-              );
-            })}
-
-            {orderedSliceGeometries.map((geometry) => {
-              const color = resolveSliceColor(geometry.color);
-              const warpStrength = Math.max(0, Math.min(1, geometry.warpWeight / 3));
-              const warpEnabled = geometry.warpEnabled;
-              const shouldShowWarpReference = effectiveTimeScaleMode === 'adaptive' && warpEnabled;
-              const baseOpacity = geometry.isActive
-                ? warpEnabled
-                  ? 0.64 + warpStrength * 0.2
-                  : 0.56
-                : geometry.overlapCount >= 3
-                  ? warpEnabled
-                    ? 0.16 + warpStrength * 0.1
-                    : 0.14
-                  : geometry.overlapCount === 2
-                    ? warpEnabled
-                      ? 0.24 + warpStrength * 0.12
-                      : 0.22
-                    : warpEnabled
-                      ? 0.34 + warpStrength * 0.14
-                      : 0.28;
-
-              // Suggestion slices get a distinct violet styling
-              const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
-              const isGeneratedAppliedSlice = geometry.isGeneratedApplied;
-              const suggestionFill = 'rgba(139, 92, 246, 0.2)';
-              const suggestionStroke = 'rgba(167, 139, 250, 0.85)';
-
-              return (
-                <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
-                  {shouldShowWarpReference ? (
+              {userWarpOverlayBands.map((slice) => {
+                if (!Number.isFinite(slice.startSec) || !Number.isFinite(slice.endSec)) {
+                  return null;
+                }
+                const x0 = detailScale(new Date(slice.startSec * 1000));
+                const x1 = detailScale(new Date(slice.endSec * 1000));
+                if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
+                  return null;
+                }
+                const left = Math.min(x0, x1);
+                const widthSpan = Math.max(1, Math.abs(x1 - x0));
+                if (!Number.isFinite(left) || !Number.isFinite(widthSpan)) {
+                  return null;
+                }
+                return (
+                  <g key={`detail-user-warp-${slice.id}`}>
                     <rect
-                      x={geometry.rawLeft}
+                      x={left}
                       y={3}
-                      width={Math.max(2, geometry.rawWidth)}
+                      width={widthSpan}
                       height={DETAIL_HEIGHT - 6}
                       rx={3}
-                      fill="rgba(148, 163, 184, 0.06)"
-                      stroke="rgba(148, 163, 184, 0.42)"
-                      strokeWidth={1}
-                      strokeDasharray="2 3"
+                      fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.08)' : 'rgba(139, 92, 246, 0.06)'}
                     />
-                  ) : null}
-                  <rect
-                    x={geometry.left}
-                    y={3}
-                    width={Math.max(2, geometry.width)}
-                    height={DETAIL_HEIGHT - 6}
-                    rx={3}
-                    fill={isGeneratedAppliedSlice
-                      ? 'rgba(16, 185, 129, 0.18)'
-                      : isSuggestionSlice
-                        ? suggestionFill
-                        : geometry.isBurst
-                          ? 'rgba(251, 146, 60, 0.26)'
-                          : warpEnabled
-                            ? color.fill
-                            : 'rgba(148, 163, 184, 0.16)'}
-                    stroke={isGeneratedAppliedSlice
-                      ? 'rgba(74, 222, 128, 0.92)'
-                      : isSuggestionSlice
-                        ? suggestionStroke
-                        : geometry.isBurst
-                          ? 'rgba(251, 146, 60, 0.85)'
-                          : warpEnabled
-                            ? color.stroke
-                            : 'rgba(148, 163, 184, 0.78)'}
-                    strokeWidth={
-                      geometry.isActive
-                        ? 2 + (warpEnabled ? warpStrength * 0.9 : 0)
-                        : geometry.overlapCount >= 2
-                          ? 1.4 + (warpEnabled ? warpStrength * 0.5 : 0)
-                          : 1 + (warpEnabled ? warpStrength * 0.35 : 0)
-                    }
-                    strokeDasharray={
-                      !warpEnabled
-                        ? '2 3'
-                        : geometry.overlapCount >= 3 || isSuggestionSlice
-                          ? '5 3'
-                          : isGeneratedAppliedSlice
-                            ? '8 2'
-                            : undefined
-                    }
-                    opacity={baseOpacity}
-                  />
-                  {geometry.overlapCount >= 2 && !geometry.isActive && (
                     <rect
-                      x={geometry.left}
+                      x={left}
                       y={3}
-                      width={Math.max(2, geometry.width)}
+                      width={widthSpan}
                       height={DETAIL_HEIGHT - 6}
-                      rx={3}
-                      fill="url(#sliceOverlapHatch)"
-                      opacity={geometry.overlapCount >= 3 ? 0.42 : 0.3}
-                    />
-                  )}
-                  {geometry.isActive && (
-                    <rect
-                      x={geometry.left}
-                      y={2}
-                      width={Math.max(2, geometry.width)}
-                      height={DETAIL_HEIGHT - 4}
                       rx={3}
                       fill="none"
-                      stroke={geometry.isBurst ? 'rgba(253, 186, 116, 0.95)' : 'rgba(125, 211, 252, 0.95)'}
-                      strokeWidth={2.2}
-                      opacity={0.9}
-                    >
-                      <animate attributeName="opacity" values="0.55;1;0.55" dur="1.8s" repeatCount="indefinite" />
-                    </rect>
-                  )}
-                </g>
-              );
-            })}
-
-            {pendingGeneratedGeometries.map((geometry) => (
-              <g key={geometry.id}>
-                {(() => {
-                  const pendingDraft = pendingGeneratedBinsByGeometryId.get(geometry.id);
-                  const burstCoefficient = formatBurstCoefficient(pendingDraft?.burstScore);
-                  const draftLabelY = 6;
-                  const draftRectY = burstCoefficient ? 18 : 8;
-                  const draftRectHeight = burstCoefficient ? DETAIL_HEIGHT - 26 : DETAIL_HEIGHT - 16;
-                  const accentY = burstCoefficient ? 19 : 9;
-
-                  return (
-                    <>
-                <text
-                  x={geometry.left + 4}
-                  y={draftLabelY}
-                  fontSize={9}
-                  fill="rgba(254, 243, 199, 0.95)"
-                  className="uppercase tracking-[0.18em]"
-                >
-                  Editable burst draft
-                </text>
-                {burstCoefficient ? (
-                  <text
-                    x={geometry.left + 4}
-                    y={16}
-                    fontSize={9}
-                    fill="rgba(254, 243, 199, 0.9)"
-                    className="uppercase tracking-[0.16em]"
-                  >
-                    Burstiness coefficient {burstCoefficient}
-                  </text>
-                ) : null}
-                <rect
-                  x={geometry.left}
-                  y={draftRectY}
-                  width={Math.max(2, geometry.width)}
-                  height={draftRectHeight}
-                  rx={3}
-                  fill={geometry.isGeneratedDraft ? 'rgba(245, 158, 11, 0.18)' : 'rgba(148, 163, 184, 0.12)'}
-                  stroke={geometry.isGeneratedDraft ? 'rgba(251, 191, 36, 0.95)' : 'rgba(148, 163, 184, 0.75)'}
-                  strokeWidth={1.5}
-                  strokeDasharray={geometry.isGeneratedDraft ? '4 2' : '2 3'}
-                  opacity={geometry.isGeneratedDraft ? 0.95 : 0.65}
-                />
-                <rect
-                  x={geometry.left + 1}
-                  y={accentY}
-                  width={Math.max(0, Math.max(2, geometry.width) - 2)}
-                  height={2}
-                  rx={1}
-                  fill="rgba(251, 191, 36, 0.8)"
-                  opacity={geometry.isGeneratedDraft ? 0.8 : 0.35}
-                />
-                    </>
-                  );
-                })()}
-              </g>
-            ))}
-
-            {maxSliceOverlap >= 3 && (
-              <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}>
-                <rect width={86} height={18} rx={9} fill="rgba(15, 23, 42, 0.75)" stroke="rgba(148, 163, 184, 0.55)" />
-                <text x={43} y={12} textAnchor="middle" fontSize={10} fill="rgba(226, 232, 240, 0.95)">
-                  {maxSliceOverlap}x overlap
-                </text>
-              </g>
-            )}
-
-            {cursorX !== null && (
-              <>
-                <line
-                  x1={cursorX}
-                  x2={cursorX}
-                  y1={0}
-                  y2={DETAIL_HEIGHT}
-                  stroke={TIME_CURSOR_COLOR}
-                  strokeWidth={2}
-                  filter="url(#timeCursorGlow)"
-                />
-                <circle
-                  cx={cursorX}
-                  cy={0}
-                  r={8}
-                  fill="rgba(16,185,129,0.2)"
-                  stroke="rgba(16,185,129,0.45)"
-                  strokeWidth={1}
-                  pointerEvents="none"
-                />
-                <circle
-                  cx={cursorX}
-                  cy={0}
-                  r={5.5}
-                  fill={TIME_CURSOR_COLOR}
-                  stroke="rgba(255,255,255,0.95)"
-                  strokeWidth={2}
-                  filter="url(#timeCursorGlow)"
-                />
-              </>
-            )}
-            {selectionX !== null && (
-              <g>
-                <line
-                  x1={selectionX}
-                  x2={selectionX}
-                  y1={0}
-                  y2={DETAIL_HEIGHT}
-                  stroke="rgba(56, 189, 248, 0.3)"
-                  strokeWidth={6}
-                />
-                <line
-                  x1={selectionX}
-                  x2={selectionX}
-                  y1={0}
-                  y2={DETAIL_HEIGHT}
-                  stroke="rgba(125, 211, 252, 0.95)"
-                  strokeWidth={2.2}
-                  strokeDasharray="4 2"
-                >
-                  <animate attributeName="opacity" values="0.45;1;0.45" dur="1.7s" repeatCount="indefinite" />
-                </line>
-                <circle cx={selectionX} cy={4} r={3.5} fill="rgba(186, 230, 253, 0.95)">
-                  <animate attributeName="r" values="3;4.5;3" dur="1.7s" repeatCount="indefinite" />
-                </circle>
-              </g>
-            )}
-            <rect
-              ref={zoomRef}
-              width={detailInnerWidth}
-              height={DETAIL_HEIGHT}
-              fill="transparent"
-              pointerEvents="auto"
-              className="cursor-crosshair"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUpWithSelection}
-              onPointerLeave={handlePointerCancel}
-            />
-            <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
-              {effectiveTimeScaleMode === 'adaptive' ? (
-                <rect
-                  x={0}
-                  y={0}
-                  width={detailInnerWidth}
-                  height={AXIS_HEIGHT}
-                  fill="url(#adaptiveAxisGradient)"
-                />
-              ) : null}
-              {detailTicks.map((tick, index) => {
-                const x = detailScale(tick);
-                return (
-                  <g key={`detail-tick-${index}`} transform={`translate(${x}, 0)`}>
-                    <line y2={6} stroke="currentColor" />
-                    <text
-                      y={14}
-                      textAnchor="middle"
-                      fontSize={10}
-                      fill="currentColor"
-                    >
-                      {detailTickFormat(tick)}
-                    </text>
+                      stroke={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.45)' : 'rgba(139, 92, 246, 0.3)'}
+                      strokeDasharray="4 3"
+                      strokeWidth={1}
+                    />
                   </g>
                 );
               })}
-            </g>
+
+              {orderedSliceGeometries.map((geometry) => {
+                const color = resolveSliceColor(geometry.color);
+                const warpStrength = Math.max(0, Math.min(1, geometry.warpWeight / 3));
+                const warpEnabled = geometry.warpEnabled;
+                const shouldShowWarpReference = effectiveTimeScaleMode === 'adaptive' && warpEnabled;
+                const baseOpacity = geometry.isActive
+                  ? warpEnabled
+                    ? 0.64 + warpStrength * 0.2
+                    : 0.56
+                  : geometry.overlapCount >= 3
+                    ? warpEnabled
+                      ? 0.16 + warpStrength * 0.1
+                      : 0.14
+                    : geometry.overlapCount === 2
+                      ? warpEnabled
+                        ? 0.24 + warpStrength * 0.12
+                        : 0.22
+                      : warpEnabled
+                        ? 0.34 + warpStrength * 0.14
+                        : 0.28;
+
+                // Suggestion slices get a distinct violet styling
+                const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
+                const isGeneratedAppliedSlice = geometry.isGeneratedApplied;
+                const suggestionFill = 'rgba(139, 92, 246, 0.2)';
+                const suggestionStroke = 'rgba(167, 139, 250, 0.85)';
+
+                return (
+                  <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
+                    {shouldShowWarpReference ? (
+                      <rect
+                        x={geometry.rawLeft}
+                        y={3}
+                        width={Math.max(2, geometry.rawWidth)}
+                        height={DETAIL_HEIGHT - 6}
+                        rx={3}
+                        fill="rgba(148, 163, 184, 0.06)"
+                        stroke="rgba(148, 163, 184, 0.42)"
+                        strokeWidth={1}
+                        strokeDasharray="2 3"
+                      />
+                    ) : null}
+                    <rect
+                      x={geometry.left}
+                      y={3}
+                      width={Math.max(2, geometry.width)}
+                      height={DETAIL_HEIGHT - 6}
+                      rx={3}
+                      fill={isGeneratedAppliedSlice
+                        ? 'rgba(16, 185, 129, 0.18)'
+                        : isSuggestionSlice
+                          ? suggestionFill
+                          : geometry.isBurst
+                            ? 'rgba(251, 146, 60, 0.26)'
+                            : warpEnabled
+                              ? color.fill
+                              : 'rgba(148, 163, 184, 0.16)'}
+                      stroke={isGeneratedAppliedSlice
+                        ? 'rgba(74, 222, 128, 0.92)'
+                        : isSuggestionSlice
+                          ? suggestionStroke
+                          : geometry.isBurst
+                            ? 'rgba(251, 146, 60, 0.85)'
+                            : warpEnabled
+                              ? color.stroke
+                              : 'rgba(148, 163, 184, 0.78)'}
+                      strokeWidth={
+                        geometry.isActive
+                          ? 2 + (warpEnabled ? warpStrength * 0.9 : 0)
+                          : geometry.overlapCount >= 2
+                            ? 1.4 + (warpEnabled ? warpStrength * 0.5 : 0)
+                            : 1 + (warpEnabled ? warpStrength * 0.35 : 0)
+                      }
+                      strokeDasharray={
+                        !warpEnabled
+                          ? '2 3'
+                          : geometry.overlapCount >= 3 || isSuggestionSlice
+                            ? '5 3'
+                            : isGeneratedAppliedSlice
+                              ? '8 2'
+                              : undefined
+                      }
+                      opacity={baseOpacity}
+                    />
+                    {geometry.overlapCount >= 2 && !geometry.isActive && (
+                      <rect
+                        x={geometry.left}
+                        y={3}
+                        width={Math.max(2, geometry.width)}
+                        height={DETAIL_HEIGHT - 6}
+                        rx={3}
+                        fill="url(#sliceOverlapHatch)"
+                        opacity={geometry.overlapCount >= 3 ? 0.42 : 0.3}
+                      />
+                    )}
+                    {geometry.isActive && (
+                      <rect
+                        x={geometry.left}
+                        y={2}
+                        width={Math.max(2, geometry.width)}
+                        height={DETAIL_HEIGHT - 4}
+                        rx={3}
+                        fill="none"
+                        stroke={geometry.isBurst ? 'rgba(253, 186, 116, 0.95)' : 'rgba(125, 211, 252, 0.95)'}
+                        strokeWidth={2.2}
+                        opacity={0.9}
+                      >
+                        <animate attributeName="opacity" values="0.55;1;0.55" dur="1.8s" repeatCount="indefinite" />
+                      </rect>
+                    )}
+                  </g>
+                );
+              })}
+
+              {pendingGeneratedGeometries.map((geometry) => (
+                <g key={geometry.id}>
+                  {(() => {
+                    const pendingDraft = pendingGeneratedBinsByGeometryId.get(geometry.id);
+                    const burstCoefficient = formatBurstCoefficient(pendingDraft?.burstScore);
+                    const draftLabelY = 6;
+                    const draftRectY = burstCoefficient ? 18 : 8;
+                    const draftRectHeight = burstCoefficient ? DETAIL_HEIGHT - 26 : DETAIL_HEIGHT - 16;
+                    const accentY = burstCoefficient ? 19 : 9;
+
+                    return (
+                      <>
+                        {/* {burstCoefficient ? (
+                          <text
+                            x={geometry.left + 4}
+                            y={16}
+                            fontSize={9}
+                            fill="rgba(254, 243, 199, 0.9)"
+                            className="uppercase tracking-[0.16em]"
+                          >
+                            Burstiness coefficient {burstCoefficient}
+                          </text>
+                        ) : null} */}
+                        <rect
+                          x={geometry.left}
+                          y={draftRectY}
+                          width={Math.max(2, geometry.width)}
+                          height={draftRectHeight}
+                          rx={3}
+                          fill={geometry.isGeneratedDraft ? 'rgba(245, 158, 11, 0.18)' : 'rgba(148, 163, 184, 0.12)'}
+                          stroke={geometry.isGeneratedDraft ? 'rgba(251, 191, 36, 0.95)' : 'rgba(148, 163, 184, 0.75)'}
+                          strokeWidth={1.5}
+                          strokeDasharray={geometry.isGeneratedDraft ? '4 2' : '2 3'}
+                          opacity={geometry.isGeneratedDraft ? 0.95 : 0.65}
+                        />
+                        <rect
+                          x={geometry.left + 1}
+                          y={accentY}
+                          width={Math.max(0, Math.max(2, geometry.width) - 2)}
+                          height={2}
+                          rx={1}
+                          fill="rgba(251, 191, 36, 0.8)"
+                          opacity={geometry.isGeneratedDraft ? 0.8 : 0.35}
+                        />
+                      </>
+                    );
+                  })()}
+                </g>
+              ))}
+
+              {maxSliceOverlap >= 3 && (
+                <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}>
+                  <rect width={86} height={18} rx={9} fill="rgba(15, 23, 42, 0.75)" stroke="rgba(148, 163, 184, 0.55)" />
+                  <text x={43} y={12} textAnchor="middle" fontSize={10} fill="rgba(226, 232, 240, 0.95)">
+                    {maxSliceOverlap}x overlap
+                  </text>
+                </g>
+              )}
+
+              {cursorX !== null && (
+                <>
+                  <line
+                    x1={cursorX}
+                    x2={cursorX}
+                    y1={0}
+                    y2={DETAIL_HEIGHT}
+                    stroke={TIME_CURSOR_COLOR}
+                    strokeWidth={2}
+                    filter="url(#timeCursorGlow)"
+                  />
+                  <circle
+                    cx={cursorX}
+                    cy={0}
+                    r={8}
+                    fill="rgba(16,185,129,0.2)"
+                    stroke="rgba(16,185,129,0.45)"
+                    strokeWidth={1}
+                    pointerEvents="none"
+                  />
+                  <circle
+                    cx={cursorX}
+                    cy={0}
+                    r={5.5}
+                    fill={TIME_CURSOR_COLOR}
+                    stroke="rgba(255,255,255,0.95)"
+                    strokeWidth={2}
+                    filter="url(#timeCursorGlow)"
+                  />
+                </>
+              )}
+              {selectionX !== null && (
+                <g>
+                  <line
+                    x1={selectionX}
+                    x2={selectionX}
+                    y1={0}
+                    y2={DETAIL_HEIGHT}
+                    stroke="rgba(56, 189, 248, 0.3)"
+                    strokeWidth={6}
+                  />
+                  <line
+                    x1={selectionX}
+                    x2={selectionX}
+                    y1={0}
+                    y2={DETAIL_HEIGHT}
+                    stroke="rgba(125, 211, 252, 0.95)"
+                    strokeWidth={2.2}
+                    strokeDasharray="4 2"
+                  >
+                    <animate attributeName="opacity" values="0.45;1;0.45" dur="1.7s" repeatCount="indefinite" />
+                  </line>
+                  <circle cx={selectionX} cy={4} r={3.5} fill="rgba(186, 230, 253, 0.95)">
+                    <animate attributeName="r" values="3;4.5;3" dur="1.7s" repeatCount="indefinite" />
+                  </circle>
+                </g>
+              )}
+              <rect
+                ref={zoomRef}
+                width={detailInnerWidth}
+                height={DETAIL_HEIGHT}
+                fill="transparent"
+                pointerEvents="auto"
+                className="cursor-crosshair"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUpWithSelection}
+                onPointerLeave={handlePointerCancel}
+              />
+              <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
+                {effectiveTimeScaleMode === 'adaptive' ? (
+                  <rect
+                    x={0}
+                    y={0}
+                    width={detailInnerWidth}
+                    height={AXIS_HEIGHT}
+                    fill="url(#adaptiveAxisGradient)"
+                  />
+                ) : null}
+                {detailTicks.map((tick, index) => {
+                  const x = detailScale(tick);
+                  return (
+                    <g key={`detail-tick-${index}`} transform={`translate(${x}, 0)`}>
+                      <line y2={6} stroke="currentColor" />
+                      <text
+                        y={14}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fill="currentColor"
+                      >
+                        {detailTickFormat(tick)}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
             </g>
           </svg>
           {isTimelineLoading && (
