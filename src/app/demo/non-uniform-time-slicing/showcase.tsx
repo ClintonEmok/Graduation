@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getCrimeTypeName } from '@/lib/category-maps';
 import type { TimeBin } from '@/lib/binning/types';
+import { buildComparableWarpMap, type ComparableWarpBinInput } from '@/lib/binning/warp-scaling';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import {
   buildNonUniformDraftBinsFromSelection,
@@ -28,6 +29,7 @@ type SelectionMode = 'auto' | 'manual';
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+const WEEK_MS = 7 * DAY_MS;
 
 const SCENARIOS: Record<ScenarioKey, { label: string; description: string }> = {
   clustered: {
@@ -47,6 +49,17 @@ const SCENARIOS: Record<ScenarioKey, { label: string; description: string }> = {
 const granularityLabels: Record<DemoSelectionGranularity, string> = {
   hourly: 'Hourly',
   daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+};
+
+const granularityOptions: DemoSelectionGranularity[] = ['hourly', 'daily', 'weekly', 'monthly'];
+
+const granularitySpanMs: Record<DemoSelectionGranularity, number> = {
+  hourly: 48 * HOUR_MS,
+  daily: 10 * DAY_MS,
+  weekly: 8 * WEEK_MS,
+  monthly: 120 * DAY_MS,
 };
 
 const padHour = (hour: number): string => String(hour).padStart(2, '0');
@@ -73,6 +86,8 @@ const formatDuration = (milliseconds: number): string => {
 };
 
 const formatWarpWeight = (value: number | undefined): string => (typeof value === 'number' ? value.toFixed(2) : '1.00');
+
+const formatWarpScore = (value: number | undefined): string => (typeof value === 'number' ? value.toFixed(2) : '1.00');
 
 const formatBurstinessCoefficient = (value: number | undefined): string => (typeof value === 'number' ? value.toFixed(2) : '0.00');
 
@@ -130,7 +145,7 @@ const pickScenarioWindow = (
     return null;
   }
 
-  const spanMs = granularity === 'hourly' ? 48 * HOUR_MS : 10 * DAY_MS;
+  const spanMs = granularitySpanMs[granularity];
   const minTimestamp = timestamps[0];
   const maxTimestamp = timestamps[timestamps.length - 1];
   if (!Number.isFinite(minTimestamp) || !Number.isFinite(maxTimestamp)) {
@@ -316,6 +331,25 @@ export function NonUniformTimeSlicingShowcase() {
     [crimeTypesForCalculation, eventTimestamps, eventTypes, granularity, selectionRange, selectionWarning]
   );
 
+  const comparableWarpInput = useMemo<ComparableWarpBinInput[]>(
+    () => (granularity === 'monthly'
+      ? []
+      : result.bins.map((bin) => ({
+        id: bin.id,
+        startTime: bin.startTime,
+        endTime: bin.endTime,
+        count: bin.count,
+        granularity,
+        hintWeight: bin.warpWeight,
+      }))),
+    [granularity, result.bins]
+  );
+
+  const comparableWarp = useMemo(
+    () => (selectionRange ? buildComparableWarpMap(comparableWarpInput, selectionRange, { minimumWidthShare: 0.08 }) : null),
+    [comparableWarpInput, selectionRange]
+  );
+
   const partitions = useMemo(
     () => (selectionRange ? partitionSelectionByGranularity(selectionRange, granularity) : []),
     [granularity, selectionRange]
@@ -327,8 +361,13 @@ export function NonUniformTimeSlicingShowcase() {
     if (!best) return bin;
     return (bin.warpWeight ?? 1) > (best.warpWeight ?? 1) ? bin : best;
   }, result.bins[0] ?? null);
+  const dominantComparableBin = comparableWarp?.bins.reduce((best, bin) => {
+    if (!best) return bin;
+    return (bin.warpWeight ?? 1) > (best.warpWeight ?? 1) ? bin : best;
+  }, comparableWarp.bins[0] ?? null);
   const burstinessFormula = result.bins[0]?.burstinessFormula ?? 'B = (σ - μ) / (σ + μ)';
-  const neutralFallback = result.bins.every((bin) => bin.isNeutralPartition);
+  const comparableNeutralFallback = comparableWarp?.neutralFallback ?? true;
+  const minimumWidthShare = comparableWarp?.minimumWidthShare ?? 0.08;
   const datasetLabel = isLoading ? 'Loading real crime stream' : isMock ? 'Mock data fallback' : 'Real crime stream';
   const datasetCountLabel = typeof dataCount === 'number' ? `${dataCount.toLocaleString()} records` : 'Record count pending';
   const selectionLabel = selectionRange
@@ -380,10 +419,10 @@ export function NonUniformTimeSlicingShowcase() {
               <h1 className="max-w-4xl text-4xl font-semibold leading-[0.95] tracking-[-0.05em] text-slate-50 sm:text-6xl lg:text-7xl">
                 Partition the brush, then let burstiness shape the warp.
               </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                This route showcases the new helper directly: a brushed interval is cut into fixed hourly or daily bins,
-                scored per bin from inter-event timing, and expanded non-uniformly without dropping sparse coverage.
-              </p>
+                <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                 This route showcases the new helper directly: a brushed interval is cut into fixed hourly, daily, or weekly bins,
+                 scored relative to peer bins, and expanded non-uniformly without dropping sparse coverage.
+                </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -402,7 +441,13 @@ export function NonUniformTimeSlicingShowcase() {
               <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
                 <CardHeader className="space-y-2 pb-3">
                   <CardDescription className="text-slate-400">Neutral fallback</CardDescription>
-                  <CardTitle className="text-2xl text-slate-50">{neutralFallback ? 'Yes' : 'No'}</CardTitle>
+                  <CardTitle className="text-2xl text-slate-50">{comparableNeutralFallback ? 'Yes' : 'No'}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+                <CardHeader className="space-y-2 pb-3">
+                  <CardDescription className="text-slate-400">Width floor</CardDescription>
+                  <CardTitle className="text-2xl text-slate-50">{Math.round(minimumWidthShare * 100)}%</CardTitle>
                 </CardHeader>
               </Card>
             </div>
@@ -416,6 +461,9 @@ export function NonUniformTimeSlicingShowcase() {
                   </div>
                   <Badge className="rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
                     {granularityLabels[granularity]} partitions
+                  </Badge>
+                  <Badge className="rounded-full border border-white/15 bg-white/5 text-slate-100">
+                    peer-relative scoring
                   </Badge>
                 </div>
                 <p className="max-w-2xl text-sm leading-6 text-slate-300">{SCENARIOS[scenario].description}</p>
@@ -538,10 +586,13 @@ export function NonUniformTimeSlicingShowcase() {
               <CardContent className="space-y-5 pt-5">
                 <div className="flex flex-wrap gap-2">
                   <Tabs value={granularity} onValueChange={(value) => setGranularity(value as DemoSelectionGranularity)}>
-                    <TabsList className="grid w-fit grid-cols-2 rounded-full bg-white/5 p-1">
-                      <TabsTrigger value="daily" className="rounded-full px-4">Daily</TabsTrigger>
-                      <TabsTrigger value="hourly" className="rounded-full px-4">Hourly</TabsTrigger>
-                    </TabsList>
+                      <TabsList className="grid w-fit grid-cols-4 rounded-full bg-white/5 p-1">
+                        {granularityOptions.map((option) => (
+                          <TabsTrigger key={option} value={option} className="rounded-full px-4">
+                            {granularityLabels[option]}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
                   </Tabs>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(SCENARIOS).map(([key, value]) => (
@@ -564,7 +615,8 @@ export function NonUniformTimeSlicingShowcase() {
                 <div className="grid gap-3">
                   {result.bins.map((bin, index) => {
                     const duration = bin.endTime - bin.startTime;
-                    const width = Math.max(18, Math.min(100, ((bin.warpWeight ?? 1) / 1.8) * 100));
+                    const comparableBin = comparableWarp?.bins[index];
+                    const width = Math.max(18, Math.min(100, ((comparableBin?.widthShare ?? (1 / Math.max(1, result.bins.length))) * 100)));
                     return (
                       <div key={bin.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -577,7 +629,7 @@ export function NonUniformTimeSlicingShowcase() {
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge className={`rounded-full ${bin.isNeutralPartition ? 'bg-slate-500/15 text-slate-200' : 'bg-cyan-400/15 text-cyan-100'}`}>
+                            <Badge className={`rounded-full ${comparableBin?.isNeutralPartition ?? bin.isNeutralPartition ? 'bg-slate-500/15 text-slate-200' : 'bg-cyan-400/15 text-cyan-100'}`}>
                               {bin.burstClass ?? 'neutral'}
                             </Badge>
                             <Button
@@ -594,18 +646,20 @@ export function NonUniformTimeSlicingShowcase() {
 
                         <div className="mt-4 h-3 rounded-full bg-slate-900/80">
                           <div
-                            className={`h-full rounded-full ${bin.isNeutralPartition ? 'bg-slate-500' : 'bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400'}`}
+                            className={`h-full rounded-full ${comparableBin?.isNeutralPartition ?? bin.isNeutralPartition ? 'bg-slate-500' : 'bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400'}`}
                             style={{ width: `${width}%` }}
                           />
                         </div>
 
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">warp {formatWarpWeight(bin.warpWeight)}</span>
+                          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">score {formatWarpScore(comparableBin?.peerRelativeScore)}</span>
+                          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">warp {formatWarpWeight(comparableBin?.warpWeight ?? bin.warpWeight)}</span>
                           <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">burstiness {formatBurstinessCoefficient(bin.burstinessCoefficient)}</span>
                           <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">state {formatBurstinessState(bin.burstinessCoefficient)}</span>
-                          {bin.isNeutralPartition ? (
+                          {comparableBin?.isNeutralPartition ?? bin.isNeutralPartition ? (
                             <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">neutral fallback</span>
                           ) : null}
+                          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">floor {Math.round((comparableWarp?.minimumWidthShare ?? 0.08) * 100)}%</span>
                         </div>
 
                         {bin.burstinessByType && bin.burstinessByType.length > 0 ? (
@@ -645,21 +699,21 @@ export function NonUniformTimeSlicingShowcase() {
                 </div>
                 <CardTitle className="text-xl text-slate-50">Coverage first, warp second</CardTitle>
                 <CardDescription className="text-slate-300">
-                  The brush is fully covered; burstiness only decides which partitions expand.
+                  The brush is fully covered; peer-relative scoring only decides which partitions expand.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-sm text-slate-300">
                 <div className="flex items-start gap-3">
                   <Clock3 className="mt-0.5 size-4 shrink-0 text-cyan-300" />
-                  <p>Hourly and daily bins are generated from the same brushed interval.</p>
+                  <p>Hourly, daily, and weekly bins are generated from the same brushed interval.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <Gauge className="mt-0.5 size-4 shrink-0 text-fuchsia-300" />
-                  <p>Positive burstiness means bursty, negative means regular, and the route keeps the validated coefficient visible on each bin.</p>
+                  <p>Stronger peers expand, weaker peers compress, and the validated score stays visible on each bin.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <TimerReset className="mt-0.5 size-4 shrink-0 text-emerald-300" />
-                  <p>When no bin stands out, the route still returns a neutral partition set.</p>
+                  <p>When no bin stands out, the route still returns a neutral partition set with the minimum width floor intact.</p>
                 </div>
                 <Separator className="bg-white/10" />
                 <div className="space-y-2 text-sm text-slate-300">
@@ -701,8 +755,14 @@ export function NonUniformTimeSlicingShowcase() {
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Dominant partition</p>
                   <p className="text-base font-medium text-slate-100">
-                    {dominantBin ? `${formatDateTime(dominantBin.startTime)} → ${formatDateTime(dominantBin.endTime)}` : 'None'}
+                    {dominantComparableBin
+                      ? `${formatDateTime(dominantComparableBin.startTime)} → ${formatDateTime(dominantComparableBin.endTime)}`
+                      : (dominantBin ? `${formatDateTime(dominantBin.startTime)} → ${formatDateTime(dominantBin.endTime)}` : 'None')}
                   </p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Order preserved</p>
+                  <p className="text-base font-medium text-slate-100">{comparableWarp?.bins.every((bin, index) => bin.id === result.bins[index]?.id) ? 'Yes' : 'No'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -749,7 +809,11 @@ export function NonUniformTimeSlicingShowcase() {
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Warp</p>
-                    <p className="mt-2 font-mono text-slate-50">{formatWarpWeight(detailBin.bin.warpWeight)}</p>
+                    <p className="mt-2 font-mono text-slate-50">{formatWarpWeight(comparableWarp?.bins[detailBin.index]?.warpWeight ?? detailBin.bin.warpWeight)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Score</p>
+                    <p className="mt-2 font-mono text-slate-50">{formatWarpScore(comparableWarp?.bins[detailBin.index]?.peerRelativeScore)}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Coverage</p>

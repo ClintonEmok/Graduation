@@ -1,7 +1,46 @@
 import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
+import {
+  buildComparableWarpMap,
+  type ComparableWarpBinInput,
+  type ComparableWarpMapResult,
+} from '@/lib/binning/warp-scaling';
 
 const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
 const clampWeight = (value: number) => Math.min(3, Math.max(0, value));
+
+const buildSampleWarpMapFromComparableWarp = (
+  result: ComparableWarpMapResult,
+  sampleCount: number,
+  domain: [number, number]
+): Float32Array => {
+  const warpMap = new Float32Array(sampleCount);
+  const [domainStart, domainEnd] = domain;
+  const domainSpan = Math.max(1e-9, domainEnd - domainStart);
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const ratio = sampleCount === 1 ? 0 : index / (sampleCount - 1);
+    const logicalPosition = domainStart + (ratio * domainSpan);
+
+    let binIndex = result.bins.findIndex((bin, currentIndex) => {
+      const isLast = currentIndex === result.bins.length - 1;
+      return logicalPosition >= bin.startTime && (isLast ? logicalPosition <= bin.endTime : logicalPosition < bin.endTime);
+    });
+
+    if (binIndex < 0) {
+      binIndex = logicalPosition <= result.bins[0]!.startTime ? 0 : result.bins.length - 1;
+    }
+
+    const bin = result.bins[binIndex] ?? result.bins[0];
+    const start = bin?.startTime ?? domainStart;
+    const end = bin?.endTime ?? domainEnd;
+    const warpedStart = result.boundaries[binIndex] ?? domainStart;
+    const warpedEnd = result.boundaries[binIndex + 1] ?? domainEnd;
+    const localProgress = end > start ? (logicalPosition - start) / (end - start) : 0;
+    warpMap[index] = warpedStart + (Math.max(0, Math.min(1, localProgress)) * (warpedEnd - warpedStart));
+  }
+
+  return warpMap;
+};
 
 const resolveSliceRange = (slice: TimeSlice): [number, number] | null => {
   if (slice.range) {
@@ -29,56 +68,27 @@ export const buildDemoSliceAuthoredWarpMap = (
     return null;
   }
 
-  const [domainStart, domainEnd] = domain;
-  const domainSpan = Math.max(1e-9, domainEnd - domainStart);
-  const density = new Float32Array(sampleCount);
-
-  for (let i = 0; i < sampleCount; i += 1) {
-    const ratio = sampleCount === 1 ? 0 : i / (sampleCount - 1);
-    const percent = ratio * 100;
-    let boost = 0;
-
-    for (const slice of enabledSlices) {
-      const range = resolveSliceRange(slice);
-      if (!range) {
-        continue;
-      }
-
-      const [start, end] = range;
-      if (percent < start || percent > end) {
-        continue;
-      }
-
-      const center = (start + end) / 2;
-      const halfWidth = Math.max(0.5, (end - start) / 2);
-      const normalizedDistance = Math.abs((percent - center) / halfWidth);
-      const falloff = Math.max(0, 1 - normalizedDistance);
-      const baseWeight = slice.isBurst ? 1.25 : slice.type === 'range' ? 1 : 0.85;
-      const authoredWeight = clampWeight(slice.warpWeight ?? 1);
-      boost += baseWeight * authoredWeight * (0.35 + 0.65 * falloff);
+  const comparableBins: ComparableWarpBinInput[] = enabledSlices.flatMap((slice) => {
+    const range = resolveSliceRange(slice);
+    if (!range) {
+      return [];
     }
 
-    density[i] = 1 + boost;
-  }
+    const [start, end] = range;
+    return [{
+      id: slice.id,
+      startTime: start,
+      endTime: end,
+      count: Math.max(1, Math.round((end - start) * 100)),
+      granularity: 'daily',
+      hintWeight: clampWeight(slice.warpWeight ?? 1),
+    } satisfies ComparableWarpBinInput];
+  });
 
-  const cumulative = new Float32Array(sampleCount);
-  cumulative[0] = 0;
-  for (let i = 1; i < sampleCount; i += 1) {
-    const prev = density[i - 1] ?? 1;
-    const curr = density[i] ?? 1;
-    cumulative[i] = cumulative[i - 1] + (prev + curr) * 0.5;
-  }
-
-  const total = cumulative[sampleCount - 1] ?? 0;
-  if (!Number.isFinite(total) || total <= 0) {
+  const comparableWarp = buildComparableWarpMap(comparableBins, domain, { minimumWidthShare: 0.08 });
+  if (!comparableWarp || comparableWarp.bins.length === 0) {
     return null;
   }
 
-  const warpMap = new Float32Array(sampleCount);
-  for (let i = 0; i < sampleCount; i += 1) {
-    const progress = (cumulative[i] ?? 0) / total;
-    warpMap[i] = domainStart + progress * domainSpan;
-  }
-
-  return warpMap;
+  return buildSampleWarpMapFromComparableWarp(comparableWarp, sampleCount, domain);
 };

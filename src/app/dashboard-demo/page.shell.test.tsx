@@ -34,6 +34,10 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/dashboard-demo/lib/demo-burst-generation.ts', import.meta.url),
       'utf8'
     );
+    const demoWarpMapSource = readFileSync(
+      new URL('../../components/dashboard-demo/lib/demo-warp-map.ts', import.meta.url),
+      'utf8'
+    );
     const timeslicingModeStoreSource = readFileSync(new URL('../../store/useTimeslicingModeStore.ts', import.meta.url), 'utf8');
     const demoTimeslicingModeStoreSource = readFileSync(
       new URL('../../store/useDashboardDemoTimeslicingModeStore.ts', import.meta.url),
@@ -59,6 +63,8 @@ describe('/dashboard-demo shell', () => {
     expect(workflowSkeletonSource).toMatch(/Generate selection-first drafts/);
     expect(workflowSkeletonSource).toMatch(/Brushed selection is canonical/);
     expect(workflowSkeletonSource).toMatch(/Daily is the default granularity/);
+    expect(workflowSkeletonSource).toMatch(/Weekly/);
+    expect(workflowSkeletonSource).toMatch(/Monthly/);
     expect(workflowSkeletonSource).toMatch(/All crime types/);
     expect(workflowSkeletonSource).toMatch(/Muted neutral partition/);
     expect(workflowSkeletonSource).toMatch(/toast\.(success|error)/);
@@ -158,6 +164,11 @@ describe('/dashboard-demo shell', () => {
     expect(demoBurstGenerationSource).not.toMatch(/preset-bias|fallback to preset-bias/i);
     expect(demoBurstGenerationSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(demoBurstGenerationSource).toMatch(/buildBurstWindowsFromSeries/);
+    expect(demoBurstGenerationSource).toMatch(/monthly/);
+    expect(demoWarpMapSource).toMatch(/buildComparableWarpMap/);
+    expect(demoWarpMapSource).toMatch(/ComparableWarpBinInput/);
+    expect(demoWarpMapSource).toMatch(/buildSampleWarpMapFromComparableWarp/);
+    expect(demoWarpMapSource).toMatch(/minimumWidthShare/);
     expect(demoTimeslicingModeStoreSource).toMatch(/generateBurstDraftBinsFromWindows/);
     expect(timeslicingModeStoreSource).not.toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
     expect(timeslicingModeStoreSource).not.toMatch(/generateBinsFromActivePresetBias|PRESET_GENERATION_PROFILES|resolvePresetBiasBinTarget/);
