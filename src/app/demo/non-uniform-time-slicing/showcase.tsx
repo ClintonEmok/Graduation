@@ -11,7 +11,11 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getCrimeTypeName } from '@/lib/category-maps';
 import type { TimeBin } from '@/lib/binning/types';
-import { buildComparableWarpMap, type ComparableWarpBinInput } from '@/lib/binning/warp-scaling';
+import {
+  buildComparableWarpMap,
+  scoreComparableWarpBins,
+  type ComparableWarpBinInput,
+} from '@/lib/binning/warp-scaling';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import {
   buildNonUniformDraftBinsFromSelection,
@@ -345,9 +349,14 @@ export function NonUniformTimeSlicingShowcase() {
     [granularity, result.bins]
   );
 
+  const comparableWarpScores = useMemo(
+    () => scoreComparableWarpBins(comparableWarpInput),
+    [comparableWarpInput]
+  );
+
   const comparableWarp = useMemo(
-    () => (selectionRange ? buildComparableWarpMap(comparableWarpInput, selectionRange, { minimumWidthShare: 0.08 }) : null),
-    [comparableWarpInput, selectionRange]
+    () => (selectionRange ? buildComparableWarpMap(comparableWarpScores.bins, selectionRange, { minimumWidthShare: 0.08 }) : null),
+    [comparableWarpScores.bins, selectionRange]
   );
 
   const partitions = useMemo(
@@ -366,7 +375,7 @@ export function NonUniformTimeSlicingShowcase() {
     return (bin.warpWeight ?? 1) > (best.warpWeight ?? 1) ? bin : best;
   }, comparableWarp.bins[0] ?? null);
   const burstinessFormula = result.bins[0]?.burstinessFormula ?? 'B = (σ - μ) / (σ + μ)';
-  const comparableNeutralFallback = comparableWarp?.neutralFallback ?? true;
+  const comparableNeutralFallback = comparableWarp?.neutralFallback ?? comparableWarpScores.neutralFallback ?? true;
   const minimumWidthShare = comparableWarp?.minimumWidthShare ?? 0.08;
   const datasetLabel = isLoading ? 'Loading real crime stream' : isMock ? 'Mock data fallback' : 'Real crime stream';
   const datasetCountLabel = typeof dataCount === 'number' ? `${dataCount.toLocaleString()} records` : 'Record count pending';
@@ -615,8 +624,8 @@ export function NonUniformTimeSlicingShowcase() {
                 <div className="grid gap-3">
                   {result.bins.map((bin, index) => {
                     const duration = bin.endTime - bin.startTime;
-                    const comparableBin = comparableWarp?.bins[index];
-                    const width = Math.max(18, Math.min(100, ((comparableBin?.widthShare ?? (1 / Math.max(1, result.bins.length))) * 100)));
+                    const comparableBin = comparableWarp?.bins[index] ?? comparableWarpScores.bins[index];
+                    const width = Math.max(18, Math.min(100, ((comparableWarp?.bins[index]?.widthShare ?? (1 / Math.max(1, result.bins.length))) * 100)));
                     return (
                       <div key={bin.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -709,7 +718,7 @@ export function NonUniformTimeSlicingShowcase() {
                 </div>
                 <div className="flex items-start gap-3">
                   <Gauge className="mt-0.5 size-4 shrink-0 text-fuchsia-300" />
-                  <p>Stronger peers expand, weaker peers compress, and the validated score stays visible on each bin.</p>
+                  <p>Stronger peers expand, weaker peers compress, and the shared score stays visible on each bin.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <TimerReset className="mt-0.5 size-4 shrink-0 text-emerald-300" />
@@ -762,7 +771,7 @@ export function NonUniformTimeSlicingShowcase() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Order preserved</p>
-                  <p className="text-base font-medium text-slate-100">{comparableWarp?.bins.every((bin, index) => bin.id === result.bins[index]?.id) ? 'Yes' : 'No'}</p>
+                  <p className="text-base font-medium text-slate-100">{(comparableWarp?.bins ?? comparableWarpScores.bins).every((bin, index) => bin.id === result.bins[index]?.id) ? 'Yes' : 'No'}</p>
                 </div>
               </CardContent>
             </Card>

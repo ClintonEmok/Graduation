@@ -167,6 +167,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoBurstGenerationSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(demoBurstGenerationSource).toMatch(/buildBurstWindowsFromSeries/);
     expect(demoBurstGenerationSource).toMatch(/monthly/);
+    expect(demoWarpMapSource).toMatch(/scoreComparableWarpBins/);
     expect(demoWarpMapSource).toMatch(/buildComparableWarpMap/);
     expect(demoWarpMapSource).toMatch(/ComparableWarpBinInput/);
     expect(demoWarpMapSource).toMatch(/buildSampleWarpMapFromComparableWarp/);
