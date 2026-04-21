@@ -5,6 +5,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useContextProfileStore } from '@/store/useContextProfileStore';
 import { usePresetStore } from '@/store/usePresetStore';
 import { useSuggestionHistoryStore } from '@/store/useSuggestionHistoryStore';
+import { useSuggestionComparisonStore } from '@/store/useSuggestionComparisonStore';
 import type { AutoProposalSet, RankedAutoProposalSets } from '@/types/autoProposalSet';
 import type {
   SuggestionType,
@@ -36,9 +37,6 @@ interface SuggestionStore {
   
   // Bulk selection state
   selectedIds: Set<string>;
-
-  // Comparison state (max 2 suggestions)
-  comparisonIds: [string | null, string | null];
 
   // Context scope state
   contextMode: ContextMode;
@@ -85,10 +83,6 @@ interface SuggestionStore {
   setFullAutoProposalResults: (result: RankedAutoProposalSets | null) => void;
   selectFullAutoProposalSet: (id: string | null) => void;
   clearFullAutoProposalSets: () => void;
-  
-  // Comparison actions
-  setComparisonId: (index: 0 | 1, id: string | null) => void;
-  clearComparison: () => void;
 
   // History actions (delegated to useSuggestionHistoryStore for storage)
   reapplyFromHistory: (historyId: string) => void;
@@ -111,9 +105,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
 
   // Bulk selection
   selectedIds: new Set<string>(),
-
-  // Comparison state
-  comparisonIds: [null, null],
 
   // Context scope state
   contextMode: 'visible',
@@ -517,38 +508,7 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       hasFullAutoLowConfidence: false,
     }),
 
-  // Comparison actions
-  setComparisonId: (index, id) =>
-    set((state) => {
-      const newComparison = [...state.comparisonIds] as [string | null, string | null];
-      // If adding an ID, check if it's already in the other slot
-      if (id !== null) {
-        const otherIndex = index === 0 ? 1 : 0;
-        if (newComparison[otherIndex] === id) {
-          // Already in other slot, swap them
-          newComparison[otherIndex] = newComparison[index];
-        }
-      }
-      newComparison[index] = id;
-      return { comparisonIds: newComparison };
-    }),
-    
-  clearComparison: () => set({ comparisonIds: [null, null] }),
-  
-  // History actions
-  addToHistory: (suggestion) =>
-    set((state) => ({
-      acceptedHistory: [
-        {
-          id: crypto.randomUUID(),
-          suggestion,
-          acceptedAt: Date.now(),
-          contextMetadata: suggestion.contextMetadata,
-        },
-        ...state.acceptedHistory,
-      ].slice(0, 50), // Keep max 50 entries
-    })),
-    
+  // History actions (delegated to useSuggestionHistoryStore)
   reapplyFromHistory: (historyId) => {
     const entry = useSuggestionHistoryStore.getState().reapplyFromHistory(historyId);
     if (!entry) return;
