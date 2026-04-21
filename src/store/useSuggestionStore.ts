@@ -4,6 +4,7 @@ import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useContextProfileStore } from '@/store/useContextProfileStore';
 import { usePresetStore } from '@/store/usePresetStore';
+import { useSuggestionHistoryStore } from '@/store/useSuggestionHistoryStore';
 import type { AutoProposalSet, RankedAutoProposalSets } from '@/types/autoProposalSet';
 import type {
   SuggestionType,
@@ -17,12 +18,6 @@ import type {
   Suggestion,
   HistoryEntry,
 } from '@/types/suggestion';
-
-type UndoAction = {
-  id: string;
-  type: 'accept' | 'reject';
-  previousStatus: SuggestionStatus;
-};
 
 interface SuggestionStore {
   suggestions: Suggestion[];
@@ -42,16 +37,8 @@ interface SuggestionStore {
   // Bulk selection state
   selectedIds: Set<string>;
 
-  // Undo state
-  lastAction: UndoAction | null;
-  undoTimeout: ReturnType<typeof setTimeout> | null;
-  showUndoToast: boolean;
-
   // Comparison state (max 2 suggestions)
   comparisonIds: [string | null, string | null];
-  
-  // History state
-  acceptedHistory: HistoryEntry[];
 
   // Context scope state
   contextMode: ContextMode;
@@ -102,10 +89,8 @@ interface SuggestionStore {
   // Comparison actions
   setComparisonId: (index: 0 | 1, id: string | null) => void;
   clearComparison: () => void;
-  
-  // History actions
-  addToHistory: (suggestion: Suggestion) => void;
-  clearHistory: () => void;
+
+  // History actions (delegated to useSuggestionHistoryStore for storage)
   reapplyFromHistory: (historyId: string) => void;
 }
 
@@ -127,16 +112,8 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   // Bulk selection
   selectedIds: new Set<string>(),
 
-  // Undo state
-  lastAction: null,
-  undoTimeout: null,
-  showUndoToast: false,
-
   // Comparison state
   comparisonIds: [null, null],
-  
-  // History state
-  acceptedHistory: [],
 
   // Context scope state
   contextMode: 'visible',
@@ -170,35 +147,38 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       }
 
       const previousStatus = suggestion.status;
-      
-      // Clear any existing undo timeout
-      if (state.undoTimeout) {
-        clearTimeout(state.undoTimeout);
+
+      // Clear any existing undo timeout from history store
+      const historyState = useSuggestionHistoryStore.getState();
+      const existingTimeout = historyState.getUndoTimeout();
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
       }
 
-      // Set up undo timeout (5 seconds)
+      // Set up undo timeout (5 seconds) in history store
       const undoTimeout = setTimeout(() => {
-        set({ showUndoToast: false, lastAction: null, undoTimeout: null });
+        useSuggestionHistoryStore.getState().clearUndoState();
       }, 5000);
+      historyState.setUndoTimeout(undoTimeout);
+      historyState.setLastAction({ id, type: 'accept', previousStatus });
+      historyState.setUndoToast(true);
 
       // When accepting pending suggestions, trigger slice creation via custom event.
       if (suggestion.status === 'pending' && suggestion.type === 'time-scale') {
-        // Dispatch custom event for warp slice creation
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('accept-time-scale', { 
-            detail: { id, data: suggestion.data } 
+          window.dispatchEvent(new CustomEvent('accept-time-scale', {
+            detail: { id, data: suggestion.data }
           }));
         }
       } else if (suggestion.status === 'pending' && suggestion.type === 'interval-boundary') {
-        // Dispatch custom event for time slice creation
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('accept-interval-boundary', { 
-            detail: { id, data: suggestion.data } 
+          window.dispatchEvent(new CustomEvent('accept-interval-boundary', {
+            detail: { id, data: suggestion.data }
           }));
         }
       }
 
-      // Add to history
+      // Add to history in history store
       const viewportState = useViewportStore.getState();
       const filterState = useFilterStore.getState();
       const activeProfile = useContextProfileStore.getState().getActiveProfile();
@@ -231,6 +211,9 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         },
       };
 
+      // Add to history store
+      useSuggestionHistoryStore.getState().addToHistory(historyEntry);
+
       return {
         suggestions: state.suggestions.map((s) =>
           s.id === id ? { ...s, status: 'accepted' as const } : s
@@ -240,10 +223,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
           next.delete(id);
           return next;
         })(),
-        acceptedHistory: [historyEntry, ...state.acceptedHistory].slice(0, 50),
-        lastAction: { id, type: 'accept', previousStatus },
-        undoTimeout,
-        showUndoToast: true,
       };
     }),
 
@@ -255,16 +234,21 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       }
 
       const previousStatus = suggestion.status;
-      
-      // Clear any existing undo timeout
-      if (state.undoTimeout) {
-        clearTimeout(state.undoTimeout);
+
+      // Clear any existing undo timeout from history store
+      const historyState = useSuggestionHistoryStore.getState();
+      const existingTimeout = historyState.getUndoTimeout();
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
       }
 
-      // Set up undo timeout (5 seconds)
+      // Set up undo timeout (5 seconds) in history store
       const undoTimeout = setTimeout(() => {
-        set({ showUndoToast: false, lastAction: null, undoTimeout: null });
+        useSuggestionHistoryStore.getState().clearUndoState();
       }, 5000);
+      historyState.setUndoTimeout(undoTimeout);
+      historyState.setLastAction({ id, type: 'reject', previousStatus });
+      historyState.setUndoToast(true);
 
       return {
         suggestions: state.suggestions.map((s) =>
@@ -275,9 +259,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
           next.delete(id);
           return next;
         })(),
-        lastAction: { id, type: 'reject', previousStatus },
-        undoTimeout,
-        showUndoToast: true,
       };
     }),
 
@@ -296,25 +277,27 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
     })),
 
   undoSuggestion: () => {
-    const state = get();
-    if (!state.lastAction) return;
-    
+    const historyState = useSuggestionHistoryStore.getState();
+    const lastAction = historyState.getLastAction();
+    if (!lastAction) return;
+
     // Clear the undo timeout
-    if (state.undoTimeout) {
-      clearTimeout(state.undoTimeout);
+    const undoTimeout = historyState.getUndoTimeout();
+    if (undoTimeout) {
+      clearTimeout(undoTimeout);
     }
 
     // Restore the suggestion to its previous status
     set((state) => ({
       suggestions: state.suggestions.map((s) =>
-        s.id === state.lastAction!.id 
-          ? { ...s, status: state.lastAction!.previousStatus } 
+        s.id === lastAction.id
+          ? { ...s, status: lastAction.previousStatus }
           : s
       ),
-      lastAction: null,
-      undoTimeout: null,
-      showUndoToast: false,
     }));
+
+    // Clear undo state in history store
+    historyState.clearUndoState();
   },
 
   // Bulk actions
@@ -398,10 +381,14 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   setHoveredSuggestion: (id: string | null) => set({ hoveredSuggestionId: id }),
 
   clearSuggestions: () => {
-    const timeoutId = get().undoTimeout;
+    // Clear undo timeout from history store
+    const historyState = useSuggestionHistoryStore.getState();
+    const timeoutId = historyState.getUndoTimeout();
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
+    historyState.clearUndoState();
+    historyState.clearHistory();
 
     set({
       suggestions: [],
@@ -410,9 +397,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       generationError: null,
       selectedIds: new Set(),
       comparisonIds: [null, null],
-      showUndoToast: false,
-      lastAction: null,
-      undoTimeout: null,
       fullAutoProposalSets: [],
       selectedFullAutoSetId: null,
       recommendedFullAutoSetId: null,
@@ -423,10 +407,13 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
   },
 
   clearPendingSuggestions: () => {
-    const timeoutId = get().undoTimeout;
+    // Clear undo timeout from history store
+    const historyState = useSuggestionHistoryStore.getState();
+    const timeoutId = historyState.getUndoTimeout();
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
+    historyState.clearUndoState();
 
     set((state) => {
       const acceptedSuggestions = state.suggestions.filter((suggestion) => suggestion.status === 'accepted');
@@ -440,9 +427,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         generationError: null,
         selectedIds: new Set(),
         comparisonIds: [null, null] as [null, null],
-        showUndoToast: false,
-        lastAction: null,
-        undoTimeout: null,
         fullAutoProposalSets: [],
         selectedFullAutoSetId: null,
         recommendedFullAutoSetId: null,
@@ -565,38 +549,33 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
       ].slice(0, 50), // Keep max 50 entries
     })),
     
-  clearHistory: () => set({ acceptedHistory: [] }),
-  
-  reapplyFromHistory: (historyId) =>
-    set((state) => {
-      const entry = state.acceptedHistory.find((h) => h.id === historyId);
-      if (!entry) return state;
+  reapplyFromHistory: (historyId) => {
+    const entry = useSuggestionHistoryStore.getState().reapplyFromHistory(historyId);
+    if (!entry) return;
 
-      if (typeof window !== 'undefined') {
-        if (entry.suggestion.type === 'time-scale') {
-          window.dispatchEvent(
-            new CustomEvent('accept-time-scale', {
-              detail: { id: entry.suggestion.id, data: entry.suggestion.data },
-            })
-          );
-        } else if (entry.suggestion.type === 'interval-boundary') {
-          window.dispatchEvent(
-            new CustomEvent('accept-interval-boundary', {
-              detail: { id: entry.suggestion.id, data: entry.suggestion.data },
-            })
-          );
-        }
+    if (typeof window !== 'undefined') {
+      if (entry.suggestion.type === 'time-scale') {
+        window.dispatchEvent(
+          new CustomEvent('accept-time-scale', {
+            detail: { id: entry.suggestion.id, data: entry.suggestion.data },
+          })
+        );
+      } else if (entry.suggestion.type === 'interval-boundary') {
+        window.dispatchEvent(
+          new CustomEvent('accept-interval-boundary', {
+            detail: { id: entry.suggestion.id, data: entry.suggestion.data },
+          })
+        );
       }
+    }
 
-      const replayed: HistoryEntry = {
-        id: crypto.randomUUID(),
-        suggestion: { ...entry.suggestion, createdAt: Date.now(), status: 'accepted' },
-        acceptedAt: Date.now(),
-        contextMetadata: entry.contextMetadata,
-      };
+    const replayed: HistoryEntry = {
+      id: crypto.randomUUID(),
+      suggestion: { ...entry.suggestion, createdAt: Date.now(), status: 'accepted' },
+      acceptedAt: Date.now(),
+      contextMetadata: entry.contextMetadata,
+    };
 
-      return {
-        acceptedHistory: [replayed, ...state.acceptedHistory].slice(0, 50),
-      };
-    }),
+    useSuggestionHistoryStore.getState().addToHistory(replayed);
+  },
 }));
