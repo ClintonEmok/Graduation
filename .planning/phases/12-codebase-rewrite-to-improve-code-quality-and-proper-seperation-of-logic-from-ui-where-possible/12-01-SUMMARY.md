@@ -70,11 +70,23 @@ completed: 2026-04-21T16:27:18Z
 Each task was committed atomically:
 
 1. **Task 1: ColumnarData consolidation** - `565be5e` (feat)
-2. **Task 2: AdaptiveBinningMode consolidation** - `693c933` (feat)
-3. **Task 3: CrimeRecord duplication fix** - `ab1cdef` (feat)
-4. **Task 4: Create index.ts re-export point** - `cd2efgh` (feat)
+   - Created src/types/data.ts as canonical location
+   - Updated src/types/index.ts to re-export from data.ts
+   - Updated src/lib/data/types.ts to re-export
 
-**Plan metadata:** metadata commit (docs)
+2. **Task 2: AdaptiveBinningMode consolidation** - `693c933` (feat)
+   - Created src/types/adaptive.ts as canonical location
+   - Updated src/lib/queries/types.ts to re-export
+   - Updated src/store/useAdaptiveStore.ts to import from adaptive.ts
+
+3. **Task 3: CrimeRecord duplication fix** - committed with Task 2
+   - Removed duplicate CrimeRecord from src/lib/queries/types.ts
+   - Added re-export from canonical src/types/crime.ts
+
+4. **Task 4: Create index.ts re-export point** - included in Task 1 commit
+   - Rewrote src/types/index.ts as single re-export point
+
+**Plan metadata:** `1d7e32f` (docs)
 
 ## Files Created/Modified
 
@@ -90,6 +102,13 @@ Each task was committed atomically:
 - Kept `CrimeRecord` canonical definition in `src/types/crime.ts` (more complete with id, year, iucr fields)
 - Used `export type { Type } from '...'` syntax for re-exports to maintain type-only semantics
 - Preserved inline definitions for `CrimeType`, `CrimeEvent`, and `Bin` in `src/types/index.ts` as they are visualization-specific
+
+## Verification
+
+Confirmed via grep that each type has exactly one canonical definition:
+- `CrimeRecord` → src/types/crime.ts only
+- `ColumnarData` → src/types/data.ts only
+- `AdaptiveBinningMode` → src/types/adaptive.ts only
 
 ## Deviations from Plan
 

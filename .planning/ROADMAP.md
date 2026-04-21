@@ -251,7 +251,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Burstiness-driven slice generation | 0 | In progress  | - |
 | 10. Non-uniform time slicing | 0 | In progress | - |
 | 11. Warping metric for adaptive time bin scaling | 0 | Complete    | 2026-04-21 |
-| 12. Codebase rewrite | TBD | Not started | - |
+| 12. Codebase rewrite | 8 | Complete    | 2026-04-21 |
 | 13. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 14. Detect events + decode bursts | 6 | Not started | - |
 | 15. Support overlays + hardening | 10 | Not started | - |
