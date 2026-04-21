@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   useSuggestionStore,
   type TimeScaleData,
@@ -15,6 +16,7 @@ import { useViewportStore, useCrimeFilters } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useContextExtractor } from '@/hooks/useContextExtractor';
 import { detectSmartProfile } from '@/hooks/useSmartProfiles';
+import { deriveBoundsFromCrimes } from '@/lib/bounds';
 import type { RankedAutoProposalSets } from '@/types/autoProposalSet';
 import type { CrimeRecord } from '@/types/crime';
 import { buildContextDiagnostics, type ContextDiagnosticsResult } from '@/lib/context-diagnostics';
@@ -138,49 +140,6 @@ interface UseSuggestionGeneratorReturn {
   fullAutoSets: RankedAutoProposalSets | null;
   autoRunStatus: AutoRunStatus;
   lastRunSource: AutoRunSource;
-}
-
-/**
- * Debounce hook for filter changes
- */
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-function deriveBoundsFromCrimes(crimes: ArrayLike<CrimeRecord>): { minLat: number; maxLat: number; minLon: number; maxLon: number } | undefined {
-  const validCrimes = Array.from(crimes).filter(
-    (c) => Number.isFinite(c.lat) && Number.isFinite(c.lon)
-  );
-  if (validCrimes.length === 0) return undefined;
-
-  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
-  for (const crime of validCrimes) {
-    minLat = Math.min(minLat, crime.lat);
-    maxLat = Math.max(maxLat, crime.lat);
-    minLon = Math.min(minLon, crime.lon);
-    maxLon = Math.max(maxLon, crime.lon);
-  }
-  // Add small padding
-  const padLat = (maxLat - minLat) * 0.1 || 0.01;
-  const padLon = (maxLon - minLon) * 0.1 || 0.01;
-  return {
-    minLat: minLat - padLat,
-    maxLat: maxLat + padLat,
-    minLon: minLon - padLon,
-    maxLon: maxLon + padLon,
-  };
 }
 
 export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
