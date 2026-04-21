@@ -17,7 +17,7 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 - [ ] **Phase 9: Burstiness-driven slice generation** — turn burst windows into draft slices so the demo can point users toward bursty periods without treating burst mode as a standalone map state.
 - [ ] **Phase 10: Non-uniform time slicing** — partition the brushed selection into hourly or daily bins, score each bin, and expand bursty intervals while preserving full coverage.
 - [x] **Phase 11: Warping metric for adaptive time bin scaling** — score same-granularity bins so width warping can expand or compress them without reordering or collapsing the selection. (completed 2026-04-21)
-- [ ] **Phase 12: Workflow isolation + dashboard handoff (technical)** — implement generate/review/apply wiring and state handoff contracts after burst-driven slice generation is established.
+- [ ] **Phase 12: Codebase rewrite to improve code quality and proper separation of logic from UI where possible** — refactor god files, extract logic from components, fix type duplication, create missing utilities.
 - [ ] **Phase 13: Trace trajectories + compare behaviors** — keep the 2D and 3D views synchronized while users follow and compare selections.
 - [ ] **Phase 14: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
 - [ ] **Phase 15: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
@@ -181,21 +181,18 @@ Plans:
    3. User can keep minimum width above zero so bins never collapse away.
    4. The scoring layer is ready for later automatic and manual warping controls.
 
-### Phase 12: Workflow isolation + dashboard handoff (technical)
-**Goal**: Implement the isolated workflow shell and technical generate/review/apply wiring after the non-uniform time slicing phase is established, so the workflow stays separate from dashboard analysis until Apply.
-**Depends on**: Phase 11
-**Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06
-**Plans:** 4
+### Phase 12: Codebase rewrite to improve code quality and proper separation of logic from UI where possible.
+**Goal:** Refactor god files, extract business logic from components, fix type duplication, create missing utilities, and improve overall code quality following Finoit software architecture best practices.
+**Depends on:** Phase 11
+**Requirements**: TBD
+**Plans:** 5 plans
+
 Plans:
-- `.planning/phases/12-workflow-isolation/12-01-PLAN.md` — isolate the workflow into a dedicated shell.
-- `.planning/phases/12-workflow-isolation/12-02-PLAN.md` — break the workflow route into explicit generate, review, and apply sections.
-- `.planning/phases/12-workflow-isolation/12-03-PLAN.md` — make the apply preview editable and route straight to the dashboard.
-- `.planning/phases/12-workflow-isolation/12-04-PLAN.md` — verify workflow isolation and dashboard handoff end to end.
-**Success Criteria** (what must be TRUE):
-   1. User can open generate slices as a dedicated full-screen step separate from dashboard analysis.
-   2. User can review and edit draft bins with warnings visible before apply.
-   3. Apply transitions directly into dashboard analysis without dead-end confirmation screens.
-   4. Dashboard receives only applied state and remains isolated from pre-apply workflow concerns.
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-01-PLAN.md` — Type system consolidation
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-02-PLAN.md` — Missing utilities creation
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-03-PLAN.md` — useSuggestionStore split
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-04-PLAN.md` — DualTimeline refactor
+- `.planning/phases/12-codebase-rewrite-to-improve-code-quality-and-proper-seperation-of-logic-from-ui-where-possible/12-05-PLAN.md` — DemoDualTimeline refactor
 
 ### Phase 13: Trace trajectories + compare behaviors
 **Goal**: The 2D and 3D views stay synchronized while users follow selected records and compare them over time.
@@ -251,17 +248,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Burstiness-driven slice generation | 0 | In progress  | - |
 | 10. Non-uniform time slicing | 0 | In progress | - |
 | 11. Warping metric for adaptive time bin scaling | 0 | Complete    | 2026-04-21 |
-| 12. Workflow isolation + dashboard handoff (technical) | 6 | Not started | - |
+| 12. Codebase rewrite | TBD | Not started | - |
 | 13. Trace trajectories + compare behaviors | 4 | Not started | - |
 | 14. Detect events + decode bursts | 6 | Not started | - |
 | 15. Support overlays + hardening | 10 | Not started | - |
-
-### Phase 16: Codebase rewrite to improve code quality and proper seperation of logic from UI where possible.
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 15
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 16 to break down)
