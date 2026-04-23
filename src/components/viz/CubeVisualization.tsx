@@ -13,8 +13,13 @@ import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
 import { useLogger } from '@/hooks/useLogger';
 import { useStkdeStore } from '@/store/useStkdeStore';
+import type { DashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
 
-export default function CubeVisualization() {
+interface CubeVisualizationProps {
+  selectionStory?: DashboardDemoSelectionStory | null;
+}
+
+export default function CubeVisualization({ selectionStory = null }: CubeVisualizationProps) {
   const { triggerReset } = useUIStore();
   const { loadRealData, isLoading, columns } = useTimelineDataStore();
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
@@ -101,6 +106,13 @@ export default function CubeVisualization() {
             {' · '}
             {(appliedInterval ?? selectedInterval)?.isEdited ? 'Edited' : 'Original'}
           </p>
+          {selectionStory ? (
+            <div className="mt-2 rounded border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-cyan-100">
+              <p>Window: {selectionStory.activeWindowLabel}</p>
+              <p>Linked: {selectionStory.linkedHighlightLabel}</p>
+              <p>{selectionStory.explanationLabel}</p>
+            </div>
+          ) : null}
         </div>
 
         <div className="absolute bottom-4 left-4 z-10">

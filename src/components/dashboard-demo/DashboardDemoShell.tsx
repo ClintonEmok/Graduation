@@ -9,6 +9,7 @@ import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemo
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
 import { useViewportStore } from '@/lib/stores/viewportStore';
+import { useDashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
 
 type DemoViewport = 'map' | 'cube';
 
@@ -16,6 +17,7 @@ export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
   const loadRealData = useTimelineDataStore((state) => state.loadRealData);
   const setViewport = useViewportStore((state) => state.setViewport);
+  const selectionStory = useDashboardDemoSelectionStory();
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +90,7 @@ export function DashboardDemoShell() {
             {activeViewport === 'map' ? (
               <DemoMapVisualization />
             ) : (
-              <CubeVisualization />
+              <CubeVisualization selectionStory={selectionStory} />
             )}
           </div>
         </section>
