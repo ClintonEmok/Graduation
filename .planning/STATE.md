@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-  stopped_at: Completed 13-04-PLAN.md
-  last_updated: "2026-04-23T13:29:04Z"
+status: complete
+  stopped_at: Completed 13-05-PLAN.md
+  last_updated: "2026-04-23T16:46:35Z"
 progress:
   total_phases: 18
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 41
-  completed_plans: 34
+  completed_plans: 35
 ---
 
 # Project State
@@ -19,12 +19,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 13 — UX/IA redesign + cube concept
+**Current focus:** Phase 14 — Detect events + decode bursts
 
 ## Current Position
 
-Phase: 13 (UX/IA redesign + cube concept) — In progress
-Plan: 04 complete / 05
+Phase: 13 (UX/IA redesign + cube concept) — Complete
+Plan: 05 complete / 05
+Progress: █████████████████░░░ 35/41 plans complete
 
 ## Performance Metrics
 
@@ -124,6 +125,9 @@ Plan: 04 complete / 05
 - Add a dedicated Explain rail and manual workflow stepper for Phase 13.
 - Keep the timeline as the primary analysis driver with explicit compare framing.
 - Recast the cube as a relational synthesis layer with linked-selection emphasis.
+- Lock the Phase 13 IA, timeline, and cube contracts with source-inspection regression tests.
+- Keep stable dashboard exclusion checks broad enough to catch demo-only IA leakage.
+- Use source-inspection tests to protect story language rather than browser behavior for Phase 13.
 - Partition brushed selections first for the phase 10 helper layer, then use burst scoring only to tune warp metadata.
 - Preserve exact coverage of the brushed interval and return a neutral partition when no bin stands out.
 - Expand the shared comparable-bin scorer to support monthly granularity alongside hourly, daily, and weekly bins.
@@ -145,7 +149,8 @@ Plan: 04 complete / 05
 - Phase 10 non-uniform time slicing has the helper layer and workflow wiring complete for plans 01-02.
 - Phase 11 warping metric plan 01 is complete; plans 02-03 remain queued before workflow isolation.
 - Phase 11 warping metric plan 02 is complete; plan 03 remains queued for browser verification.
-- Phase 12 codebase rewrite is complete; Phase 13 UX/IA plans 01-04 are complete and plan 05 is next.
+- Phase 12 codebase rewrite is complete; Phase 13 UX/IA plans 01-05 are complete.
+- Phase 14 detect events + decode bursts is next.
 
 ### Blockers/Concerns
 
@@ -154,6 +159,6 @@ Plan: 04 complete / 05
 
 ## Session Continuity
 
-Last session: 2026-04-23T13:29:04Z
-Stopped at: Completed 13-04-PLAN.md
+Last session: 2026-04-23T16:46:35Z
+Stopped at: Completed 13-05-PLAN.md
 Resume file: None

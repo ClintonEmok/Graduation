@@ -18,7 +18,7 @@ This roadmap rebuilds the current Next.js modular-monolith around the paper's co
 - [ ] **Phase 10: Non-uniform time slicing** — partition the brushed selection into hourly or daily bins, score each bin, and expand bursty intervals while preserving full coverage.
 - [x] **Phase 11: Warping metric for adaptive time bin scaling** — score same-granularity bins so width warping can expand or compress them without reordering or collapsing the selection. (completed 2026-04-21)
 - [ ] **Phase 12: Codebase rewrite to improve code quality and proper separation of logic from UI where possible** — refactor god files, extract logic from components, fix type duplication, create missing utilities.
-- [ ] **Phase 13: UX/IA redesign + cube concept** — define the demo layout, relational cube behavior, and story-driven analysis flow.
+- [x] **Phase 13: UX/IA redesign + cube concept** — define the demo layout, relational cube behavior, and story-driven analysis flow. (completed 2026-04-23)
 - [ ] **Phase 14: Detect events + decode bursts** — use non-uniform temporal scaling to expose anomalies, burst order, burst pacing, and true duration.
 - [ ] **Phase 15: Support overlays + hardening** — add trust, hotspot, guidance, and performance support without breaking the core analysis loop.
 
@@ -201,7 +201,7 @@ Plans:
 **Goal**: Define the demo information architecture, restructure the layout, and shape the cube into a relational analysis surface for bursts, slices, and comparisons.
 **Depends on**: Phase 12
 **Requirements**: UX-01, UX-02, UX-03, CUBE-01, CUBE-02, CUBE-03
-**Plans:** 5
+**Plans:** 5/5 complete
 
 Plans:
 - `.planning/phases/13-ux-ia-and-cube-concept/13-01-PLAN.md` — story-led shell, manual workflow stepper, and dedicated explain rail.
@@ -261,6 +261,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Non-uniform time slicing | 0 | In progress | - |
 | 11. Warping metric for adaptive time bin scaling | 0 | Complete    | 2026-04-21 |
 | 12. Codebase rewrite | 8 | Complete    | 2026-04-21 |
-| 13. UX/IA redesign + cube concept | 6 | In progress | - |
+| 13. UX/IA redesign + cube concept | 6 | Complete    | 2026-04-23 |
 | 14. Detect events + decode bursts | 6 | Not started | - |
 | 15. Support overlays + hardening | 10 | Not started | - |
