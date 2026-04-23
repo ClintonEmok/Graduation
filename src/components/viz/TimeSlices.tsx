@@ -16,13 +16,13 @@ export function TimeSlices() {
   const columns = useTimelineDataStore((state) => state.columns);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
   
-  // Compute scale
+  // Compute relational scale for the slice scene
   const scale = useMemo(() => {
     if (timeScaleMode === 'linear') {
       return scaleLinear().domain([0, 100]).range([0, 100]);
     }
     
-    // Adaptive
+    // Adaptive relational projection
     let config;
     if (columns) {
       config = getAdaptiveScaleConfigColumnar(columns.timestamp, [0, 100], [0, 100]);
@@ -50,7 +50,7 @@ export function TimeSlices() {
 
   return (
     <group>
-      {/* Hit Box for creating slices - Translucent/Invisible */}
+      {/* Relational hit box for creating slices - translucent/invisible */}
       <mesh 
         position={[0, 50, 0]} 
         onDoubleClick={handleDoubleClick}

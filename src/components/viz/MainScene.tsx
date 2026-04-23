@@ -29,7 +29,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
   const modeOverride = searchParams.get('mode');
   const activeBinningMode = resolveRouteBinningMode(pathname, modeOverride);
 
-  // Viewport mode: compute adaptive maps from current viewport records.
+  // Viewport mode: compute relational maps from the current viewport slice.
   useEffect(() => {
     if (densityScope !== 'viewport' || !viewportCrimes || viewportCrimes.length === 0) return;
 
@@ -51,7 +51,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
     }
   }, [densityScope, viewportCrimes]);
 
-  // Global mode: hydrate adaptive maps from DB precompute, fallback to local compute if request fails.
+  // Global mode: hydrate relational maps from DB precompute, fallback to local compute if request fails.
   useEffect(() => {
     if (densityScope !== 'global') return;
 
