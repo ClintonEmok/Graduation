@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import { BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
+import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
 import { toast } from 'sonner';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
@@ -10,37 +10,56 @@ import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTi
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 
-export type WorkflowSkeletonStep = 'explore' | 'build' | 'review';
+export type WorkflowSkeletonStep = 'orient' | 'find' | 'compare' | 'inspect' | 'explain' | 'apply';
 
-const STEP_ORDER: WorkflowSkeletonStep[] = ['explore', 'build', 'review'];
+const STEP_ORDER: WorkflowSkeletonStep[] = ['orient', 'find', 'compare', 'inspect', 'explain', 'apply'];
 
 const STEP_LABELS: Record<WorkflowSkeletonStep, string> = {
-  explore: 'Explore',
-  build: 'Build',
-  review: 'Review',
+  orient: 'Orient',
+  find: 'Find',
+  compare: 'Compare',
+  inspect: 'Inspect',
+  explain: 'Explain',
+  apply: 'Apply',
 };
 
 const STEP_SUMMARIES: Record<WorkflowSkeletonStep, string> = {
-  explore: 'Orient to the data field and the shared viewport before editing slices.',
-  build: 'Keep the selection-first build loop continuous while you refine editable drafts.',
-  review: 'Confirm the slice set, inspect pending selection-first drafts, and hand the result off to the dashboard.',
+  orient: 'Orient to the dataset scope, active filters, and current window before making changes.',
+  find: 'Find the bursty periods and interesting windows that deserve closer inspection.',
+  compare: 'Compare uniform and adaptive readings side by side without changing the dataset.',
+  inspect: 'Inspect the active slice or burst window in detail before you commit anything.',
+  explain: 'Explain why the current selection is highlighted and what it belongs to.',
+  apply: 'Apply the confirmed result and continue the guided analysis flow.',
 };
 
 const STEP_DETAIL_LINES: Record<WorkflowSkeletonStep, string[]> = {
-  explore: ['Read the overview surface', 'Keep the workflow lightweight', 'Start with context, not edits'],
-  build: ['Adjust slices in place', 'Treat review as part of the builder', 'Keep selection-first drafts editable before apply'],
-  review: ['Check the final slice list', 'Keep warnings visible', 'Review pending selection-first drafts before apply'],
+  orient: ['Read the overview surface', 'Keep the workflow lightweight', 'Start with context, not edits'],
+  find: ['Locate bursty intervals', 'Keep the current window visible', 'Use the timeline as the primary guide'],
+  compare: ['Hold the same dataset steady', 'Switch only the scale or lens', 'Check whether the pattern still reads the same'],
+  inspect: ['Check the focused slice or burst', 'Keep warning states visible', 'Inspect before you commit'],
+  explain: ['Surface the rationale', 'Call out the active slice relationship', 'Make the next action obvious'],
+  apply: ['Commit the confirmed result', 'Keep the handoff explicit', 'Return to analysis with the updated state'],
 };
 
 const STEP_ICONS: Record<WorkflowSkeletonStep, typeof Layers3> = {
-  explore: Layers3,
-  build: SquareStack,
-  review: BadgeCheck,
+  orient: Layers3,
+  find: SquareStack,
+  compare: ChevronLeft,
+  inspect: ChevronRight,
+  explain: BadgeCheck,
+  apply: ArrowRight,
 };
+
+const GRANULARITY_OPTIONS = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+] as const;
 
 export function WorkflowSkeleton() {
   const [isOpen, setIsOpen] = useState(true);
-  const [activeStep, setActiveStep] = useState<WorkflowSkeletonStep>('explore');
+  const [activeStep, setActiveStep] = useState<WorkflowSkeletonStep>('orient');
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
@@ -51,22 +70,18 @@ export function WorkflowSkeleton() {
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const timelineColumns = useTimelineDataStore((state) => state.columns);
-  const timelineData = useTimelineDataStore((state) => state.data);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
-  const availableCrimeTypes = useMemo(
-    () => {
-      if (timelineColumns?.type && timelineColumns.type.length > 0) {
-        return Array.from(
-          new Set(Array.from(timelineColumns.type, (typeId) => getCrimeTypeName(typeId)).filter((type) => type.trim().length > 0))
-        ).sort();
-      }
+  const availableCrimeTypes = (() => {
+    if (!timelineColumns?.type || timelineColumns.type.length === 0) {
+      return [];
+    }
 
-      return Array.from(new Set(timelineData.map((point) => point.type).filter((type) => type.trim().length > 0))).sort();
-    },
-    [timelineColumns?.type, timelineData]
-  );
+    return Array.from(
+      new Set(Array.from(timelineColumns.type, (typeId) => getCrimeTypeName(typeId)).filter((type) => type.trim().length > 0))
+    ).sort();
+  })();
   const selectedCrimeTypes = generationInputs.crimeTypes;
 
   const activeIndex = STEP_ORDER.indexOf(activeStep);
@@ -99,7 +114,7 @@ export function WorkflowSkeleton() {
   const handleGenerateBurstDrafts = () => {
     if (minTimestampSec === null || maxTimestampSec === null) {
       toast.error('Selection-first generation failed', {
-        description: 'Choose a valid brushed selection before generating selection-first drafts.',
+        description: 'Choose a valid brushed selection before generating workflow drafts.',
       });
       return;
     }
@@ -121,13 +136,13 @@ export function WorkflowSkeleton() {
     if (generated && generationState.lastGeneratedMetadata) {
       const { warning } = generationState.lastGeneratedMetadata;
       toast.success('Burst drafts generated', {
-        description: warning ?? 'Selection-first drafts are ready for review.',
+        description: warning ?? 'Selection-first drafts are ready for the next workflow stage.',
       });
       return;
     }
 
     toast.error('Selection-first generation failed', {
-      description: generationState.generationError ?? 'Could not build drafts from the brushed selection.',
+      description: generationState.generationError ?? 'Could not generate drafts from the brushed selection.',
     });
   };
 
@@ -152,8 +167,8 @@ export function WorkflowSkeleton() {
             <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 px-4 py-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Workflow skeleton</p>
-                <h2 className="mt-1 text-sm font-semibold tracking-tight">Explore → Build → Review</h2>
-                <p className="mt-1 text-[11px] text-slate-400">Left-anchored helper flow under the demo shell.</p>
+                <h2 className="mt-1 text-sm font-semibold tracking-tight">Orient → Find → Compare → Inspect → Explain → Apply</h2>
+                <p className="mt-1 text-[11px] text-slate-400">Left-anchored manual stepper under the demo shell.</p>
               </div>
 
               <button
@@ -218,36 +233,39 @@ export function WorkflowSkeleton() {
                     <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Current</p>
                     <p className="mt-1 text-sm text-slate-100">{STEP_LABELS[activeStep]}</p>
                     <p className="mt-2 text-[12px] leading-5 text-slate-400">
-                      {activeStep === 'explore' && 'Use this stage to understand the data field and decide where to begin.'}
-                      {activeStep === 'build' && 'Refine the slices in place and keep pending burst drafts editable before apply.'}
-                      {activeStep === 'review' && 'Confirm the final state while the pending burst drafts remain open for edits.'}
+                      {activeStep === 'orient' && 'Use this stage to understand the data field and decide where to begin.'}
+                      {activeStep === 'find' && 'Find the bursty periods and keep the current window visible.'}
+                      {activeStep === 'compare' && 'Compare the same dataset under different temporal readings.'}
+                      {activeStep === 'inspect' && 'Inspect the focused window before you change the slice set.'}
+                      {activeStep === 'explain' && 'Explain why the current highlight exists and what it belongs to.'}
+                      {activeStep === 'apply' && 'Apply the confirmed state and return to analysis with the updated workflow.'}
                     </p>
-                    {activeStep === 'build' ? (
+                    {activeStep === 'find' || activeStep === 'apply' ? (
                       <div className="mt-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Selection-first drafts</p>
                           <span className="text-[10px] text-violet-200">Brushed selection is canonical</span>
                         </div>
-                        <p className="mt-2 text-[11px] text-violet-100/90">Daily is the default granularity; crime types are optional inputs.</p>
+                        <p className="mt-2 text-[11px] text-violet-100/90">Daily is the default granularity; weekly and monthly bins are available too.</p>
 
                         <div className="mt-3 space-y-2">
                           <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
                           <div className="flex flex-wrap gap-2">
-                            {(['hourly', 'daily'] as const).map((granularity) => {
-                              const isActive = generationInputs.granularity === granularity;
+                            {GRANULARITY_OPTIONS.map((option) => {
+                              const isActive = generationInputs.granularity === option.value;
 
                               return (
                                 <button
-                                  key={granularity}
+                                  key={option.value}
                                   type="button"
-                                  onClick={() => setGenerationInputs({ granularity })}
+                                  onClick={() => setGenerationInputs({ granularity: option.value })}
                                   className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                                     isActive
                                       ? 'border-violet-300 bg-violet-500/20 text-violet-50'
                                       : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
                                   }`}
                                 >
-                                  {granularity === 'daily' ? 'Daily' : 'Hourly'}
+                                  {option.label}
                                 </button>
                               );
                             })}
