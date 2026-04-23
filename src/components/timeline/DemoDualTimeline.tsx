@@ -20,7 +20,6 @@ import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTi
 import { resolvePointByIndex } from '@/lib/selection';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildDemoSliceAuthoredWarpMap } from '@/components/dashboard-demo/lib/demo-warp-map';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
@@ -32,6 +31,7 @@ import {
 import { useScaleTransforms } from './hooks/useScaleTransforms';
 import { useBrushZoomSync } from './hooks/useBrushZoomSync';
 import { usePointSelection } from './hooks/usePointSelection';
+import { useDemoTimelineSummary } from '@/components/timeline/hooks/useDemoTimelineSummary';
 import {
   clampToRange,
   computeRangeUpdate,
@@ -41,6 +41,8 @@ import { type TickLabelStrategy } from './lib/tick-ux';
 import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
 import { DualTimelineSurface } from '@/components/timeline/DualTimelineSurface';
 import { useDualTimelineViewModel } from './hooks/useDualTimelineViewModel';
+import { useBurstWindows } from '@/components/viz/BurstList';
+import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -194,6 +196,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
+  const isDataLoading = useTimelineDataStore((state) => state.isLoading);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useStore(useDashboardDemoFilterStore, (state) => state.selectedTimeRange);
@@ -205,7 +208,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const selectedIndex = useStore(useDashboardDemoCoordinationStore, (state) => state.selectedIndex);
   const setSelectedIndex = useStore(useDashboardDemoCoordinationStore, (state) => state.setSelectedIndex);
   const clearSelection = useStore(useDashboardDemoCoordinationStore, (state) => state.clearSelection);
-  const brushRange = useStore(useDashboardDemoCoordinationStore, (state) => state.brushRange);
   const setBrushRange = useStore(useDashboardDemoCoordinationStore, (state) => state.setBrushRange);
   const timeScaleMode = useStore(useDashboardDemoWarpStore, (state) => state.timeScaleMode);
   const warpSource = useStore(useDashboardDemoWarpStore, (state) => state.warpSource);
@@ -239,17 +241,11 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     [slices, warpDomain]
   );
 
-  // Get viewport-based crime data
-  const { data: viewportCrimes, isLoading: isViewportLoading } = useViewportCrimeData({
-    bufferDays: 30,
-  });
-
   // Get viewport store for brush/zoom sync
   const setViewport = useViewportStore((state) => state.setViewport);
 
   // NOTE: Viewport stays at initial default (2001-2002) until user zooms/brushes
-  // This enables fast initial load - only fetching first year of data
-  // The useViewportCrimeData hook fetches data for the current viewport range
+  // This keeps the initial load bounded while the shared timeline store initializes.
 
   const [containerRef, bounds] = useMeasure<HTMLDivElement>();
   const overviewSvgRef = useRef<SVGSVGElement | null>(null);
@@ -357,24 +353,10 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
 
-  // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
     if (detailPointsOverride) {
       return detailPointsOverride;
     }
-    // If we have viewport crime data, use it directly
-    if (viewportCrimes && viewportCrimes.length > 0) {
-      const [start, end] = detailRangeSec;
-      const points = viewportCrimes
-        .map(crime => crime.timestamp)  // Use 'timestamp' not 'date'
-        .filter((date) => date >= start && date <= end);
-      const maxPoints = 4000;
-      if (points.length <= maxPoints) return points;
-      const step = Math.ceil(points.length / maxPoints);
-      return points.filter((_, index) => index % step === 0);
-    }
-
-    // Fallback to computed timestampSeconds
     if (!timestampSeconds.length) return [];
     const [start, end] = detailRangeSec;
     const points = timestampSeconds.filter((value) => value >= start && value <= end);
@@ -382,7 +364,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     if (points.length <= maxPoints) return points;
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0);
-  }, [detailPointsOverride, viewportCrimes, timestampSeconds, detailRangeSec]);
+  }, [detailPointsOverride, timestampSeconds, detailRangeSec]);
 
   const { detailSpanDays, detailDensityMap } = useDensityStripDerivation({
     detailPoints,
@@ -569,6 +551,30 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const selectionX = useMemo(() => {
     return resolveSelectionX(selectionPoint?.timestampSec, (date) => detailScale(date), detailInnerWidth);
   }, [detailInnerWidth, detailScale, selectionPoint]);
+
+  const burstWindows = useBurstWindows();
+  const burstTaxonomySummary = useMemo(() => {
+    const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
+      'prolonged-peak': 0,
+      'isolated-spike': 0,
+      valley: 0,
+      neutral: 0,
+    };
+
+    for (const [index, window] of burstWindows.entries()) {
+      const taxonomy = classifyBurstWindow({
+        value: window.peak,
+        count: window.count,
+        durationSec: window.duration,
+        neighborhood: [burstWindows[index - 1], burstWindows[index + 1]]
+          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
+          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
+      });
+      counts[taxonomy.burstClass] += 1;
+    }
+
+    return counts;
+  }, [burstWindows]);
 
 
   const stripSelection = useMemo(() => {
@@ -828,40 +834,10 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return value.toFixed(2);
   };
 
-  const isTimelineLoading = isViewportLoading;
+  const isTimelineLoading = isDataLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
-
-  const brushDateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-    []
-  );
-
-  const brushRangeLabel = useMemo(() => {
-    if (!brushRange) {
-      return 'No selection';
-    }
-
-    const [startNorm, endNorm] = brushRange;
-    if (!Number.isFinite(startNorm) || !Number.isFinite(endNorm)) {
-      return 'No selection';
-    }
-
-    const clampedStartNorm = clamp(Math.min(startNorm, endNorm), 0, 100);
-    const clampedEndNorm = clamp(Math.max(startNorm, endNorm), 0, 100);
-    const startSec = normalizedToEpochSeconds(clampedStartNorm, domainStart, domainEnd);
-    const endSec = normalizedToEpochSeconds(clampedEndNorm, domainStart, domainEnd);
-    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) {
-      return 'No selection';
-    }
-
-    const startDate = new Date(startSec * 1000);
-    const endDate = new Date(endSec * 1000);
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return 'No selection';
-    }
-
-    return `${brushDateFormatter.format(startDate)} - ${brushDateFormatter.format(endDate)}`;
-  }, [brushDateFormatter, brushRange, domainEnd, domainStart]);
+  const timelineSummary = useDemoTimelineSummary();
+  const brushRangeLabel = timelineSummary.primaryDriverLabel;
 
 
   const surfaceProps = {
