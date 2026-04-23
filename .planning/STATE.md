@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-  stopped_at: Completed 13-01-PLAN.md
-  last_updated: "2026-04-23T13:20:19Z"
+  stopped_at: Completed 13-02-PLAN.md
+  last_updated: "2026-04-23T13:22:09Z"
 progress:
   total_phases: 18
   completed_phases: 11
   total_plans: 41
-  completed_plans: 31
+  completed_plans: 32
 ---
 
 # Project State
@@ -24,13 +24,13 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 ## Current Position
 
 Phase: 13 (UX/IA redesign + cube concept) — In progress
-Plan: 01 complete / 05
+Plan: 02 complete / 05
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 18
+- Total plans completed: 21
 - Average duration: ~4 min
 - Total execution time: 0.8 hours
 
@@ -98,6 +98,9 @@ Plan: 01 complete / 05
 - Keep hotspot/place labels in district-first language and preserve lightweight recovery states inside the demo rail.
 - Lock the Phase 5 contract with source-inspection and API regression tests.
 - Use a two-track demo timeline with a stronger focused/adapted top track, a subtle raw baseline, and curved warp connectors when readable.
+- Centralize the timeline compare story in a shared summary hook.
+- Make the dual timeline read as the primary analysis driver.
+- Keep the focused track and raw baseline cue visible above the compare controls.
 - Keep the slice companion secondary by compressing its copy and badges instead of expanding the shell.
 - Lock the demo shell contract with source-inspection tests so stable `/dashboard` and `/timeslicing` routes stay isolated.
 - Keep the Phase 6 warp follow-up demo-local, but simplify the visible warp language to a quieter bands-first presentation.
@@ -140,7 +143,7 @@ Plan: 01 complete / 05
 - Phase 10 non-uniform time slicing has the helper layer and workflow wiring complete for plans 01-02.
 - Phase 11 warping metric plan 01 is complete; plans 02-03 remain queued before workflow isolation.
 - Phase 11 warping metric plan 02 is complete; plan 03 remains queued for browser verification.
-- Phase 12 codebase rewrite is complete; Phase 13 UX/IA plan 01 is complete and plan 02 is next.
+- Phase 12 codebase rewrite is complete; Phase 13 UX/IA plans 01-02 are complete and plan 03 is next.
 
 ### Blockers/Concerns
 
@@ -149,6 +152,6 @@ Plan: 01 complete / 05
 
 ## Session Continuity
 
-Last session: 2026-04-23T13:20:19Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-04-23T13:22:09Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
