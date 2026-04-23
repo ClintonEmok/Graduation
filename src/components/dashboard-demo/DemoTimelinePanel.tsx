@@ -72,8 +72,10 @@ export function DemoTimelinePanel() {
           </div>
           <div className="pb-2 text-[10px] text-muted-foreground">Focused track above · raw baseline below</div>
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+            <span>Window: {summary.selectedWindowLabel}</span>
             <span>Compare: {summary.compareLabel}</span>
             <span>Scale: {summary.modeLabel}</span>
+            <span>Linked: {summary.linkedHighlightLabel}</span>
             <span>Burst windows: {summary.burstLabel}</span>
           </div>
           <DemoDualTimeline />
