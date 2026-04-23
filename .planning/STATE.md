@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-  stopped_at: Completed 12-08-PLAN.md
-  last_updated: "2026-04-21T23:20:11.000Z"
+  stopped_at: Completed 13-01-PLAN.md
+  last_updated: "2026-04-23T13:20:19Z"
 progress:
   total_phases: 18
   completed_phases: 11
-  total_plans: 36
-  completed_plans: 30
+  total_plans: 41
+  completed_plans: 31
 ---
 
 # Project State
@@ -19,18 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 13 — trace-trajectories-compare-behaviors
+**Current focus:** Phase 13 — UX/IA redesign + cube concept
 
 ## Current Position
 
-Phase: 13 (trace-trajectories-compare-behaviors) — NOT STARTED
-Plan: Not started
+Phase: 13 (UX/IA redesign + cube concept) — In progress
+Plan: 01 complete / 05
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: ~4 min
 - Total execution time: 0.8 hours
 
@@ -116,6 +116,9 @@ Plan: Not started
 - Keep pending burst drafts in a dedicated review surface so merge, split, and delete stay pre-apply only.
 - Mirror the editable draft state in the workflow shell and timeline copy so the demo reads consistently.
 - Lock pending-draft edit wiring with source-inspection coverage instead of route behavior changes.
+- Add a dedicated Explain rail and manual workflow stepper for Phase 13.
+- Keep the timeline as the primary analysis driver with explicit compare framing.
+- Recast the cube as a relational synthesis layer with linked-selection emphasis.
 - Partition brushed selections first for the phase 10 helper layer, then use burst scoring only to tune warp metadata.
 - Preserve exact coverage of the brushed interval and return a neutral partition when no bin stands out.
 - Expand the shared comparable-bin scorer to support monthly granularity alongside hourly, daily, and weekly bins.
@@ -137,7 +140,7 @@ Plan: Not started
 - Phase 10 non-uniform time slicing has the helper layer and workflow wiring complete for plans 01-02.
 - Phase 11 warping metric plan 01 is complete; plans 02-03 remain queued before workflow isolation.
 - Phase 11 warping metric plan 02 is complete; plan 03 remains queued for browser verification.
-- Phase 12 codebase rewrite is complete; Phase 13 trace/compare is next.
+- Phase 12 codebase rewrite is complete; Phase 13 UX/IA plan 01 is complete and plan 02 is next.
 
 ### Blockers/Concerns
 
@@ -146,6 +149,6 @@ Plan: Not started
 
 ## Session Continuity
 
-Last session: 2026-04-21T23:20:11Z
-Stopped at: Completed 12-08-PLAN.md
+Last session: 2026-04-23T13:20:19Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
