@@ -15,6 +15,6 @@ describe('/dashboard shell', () => {
   test('does not include dashboard-demo rail chrome', () => {
     const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
-    expect(pageSource).not.toMatch(/DashboardStkdePanel|Map-first shared viewport|2D map|3D cube/);
+    expect(pageSource).not.toMatch(/DashboardStkdePanel|Map-first shared viewport|2D map|3D cube|DemoExplainPanel|WorkflowSkeleton|DemoTimelinePanel/);
   });
 });
