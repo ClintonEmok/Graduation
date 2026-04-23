@@ -1,6 +1,6 @@
 "use client";
 
-import { Edges } from '@react-three/drei';
+import { Edges, Html } from '@react-three/drei';
 import { useMemo } from 'react';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
@@ -153,6 +153,10 @@ export function SelectedWarpSliceOverlay() {
     return slices.find((slice) => slice.id === selectedSliceId && slice.enabled) ?? null;
   }, [selectedSliceId, slices]);
 
+  const sliceLabel = selectedSlice
+    ? `${selectedSlice.name?.trim() || (selectedSlice.type === 'range' ? 'Range slice' : 'Point slice')} · linked selection`
+    : 'Linked selection';
+
   if (!selectedSlice) {
     return null;
   }
@@ -191,6 +195,12 @@ export function SelectedWarpSliceOverlay() {
         <meshBasicMaterial color="#22d3ee" transparent opacity={0.08} depthWrite={false} />
         <Edges color="#22d3ee" linewidth={1} scale={1.001} />
       </mesh>
+      <Html position={[0, height / 2 + 4, 0]} center className="pointer-events-none select-none">
+        <div className="rounded-full border border-cyan-300/40 bg-slate-950/90 px-2 py-1 text-[10px] text-cyan-100 shadow-sm">
+          {sliceLabel}
+          {timeScaleMode === 'adaptive' ? ' · compare cue' : ' · relational cue'}
+        </div>
+      </Html>
     </group>
   );
 }

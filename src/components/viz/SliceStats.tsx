@@ -23,7 +23,7 @@ export function SliceStats({ sliceId }: SliceStatsProps) {
   if (totalCount === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
-        No events found in this slice.
+        No relational events found in this slice.
       </div>
     );
   }
@@ -42,12 +42,12 @@ export function SliceStats({ sliceId }: SliceStatsProps) {
   return (
     <div className="p-4 space-y-6">
       <div>
-        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Total Events</h3>
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Slice relationship summary</h3>
         <p className="text-2xl font-bold">{totalCount}</p>
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Top Crime Types</h3>
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Primary composition</h3>
         <div className="space-y-2">
           {sortedTypes.map(([type, count]) => (
             <div key={type} className="text-xs">
@@ -67,7 +67,7 @@ export function SliceStats({ sliceId }: SliceStatsProps) {
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Top Districts</h3>
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">District anchors</h3>
         <div className="space-y-2">
           {sortedDistricts.map(([district, count]) => (
             <div key={district} className="text-xs">
