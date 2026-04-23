@@ -9,6 +9,7 @@ import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { resolutionToNormalizedStep, type TimeResolution } from '@/lib/time-domain';
+import { useDemoTimelineSummary } from '@/components/timeline/hooks/useDemoTimelineSummary';
 
 const TIME_RESOLUTION_OPTIONS: TimeResolution[] = [
   'seconds',
@@ -21,6 +22,7 @@ const TIME_RESOLUTION_OPTIONS: TimeResolution[] = [
 ];
 
 export function DemoTimelinePanel() {
+  const summary = useDemoTimelineSummary();
   const {
     currentTime,
     timeResolution,
@@ -66,7 +68,13 @@ export function DemoTimelinePanel() {
       <div className="w-full flex flex-col gap-4">
         <div className="rounded-md border bg-muted/10 px-3 py-2">
           <div className="pb-2 text-[10px] text-muted-foreground">
-            Demo timeline • Focused track above • raw baseline below
+            {summary.primaryDriverLabel}
+          </div>
+          <div className="pb-2 text-[10px] text-muted-foreground">Focused track above · raw baseline below</div>
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+            <span>Compare: {summary.compareLabel}</span>
+            <span>Scale: {summary.modeLabel}</span>
+            <span>Burst windows: {summary.burstLabel}</span>
           </div>
           <DemoDualTimeline />
         </div>
