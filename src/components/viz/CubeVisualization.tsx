@@ -87,14 +87,14 @@ export default function CubeVisualization() {
         <MainScene showMapBackground={false} />
 
         <div className="absolute top-4 left-4 z-10 rounded-md border border-slate-500/50 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-100 shadow-sm backdrop-blur">
-          <p>Constraints: {enabledConstraints.length} enabled · Active: {activeConstraintLabel}</p>
-          <p>Adaptive: {warpSource} · Warp {warpFactor.toFixed(2)}</p>
-          <p>Applied proposal: {appliedProposalLabel}</p>
-          <p>Selected interval: {selectedInterval?.label ?? 'None'}</p>
-          <p>Preview interval: {previewIntervalLabel}</p>
+          <p>Relational mode: {warpSource} · warp {warpFactor.toFixed(2)}</p>
+          <p>Active structure: {activeConstraintLabel}</p>
+          <p>Linked selection: {selectedInterval?.label ?? appliedIntervalLabel}</p>
+          <p>Proposal story: {appliedProposalLabel}</p>
+          <p>Comparison cue: {previewIntervalLabel}</p>
           <p>Applied interval: {appliedIntervalLabel}</p>
           <p>
-            Interval confidence:{' '}
+            Slice confidence:{' '}
             {(appliedInterval ?? selectedInterval)?.confidence.band ?? 'None'}
             {' · '}
             {(appliedInterval ?? selectedInterval)?.qualityState ?? 'none'}
@@ -119,9 +119,9 @@ export default function CubeVisualization() {
           </div>
         )}
 
-        {stkdeResponse ? (
+          {stkdeResponse ? (
           <div className="absolute top-4 left-4 z-10 max-w-sm rounded-md border bg-background/85 px-3 py-2 text-[10px] text-muted-foreground shadow-sm backdrop-blur">
-            <div className="text-xs font-semibold text-foreground">STKDE Context</div>
+            <div className="text-xs font-semibold text-foreground">Relational context</div>
             {selectedHotspot ? (
               <>
                 <div className="mt-1 text-foreground">Hotspot {selectedHotspot.id}</div>
