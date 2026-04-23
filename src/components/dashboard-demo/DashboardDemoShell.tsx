@@ -38,10 +38,26 @@ export function DashboardDemoShell() {
   return (
     <main
       className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100"
-      aria-label="Dashboard demo route"
-      data-phase="workflow-isolation-dashboard-handoff-demo"
+      aria-label="Phase 13 guided analysis workflow"
+      data-phase="phase-13-guided-analysis-workflow"
     >
       <div className="flex h-full min-w-0 flex-col pr-80">
+        <header className="flex items-center justify-between gap-4 border-b border-slate-800/80 bg-slate-950/95 px-4 py-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Phase 13 · Guided workflow</div>
+            <h1 className="mt-1 text-sm font-semibold tracking-tight text-slate-100">
+              Orient → Find → Compare → Inspect → Explain → Apply
+            </h1>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Timeline first, map for where, cube for what relates to what.
+            </p>
+          </div>
+
+          <div className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-[11px] text-slate-300">
+            Shared dataset · one workflow · linked views
+          </div>
+        </header>
+
         <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
           <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/80 p-1 backdrop-blur">
             <button
