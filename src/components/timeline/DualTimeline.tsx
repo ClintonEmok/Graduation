@@ -31,6 +31,8 @@ import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useDensityStripDerivation, DETAIL_DENSITY_RECOMPUTE_MAX_DAYS } from './hooks/useDensityStripDerivation';
 import { useBrushZoomSync } from './hooks/useBrushZoomSync';
 import { usePointSelection } from './hooks/usePointSelection';
+import { normalizeTimeRange, timeRangeOverlapsDomain } from '@/lib/time-range';
+import { sampleTimelinePoints, selectTimelinePointsInRange } from '@/lib/timeline-series';
 import {
   clampToRange,
   computeRangeUpdate,
@@ -168,6 +170,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
+  const overviewTimestampSec = useTimelineDataStore((state) => state.overviewTimestampSec);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
@@ -245,11 +248,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [domainOverride, minTimestampSec, maxTimestampSec]);
   const hasLoadedDomain = minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec;
 
-  // Viewport bounds for initial selection (first year)
-  const viewportStart = useViewportStore((state) => state.startDate);
-  const viewportEnd = useViewportStore((state) => state.endDate);
-
-  // Active window range: override > selectedTimeRange > viewport bounds (first year)
+  // Active window range: override > selectedTimeRange > full dataset domain
   const detailRangeSec = useMemo<[number, number]>(() => {
     if (detailRangeOverride && Number.isFinite(detailRangeOverride[0]) && Number.isFinite(detailRangeOverride[1])) {
       const start = Math.min(detailRangeOverride[0], detailRangeOverride[1]);
@@ -258,42 +257,42 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
         return [start, end];
       }
     }
-    if (selectedTimeRange) {
-      const [rawStart, rawEnd] = selectedTimeRange;
-      const start = Math.min(rawStart, rawEnd);
-      const end = Math.max(rawStart, rawEnd);
-      const overlaps = end >= domainStart && start <= domainEnd;
-      if (Number.isFinite(start) && Number.isFinite(end) && overlaps) {
-        return [start, end];
-      }
+    const normalizedSelectedTimeRange = normalizeTimeRange(selectedTimeRange);
+    if (normalizedSelectedTimeRange && timeRangeOverlapsDomain(normalizedSelectedTimeRange, domainStart, domainEnd)) {
+      return normalizedSelectedTimeRange;
     }
-    // Default to viewport bounds (first year) instead of full domain
-    return [viewportStart, viewportEnd];
-  }, [detailRangeOverride, selectedTimeRange, domainStart, domainEnd, viewportStart, viewportEnd]);
+    return [domainStart, domainEnd];
+  }, [detailRangeOverride, selectedTimeRange, domainStart, domainEnd]);
 
   const timestampSeconds = useMemo<number[]>(() => {
-    if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
-      const result = new Array<number>(columns.length);
-      for (let i = 0; i < columns.length; i += 1) {
-        result[i] = normalizedToEpochSeconds(columns.timestamp[i], minTimestampSec, maxTimestampSec);
-      }
-      return result;
+    if (columns && columns.length > 0) {
+      return Array.from(columns.timestampSec);
     }
     if (data && data.length > 0) {
       return data.map((point) => point.timestamp as number);
     }
     return [];
-  }, [columns, data, minTimestampSec, maxTimestampSec]);
+  }, [columns, data]);
+
+  const overviewSeries = useMemo<number[]>(() => {
+    if (overviewTimestampSec.length > 0) {
+      return overviewTimestampSec;
+    }
+    if (timestampSeconds.length > 0) {
+      return sampleTimelinePoints(timestampSeconds);
+    }
+    return [];
+  }, [overviewTimestampSec, timestampSeconds]);
 
   const overviewBins = useMemo(() => {
-    const values = timestampSecondsOverride ?? timestampSeconds;
+    const values = timestampSecondsOverride ?? overviewSeries;
     if (!values.length) return [];
     const binner = bin<number, number>()
       .value((d) => d)
       .domain([domainStart, domainEnd])
       .thresholds(50);
     return binner(values);
-  }, [timestampSecondsOverride, timestampSeconds, domainStart, domainEnd]);
+  }, [timestampSecondsOverride, overviewSeries, domainStart, domainEnd]);
 
   const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
   
@@ -305,24 +304,15 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     // If we have viewport crime data, use it directly
     if (viewportCrimes && viewportCrimes.length > 0) {
       const [start, end] = detailRangeSec;
-      const points = viewportCrimes
-        .map(crime => crime.timestamp)  // Use 'timestamp' not 'date'
-        .filter((date) => date >= start && date <= end);
-      const maxPoints = 4000;
-      if (points.length <= maxPoints) return points;
-      const step = Math.ceil(points.length / maxPoints);
-      return points.filter((_, index) => index % step === 0);
+      const points = viewportCrimes.map((crime) => crime.timestamp);
+      return selectTimelinePointsInRange(points, [start, end]);
     }
     
     // Fallback to computed timestampSeconds
-    if (!timestampSeconds.length) return [];
-    const [start, end] = detailRangeSec;
-    const points = timestampSeconds.filter((value) => value >= start && value <= end);
-    const maxPoints = 4000;
-    if (points.length <= maxPoints) return points;
-    const step = Math.ceil(points.length / maxPoints);
-    return points.filter((_, index) => index % step === 0);
-  }, [detailPointsOverride, viewportCrimes, timestampSeconds, detailRangeSec]);
+    const detailSource = timestampSeconds.length > 0 ? timestampSeconds : overviewSeries;
+    if (!detailSource.length) return [];
+    return selectTimelinePointsInRange(detailSource, detailRangeSec);
+  }, [detailPointsOverride, viewportCrimes, timestampSeconds, overviewSeries, detailRangeSec]);
 
   const { detailSpanDays, detailDensityMap } = useDensityStripDerivation({
     detailPoints,
@@ -397,12 +387,9 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   useEffect(() => {
     if (!interactive) return;
-    if (!selectedTimeRange) return;
-    const [rawStart, rawEnd] = selectedTimeRange;
-    const start = Math.min(rawStart, rawEnd);
-    const end = Math.max(rawStart, rawEnd);
-    const overlaps = end >= domainStart && start <= domainEnd;
-    if (!Number.isFinite(start) || !Number.isFinite(end) || !overlaps) {
+    const normalizedSelectedTimeRange = normalizeTimeRange(selectedTimeRange);
+    if (!normalizedSelectedTimeRange) return;
+    if (!timeRangeOverlapsDomain(normalizedSelectedTimeRange, domainStart, domainEnd)) {
       isSyncingRef.current = true;
       applyRangeToStores(domainStart, domainEnd);
       isSyncingRef.current = false;
@@ -412,6 +399,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   useEffect(() => {
     if (!interactive) return;
     if (!hasLoadedDomain) return;
+    if (normalizeTimeRange(selectedTimeRange)) return;
 
     // Avoid syncing the normalized fallback range into epoch-backed stores.
     const resolutionSeconds: Record<typeof timeResolution, number> = {
@@ -439,7 +427,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     isSyncingRef.current = true;
     applyRangeToStores(centerSec - span / 2, centerSec + span / 2);
     isSyncingRef.current = false;
-  }, [applyRangeToStores, currentTime, domainEnd, domainStart, hasLoadedDomain, interactive, timeResolution]);
+  }, [applyRangeToStores, currentTime, domainEnd, domainStart, hasLoadedDomain, interactive, selectedTimeRange, timeResolution]);
 
   useBrushZoomSync({
     interactive,
@@ -757,11 +745,14 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     densityMap,
     overviewScale,
     detailScale,
+    overviewSvgRef,
+    detailSvgRef,
     overviewBins,
     overviewMax,
     stripSelection,
     userWarpOverlayBands,
     timeScaleMode,
+    brushRef,
     overviewTicks,
     overviewTickFormat,
     burstWindows,
