@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { ChevronUp, Minus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL_DEMO_DISTRICTS } from '@/store/useDashboardDemoAnalysisStore';
 import { useDemoStatsSummary } from '@/components/dashboard-demo/lib/useDemoStatsSummary';
 
@@ -31,7 +32,20 @@ interface PulseChartProps {
 }
 
 function PulseChart({ title, readout, points, accentClassName, labelStep = 1 }: PulseChartProps) {
-  const maxCount = useMemo(() => Math.max(...points.map((point) => point.count), 1), [points]);
+  const { minCount, range } = useMemo(() => {
+    if (points.length === 0) {
+      return { minCount: 0, range: 1 };
+    }
+
+    const counts = points.map((point) => point.count);
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+
+    return {
+      minCount: min,
+      range: Math.max(max - min, 1),
+    };
+  }, [points]);
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
@@ -40,15 +54,14 @@ function PulseChart({ title, readout, points, accentClassName, labelStep = 1 }: 
         <span className="text-[11px] text-slate-500">{readout}</span>
       </div>
 
-      <div className="mt-2 flex h-24 items-end gap-1">
+      <div className="mt-2 flex items-end justify-between gap-1 h-32">
         {points.map((point, index) => (
-          <div key={`${title}-${point.label}-${index}`} className="flex-1 min-w-0">
-            <div className="relative h-full rounded-t bg-slate-800">
+          <div key={`${title}-${point.label}-${index}`} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+            <div className="relative w-full overflow-hidden rounded-t bg-slate-800" style={{ height: '80px' }}>
               <div
                 className={`absolute inset-x-0 bottom-0 rounded-t ${accentClassName}`}
                 style={{
-                  height: `${(point.count / maxCount) * 100}%`,
-                  minHeight: point.count > 0 ? '4px' : '0px',
+                  height: `${Math.max(8, ((point.count - minCount) / range) * 100)}%`,
                 }}
               />
             </div>
@@ -176,9 +189,28 @@ export function DemoStatsPanel() {
         </div>
       </div>
 
-      <PulseChart title="Hourly pulse" readout="24h read" points={temporalPulses.hourly} accentClassName="bg-violet-500" labelStep={6} />
-      <PulseChart title="Daily trend" readout="7d read" points={temporalPulses.daily} accentClassName="bg-sky-500" labelStep={1} />
-      <PulseChart title="Monthly trend" readout="12mo read" points={temporalPulses.monthly} accentClassName="bg-emerald-500" labelStep={1} />
+      <Tabs defaultValue="hourly" className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Trends</h3>
+          <TabsList className="h-auto rounded-full bg-slate-950/80 p-1">
+            <TabsTrigger value="hourly" className="rounded-full px-3 py-1 text-[11px]">Hourly</TabsTrigger>
+            <TabsTrigger value="daily" className="rounded-full px-3 py-1 text-[11px]">Daily</TabsTrigger>
+            <TabsTrigger value="monthly" className="rounded-full px-3 py-1 text-[11px]">Monthly</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="hourly" className="mt-3">
+          <PulseChart title="Hourly pulse" readout="24h read" points={temporalPulses.hourly} accentClassName="bg-violet-500" labelStep={6} />
+        </TabsContent>
+
+        <TabsContent value="daily" className="mt-3">
+          <PulseChart title="Daily trend" readout="7d read" points={temporalPulses.daily} accentClassName="bg-sky-500" labelStep={1} />
+        </TabsContent>
+
+        <TabsContent value="monthly" className="mt-3">
+          <PulseChart title="Monthly trend" readout="12mo read" points={temporalPulses.monthly} accentClassName="bg-emerald-500" labelStep={1} />
+        </TabsContent>
+      </Tabs>
 
       <div className="text-[11px] text-slate-500">
         {isLoading ? 'Loading demo stats…' : summary ? `Loaded ${summary.totalCrimes.toLocaleString()} crimes for the current demo context.` : 'No demo stats loaded yet.'}

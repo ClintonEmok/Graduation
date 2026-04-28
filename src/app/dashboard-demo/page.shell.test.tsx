@@ -116,6 +116,13 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsSource).toMatch(/Stats Summary/);
     expect(demoStatsSource).toMatch(/selectedDistrictLabels/);
     expect(demoStatsSource).toMatch(/Spatial distribution/);
+    expect(demoStatsSource).toMatch(/TabsList/);
+    expect(demoStatsSource).toMatch(/TabsTrigger value="hourly"/);
+    expect(demoStatsSource).toMatch(/TabsTrigger value="daily"/);
+    expect(demoStatsSource).toMatch(/TabsTrigger value="monthly"/);
+    expect(demoStatsSource).toMatch(/TabsContent value="hourly"/);
+    expect(demoStatsSource).toMatch(/TabsContent value="daily"/);
+    expect(demoStatsSource).toMatch(/TabsContent value="monthly"/);
     expect(demoStatsSource).toMatch(/Hourly pulse/);
     expect(demoStatsSource).toMatch(/Daily trend/);
     expect(demoStatsSource).toMatch(/Monthly trend/);
