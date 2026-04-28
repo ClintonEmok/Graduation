@@ -22,10 +22,51 @@ function MetricCard({ label, value }: { label: string; value: string | number })
   );
 }
 
+interface PulseChartProps {
+  title: string;
+  readout: string;
+  points: Array<{ label: string; count: number }>;
+  accentClassName: string;
+  labelStep?: number;
+}
+
+function PulseChart({ title, readout, points, accentClassName, labelStep = 1 }: PulseChartProps) {
+  const maxCount = useMemo(() => Math.max(...points.map((point) => point.count), 1), [points]);
+
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{title}</h3>
+        <span className="text-[11px] text-slate-500">{readout}</span>
+      </div>
+
+      <div className="mt-2 flex h-24 items-end gap-1">
+        {points.map((point, index) => (
+          <div key={`${title}-${point.label}-${index}`} className="flex-1 min-w-0">
+            <div className="relative h-full rounded-t bg-slate-800">
+              <div
+                className={`absolute inset-x-0 bottom-0 rounded-t ${accentClassName}`}
+                style={{
+                  height: `${(point.count / maxCount) * 100}%`,
+                  minHeight: point.count > 0 ? '4px' : '0px',
+                }}
+              />
+            </div>
+            <div className="mt-1 min-h-[0.75rem] text-center text-[10px] text-slate-500">
+              {(index % labelStep === 0 || index === points.length - 1) ? point.label : ''}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DemoStatsPanel() {
   const {
     summary,
     stats,
+    temporalPulses,
     isLoading,
     selectedDistricts,
     selectedDistrictLabels,
@@ -37,8 +78,6 @@ export function DemoStatsPanel() {
   } = useDemoStatsSummary();
 
   const topTypes = useMemo(() => stats?.byType.slice(0, 4) ?? [], [stats]);
-  const hourBins = useMemo(() => stats?.byHour ?? [], [stats]);
-  const maxHourCount = useMemo(() => Math.max(...hourBins, 1), [hourBins]);
 
   return (
     <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100">
@@ -137,23 +176,9 @@ export function DemoStatsPanel() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Hourly pulse</h3>
-          <span className="text-[11px] text-slate-500">24h read</span>
-        </div>
-        <div className="mt-2 flex h-24 items-end gap-1">
-          {hourBins.slice(0, 24).map((count, hour) => {
-            return (
-              <div key={hour} className="flex-1">
-                <div className="h-full rounded-t bg-slate-800">
-                  <div className="w-full rounded-t bg-violet-500" style={{ height: `${(count / maxHourCount) * 100}%`, minHeight: count > 0 ? '4px' : '0px' }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <PulseChart title="Hourly pulse" readout="24h read" points={temporalPulses.hourly} accentClassName="bg-violet-500" labelStep={6} />
+      <PulseChart title="Daily trend" readout="7d read" points={temporalPulses.daily} accentClassName="bg-sky-500" labelStep={1} />
+      <PulseChart title="Monthly trend" readout="12mo read" points={temporalPulses.monthly} accentClassName="bg-emerald-500" labelStep={1} />
 
       <div className="text-[11px] text-slate-500">
         {isLoading ? 'Loading demo stats…' : summary ? `Loaded ${summary.totalCrimes.toLocaleString()} crimes for the current demo context.` : 'No demo stats loaded yet.'}

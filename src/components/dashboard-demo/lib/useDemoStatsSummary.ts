@@ -5,12 +5,14 @@ import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { getDistrictDisplayName, transformStatsSummary, type StatsSummary } from '@/app/stats/lib/stats-view-model';
 import { normalizeTimeRange } from '@/lib/time-range';
+import { buildTemporalPulseSeries, type TemporalPulseSeries } from '@/lib/stats/temporal-pulses';
 import { useDemoTimelineSummary } from '@/components/timeline/hooks/useDemoTimelineSummary';
 import type { NeighborhoodStats } from '@/lib/stats/aggregation';
 
 interface DemoStatsSummaryResponse {
   stats: NeighborhoodStats;
   summary: StatsSummary;
+  temporalPulses?: TemporalPulseSeries;
 }
 
 function buildQueryParams(startEpoch: number, endEpoch: number, districts: string[]) {
@@ -72,6 +74,10 @@ export function useDemoStatsSummary() {
   });
 
   const stats = query.data?.stats ?? null;
+  const temporalPulses = useMemo<TemporalPulseSeries>(
+    () => query.data?.temporalPulses ?? buildTemporalPulseSeries(stats),
+    [query.data?.temporalPulses, stats]
+  );
   const summary = useMemo<StatsSummary | null>(() => {
     if (!stats) return null;
     return query.data?.summary ?? transformStatsSummary(stats, selectedDistricts.length || 25, { startEpoch: committedTimeRange[0], endEpoch: committedTimeRange[1] });
@@ -86,6 +92,7 @@ export function useDemoStatsSummary() {
     selectedDistricts,
     selectedDistrictLabels,
     timeRange,
+    temporalPulses,
     timelineSummary,
     toggleDistrict,
     setSelectedDistricts,

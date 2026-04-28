@@ -82,7 +82,7 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/DemoTimelinePanel/);
     expect(shellSource).toMatch(/DashboardDemoRailTabs/);
-    expect(shellSource).toMatch(/loadRealData/);
+    expect(shellSource).toMatch(/loadSummaryData/);
     expect(shellSource).toMatch(/useViewportStore/);
     expect(shellSource).toMatch(/setViewport/);
     expect(shellSource).toMatch(/z-40/);
@@ -114,9 +114,12 @@ describe('/dashboard-demo shell', () => {
     expect(demoStkdeHookSource).toMatch(/buildStkdeViewModel/);
     expect(demoStkdeHookSource).toMatch(/DEFAULT_STKDE_BBOX/);
     expect(demoStatsSource).toMatch(/Stats Summary/);
-    expect(demoStatsSource).toMatch(/getDistrictDisplayName/);
+    expect(demoStatsSource).toMatch(/selectedDistrictLabels/);
     expect(demoStatsSource).toMatch(/Spatial distribution/);
     expect(demoStatsSource).toMatch(/Hourly pulse/);
+    expect(demoStatsSource).toMatch(/Daily trend/);
+    expect(demoStatsSource).toMatch(/Monthly trend/);
+    expect(demoStatsSource).toMatch(/PulseChart/);
     expect(demoStatsMapOverlaySource).toMatch(/heatmap/);
     expect(demoStatsMapOverlaySource).toMatch(/demo-stats-districts/);
     expect(demoStatsMapOverlaySource).toMatch(/chicago-police-districts\.geojson/);
@@ -141,7 +144,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).toMatch(/Linked: \{summary\.linkedHighlightLabel\}/);
     expect(demoTimelinePanelSource).toMatch(/Slice-authored|Density/);
     expect(demoTimelinePanelSource).not.toMatch(/isPlaying|togglePlay|setSpeed|FastForward|Pause|Play|requestAnimationFrame/);
-    expect(demoTimelinePanelSource).toMatch(/Focused track above|raw baseline below/);
+    expect(demoTimelinePanelSource).toMatch(/Overview is sampled across the full dataset|brush selects the active detail window/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
@@ -195,11 +198,11 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoDualTimelineSource).toMatch(/useDemoTimelineSummary/);
-    expect(demoDualTimelineSource).toMatch(/hasLoadedDomain/);
+    expect(demoDualTimelineSource).toMatch(/selectedWindowLabel/);
     expect(demoDualTimelineSource).toMatch(/hasVisibleWarpSlices/);
     expect(demoDualTimelineSource).toMatch(/warpEnabled/);
     expect(demoDualTimelineSource).toMatch(/useDemoTimelineSummary/);
-    expect(demoDualTimelineSource).toMatch(/timelineSummary\.primaryDriverLabel/);
+    expect(demoDualTimelineSource).toMatch(/brushRangeLabel/);
     expect(demoDualTimelineSource).toMatch(/isGeneratedDraft/);
     expect(demoDualTimelineSource).toMatch(/overviewInteractionScale|detailInteractionScale/);
     expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);

@@ -1,13 +1,14 @@
 import { existsSync } from 'fs';
 import { NextResponse } from 'next/server';
 import { getDataPath, getDb, isMockDataEnabled } from '@/lib/db';
+import { buildTemporalPulseSeries } from '@/lib/stats/temporal-pulses';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const MOCK_STATS = {
+const MOCK_STATS_BASE = {
   stats: {
     total: 1000,
     byDistrict: [],
@@ -33,6 +34,11 @@ const MOCK_STATS = {
     districtCount: 25,
     dateRange: '2024-01-01 - 2025-01-01',
   },
+};
+
+const MOCK_STATS = {
+  ...MOCK_STATS_BASE,
+  temporalPulses: buildTemporalPulseSeries(MOCK_STATS_BASE.stats),
 };
 
 function parseCsvFilterParam(value: string | null): string[] | undefined {
@@ -270,6 +276,7 @@ export async function GET(request: Request) {
       peakHour: { hour: peakHourIndex, count: peakHourCount },
       peakDay: { day: peakDayIndex, count: peakDayCount, label: DAY_LABELS[peakDayIndex] ?? 'Unknown' },
     };
+    const temporalPulses = buildTemporalPulseSeries(stats);
 
     return NextResponse.json(
       {
@@ -284,6 +291,7 @@ export async function GET(request: Request) {
           districtCount: districts?.length ?? 25,
           dateRange: `${new Date(startEpoch * 1000).toISOString().slice(0, 10)} - ${new Date(endEpoch * 1000).toISOString().slice(0, 10)}`,
         },
+        temporalPulses,
       },
       {
         status: 200,
