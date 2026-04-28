@@ -14,6 +14,7 @@ import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
+import { normalizeTimeRange } from '@/lib/time-range';
 
 // Full date range constants from the dataset (2001-2026)
 const DATA_MIN_TIMESTAMP = 978307200;  // 2001-01-01
@@ -140,8 +141,9 @@ export function SimpleCrimePoints() {
 
     let timeMin = -Infinity;
     let timeMax = Infinity;
-    if (selectedTimeRange) {
-      const [rangeStart, rangeEnd] = selectedTimeRange;
+    const normalizedTimeRange = normalizeTimeRange(selectedTimeRange);
+    if (normalizedTimeRange) {
+      const [rangeStart, rangeEnd] = normalizedTimeRange;
       timeMin = Math.min(rangeStart, rangeEnd);
       timeMax = Math.max(rangeStart, rangeEnd);
     }

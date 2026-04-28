@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { aggregateStats, padDistrict, type NeighborhoodStats } from '@/lib/stats/aggregation';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 import { transformStatsSummary, type StatsSummary } from '@/app/stats/lib/stats-view-model';
 
 export interface UseDemoNeighborhoodStatsResult {
@@ -15,7 +16,13 @@ export interface UseDemoNeighborhoodStatsResult {
 
 export function useDemoNeighborhoodStats(): UseDemoNeighborhoodStatsResult {
   const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
-  const timeRange = useDashboardDemoAnalysisStore((state) => state.timeRange);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+
+  const timeRange = useMemo(
+    () => ({ startEpoch: viewportStart, endEpoch: viewportEnd }),
+    [viewportEnd, viewportStart]
+  );
 
   const paddedDistricts = useMemo(() => {
     if (selectedDistricts.length === 0) return undefined;

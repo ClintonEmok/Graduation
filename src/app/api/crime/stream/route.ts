@@ -44,6 +44,8 @@ export async function GET(request: Request) {
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
   const crimeTypes = searchParams.get('crimeTypes');
+  const maxRowsParam = searchParams.get('maxRows');
+  const maxRows = maxRowsParam ? Number.parseInt(maxRowsParam, 10) : null;
 
   try {
     if (isMockDataEnabled()) {
@@ -80,6 +82,10 @@ export async function GET(request: Request) {
       typeFilter = `AND "Primary Type" IN (${types})`;
     }
 
+    const rowLimitClause = Number.isFinite(maxRows) && maxRows !== null && maxRows > 0
+      ? `LIMIT ${Math.floor(maxRows)}`
+      : '';
+
     // Query the CSV file directly with date parsing and coordinate filtering.
     // If this endpoint needs to scale further, add paging instead of a hard cap.
     // Using read_csv_auto for automatic type inference
@@ -99,6 +105,7 @@ export async function GET(request: Request) {
         AND "Longitude" IS NOT NULL
         ${dateFilter}
         ${typeFilter}
+      ${rowLimitClause}
     `;
 
      // Manually fetch data and serialize to Arrow

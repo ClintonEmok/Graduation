@@ -8,6 +8,7 @@ import { unproject } from '@/lib/projection';
 import { getCrimeTypeId, getCrimeTypeName, getDistrictId } from '@/lib/category-maps';
 import { useThemeStore } from '@/store/useThemeStore';
 import { PALETTES } from '@/lib/palettes';
+import { normalizeTimeRange, type TimeRangeLike } from '@/lib/time-range';
 
 const MAX_POINTS = 20000;
 
@@ -25,7 +26,7 @@ interface MapEventLayerProps {
   colorMode: 'burst' | 'type';
   hoveredTypeId?: number | null;
   records?: CrimeRecord[];
-  selectedTimeRange?: [number, number] | null;
+  selectedTimeRange?: TimeRangeLike;
   selectedTypes?: number[];
   selectedDistricts?: number[];
   selectedSpatialBounds?: {
@@ -64,13 +65,14 @@ export default function MapEventLayer({
 
   const filteredPoints = useMemo<ScenePoint[]>(() => {
     const points: ScenePoint[] = [];
+    const normalizedTimeRange = normalizeTimeRange(selectedTimeRange);
 
     if (records.length > 0) {
       let minTime = -Infinity;
       let maxTime = Infinity;
 
-      if (selectedTimeRange) {
-        const [rangeStart, rangeEnd] = selectedTimeRange;
+      if (normalizedTimeRange) {
+        const [rangeStart, rangeEnd] = normalizedTimeRange;
         minTime = Math.min(rangeStart, rangeEnd);
         maxTime = Math.max(rangeStart, rangeEnd);
       }
@@ -110,9 +112,10 @@ export default function MapEventLayer({
     } else if (columns) {
       let minTime = -Infinity;
       let maxTime = Infinity;
+      const normalizedTimeRange = normalizeTimeRange(selectedTimeRange);
 
-      if (selectedTimeRange) {
-        const [rangeStart, rangeEnd] = selectedTimeRange;
+      if (normalizedTimeRange) {
+        const [rangeStart, rangeEnd] = normalizedTimeRange;
         if (minTimestampSec !== null && maxTimestampSec !== null) {
           const normalizedStart = epochSecondsToNormalized(rangeStart, minTimestampSec, maxTimestampSec);
           const normalizedEnd = epochSecondsToNormalized(rangeEnd, minTimestampSec, maxTimestampSec);
@@ -155,9 +158,10 @@ export default function MapEventLayer({
     } else if (data.length > 0) {
       let minTime = -Infinity;
       let maxTime = Infinity;
+      const normalizedTimeRange = normalizeTimeRange(selectedTimeRange);
 
-      if (selectedTimeRange) {
-        const [rangeStart, rangeEnd] = selectedTimeRange;
+      if (normalizedTimeRange) {
+        const [rangeStart, rangeEnd] = normalizedTimeRange;
         if (rangeStart >= 0 && rangeEnd <= 100) {
           minTime = Math.min(rangeStart, rangeEnd);
           maxTime = Math.max(rangeStart, rangeEnd);

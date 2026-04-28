@@ -9,7 +9,7 @@ export interface BurstDraftGenerationInputs {
     start: number | null;
     end: number | null;
   };
-  granularity: 'hourly' | 'daily' | 'weekly';
+  granularity: 'hourly' | 'daily' | 'weekly' | 'monthly';
 }
 
 export interface BurstDraftGenerationResult {
@@ -27,8 +27,9 @@ const hasOverlap = (left: [number, number], right: [number, number]): boolean =>
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+const WEEK_MS = 7 * DAY_MS;
 
-export type DemoSelectionGranularity = 'hourly' | 'daily';
+export type DemoSelectionGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly';
 
 export interface DemoSelectionPartition {
   startTime: number;
@@ -47,8 +48,31 @@ export interface NonUniformDraftGenerationInputs {
   eventTypes?: string[];
 }
 
-const getGranularityStepMs = (granularity: DemoSelectionGranularity): number =>
-  granularity === 'hourly' ? HOUR_MS : DAY_MS;
+const getGranularityStepMs = (granularity: Exclude<DemoSelectionGranularity, 'monthly'>): number => {
+  switch (granularity) {
+    case 'hourly':
+      return HOUR_MS;
+    case 'weekly':
+      return WEEK_MS;
+    case 'daily':
+    default:
+      return DAY_MS;
+  }
+};
+
+const getMonthlyPartitionEnd = (cursor: number): number => {
+  const current = new Date(cursor);
+  const nextMonthStart = new Date(current.getFullYear(), current.getMonth() + 1, 1).getTime();
+  return Number.isFinite(nextMonthStart) && nextMonthStart > cursor ? nextMonthStart : cursor + DAY_MS;
+};
+
+const getPartitionEnd = (cursor: number, end: number, granularity: DemoSelectionGranularity): number => {
+  if (granularity === 'monthly') {
+    return Math.min(end, getMonthlyPartitionEnd(cursor));
+  }
+
+  return Math.min(end, cursor + getGranularityStepMs(granularity));
+};
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
@@ -65,12 +89,11 @@ export const partitionSelectionByGranularity = (
     return [];
   }
 
-  const stepMs = getGranularityStepMs(granularity);
   const partitions: DemoSelectionPartition[] = [];
   let cursor = start;
 
   while (cursor < end) {
-    const nextEnd = Math.min(end, cursor + stepMs);
+    const nextEnd = getPartitionEnd(cursor, end, granularity);
     partitions.push({
       startTime: cursor,
       endTime: nextEnd,
@@ -102,6 +125,10 @@ const normalizeTypeFilters = (crimeTypes: string[]): Set<string> =>
 const normalizeEventType = (type: string | undefined | null): string => String(type ?? 'Unknown').trim();
 
 const formatInterval = (milliseconds: number): string => {
+  if (milliseconds >= DAY_MS) {
+    return `${roundToTwoDecimals(milliseconds / DAY_MS)}d`;
+  }
+
   if (milliseconds >= HOUR_MS) {
     return `${roundToTwoDecimals(milliseconds / HOUR_MS)}h`;
   }

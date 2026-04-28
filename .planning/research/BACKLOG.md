@@ -22,6 +22,7 @@ Based on the recent hotspot-policing / visual-analytics research, this backlog i
 | Priority | Item | Why it helps |
 |----------|------|--------------|
 | P1 | Outlier and burst annotations | Helps users spot unusual intervals and explain notable patterns. |
+| P1 | Burstiness-driven relative expansion | Lets positive `B` widen slices and negative `B` compress them while keeping the brushed range covered. |
 | P1 | Crime-type-scoped burstiness filters | Lets analysts narrow burstiness analysis to selected offense types when they need a more targeted read. |
 | P1 | Playback / time animation | Useful for storytelling and pattern discovery, but not essential. |
 | P1 | Export/share snapshots and reports | Supports briefings and documentation; keep it internal/export-focused. |

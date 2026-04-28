@@ -70,10 +70,15 @@ export function WorkflowSkeleton() {
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const timelineColumns = useTimelineDataStore((state) => state.columns);
+  const crimeTypes = useTimelineDataStore((state) => state.crimeTypes);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
   const availableCrimeTypes = (() => {
+    if (crimeTypes.length > 0) {
+      return crimeTypes;
+    }
+
     if (!timelineColumns?.type || timelineColumns.type.length === 0) {
       return [];
     }

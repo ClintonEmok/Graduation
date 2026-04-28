@@ -11,8 +11,8 @@ import {
 
 export interface UseBrushZoomSyncParams {
   interactive: boolean;
+  selectedTimeRange: [number, number] | null;
   detailInnerWidth: number;
-  detailRangeSec: [number, number];
   overviewInnerWidth: number;
   overviewInteractionScale: ScaleTime<number, number>;
   isSyncingRef: MutableRefObject<boolean>;
@@ -21,11 +21,37 @@ export interface UseBrushZoomSyncParams {
   detailSvgRef: RefObject<SVGSVGElement | null>;
   zoomRef: RefObject<SVGRectElement | null>;
   setBrushRange: (range: [number, number] | null) => void;
+  setViewport: (startSec: number, endSec: number) => void;
   applyRangeToStores: (startSec: number, endSec: number) => void;
+}
+
+export interface UseDebouncedViewportCommitParams {
+  interactive: boolean;
+  selectedTimeRange: [number, number] | null;
+  setViewport: (startSec: number, endSec: number) => void;
 }
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
+const VIEWPORT_COMMIT_DEBOUNCE_MS = 1_500;
+
+export const scheduleViewportCommit = (
+  selectedTimeRange: [number, number] | null,
+  setViewport: (startSec: number, endSec: number) => void,
+  delayMs: number = VIEWPORT_COMMIT_DEBOUNCE_MS
+): (() => void) => {
+  if (!selectedTimeRange) {
+    return () => {};
+  }
+
+  const timer = setTimeout(() => {
+    setViewport(selectedTimeRange[0], selectedTimeRange[1]);
+  }, delayMs);
+
+  return () => {
+    clearTimeout(timer);
+  };
+};
 
 export const withSyncGuard = (
   isSyncingRef: MutableRefObject<boolean>,
@@ -83,10 +109,22 @@ export const applyZoomDomainToRange = ({
   return [overviewScale(domain[0]), overviewScale(domain[1])];
 };
 
+export const useDebouncedViewportCommit = ({
+  interactive,
+  selectedTimeRange,
+  setViewport,
+}: UseDebouncedViewportCommitParams): void => {
+  useEffect(() => {
+    if (!interactive) return undefined;
+
+    return scheduleViewportCommit(selectedTimeRange, setViewport);
+  }, [interactive, selectedTimeRange, setViewport]);
+};
+
 export const useBrushZoomSync = ({
   interactive,
+  selectedTimeRange,
   detailInnerWidth,
-  detailRangeSec,
   overviewInnerWidth,
   overviewInteractionScale,
   isSyncingRef,
@@ -95,8 +133,15 @@ export const useBrushZoomSync = ({
   detailSvgRef,
   zoomRef,
   setBrushRange,
+  setViewport,
   applyRangeToStores,
 }: UseBrushZoomSyncParams): void => {
+  useDebouncedViewportCommit({
+    interactive,
+    selectedTimeRange,
+    setViewport,
+  });
+
   useEffect(() => {
     if (!interactive) return;
     if (!overviewInnerWidth || !detailInnerWidth) return;
@@ -105,10 +150,12 @@ export const useBrushZoomSync = ({
     const brushNode = brushRef.current;
     const zoomNode = zoomRef.current;
 
-    const brushSelection: [number, number] = [
-      overviewInteractionScale(new Date(detailRangeSec[0] * 1000)),
-      overviewInteractionScale(new Date(detailRangeSec[1] * 1000)),
-    ];
+    const brushSelection: [number, number] | null = selectedTimeRange
+      ? [
+          overviewInteractionScale(new Date(selectedTimeRange[0] * 1000)),
+          overviewInteractionScale(new Date(selectedTimeRange[1] * 1000)),
+        ]
+      : null;
 
     const brushBehavior = brushX()
       .extent([[0, 0], [overviewInnerWidth, OVERVIEW_HEIGHT]])
@@ -165,13 +212,13 @@ export const useBrushZoomSync = ({
     applyRangeToStores,
     brushRef,
     detailInnerWidth,
-    detailRangeSec,
     detailSvgRef,
     interactive,
     isSyncingRef,
     overviewInnerWidth,
     overviewInteractionScale,
     overviewSvgRef,
+    selectedTimeRange,
     setBrushRange,
     zoomRef,
   ]);

@@ -383,9 +383,7 @@ export function DemoSlicePanel() {
                           {bin.isNeutralPartition ? 'Muted neutral partition keeps the brushed selection evenly split.' : 'Selection-first draft stays editable before apply.'}
                         </div>
                       </div>
-                      <div className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-amber-100">
-                        Editable
-                      </div>
+
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
@@ -443,7 +441,7 @@ export function DemoSlicePanel() {
             </summary>
             <div className="space-y-2 pt-2">
               <div className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
-                Brushed selection is canonical. Daily is the default granularity, crime types stay optional, and the neutral state stays muted.
+                Brushed selection is canonical. Daily is the default granularity, weekly and monthly are available too, crime types stay optional, and the neutral state stays muted.
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 <button
@@ -454,14 +452,14 @@ export function DemoSlicePanel() {
                 >
                   {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
                 </button>
-                 <button
-                   type="button"
-                   onClick={handleClearPendingDrafts}
-                   disabled={pendingGeneratedBins.length === 0}
-                   className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-                 >
-                   Clear draft
-                 </button>
+                <button
+                  type="button"
+                  onClick={handleClearPendingDrafts}
+                  disabled={pendingGeneratedBins.length === 0}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Clear draft
+                </button>
               </div>
               <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
                 <div>{selectionDraftSummary}</div>
@@ -559,8 +557,8 @@ export function DemoSlicePanel() {
                         type="button"
                         onClick={() => updateSlice(slice.id, { warpEnabled: !(slice.warpEnabled ?? true) })}
                         className={`rounded border px-2 py-1 font-medium transition ${(slice.warpEnabled ?? true)
-                            ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400'
-                            : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
+                          ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400'
+                          : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
                           }`}
                         title={(slice.warpEnabled ?? true) ? 'Disable warp influence' : 'Enable warp influence'}
                       >

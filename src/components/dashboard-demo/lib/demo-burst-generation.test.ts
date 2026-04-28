@@ -8,6 +8,7 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+const WEEK_MS = 7 * DAY_MS;
 
 describe('buildBurstDraftBinsFromWindows', () => {
   test('treats millisecond selections and second-based burst windows as the same range', () => {
@@ -91,6 +92,30 @@ describe('partitionSelectionByGranularity', () => {
     expect(bins).toEqual([
       { startTime: 12_000, endTime: 12_000 + DAY_MS },
       { startTime: 12_000 + DAY_MS, endTime: 12_000 + DAY_MS + 3 * HOUR_MS },
+    ]);
+  });
+
+  test('partitions a weekly selection into contiguous weekly bins', () => {
+    const bins = partitionSelectionByGranularity([5_000, 5_000 + (2 * WEEK_MS) + 4 * HOUR_MS], 'weekly');
+
+    expect(bins).toEqual([
+      { startTime: 5_000, endTime: 5_000 + WEEK_MS },
+      { startTime: 5_000 + WEEK_MS, endTime: 5_000 + (2 * WEEK_MS) },
+      { startTime: 5_000 + (2 * WEEK_MS), endTime: 5_000 + (2 * WEEK_MS) + 4 * HOUR_MS },
+    ]);
+  });
+
+  test('partitions a monthly selection into calendar-month bins', () => {
+    const start = new Date('2025-01-15T09:30:00').getTime();
+    const end = new Date('2025-04-10T12:00:00').getTime();
+
+    const bins = partitionSelectionByGranularity([start, end], 'monthly');
+
+    expect(bins).toEqual([
+      { startTime: start, endTime: new Date('2025-02-01T00:00:00').getTime() },
+      { startTime: new Date('2025-02-01T00:00:00').getTime(), endTime: new Date('2025-03-01T00:00:00').getTime() },
+      { startTime: new Date('2025-03-01T00:00:00').getTime(), endTime: new Date('2025-04-01T00:00:00').getTime() },
+      { startTime: new Date('2025-04-01T00:00:00').getTime(), endTime: end },
     ]);
   });
 });

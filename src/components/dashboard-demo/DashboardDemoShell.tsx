@@ -7,35 +7,34 @@ import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel
 import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
 import { useViewportStore } from '@/lib/stores/viewportStore';
+import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
 import { useDashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
 
 type DemoViewport = 'map' | 'cube';
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
-  const loadRealData = useTimelineDataStore((state) => state.loadRealData);
+  const loadSummaryData = useTimelineDataStore((state) => state.loadSummaryData);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const setViewport = useViewportStore((state) => state.setViewport);
   const selectionStory = useDashboardDemoSelectionStory();
 
   useEffect(() => {
-    let cancelled = false;
-
     void (async () => {
-      await loadRealData();
-      if (cancelled) return;
-
-      const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
-      if (minTimestampSec !== null && maxTimestampSec !== null) {
-        setViewport(minTimestampSec, maxTimestampSec);
-      }
+      await loadSummaryData();
     })();
 
     return () => {
-      cancelled = true;
     };
-  }, [loadRealData, setViewport]);
+  }, [loadSummaryData]);
+
+  useEffect(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) return;
+    if (maxTimestampSec <= minTimestampSec) return;
+    setViewport(minTimestampSec, maxTimestampSec);
+  }, [maxTimestampSec, minTimestampSec, setViewport]);
 
   return (
     <main

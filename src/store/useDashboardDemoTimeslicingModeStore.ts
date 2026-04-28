@@ -8,7 +8,7 @@ import { useSliceDomainStore } from './useSliceDomainStore';
 
 export type TimeslicingMode = 'auto' | 'manual';
 
-export type TimeslicingGranularity = 'hourly' | 'daily' | 'weekly';
+export type TimeslicingGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly';
 export type GenerationStatus = 'idle' | 'generating' | 'ready' | 'applied' | 'error';
 
 export interface GenerationInputs {
@@ -273,7 +273,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           crimeTypes: generationInputs.crimeTypes,
           neighbourhood: generationInputs.neighbourhood,
           timeWindow: generationInputs.timeWindow,
-          granularity: generationInputs.granularity === 'hourly' ? 'hourly' : 'daily',
+          granularity: generationInputs.granularity,
           eventTimestamps,
           eventTypes,
         });

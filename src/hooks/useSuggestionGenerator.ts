@@ -17,6 +17,7 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useContextExtractor } from '@/hooks/useContextExtractor';
 import { detectSmartProfile } from '@/hooks/useSmartProfiles';
 import { deriveBoundsFromCrimes } from '@/lib/bounds';
+import { normalizeTimeRange } from '@/lib/time-range';
 import type { RankedAutoProposalSets } from '@/types/autoProposalSet';
 import type { CrimeRecord } from '@/types/crime';
 import { buildContextDiagnostics, type ContextDiagnosticsResult } from '@/lib/context-diagnostics';
@@ -197,9 +198,9 @@ export function useSuggestionGenerator(): UseSuggestionGeneratorReturn {
     const mode = generationParams?.contextMode ?? 'visible';
 
     if (mode === 'all') {
-      if (selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])) {
-        const selectedStart = Math.min(selectedTimeRange[0], selectedTimeRange[1]);
-        const selectedEnd = Math.max(selectedTimeRange[0], selectedTimeRange[1]);
+      const normalizedSelectedTimeRange = normalizeTimeRange(selectedTimeRange);
+      if (normalizedSelectedTimeRange) {
+        const [selectedStart, selectedEnd] = normalizedSelectedTimeRange;
         if (selectedStart !== selectedEnd) {
           return [selectedStart, selectedEnd];
         }

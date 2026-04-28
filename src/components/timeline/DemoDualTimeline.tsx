@@ -119,7 +119,6 @@ interface ApplyRangeToStoresContractParams {
   setTimeRange: (range: [number, number]) => void;
   setRange: (range: [number, number]) => void;
   setBrushRange: (range: [number, number] | null) => void;
-  setViewport: (startDate: number, endDate: number) => void;
   setTime: (time: number) => void;
 }
 
@@ -133,7 +132,6 @@ export const applyRangeToStoresContract = ({
   setTimeRange,
   setRange,
   setBrushRange,
-  setViewport,
   setTime,
 }: ApplyRangeToStoresContractParams): void => {
   if (!interactive) {
@@ -149,7 +147,6 @@ export const applyRangeToStoresContract = ({
   setTimeRange([safeStart, safeEnd]);
   setRange(nextRange);
   setBrushRange(nextRange);
-  setViewport(safeStart, safeEnd);
 
   const clampedCurrentTime = clamp(currentTime, nextRange[0], nextRange[1]);
   if (clampedCurrentTime !== currentTime) {
@@ -276,8 +273,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     }
     return [0, 100];
   }, [domainOverride, minTimestampSec, maxTimestampSec]);
-  const hasLoadedDomain = minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec;
-
   // Active window range: override > selectedTimeRange > full dataset domain
   const detailRangeSec = useMemo<[number, number]>(() => {
     if (detailRangeOverride && Number.isFinite(detailRangeOverride[0]) && Number.isFinite(detailRangeOverride[1])) {
@@ -434,14 +429,13 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
         domainStart,
         domainEnd,
         currentTime,
-        setTimeRange,
-        setRange,
-        setBrushRange,
-        setViewport,
-        setTime,
-      });
-    },
-    [currentTime, domainEnd, domainStart, interactive, setRange, setTime, setTimeRange, setBrushRange, setViewport]
+      setTimeRange,
+      setRange,
+      setBrushRange,
+      setTime,
+    });
+  },
+    [currentTime, domainEnd, domainStart, interactive, setRange, setTime, setTimeRange, setBrushRange]
   );
 
   useEffect(() => {
@@ -455,43 +449,10 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     }
   }, [applyRangeToStores, domainEnd, domainStart, interactive, selectedTimeRange]);
 
-  useEffect(() => {
-    if (!interactive) return;
-    if (!hasLoadedDomain) return;
-    if (normalizeTimeRange(selectedTimeRange)) return;
-
-    // Avoid syncing the normalized fallback range into epoch-backed stores.
-    const resolutionSeconds: Record<typeof timeResolution, number> = {
-      seconds: 1,
-      minutes: 60,
-      hours: 3600,
-      days: 86400,
-      weeks: 604800,
-      months: 2592000,
-      years: 31536000
-    };
-    const visibleUnits: Record<typeof timeResolution, number> = {
-      seconds: 60,
-      minutes: 60,
-      hours: 24,
-      days: 14,
-      weeks: 12,
-      months: 12,
-      years: 10
-    };
-
-    const unitSeconds = resolutionSeconds[timeResolution] ?? 86400;
-    const span = unitSeconds * (visibleUnits[timeResolution] ?? 14);
-    const centerSec = normalizedToEpochSeconds(currentTime, domainStart, domainEnd);
-    isSyncingRef.current = true;
-    applyRangeToStores(centerSec - span / 2, centerSec + span / 2);
-    isSyncingRef.current = false;
-  }, [applyRangeToStores, currentTime, domainEnd, domainStart, hasLoadedDomain, interactive, selectedTimeRange, timeResolution]);
-
   useBrushZoomSync({
     interactive,
     detailInnerWidth,
-    detailRangeSec,
+    selectedTimeRange,
     overviewInnerWidth,
     overviewInteractionScale,
     isSyncingRef,
@@ -499,6 +460,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     overviewSvgRef,
     detailSvgRef,
     zoomRef,
+    setViewport,
     setBrushRange,
     applyRangeToStores,
   });

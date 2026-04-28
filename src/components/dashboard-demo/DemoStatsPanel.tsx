@@ -2,9 +2,8 @@
 
 import { useMemo } from 'react';
 import { ChevronUp, Minus } from 'lucide-react';
-import { ALL_DEMO_DISTRICTS, useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
-import { useDemoNeighborhoodStats } from '@/components/dashboard-demo/lib/useDemoNeighborhoodStats';
-import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
+import { ALL_DEMO_DISTRICTS } from '@/store/useDashboardDemoAnalysisStore';
+import { useDemoStatsSummary } from '@/components/dashboard-demo/lib/useDemoStatsSummary';
 
 const toDateInputValue = (epochSec: number) => new Date(epochSec * 1000).toISOString().slice(0, 10);
 
@@ -24,20 +23,22 @@ function MetricCard({ label, value }: { label: string; value: string | number })
 }
 
 export function DemoStatsPanel() {
-  const { summary, stats, isLoading } = useDemoNeighborhoodStats();
-  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
-  const timeRange = useDashboardDemoAnalysisStore((state) => state.timeRange);
-  const toggleDistrict = useDashboardDemoAnalysisStore((state) => state.toggleDistrict);
-  const setSelectedDistricts = useDashboardDemoAnalysisStore((state) => state.setSelectedDistricts);
-  const setTimeRange = useDashboardDemoAnalysisStore((state) => state.setTimeRange);
+  const {
+    summary,
+    stats,
+    isLoading,
+    selectedDistricts,
+    selectedDistrictLabels,
+    timeRange,
+    toggleDistrict,
+    setSelectedDistricts,
+    setTimeRange,
+    timelineSummary,
+  } = useDemoStatsSummary();
 
   const topTypes = useMemo(() => stats?.byType.slice(0, 4) ?? [], [stats]);
   const hourBins = useMemo(() => stats?.byHour ?? [], [stats]);
   const maxHourCount = useMemo(() => Math.max(...hourBins, 1), [hourBins]);
-  const selectedDistrictLabels = useMemo(
-    () => (selectedDistricts.length > 0 ? selectedDistricts.map((district) => getDistrictDisplayName(district)) : ['All districts']),
-    [selectedDistricts]
-  );
 
   return (
     <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100">
@@ -45,6 +46,8 @@ export function DemoStatsPanel() {
         <div className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">Stats Summary</div>
         <p className="text-[11px] text-slate-400">District-first entry surface for the demo analysis flow.</p>
         <div className="text-[11px] text-slate-500">Selected districts: {selectedDistrictLabels.join(', ')}</div>
+        <div className="text-[11px] text-slate-500">Window: {timelineSummary.selectedWindowLabel}</div>
+        <div className="text-[11px] text-slate-500">Overview: {timelineSummary.overviewRangeLabel}</div>
       </header>
 
       <div className="grid grid-cols-2 gap-2">
@@ -98,8 +101,8 @@ export function DemoStatsPanel() {
           <span>Start</span>
           <input
             type="date"
-            value={toDateInputValue(timeRange.startEpoch)}
-            onChange={(event) => setTimeRange(parseDateInput(event.target.value, timeRange.startEpoch, 'start'), timeRange.endEpoch)}
+            value={toDateInputValue(timeRange[0])}
+            onChange={(event) => setTimeRange(parseDateInput(event.target.value, timeRange[0], 'start'), timeRange[1])}
             className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
           />
         </label>
@@ -107,8 +110,8 @@ export function DemoStatsPanel() {
           <span>End</span>
           <input
             type="date"
-            value={toDateInputValue(timeRange.endEpoch)}
-            onChange={(event) => setTimeRange(timeRange.startEpoch, parseDateInput(event.target.value, timeRange.endEpoch, 'end'))}
+            value={toDateInputValue(timeRange[1])}
+            onChange={(event) => setTimeRange(timeRange[0], parseDateInput(event.target.value, timeRange[1], 'end'))}
             className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
           />
         </label>

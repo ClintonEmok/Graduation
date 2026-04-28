@@ -194,8 +194,8 @@ export function TimelinePanel() {
 
         <div className="rounded-md border bg-muted/10 px-3 py-2">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pb-2">
-            <span>Overview window • Detail view</span>
-            <span>Brush overview to resize the window • click detail to inspect a moment</span>
+            <span>Overview · sampled full dataset</span>
+            <span>Brush selects the detail window • detail shows full resolution</span>
           </div>
           <DualTimeline />
         </div>

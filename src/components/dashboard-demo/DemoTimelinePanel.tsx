@@ -68,9 +68,15 @@ export function DemoTimelinePanel() {
       <div className="w-full flex flex-col gap-4">
         <div className="rounded-md border bg-muted/10 px-3 py-2">
           <div className="pb-2 text-[10px] text-muted-foreground">
+            {summary.overviewLabel}
+          </div>
+          <div className="pb-2 text-[10px] text-muted-foreground">
+            {summary.overviewRangeLabel}
+          </div>
+          <div className="pb-2 text-[10px] text-muted-foreground">
             {summary.primaryDriverLabel}
           </div>
-          <div className="pb-2 text-[10px] text-muted-foreground">Focused track above · raw baseline below</div>
+          <div className="pb-2 text-[10px] text-muted-foreground">Overview is sampled across the full dataset · brush selects the active detail window</div>
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
             <span>Window: {summary.selectedWindowLabel}</span>
             <span>Compare: {summary.compareLabel}</span>

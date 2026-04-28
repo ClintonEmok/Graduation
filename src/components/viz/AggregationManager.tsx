@@ -6,6 +6,12 @@ import { useThemeStore } from '@/store/useThemeStore';
 import { PALETTES } from '@/lib/palettes';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import debounce from 'lodash.debounce';
+import { normalizeTimeRange } from '@/lib/time-range';
+
+interface AggregatedBinResponse {
+  dominantType: string;
+  [key: string]: unknown;
+}
 
 export const AggregationManager: React.FC = () => {
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
@@ -46,9 +52,10 @@ export const AggregationManager: React.FC = () => {
       params.append('districts', selectedDistricts.join(','));
     }
     
-    if (selectedTimeRange) {
-      params.append('startTime', selectedTimeRange[0].toString());
-      params.append('endTime', selectedTimeRange[1].toString());
+    const normalizedTimeRange = normalizeTimeRange(selectedTimeRange);
+    if (normalizedTimeRange) {
+      params.append('startTime', normalizedTimeRange[0].toString());
+      params.append('endTime', normalizedTimeRange[1].toString());
     }
     
     // We pass timeScaleMode although the backend might not use it yet
@@ -61,7 +68,7 @@ export const AggregationManager: React.FC = () => {
       })
       .then(data => {
         // Map colors on frontend based on dominantType name
-        const bins: Bin[] = data.map((b: any) => {
+        const bins: Bin[] = (data as AggregatedBinResponse[]).map((b) => {
           const typeName = b.dominantType;
           const color = colorMap[typeName.toUpperCase()] || colorMap[typeName] || '#FFFFFF';
           return {

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { normalizeTimeRange } from '@/lib/time-range';
 
 export interface FilterPreset {
   id: string;
@@ -122,13 +123,14 @@ export const useDashboardDemoFilterStore = create<DashboardDemoFilterState>((set
   setTypes: (ids) => set({ selectedTypes: ids }),
   setDistricts: (ids) => set({ selectedDistricts: ids }),
   setTimeRange: (range) => {
+    const normalizedRange = normalizeTimeRange(range);
     set((state) => {
       const current = state.selectedTimeRange;
-      if (current === null && range === null) return state;
-      if (current && range && current[0] === range[0] && current[1] === range[1]) {
+      if (current === null && normalizedRange === null) return state;
+      if (current && normalizedRange && current[0] === normalizedRange[0] && current[1] === normalizedRange[1]) {
         return state;
       }
-      return { selectedTimeRange: range };
+      return { selectedTimeRange: normalizedRange };
     });
   },
   clearTimeRange: () => set({ selectedTimeRange: null }),
@@ -151,7 +153,7 @@ export const useDashboardDemoFilterStore = create<DashboardDemoFilterState>((set
       name: trimmedName,
       types: [...state.selectedTypes],
       districts: [...state.selectedDistricts],
-      timeRange: state.selectedTimeRange ? [...state.selectedTimeRange] : null,
+      timeRange: normalizeTimeRange(state.selectedTimeRange),
       createdAt: Date.now(),
     };
     const nextPresets = [preset, ...state.presets];
@@ -162,10 +164,11 @@ export const useDashboardDemoFilterStore = create<DashboardDemoFilterState>((set
   loadPreset: (id) => {
     const preset = get().presets.find((item) => item.id === id);
     if (!preset) return;
+    const normalizedTimeRange = normalizeTimeRange(preset.timeRange);
     set({
       selectedTypes: [...preset.types],
       selectedDistricts: [...preset.districts],
-      selectedTimeRange: preset.timeRange ? [...preset.timeRange] : null,
+      selectedTimeRange: normalizedTimeRange,
       lastLoadedPresetId: preset.id,
     });
   },

@@ -6,6 +6,7 @@ import { useFilterStore } from "@/store/useFilterStore";
 import { getCrimeTypeId, getDistrictId } from "@/lib/category-maps";
 import { PresetManager } from "@/components/viz/PresetManager";
 import { useLogger } from "@/hooks/useLogger";
+import { normalizeTimeRange } from "@/lib/time-range";
 
 interface FilterOverlayProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [facetError, setFacetError] = useState<string | null>(null);
   const fallbackRangeRef = useRef<[number, number]>([0, Math.floor(Date.now() / 1000)]);
+  const normalizedSelectedTimeRange = useMemo(() => normalizeTimeRange(selectedTimeRange), [selectedTimeRange]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -99,31 +101,29 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   const lastTimeRangeKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const nextKey = selectedTimeRange
-      ? `${selectedTimeRange[0]}-${selectedTimeRange[1]}`
-      : "none";
+    const nextKey = normalizedSelectedTimeRange ? `${normalizedSelectedTimeRange[0]}-${normalizedSelectedTimeRange[1]}` : "none";
     if (lastTimeRangeKeyRef.current === nextKey) return;
     lastTimeRangeKeyRef.current = nextKey;
 
-    if (selectedTimeRange) {
-      setStartInput(toInputDate(selectedTimeRange[0]));
-      setEndInput(toInputDate(selectedTimeRange[1]));
+    if (normalizedSelectedTimeRange) {
+      setStartInput(toInputDate(normalizedSelectedTimeRange[0]));
+      setEndInput(toInputDate(normalizedSelectedTimeRange[1]));
       return;
     }
     setStartInput("");
     setEndInput("");
-  }, [selectedTimeRange]);
+  }, [normalizedSelectedTimeRange]);
 
   const timeRangeLabel = useMemo(() => {
-    if (!selectedTimeRange) {
+    if (!normalizedSelectedTimeRange) {
       return "All time";
     }
-    return `${formatDate(selectedTimeRange[0])} - ${formatDate(selectedTimeRange[1])}`;
-  }, [selectedTimeRange]);
+    return `${formatDate(normalizedSelectedTimeRange[0])} - ${formatDate(normalizedSelectedTimeRange[1])}`;
+  }, [normalizedSelectedTimeRange]);
 
   const activeRange = useMemo(
-    () => selectedTimeRange ?? fallbackRangeRef.current,
-    [selectedTimeRange]
+    () => normalizedSelectedTimeRange ?? fallbackRangeRef.current,
+    [normalizedSelectedTimeRange]
   );
 
   useEffect(() => {
@@ -240,12 +240,12 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
     const [start, end] = parsedStart <= parsedEnd
       ? [parsedStart, parsedEnd]
       : [parsedEnd, parsedStart];
-    if (selectedTimeRange && selectedTimeRange[0] === start && selectedTimeRange[1] === end) {
+    if (normalizedSelectedTimeRange && normalizedSelectedTimeRange[0] === start && normalizedSelectedTimeRange[1] === end) {
       return;
     }
     log("filter_time_range_applied", { start, end });
     setTimeRange([start, end]);
-  }, [parsedStart, parsedEnd, selectedTimeRange, setTimeRange, log]);
+  }, [normalizedSelectedTimeRange, parsedStart, parsedEnd, setTimeRange, log]);
 
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;

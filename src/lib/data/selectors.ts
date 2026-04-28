@@ -1,4 +1,5 @@
 import { ColumnarData, DataPoint, FilteredPoint } from '@/lib/data/types';
+import { normalizeTimeRange, type TimeRangeLike } from '@/lib/time-range';
 
 export interface FilteredDataState {
   columns: ColumnarData | null;
@@ -10,7 +11,7 @@ export interface FilteredDataState {
 export interface FilterState {
   selectedTypes: number[];
   selectedDistricts: number[];
-  selectedTimeRange: [number, number] | null;
+  selectedTimeRange: TimeRangeLike;
 }
 
 export const selectFilteredData = (
@@ -27,10 +28,11 @@ export const selectFilteredData = (
 
     let minT = -Infinity;
     let maxT = Infinity;
-    if (selectedTimeRange && minTimestampSec !== null && maxTimestampSec !== null) {
+    const normalizedTimeRange = normalizeTimeRange(selectedTimeRange);
+    if (normalizedTimeRange && minTimestampSec !== null && maxTimestampSec !== null) {
       const span = maxTimestampSec - minTimestampSec || 1;
-      minT = ((selectedTimeRange[0] - minTimestampSec) / span) * 100;
-      maxT = ((selectedTimeRange[1] - minTimestampSec) / span) * 100;
+      minT = ((normalizedTimeRange[0] - minTimestampSec) / span) * 100;
+      maxT = ((normalizedTimeRange[1] - minTimestampSec) / span) * 100;
     }
 
     for (let i = 0; i < length; i++) {

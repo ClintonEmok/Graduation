@@ -4,10 +4,46 @@ import { RecordBatchReader, Table } from 'apache-arrow';
 import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { ColumnarData, DataPoint } from '@/lib/data/types';
 import { epochSecondsToNormalized, toEpochSeconds } from '@/lib/time-domain';
+import { TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS } from '@/lib/timeline-series';
+
+export interface LoadRealDataOptions {
+  maxRows?: number;
+}
+
+export interface LoadSummaryDataOptions {
+  maxPoints?: number;
+}
+
+function getBounds(values: ArrayLike<number>): { min: number; max: number } | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+
+  for (let i = 0; i < values.length; i += 1) {
+    const value = values[i];
+    if (!Number.isFinite(value)) {
+      continue;
+    }
+
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return null;
+  }
+
+  return { min, max };
+}
 
 export interface TimelineDataState {
   data: DataPoint[];
   columns: ColumnarData | null;
+  overviewTimestampSec: number[];
+  crimeTypes: string[];
   minX: number | null;
   maxX: number | null;
   minZ: number | null;
@@ -20,12 +56,15 @@ export interface TimelineDataState {
 
   setData: (data: DataPoint[]) => void;
   generateMockData: (count: number) => void;
-  loadRealData: () => Promise<void>;
+  loadSummaryData: (options?: LoadSummaryDataOptions) => Promise<void>;
+  loadRealData: (options?: LoadRealDataOptions) => Promise<void>;
 }
 
 export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
   data: [],
   columns: null,
+  overviewTimestampSec: [],
+  crimeTypes: [],
   minX: null,
   maxX: null,
   minZ: null,
@@ -60,38 +99,106 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
     set({
       data,
       columns: null,
+      overviewTimestampSec: data.map((point) => point.timestamp / 1000),
+      crimeTypes,
       minTimestampSec: MOCK_START_SEC,
       maxTimestampSec: MOCK_END_SEC,
       minX: -50,
       maxX: 50,
       minZ: -50,
       maxZ: 50,
+      dataCount: count,
     });
   },
 
-  loadRealData: async () => {
+  loadSummaryData: async (options?: LoadSummaryDataOptions) => {
+    const { isLoading, overviewTimestampSec, columns } = get();
+    if (isLoading || (columns && overviewTimestampSec.length > 0)) return;
+    set({ isLoading: true });
+
+    try {
+      const maxPoints = Math.max(1, Math.floor(options?.maxPoints ?? TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS));
+      const [metaRes, overviewRes] = await Promise.all([
+        fetch('/api/crime/meta'),
+        fetch(`/api/crime/overview?maxPoints=${maxPoints}`),
+      ]);
+
+      if (!metaRes.ok) throw new Error(`Meta HTTP error! status: ${metaRes.status}`);
+      if (!overviewRes.ok) throw new Error(`Overview HTTP error! status: ${overviewRes.status}`);
+
+      const meta = await metaRes.json();
+      const overview = await overviewRes.json();
+
+      const minTimeSec = meta?.minTime ?? null;
+      const maxTimeSec = meta?.maxTime ?? null;
+
+      if (meta?.isMock === true) {
+        console.warn('Using demo data - dataset file not found or unavailable');
+      }
+
+      if (minTimeSec !== null && maxTimeSec !== null) {
+        console.log(
+          `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta?.count}, isMock: ${meta?.isMock === true}`
+        );
+      }
+
+      set({
+        data: [],
+        columns: null,
+        overviewTimestampSec: Array.isArray(overview?.timestampsSec) ? overview.timestampsSec.map((value: number) => Number(value)).filter(Number.isFinite) : [],
+        crimeTypes: Array.isArray(meta?.crimeTypes) ? meta.crimeTypes.filter((value: string) => typeof value === 'string') : [],
+        minTimestampSec: minTimeSec,
+        maxTimestampSec: maxTimeSec,
+        minX: meta?.minLon ?? null,
+        maxX: meta?.maxLon ?? null,
+        minZ: meta?.minLat ?? null,
+        maxZ: meta?.maxLat ?? null,
+        isLoading: false,
+        isMock: meta?.isMock || false,
+        dataCount: meta?.count ?? null,
+      });
+    } catch (err) {
+      console.error('Error loading summary data:', err);
+      console.warn('Using demo data - database unavailable');
+      get().generateMockData(1000);
+      set({ isLoading: false, isMock: true });
+    }
+  },
+
+  loadRealData: async (options?: LoadRealDataOptions) => {
     const { isLoading, columns } = get();
     if (isLoading || columns) return;
     set({ isLoading: true });
 
     try {
-      const metaRes = await fetch('/api/crime/meta');
-      if (!metaRes.ok) throw new Error(`Meta HTTP error! status: ${metaRes.status}`);
-      const meta = await metaRes.json();
+      const maxRows = options?.maxRows ?? null;
+      const meta = maxRows === null
+        ? await (async () => {
+            const metaRes = await fetch('/api/crime/meta');
+            if (!metaRes.ok) throw new Error(`Meta HTTP error! status: ${metaRes.status}`);
+            return metaRes.json();
+          })()
+        : null;
 
-      const minTimeSec = meta.minTime;
-      const maxTimeSec = meta.maxTime;
+      const minTimeSec = meta?.minTime ?? null;
+      const maxTimeSec = meta?.maxTime ?? null;
 
-      const isUsingMock = meta.isMock === true;
-      if (isUsingMock) {
+      if (meta?.isMock === true) {
         console.warn('Using demo data - dataset file not found or unavailable');
       }
 
-      console.log(
-        `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta.count}, isMock: ${isUsingMock}`
-      );
+      if (minTimeSec !== null && maxTimeSec !== null) {
+        console.log(
+          `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta?.count}, isMock: ${meta?.isMock === true}`
+        );
+      }
 
-      const response = await fetch('/api/crime/stream');
+      const streamUrl = new URL('/api/crime/stream', 'http://localhost');
+      if (maxRows !== null) {
+        streamUrl.searchParams.set('maxRows', String(maxRows));
+      }
+
+      const response = await fetch(streamUrl.pathname + streamUrl.search);
       if (!response.ok) throw new Error(`Stream HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('Response body is null');
 
@@ -121,8 +228,12 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         ? Float64Array.from(timestampCol.toArray().map((value: number) => toEpochSeconds(value)))
         : new Float64Array(count);
 
+      const loadedTimestampBounds = minTimeSec === null || maxTimeSec === null ? getBounds(timestampSecData) : null;
+      const effectiveMinTimeSec = minTimeSec ?? loadedTimestampBounds?.min ?? 0;
+      const effectiveMaxTimeSec = maxTimeSec ?? loadedTimestampBounds?.max ?? effectiveMinTimeSec;
+
       const timestampData = Float32Array.from(
-        timestampSecData.map((value) => epochSecondsToNormalized(value, minTimeSec, maxTimeSec))
+        timestampSecData.map((value) => epochSecondsToNormalized(value, effectiveMinTimeSec, effectiveMaxTimeSec))
       );
 
       const latData = latCol ? new Float32Array(latCol.toArray()) : undefined;
@@ -161,15 +272,17 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
 
       set({
         columns,
-        minTimestampSec: minTimeSec,
-        maxTimestampSec: maxTimeSec,
-        minX: meta.minLon,
-        maxX: meta.maxLon,
-        minZ: meta.minLat,
-        maxZ: meta.maxLat,
+        overviewTimestampSec: [],
+        crimeTypes: meta?.crimeTypes || [],
+        minTimestampSec: effectiveMinTimeSec,
+        maxTimestampSec: effectiveMaxTimeSec,
+        minX: meta?.minLon ?? getBounds(xDataFinal)?.min ?? null,
+        maxX: meta?.maxLon ?? getBounds(xDataFinal)?.max ?? null,
+        minZ: meta?.minLat ?? getBounds(zDataFinal)?.min ?? null,
+        maxZ: meta?.maxLat ?? getBounds(zDataFinal)?.max ?? null,
         isLoading: false,
-        isMock: meta.isMock || false,
-        dataCount: meta.count || count,
+        isMock: meta?.isMock || false,
+        dataCount: meta?.count || count,
       });
     } catch (err) {
       console.error('Error loading real data:', err);

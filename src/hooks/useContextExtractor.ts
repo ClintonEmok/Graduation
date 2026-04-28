@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useCrimeFilters, useViewportEnd, useViewportStart } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { normalizeTimeRangeBounds } from '@/lib/time-range';
 
 export type ContextMode = 'visible' | 'all';
 
@@ -25,13 +26,6 @@ interface GetCurrentContextInput {
   selectedTimeRange: [number, number] | null;
 }
 
-function normalizeTimeRange(start: number, end: number): { start: number; end: number } {
-  return {
-    start: Math.min(start, end),
-    end: Math.max(start, end),
-  };
-}
-
 function unique(values: string[]): string[] {
   return Array.from(new Set(values));
 }
@@ -44,11 +38,8 @@ export function getCurrentContext({
   viewportEnd,
   selectedTimeRange,
 }: GetCurrentContextInput): FilterContext {
-  const visibleTimeRange = normalizeTimeRange(viewportStart, viewportEnd);
-  const allTimeRange =
-    selectedTimeRange && Number.isFinite(selectedTimeRange[0]) && Number.isFinite(selectedTimeRange[1])
-      ? normalizeTimeRange(selectedTimeRange[0], selectedTimeRange[1])
-      : visibleTimeRange;
+  const visibleTimeRange = normalizeTimeRangeBounds([viewportStart, viewportEnd]) ?? { start: viewportStart, end: viewportEnd };
+  const allTimeRange = normalizeTimeRangeBounds(selectedTimeRange) ?? visibleTimeRange;
 
   return {
     crimeTypes: unique(crimeTypes),
@@ -61,7 +52,7 @@ export function getCurrentContext({
 export function getContextSignature(context: FilterContext): string {
   const sortedCrimeTypes = [...context.crimeTypes].sort();
   const sortedDistricts = [...context.districts].sort();
-  const range = normalizeTimeRange(context.timeRange.start, context.timeRange.end);
+  const range = normalizeTimeRangeBounds([context.timeRange.start, context.timeRange.end]) ?? context.timeRange;
 
   return [
     sortedCrimeTypes.join(','),

@@ -27,11 +27,14 @@ export function DualTimelineSurface(props: any) {
     densityMap,
     overviewScale,
     detailScale,
+    overviewSvgRef,
+    detailSvgRef,
     overviewBins,
     overviewMax,
     stripSelection,
     userWarpOverlayBands,
     timeScaleMode,
+    brushRef,
     overviewTicks,
     overviewTickFormat,
     burstWindows,
@@ -86,7 +89,7 @@ export function DualTimelineSurface(props: any) {
           </div>
         </div>
 
-        <svg width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
+        <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
           <defs>
             <linearGradient id="adaptiveAxisGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.03" />
@@ -109,6 +112,7 @@ export function DualTimelineSurface(props: any) {
               const widthSpan = Math.max(1, Math.abs(x1 - x0));
               return <rect key={`overview-user-warp-${slice.id}`} x={left} y={0} width={widthSpan} height={OVERVIEW_HEIGHT} fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.16)' : 'rgba(139, 92, 246, 0.15)'} stroke={slice.isDebugPreview ? 'rgba(34, 211, 238, 0.7)' : 'rgba(99, 102, 241, 0.55)'} strokeDasharray={slice.isDebugPreview ? '2 2' : '4 3'} strokeWidth={1} />;
             })}
+            <g ref={brushRef} />
             <g transform={`translate(0, ${OVERVIEW_HEIGHT})`} className="text-muted-foreground">
               {timeScaleMode === 'adaptive' ? <rect x={0} y={0} width={overviewInnerWidth} height={AXIS_HEIGHT} fill="url(#adaptiveAxisGradient)" /> : null}
               {overviewTicks.map((tick: Date, index: number) => {
@@ -138,7 +142,7 @@ export function DualTimelineSurface(props: any) {
             {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} /> : <div className="h-2" />}
           </div>
 
-          <svg width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
+          <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
             <defs>
               <filter id="timeCursorGlow" x="-50%" y="-10%" width="200%" height="120%"><feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor={TIME_CURSOR_COLOR} floodOpacity="0.65" /></filter>
               <pattern id="sliceOverlapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="2" /></pattern>

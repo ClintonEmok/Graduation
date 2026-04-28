@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyRangeToStoresContract } from '../DualTimeline';
 import {
   applyBrushSelectionToRange,
   applyZoomDomainToRange,
+  scheduleViewportCommit,
   withSyncGuard,
 } from './useBrushZoomSync';
 
@@ -24,7 +25,6 @@ const buildStoreContract = () => {
       setTimeRange,
       setRange,
       setBrushRange,
-      setViewport,
       setTime,
     });
   };
@@ -40,6 +40,10 @@ const buildStoreContract = () => {
 };
 
 describe('useBrushZoomSync', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('prevents recursive sync when isSyncingRef is already active', () => {
     const isSyncingRef = { current: true };
     const callback = vi.fn();
@@ -77,7 +81,7 @@ describe('useBrushZoomSync', () => {
     expect(contract.setTimeRange).toHaveBeenCalledWith([20, 80]);
     expect(contract.setRange).toHaveBeenCalledWith([20, 80]);
     expect(contract.setBrushRange).toHaveBeenCalledWith([20, 80]);
-    expect(contract.setViewport).toHaveBeenCalledWith(20, 80);
+    expect(contract.setViewport).not.toHaveBeenCalled();
     expect(contract.setTime).not.toHaveBeenCalled();
   });
 
@@ -94,7 +98,27 @@ describe('useBrushZoomSync', () => {
     expect(contract.setTimeRange).toHaveBeenCalledWith([25, 75]);
     expect(contract.setRange).toHaveBeenCalledWith([25, 75]);
     expect(contract.setBrushRange).toHaveBeenCalledWith([25, 75]);
-    expect(contract.setViewport).toHaveBeenCalledWith(25, 75);
+    expect(contract.setViewport).not.toHaveBeenCalled();
     expect(contract.setTime).not.toHaveBeenCalled();
+  });
+
+  it('debounces viewport commits until the brush settles', () => {
+    vi.useFakeTimers();
+
+    const setViewport = vi.fn();
+    const cancel = scheduleViewportCommit([20, 80], setViewport, 1_500);
+
+    expect(setViewport).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1_499);
+
+    expect(setViewport).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+
+    expect(setViewport).toHaveBeenCalledTimes(1);
+    expect(setViewport).toHaveBeenCalledWith(20, 80);
+
+    cancel();
   });
 });

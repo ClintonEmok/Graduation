@@ -116,18 +116,17 @@ export function useDualTimelineViewModel({
     return (date: Date) => formatDateByResolution(date, dateResolution);
   }, [detailInnerWidth, detailRangeSec, tickLabelStrategy, timeResolution]);
 
-  const overviewTickFormat = useMemo(() => {
+  const overviewTickFormat = (date: Date) => {
     if (tickLabelStrategy === 'span-aware') {
-      return (date: Date) =>
-        formatSpanAwareTickLabel(date, {
-          rangeStartSec: domainStart,
-          rangeEndSec: domainEnd,
-          axisWidth: overviewInnerWidth,
-        });
+      return formatSpanAwareTickLabel(date, {
+        rangeStartSec: domainStart,
+        rangeEndSec: domainEnd,
+        axisWidth: overviewInnerWidth,
+      });
     }
 
-    return (date: Date) => formatDateByResolution(date, 'day');
-  }, [domainEnd, domainStart, overviewInnerWidth, tickLabelStrategy]);
+    return formatDateByResolution(date, 'year');
+  };
 
   return {
     overviewInteractionScale,

@@ -102,6 +102,41 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(2);
   });
 
+  test('keeps monthly granularity when generating selection-first draft bins', () => {
+    useTimelineDataStore.setState({
+      data: [],
+      columns: {
+        x: new Float32Array([0, 1]),
+        z: new Float32Array([0, 1]),
+        timestampSec: new Float64Array([5 * 60, DAY_MS / 1000 + 5 * 60]),
+        timestamp: new Float32Array([0, 100]),
+        type: new Uint8Array([1, 5]),
+        district: new Uint8Array([1, 2]),
+        block: ['A', 'B'],
+        length: 2,
+      },
+      minTimestampSec: 0,
+      maxTimestampSec: DAY_MS / 1000,
+    });
+
+    useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
+      crimeTypes: [],
+      neighbourhood: null,
+      timeWindow: {
+        start: 0,
+        end: DAY_MS + 30 * 60 * 1000,
+      },
+      granularity: 'monthly',
+    });
+
+    const generated = useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows([]);
+
+    expect(generated).toBe(true);
+    expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('monthly');
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.id).toContain('monthly');
+  });
+
   test('replaces the active slice set when applying pending burst drafts', () => {
     useSliceDomainStore.getState().addSlice({
       type: 'point',
