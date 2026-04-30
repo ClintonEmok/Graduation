@@ -216,10 +216,17 @@ Plans:
    4. User can see linked selection behavior across timeline, map, and cube.
    5. User can inspect burst structure and slice relationships without treating the cube as a raw data browser.
 
-### Phase 14: Detect events + decode bursts
+### Phase 14: Decode bursts + temporal anomalies
 **Goal**: Non-uniform temporal scaling makes anomalies and burst structure readable while preserving metric duration.
 **Depends on**: Phase 13
 **Requirements**: T4, T6, T7, T8, VIEW-05, VIEW-06
+**Plans:** 3
+
+Plans:
+- `.planning/phases/14-decode-bursts-temporal-anomalies/14-01-PLAN.md` — enforce single active burst selection state and close the detail panel when burst state clears.
+- `.planning/phases/14-decode-bursts-temporal-anomalies/14-02-PLAN.md` — render minimal non-neutral burst marks on the timeline and wire demo burst clicks to the active burst selection.
+- `.planning/phases/14-decode-bursts-temporal-anomalies/14-03-PLAN.md` — move burst reasoning, duration cues, and neutral fallback into the pinned explain rail.
+
 **Success Criteria** (what must be TRUE):
    1. User can identify intersections, pauses, or abrupt changes in activity that deviate from the norm.
    2. User can distinguish the temporal order of rapid, concurrent events inside a burst.
@@ -262,5 +269,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Warping metric for adaptive time bin scaling | 0 | Complete    | 2026-04-21 |
 | 12. Codebase rewrite | 8 | Complete    | 2026-04-21 |
 | 13. UX/IA redesign + cube concept | 6 | Complete    | 2026-04-23 |
-| 14. Detect events + decode bursts | 6 | Not started | - |
+| 14. Decode bursts + temporal anomalies | 6 | Not started | - |
 | 15. Support overlays + hardening | 10 | Not started | - |
