@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Map, SquareStack } from 'lucide-react';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
-import { WorkflowSkeleton } from '@/components/dashboard-demo/WorkflowSkeleton';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
@@ -98,8 +97,6 @@ export function DashboardDemoShell() {
           <DemoTimelinePanel />
         </div>
       </div>
-
-      <WorkflowSkeleton />
 
       <DashboardDemoRailTabs />
     </main>

@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { useDashboardDemoTimeslicingModeStore } from './useDashboardDemoTimeslicingModeStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
 import { useTimelineDataStore } from './useTimelineDataStore';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 
 beforeEach(() => {
+  vi.unstubAllGlobals();
   useDashboardDemoTimeslicingModeStore.setState({
     generationInputs: {
       crimeTypes: [],
@@ -36,14 +37,114 @@ beforeEach(() => {
   useSliceDomainStore.getState().clearSlices();
 });
 
+const makeCrimeRangeResponse = (records: Array<{ timestamp: number; type: string; district: string }>) =>
+  ({
+    ok: true,
+    json: async () => ({ data: records }),
+  }) as Response;
+
 describe('useDashboardDemoTimeslicingModeStore', () => {
-  test('generates selection-first draft bins from the brushed selection', () => {
-    useTimelineDataStore.setState({
-      data: [
-        { id: 'a', timestamp: 5 * 60 * 1000, x: 0, y: 0, z: 0, type: 'THEFT' },
-        { id: 'b', timestamp: DAY_MS + 5 * 60 * 1000, x: 0, y: 0, z: 0, type: 'ASSAULT' },
-      ],
+  test('generates selection-first draft bins from fetched crime records', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.startsWith('/api/crimes/range?')) {
+        return makeCrimeRangeResponse([
+          { timestamp: 300, type: 'THEFT', district: '1' },
+          { timestamp: 2_100, type: 'THEFT', district: '1' },
+          { timestamp: 4_200, type: 'BATTERY', district: '1' },
+          { timestamp: 7_500, type: 'ASSAULT', district: '1' },
+          { timestamp: 8_400, type: 'ROBBERY', district: '1' },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
     });
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
+      crimeTypes: [],
+      neighbourhood: null,
+      timeWindow: {
+        start: 0,
+        end: 3 * HOUR_MS,
+      },
+      granularity: 'hourly',
+    });
+
+    const generated = await useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows();
+
+    expect(generated).toBe(true);
+    expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('hourly');
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.eventCount).toBe(5);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(3);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.every((bin) => bin.count > 0)).toBe(true);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.startTime).toBe(0);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.endTime).toBe(HOUR_MS);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[1]?.startTime).toBe(HOUR_MS);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[2]?.endTime).toBe(3 * HOUR_MS);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.crimeTypes).toContain('all-crime-types');
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.burstClass).toBeDefined();
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.every((bin) => typeof bin.burstScore === 'number')).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
+  });
+
+  test('uses the selected granularity bins instead of live burst windows', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.startsWith('/api/crimes/range?')) {
+        return makeCrimeRangeResponse([
+          { timestamp: 600, type: 'THEFT', district: '1' },
+          { timestamp: 4_200, type: 'BATTERY', district: '1' },
+          { timestamp: 8_400, type: 'ASSAULT', district: '1' },
+          { timestamp: 12_600, type: 'ROBBERY', district: '1' },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
+      crimeTypes: [],
+      neighbourhood: null,
+      timeWindow: {
+        start: 0,
+        end: 4 * HOUR_MS,
+      },
+      granularity: 'hourly',
+    });
+
+    const generated = await useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows();
+
+    expect(generated).toBe(true);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(4);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.map((bin) => bin.startTime)).toEqual([
+      0,
+      HOUR_MS,
+      2 * HOUR_MS,
+      3 * HOUR_MS,
+    ]);
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.warning).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
+  });
+
+  test('still generates neutral bins when no crimes are returned for the selected window', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.startsWith('/api/crimes/range?')) {
+        return makeCrimeRangeResponse([]);
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
 
     useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
       crimeTypes: [],
@@ -55,86 +156,88 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
       granularity: 'daily',
     });
 
-    const generated = useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows([]);
+    const generated = await useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows();
 
     expect(generated).toBe(true);
     expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
-    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('daily');
-    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.eventCount).toBe(2);
+    expect(useDashboardDemoTimeslicingModeStore.getState().generationError).toBeNull();
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(2);
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.every((bin) => bin.isNeutralPartition)).toBe(true);
-    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.every((bin) => bin.crimeTypes[0] === 'all-crime-types')).toBe(true);
-    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.crimeTypes).toEqual(['all-crime-types']);
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.eventCount).toBe(0);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 
-  test('generates selection-first draft bins from real columns data', () => {
-    useTimelineDataStore.setState({
-      data: [],
-      columns: {
-        x: new Float32Array([0, 1]),
-        z: new Float32Array([0, 1]),
-        timestampSec: new Float64Array([5 * 60, DAY_MS / 1000 + 5 * 60]),
-        timestamp: new Float32Array([0, 100]),
-        type: new Uint8Array([1, 5]),
-        district: new Uint8Array([1, 2]),
-        block: ['A', 'B'],
-        length: 2,
-      },
-      minTimestampSec: 0,
-      maxTimestampSec: DAY_MS / 1000,
+  test('keeps monthly granularity when generating selection-first draft bins', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.startsWith('/api/crimes/range?')) {
+        return makeCrimeRangeResponse([
+          { timestamp: 10, type: 'THEFT', district: '1' },
+          { timestamp: 20, type: 'BATTERY', district: '1' },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
     });
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
 
     useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
       crimeTypes: [],
       neighbourhood: null,
       timeWindow: {
         start: 0,
-        end: DAY_MS + 30 * 60 * 1000,
-      },
-      granularity: 'daily',
-    });
-
-    const generated = useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows([]);
-
-    expect(generated).toBe(true);
-    expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
-    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.eventCount).toBe(2);
-    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(2);
-  });
-
-  test('keeps monthly granularity when generating selection-first draft bins', () => {
-    useTimelineDataStore.setState({
-      data: [],
-      columns: {
-        x: new Float32Array([0, 1]),
-        z: new Float32Array([0, 1]),
-        timestampSec: new Float64Array([5 * 60, DAY_MS / 1000 + 5 * 60]),
-        timestamp: new Float32Array([0, 100]),
-        type: new Uint8Array([1, 5]),
-        district: new Uint8Array([1, 2]),
-        block: ['A', 'B'],
-        length: 2,
-      },
-      minTimestampSec: 0,
-      maxTimestampSec: DAY_MS / 1000,
-    });
-
-    useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
-      crimeTypes: [],
-      neighbourhood: null,
-      timeWindow: {
-        start: 0,
-        end: DAY_MS + 30 * 60 * 1000,
+        end: 40 * 60 * 1000,
       },
       granularity: 'monthly',
     });
 
-    const generated = useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows([]);
+    const generated = await useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows();
 
     expect(generated).toBe(true);
     expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
     expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('monthly');
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.id).toContain('monthly');
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
+  });
+
+  test('supports quarterly granularity for longer selection windows', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.startsWith('/api/crimes/range?')) {
+        return makeCrimeRangeResponse([
+          { timestamp: new Date('2025-01-20T00:00:00Z').getTime() / 1000, type: 'THEFT', district: '1' },
+          { timestamp: new Date('2025-04-20T00:00:00Z').getTime() / 1000, type: 'BATTERY', district: '1' },
+          { timestamp: new Date('2025-07-20T00:00:00Z').getTime() / 1000, type: 'ASSAULT', district: '1' },
+          { timestamp: new Date('2025-10-20T00:00:00Z').getTime() / 1000, type: 'ROBBERY', district: '1' },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    useDashboardDemoTimeslicingModeStore.getState().setGenerationInputs({
+      crimeTypes: [],
+      neighbourhood: null,
+      timeWindow: {
+        start: new Date('2025-01-15T00:00:00Z').getTime(),
+        end: new Date('2025-11-10T00:00:00Z').getTime(),
+      },
+      granularity: 'quarterly',
+    });
+
+    const generated = await useDashboardDemoTimeslicingModeStore.getState().generateBurstDraftBinsFromWindows();
+
+    expect(generated).toBe(true);
+    expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('quarterly');
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(4);
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.id).toContain('quarterly');
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 
   test('replaces the active slice set when applying pending burst drafts', () => {

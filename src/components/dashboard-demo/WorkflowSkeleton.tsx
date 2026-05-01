@@ -9,6 +9,7 @@ import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { recommendGranularityForSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
 
 export type WorkflowSkeletonStep = 'orient' | 'find' | 'compare' | 'inspect' | 'explain' | 'apply';
 
@@ -53,8 +54,8 @@ const STEP_ICONS: Record<WorkflowSkeletonStep, typeof Layers3> = {
 const GRANULARITY_OPTIONS = [
   { value: 'hourly', label: 'Hourly' },
   { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
 ] as const;
 
 export function WorkflowSkeleton() {
@@ -74,6 +75,24 @@ export function WorkflowSkeleton() {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
+  const canGenerateBurstDrafts = generationStatus !== 'generating' && minTimestampSec !== null && maxTimestampSec !== null;
+  const selectedWindowBounds = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return null;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
+    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+    return { start, end };
+  }, [maxTimestampSec, minTimestampSec, timeRange]);
+  const suggestedGranularity = useMemo(
+    () => recommendGranularityForSelection(selectedWindowBounds),
+    [selectedWindowBounds]
+  );
+  const suggestedGranularityLabel = GRANULARITY_OPTIONS.find((option) => option.value === suggestedGranularity)?.label ?? 'Daily';
+  const activeGranularityLabel = GRANULARITY_OPTIONS.find((option) => option.value === generationInputs.granularity)?.label ?? 'Daily';
   const availableCrimeTypes = (() => {
     if (crimeTypes.length > 0) {
       return crimeTypes;
@@ -116,7 +135,7 @@ export function WorkflowSkeleton() {
     return typeof coefficient === 'number' && Number.isFinite(coefficient) ? coefficient.toFixed(2) : '—';
   }, [pendingGeneratedBins]);
 
-  const handleGenerateBurstDrafts = () => {
+  const handleGenerateBurstDrafts = async () => {
     if (minTimestampSec === null || maxTimestampSec === null) {
       toast.error('Selection-first generation failed', {
         description: 'Choose a valid brushed selection before generating workflow drafts.',
@@ -135,7 +154,7 @@ export function WorkflowSkeleton() {
       },
     });
 
-    const generated = generateBurstDraftBinsFromWindows([]);
+    const generated = await generateBurstDraftBinsFromWindows();
     const generationState = useDashboardDemoTimeslicingModeStore.getState();
 
     if (generated && generationState.lastGeneratedMetadata) {
@@ -251,13 +270,28 @@ export function WorkflowSkeleton() {
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Selection-first drafts</p>
                           <span className="text-[10px] text-violet-200">Brushed selection is canonical</span>
                         </div>
-                        <p className="mt-2 text-[11px] text-violet-100/90">Daily is the default granularity; weekly and monthly bins are available too.</p>
+                        <p className="mt-2 text-[11px] text-violet-100/90">
+                          Suggested granularity follows the brushed window size. Hourly fits short spans, daily fits medium spans, and monthly or quarterly fit longer spans.
+                        </p>
 
                         <div className="mt-3 space-y-2">
-                          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
+                            <div className="flex items-center gap-2 text-[10px] text-violet-100/80">
+                              <span>Suggested: {suggestedGranularityLabel}</span>
+                              <button
+                                type="button"
+                                onClick={() => setGenerationInputs({ granularity: suggestedGranularity })}
+                                className="rounded-full border border-violet-300/40 bg-violet-500/10 px-2 py-1 font-medium text-violet-100 transition-colors hover:border-violet-200 hover:bg-violet-500/20"
+                              >
+                                Use suggested
+                              </button>
+                            </div>
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             {GRANULARITY_OPTIONS.map((option) => {
                               const isActive = generationInputs.granularity === option.value;
+                              const isRecommended = option.value === suggestedGranularity;
 
                               return (
                                 <button
@@ -267,13 +301,21 @@ export function WorkflowSkeleton() {
                                   className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                                     isActive
                                       ? 'border-violet-300 bg-violet-500/20 text-violet-50'
-                                      : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
+                                      : isRecommended
+                                        ? 'border-amber-300/60 bg-amber-500/10 text-amber-100 hover:border-amber-200'
+                                        : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
                                   }`}
                                 >
-                                  {option.label}
+                                  <span className="inline-flex items-center gap-1">
+                                    {option.label}
+                                    {isRecommended ? <span className="text-[9px] uppercase tracking-[0.18em] text-amber-200">Recommended</span> : null}
+                                  </span>
                                 </button>
                               );
                             })}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Active: {activeGranularityLabel}
                           </div>
                         </div>
 
@@ -318,7 +360,7 @@ export function WorkflowSkeleton() {
                         <button
                           type="button"
                           onClick={handleGenerateBurstDrafts}
-                          disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
+                          disabled={!canGenerateBurstDrafts}
                           className="mt-3 inline-flex items-center gap-2 rounded-md border border-violet-400/60 bg-violet-500/20 px-2.5 py-1.5 text-xs font-medium text-violet-50 transition-colors hover:border-violet-300 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}

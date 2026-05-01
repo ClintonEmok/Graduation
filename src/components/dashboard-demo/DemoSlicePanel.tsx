@@ -22,6 +22,14 @@ import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
+import { recommendGranularityForSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
+
+const GRANULARITY_OPTIONS = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+] as const;
 
 const toDateTimeLocalValue = (timestampMs: number | null | undefined) => {
   if (timestampMs === null || timestampMs === undefined || !Number.isFinite(timestampMs)) {
@@ -78,6 +86,7 @@ export function DemoSlicePanel() {
   const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
 
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
+  const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
   const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
@@ -93,6 +102,24 @@ export function DemoSlicePanel() {
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
+  const selectedWindowBounds = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) {
+      return null;
+    }
+
+    const [windowStart, windowEnd] = timeRange;
+    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
+    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+    return { start, end };
+  }, [maxTimestampSec, minTimestampSec, timeRange]);
+  const suggestedGranularity = useMemo(
+    () => recommendGranularityForSelection(selectedWindowBounds),
+    [selectedWindowBounds]
+  );
+  const suggestedGranularityLabel = GRANULARITY_OPTIONS.find((option) => option.value === suggestedGranularity)?.label ?? 'Daily';
+  const activeGranularityLabel = GRANULARITY_OPTIONS.find((option) => option.value === generationInputs.granularity)?.label ?? 'Daily';
+  const canGenerateBurstDrafts = generationStatus !== 'generating' && minTimestampSec !== null && maxTimestampSec !== null;
 
   const selectedSlice = useMemo(
     () => slices.find((slice) => slice.id === selectedSliceId) ?? null,
@@ -241,7 +268,7 @@ export function DemoSlicePanel() {
     });
   }, [addSlice, currentTime, maxTimestampSec, minTimestampSec, timeRange, timeResolution]);
 
-  const handleGenerateBurstDrafts = useCallback(() => {
+  const handleGenerateBurstDrafts = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null) {
       toast.error('Selection-first generation failed', {
         description: 'Choose a valid brushed selection before generating selection-first drafts.',
@@ -260,7 +287,7 @@ export function DemoSlicePanel() {
       },
     });
 
-    const generated = generateBurstDraftBinsFromWindows([]);
+    const generated = await generateBurstDraftBinsFromWindows();
     const generationState = useDashboardDemoTimeslicingModeStore.getState();
 
     if (generated && generationState.lastGeneratedMetadata) {
@@ -441,13 +468,56 @@ export function DemoSlicePanel() {
             </summary>
             <div className="space-y-2 pt-2">
               <div className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
-                Brushed selection is canonical. Daily is the default granularity, weekly and monthly are available too, crime types stay optional, and the neutral state stays muted.
+                Brushed selection is canonical. The workflow suggests hourly, daily, monthly, or quarterly bins based on the brushed window size; crime types stay optional, and the neutral state stays muted.
+              </div>
+              <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
+                  <div className="text-[10px] text-violet-100/80">Suggested: {suggestedGranularityLabel}</div>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {GRANULARITY_OPTIONS.map((option) => {
+                    const isActive = generationInputs.granularity === option.value;
+                    const isRecommended = option.value === suggestedGranularity;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setGenerationInputs({ granularity: option.value })}
+                        className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                          isActive
+                            ? 'border-violet-300 bg-violet-500/20 text-violet-50'
+                            : isRecommended
+                              ? 'border-amber-300/60 bg-amber-500/10 text-amber-100 hover:border-amber-200'
+                              : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {option.label}
+                          {isRecommended ? <span className="text-[9px] uppercase tracking-[0.18em] text-amber-200">Recommended</span> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                  <span>Active: {activeGranularityLabel}</span>
+                  <button
+                    type="button"
+                    onClick={() => setGenerationInputs({ granularity: suggestedGranularity })}
+                    disabled={generationInputs.granularity === suggestedGranularity}
+                    className="rounded-full border border-violet-300/40 bg-violet-500/10 px-2 py-1 font-medium text-violet-100 transition-colors hover:border-violet-200 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Use suggested
+                  </button>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 <button
                   type="button"
                   onClick={handleGenerateBurstDrafts}
-                  disabled={generationStatus === 'generating' || minTimestampSec === null || maxTimestampSec === null}
+                  disabled={!canGenerateBurstDrafts}
                   className="inline-flex items-center gap-2 rounded-md border border-violet-500/50 bg-violet-500/15 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition-colors hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}

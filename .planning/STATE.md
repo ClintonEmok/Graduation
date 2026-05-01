@@ -72,6 +72,7 @@ Progress: █████████████████░░░ 35/41 pla
 - Phase 11 added: Warping metric for adaptive time bin scaling.
 - Phase 12 added: Codebase rewrite to improve code quality and proper separation of logic from UI where possible.
 - Phase 14 updated: Decode bursts + temporal anomalies.
+- Phase 16 added: 3D terrain and enhanced crime aggregation.
 
 ### Decisions
 

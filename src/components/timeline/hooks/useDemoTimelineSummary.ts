@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useBurstWindows } from '@/components/viz/BurstList';
 import { useDashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
+import { useDemoBurstWindows } from '@/components/dashboard-demo/lib/useDemoBurstWindows';
 import { formatDateByResolution } from '@/lib/date-formatting';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 
@@ -17,7 +17,7 @@ export function useDemoTimelineSummary() {
   const dataCount = useTimelineDataStore((state) => state.dataCount);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
-  const burstWindows = useBurstWindows();
+  const burstWindows = useDemoBurstWindows();
 
   return useMemo(() => {
     const pointCount = dataCount ?? overviewTimestampSec.length ?? columns?.timestamp?.length ?? data.length;

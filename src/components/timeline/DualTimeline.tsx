@@ -266,8 +266,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     if (data && data.length > 0) {
       return data.map((point) => point.timestamp as number);
     }
+    if (overviewTimestampSec.length > 0) {
+      return overviewTimestampSec;
+    }
     return [];
-  }, [columns, data]);
+  }, [columns, data, overviewTimestampSec]);
 
   const overviewSeries = useMemo<number[]>(() => {
     if (overviewTimestampSec.length > 0) {
@@ -449,7 +452,33 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [detailInnerWidth, detailScale, selectionPoint]);
 
   const burstWindows = useBurstWindows();
-  const burstWindowsForAutoSlices = disableAutoBurstSlices ? [] : burstWindows;
+  const burstWindowsWithTaxonomy = useMemo(() => {
+    return burstWindows.map((window, index, windows) => {
+      const taxonomy = classifyBurstWindow({
+        value: window.peak,
+        count: window.count,
+        durationSec: window.duration,
+        neighborhood: [windows[index - 1], windows[index + 1]]
+          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
+          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
+      });
+
+      return {
+        ...window,
+        burstClass: taxonomy.burstClass,
+        burstConfidence: taxonomy.burstConfidence,
+        burstScore: taxonomy.burstScore,
+        burstRationale: taxonomy.rationale,
+        burstRuleVersion: taxonomy.burstRuleVersion,
+        burstProvenance: taxonomy.burstProvenance,
+        tieBreakReason: taxonomy.tieBreakReason,
+        thresholdSource: taxonomy.thresholdSource,
+        neighborhoodSummary: taxonomy.neighborhoodSummary,
+      };
+    });
+  }, [burstWindows]);
+
+  const burstWindowsForAutoSlices = disableAutoBurstSlices ? [] : burstWindowsWithTaxonomy;
   const burstTaxonomySummary = useMemo(() => {
     const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
       'prolonged-peak': 0,
@@ -458,20 +487,12 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       neutral: 0,
     };
 
-    for (const [index, window] of burstWindows.entries()) {
-      const taxonomy = classifyBurstWindow({
-        value: window.peak,
-        count: window.count,
-        durationSec: window.duration,
-        neighborhood: [burstWindows[index - 1], burstWindows[index + 1]]
-          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
-          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
-      });
-      counts[taxonomy.burstClass] += 1;
+    for (const window of burstWindowsWithTaxonomy) {
+      counts[window.burstClass] += 1;
     }
 
     return counts;
-  }, [burstWindows]);
+  }, [burstWindowsWithTaxonomy]);
 
   // Auto-create burst slices when burst data becomes available (unless disabled)
   useAutoBurstSlices(burstWindowsForAutoSlices);
@@ -717,8 +738,10 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     brushRef,
     overviewTicks,
     overviewTickFormat,
-    burstWindows,
+    burstWindows: burstWindowsWithTaxonomy,
     burstTaxonomySummary,
+    activeBurstWindowId: null,
+    onBurstWindowClick: undefined,
     detailDensityMap,
     detailMax,
     resolvedDetailRenderMode,

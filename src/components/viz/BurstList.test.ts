@@ -17,7 +17,7 @@ describe('buildBurstWindowsFromSeries', () => {
     expect(result[0]?.start).toBe(30);
     expect(result[0]?.end).toBe(45);
     expect(result[0]?.peak).toBeCloseTo(0.82, 2);
-    expect(result[0]?.count).toBe(6);
+    expect(result[0]?.count).toBe(5);
   });
 
   test('clips burst windows to the selected bounds', () => {

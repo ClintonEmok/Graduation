@@ -3,6 +3,84 @@
 import React from 'react';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 
+type BurstTaxonomy = 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+
+interface SurfaceBurstWindow {
+  id: string;
+  start: number;
+  end: number;
+  peak: number;
+  count: number;
+  duration: number;
+  burstClass?: BurstTaxonomy;
+}
+
+interface SurfaceBucket {
+  x0?: number;
+  x1?: number;
+  length: number;
+}
+
+interface SurfaceSliceGeometry {
+  id: string;
+  left: number;
+  width: number;
+  isActive: boolean;
+  isBurst: boolean;
+  isPoint: boolean;
+  isSuggestion: boolean;
+  isGeneratedDraft: boolean;
+  isGeneratedApplied: boolean;
+  overlapCount: number;
+  color?: { fill?: string; stroke?: string } | string;
+}
+
+interface DualTimelineSurfaceProps {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  brushRangeLabel: string;
+  isTimelineLoading: boolean;
+  width: number;
+  overviewInnerWidth: number;
+  detailInnerWidth: number;
+  isComputing: boolean;
+  densityMap: Float32Array | null;
+  overviewScale: (date: Date) => number;
+  detailScale: (date: Date) => number;
+  overviewSvgRef: React.RefObject<SVGSVGElement | null>;
+  detailSvgRef: React.RefObject<SVGSVGElement | null>;
+  overviewBins: SurfaceBucket[];
+  overviewMax: number;
+  stripSelection: { left: number; width: number } | null;
+  userWarpOverlayBands: Array<{ id: string; startSec: number; endSec: number; isDebugPreview: boolean }>;
+  timeScaleMode: 'linear' | 'adaptive';
+  brushRef: React.RefObject<SVGGElement | null>;
+  overviewTicks: Date[];
+  overviewTickFormat: (date: Date) => string;
+  burstWindows: SurfaceBurstWindow[];
+  activeBurstWindowId: string | null;
+  onBurstWindowClick?: (window: SurfaceBurstWindow) => void;
+  detailDensityMap: Float32Array | null;
+  detailMax: number;
+  resolvedDetailRenderMode: 'points' | 'bins';
+  detailPoints: number[];
+  detailBins: SurfaceBucket[];
+  orderedSliceGeometries: SurfaceSliceGeometry[];
+  activeSliceUpdatedAt: number | null;
+  pendingGeneratedGeometries: SurfaceSliceGeometry[];
+  maxSliceOverlap: number;
+  cursorX: number | null;
+  selectionX: number | null;
+  zoomRef: React.RefObject<SVGRectElement | null>;
+  handlePointerDown: (event: React.PointerEvent<SVGRectElement>) => void;
+  handlePointerMove: (event: React.PointerEvent<SVGRectElement>) => void;
+  handlePointerUpWithSelection: (event: React.PointerEvent<SVGRectElement>) => void;
+  handlePointerCancel: (event: React.PointerEvent<SVGRectElement>) => void;
+  detailTicks: Date[];
+  detailTickFormat: (date: Date) => string;
+  hoveredDetail: { x: number; label: string } | null;
+  isDetailEmpty: boolean;
+}
+
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
 const AXIS_HEIGHT = 28;
@@ -15,7 +93,15 @@ const TIME_CURSOR_COLOR = '#10b981';
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
-export function DualTimelineSurface(props: any) {
+const resolveColorValue = (color: SurfaceSliceGeometry['color'], key: 'fill' | 'stroke'): string | undefined => {
+  if (typeof color === 'string') {
+    return color;
+  }
+
+  return color?.[key];
+};
+
+export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
   const {
     containerRef,
     brushRangeLabel,
@@ -38,7 +124,8 @@ export function DualTimelineSurface(props: any) {
     overviewTicks,
     overviewTickFormat,
     burstWindows,
-    burstTaxonomySummary,
+    activeBurstWindowId,
+    onBurstWindowClick,
     detailDensityMap,
     detailMax,
     resolvedDetailRenderMode,
@@ -97,7 +184,7 @@ export function DualTimelineSurface(props: any) {
             </linearGradient>
           </defs>
           <g transform={`translate(${OVERVIEW_MARGIN.left},${OVERVIEW_MARGIN.top})`}>
-            {overviewBins.map((bucket: any, index: number) => {
+            {overviewBins.map((bucket: SurfaceBucket, index: number) => {
               if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
               const x0 = overviewScale(new Date(bucket.x0 * 1000));
               const x1 = overviewScale(new Date(bucket.x1 * 1000));
@@ -105,7 +192,7 @@ export function DualTimelineSurface(props: any) {
               const barHeight = (bucket.length / overviewMax) * OVERVIEW_HEIGHT;
               return <rect key={`overview-${index}`} x={x0} y={OVERVIEW_HEIGHT - barHeight} width={barWidth} height={barHeight} className="fill-primary/20" />;
             })}
-            {userWarpOverlayBands.map((slice: any) => {
+            {userWarpOverlayBands.map((slice) => {
               const x0 = overviewScale(new Date(slice.startSec * 1000));
               const x1 = overviewScale(new Date(slice.endSec * 1000));
               const left = Math.min(x0, x1);
@@ -130,15 +217,6 @@ export function DualTimelineSurface(props: any) {
 
         <div className="relative">
           <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
-            {burstWindows.length > 0 && (
-              <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                <span className="uppercase tracking-[0.18em] text-slate-500">Burst indicators</span>
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">prolonged-peak: {burstTaxonomySummary['prolonged-peak']}</span>
-                <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-rose-100">isolated-spike: {burstTaxonomySummary['isolated-spike']}</span>
-                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">valley: {burstTaxonomySummary.valley}</span>
-                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-200">neutral: {burstTaxonomySummary.neutral}</span>
-              </div>
-            )}
             {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} /> : <div className="h-2" />}
           </div>
 
@@ -153,7 +231,7 @@ export function DualTimelineSurface(props: any) {
                     const x = detailScale(new Date(timestamp * 1000));
                     return <circle key={`detail-point-${index}`} cx={x} cy={DETAIL_HEIGHT - 6} r={2} className="fill-primary/60" />;
                   })
-                : detailBins.map((bucket: any, index: number) => {
+                : detailBins.map((bucket: SurfaceBucket, index: number) => {
                     if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
                     const x0 = detailScale(new Date(bucket.x0 * 1000));
                     const x1 = detailScale(new Date(bucket.x1 * 1000));
@@ -162,20 +240,98 @@ export function DualTimelineSurface(props: any) {
                     return <rect key={`detail-bin-${index}`} x={x0} y={DETAIL_HEIGHT - barHeight} width={barWidth} height={barHeight} className="fill-primary/20" />;
                   })}
 
-              {orderedSliceGeometries.map((geometry: any) => {
+              {orderedSliceGeometries.map((geometry: SurfaceSliceGeometry) => {
                 const baseOpacity = geometry.isActive ? 0.68 : geometry.overlapCount >= 3 ? 0.2 : geometry.overlapCount === 2 ? 0.28 : 0.38;
                 const isSuggestionSlice = geometry.isSuggestion && !geometry.isBurst;
                 const isGeneratedAppliedSlice = geometry.isGeneratedApplied;
+                const fill = isGeneratedAppliedSlice
+                  ? 'rgba(16, 185, 129, 0.18)'
+                  : isSuggestionSlice
+                    ? 'rgba(139, 92, 246, 0.2)'
+                    : geometry.isBurst
+                      ? 'rgba(251, 146, 60, 0.26)'
+                      : resolveColorValue(geometry.color, 'fill') ?? 'rgba(148, 163, 184, 0.3)';
+                const stroke = isGeneratedAppliedSlice
+                  ? 'rgba(74, 222, 128, 0.92)'
+                  : isSuggestionSlice
+                    ? 'rgba(167, 139, 250, 0.85)'
+                    : geometry.isBurst
+                      ? 'rgba(251, 146, 60, 0.85)'
+                      : resolveColorValue(geometry.color, 'stroke') ?? 'rgba(100, 116, 139, 0.8)';
                 return (
                   <g key={`${geometry.id}-${geometry.isActive ? activeSliceUpdatedAt : 'base'}`}>
-                    <rect x={geometry.left} y={3} width={Math.max(2, geometry.width)} height={DETAIL_HEIGHT - 6} rx={3} fill={isGeneratedAppliedSlice ? 'rgba(16, 185, 129, 0.18)' : isSuggestionSlice ? 'rgba(139, 92, 246, 0.2)' : (geometry.isBurst ? 'rgba(251, 146, 60, 0.26)' : geometry.color?.fill ?? 'rgba(148, 163, 184, 0.3)')} stroke={isGeneratedAppliedSlice ? 'rgba(74, 222, 128, 0.92)' : isSuggestionSlice ? 'rgba(167, 139, 250, 0.85)' : (geometry.isBurst ? 'rgba(251, 146, 60, 0.85)' : geometry.color?.stroke ?? 'rgba(100, 116, 139, 0.8)')} strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1} strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : isGeneratedAppliedSlice ? '8 2' : undefined} opacity={baseOpacity} />
+                    <rect x={geometry.left} y={3} width={Math.max(2, geometry.width)} height={DETAIL_HEIGHT - 6} rx={3} fill={fill} stroke={stroke} strokeWidth={geometry.isActive ? 2.3 : geometry.overlapCount >= 2 ? 1.5 : 1} strokeDasharray={geometry.overlapCount >= 3 || isSuggestionSlice ? '5 3' : isGeneratedAppliedSlice ? '8 2' : undefined} opacity={baseOpacity} />
                     {geometry.overlapCount >= 2 && !geometry.isActive && <rect x={geometry.left} y={3} width={Math.max(2, geometry.width)} height={DETAIL_HEIGHT - 6} rx={3} fill="url(#sliceOverlapHatch)" opacity={geometry.overlapCount >= 3 ? 0.42 : 0.3} />}
                     {geometry.isActive && <rect x={geometry.left} y={2} width={Math.max(2, geometry.width)} height={DETAIL_HEIGHT - 4} rx={3} fill="none" stroke={geometry.isBurst ? 'rgba(253, 186, 116, 0.95)' : 'rgba(125, 211, 252, 0.95)'} strokeWidth={2.2} opacity={0.9}><animate attributeName="opacity" values="0.55;1;0.55" dur="1.8s" repeatCount="indefinite" /></rect>}
                   </g>
                 );
               })}
 
-              {pendingGeneratedGeometries.map((geometry: any) => <g key={geometry.id}><rect x={geometry.left} y={8} width={Math.max(2, geometry.width)} height={DETAIL_HEIGHT - 16} rx={3} fill="rgba(245, 158, 11, 0.16)" stroke="rgba(251, 191, 36, 0.92)" strokeWidth={1.5} strokeDasharray="4 3" /></g>)}
+              {pendingGeneratedGeometries.map((geometry: SurfaceSliceGeometry) => (
+                <g key={geometry.id}>
+                  <rect
+                    x={geometry.left}
+                    y={3}
+                    width={Math.max(2, geometry.width)}
+                    height={DETAIL_HEIGHT - 6}
+                    rx={3}
+                    fill="rgba(245, 158, 11, 0.08)"
+                    stroke="rgba(251, 191, 36, 0.82)"
+                    strokeWidth={1.2}
+                    strokeDasharray="4 3"
+                    pointerEvents="none"
+                  />
+                </g>
+              ))}
+
+              {burstWindows
+                .filter((window: SurfaceBurstWindow) => window.burstClass && window.burstClass !== 'neutral')
+                .map((window: SurfaceBurstWindow) => {
+                  if (!Number.isFinite(window.start) || !Number.isFinite(window.end)) {
+                    return null;
+                  }
+
+                  const x0 = detailScale(new Date(window.start * 1000));
+                  const x1 = detailScale(new Date(window.end * 1000));
+                  if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
+                    return null;
+                  }
+
+                  const left = Math.max(0, Math.min(detailInnerWidth, Math.min(x0, x1)));
+                  const right = Math.max(0, Math.min(detailInnerWidth, Math.max(x0, x1)));
+                  if (right <= left) {
+                    return null;
+                  }
+
+                  const fill = window.burstClass === 'prolonged-peak'
+                    ? 'rgba(251, 191, 36, 0.24)'
+                    : window.burstClass === 'isolated-spike'
+                      ? 'rgba(251, 113, 133, 0.24)'
+                      : 'rgba(96, 165, 250, 0.24)';
+                  const stroke = window.id === activeBurstWindowId
+                    ? 'rgba(248, 250, 252, 0.95)'
+                    : window.burstClass === 'prolonged-peak'
+                      ? 'rgba(251, 191, 36, 0.82)'
+                      : window.burstClass === 'isolated-spike'
+                        ? 'rgba(251, 113, 133, 0.82)'
+                        : 'rgba(96, 165, 250, 0.82)';
+
+                  return (
+                    <rect
+                      key={`burst-${window.id}`}
+                      x={left}
+                      y={3}
+                      width={Math.max(2, right - left)}
+                      height={DETAIL_HEIGHT - 6}
+                      rx={3}
+                      fill={fill}
+                      stroke={stroke}
+                      strokeWidth={window.id === activeBurstWindowId ? 2 : 1.2}
+                      opacity={window.id === activeBurstWindowId ? 1 : 0.9}
+                      pointerEvents="none"
+                    />
+                  );
+                })}
 
               {maxSliceOverlap >= 3 && <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}><rect width={86} height={18} rx={9} fill="rgba(15, 23, 42, 0.75)" stroke="rgba(148, 163, 184, 0.55)" /><text x={43} y={12} textAnchor="middle" fontSize={10} fill="rgba(226, 232, 240, 0.95)">{maxSliceOverlap}x overlap</text></g>}
 

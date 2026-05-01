@@ -43,8 +43,8 @@ import { type TickLabelStrategy } from './lib/tick-ux';
 import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
 import { DualTimelineSurface } from '@/components/timeline/DualTimelineSurface';
 import { useDualTimelineViewModel } from './hooks/useDualTimelineViewModel';
-import { useBurstWindows } from '@/components/viz/BurstList';
 import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
+import { useDemoBurstWindows } from '@/components/dashboard-demo/lib/useDemoBurstWindows';
 
 const OVERVIEW_HEIGHT = 42;
 const DETAIL_HEIGHT = 60;
@@ -209,6 +209,9 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const setSelectedIndex = useStore(useDashboardDemoCoordinationStore, (state) => state.setSelectedIndex);
   const clearSelection = useStore(useDashboardDemoCoordinationStore, (state) => state.clearSelection);
   const setBrushRange = useStore(useDashboardDemoCoordinationStore, (state) => state.setBrushRange);
+  const selectedBurstWindows = useStore(useDashboardDemoCoordinationStore, (state) => state.selectedBurstWindows);
+  const setSelectedBurstWindow = useStore(useDashboardDemoCoordinationStore, (state) => state.toggleBurstWindow);
+  const setDetailsOpen = useStore(useDashboardDemoCoordinationStore, (state) => state.setDetailsOpen);
   const timeScaleMode = useStore(useDashboardDemoWarpStore, (state) => state.timeScaleMode);
   const warpSource = useStore(useDashboardDemoWarpStore, (state) => state.warpSource);
   const warpFactor = useStore(useDashboardDemoWarpStore, (state) => state.warpFactor);
@@ -296,8 +299,11 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     if (data && data.length > 0) {
       return data.map((point) => point.timestamp as number);
     }
+    if (overviewTimestampSec.length > 0) {
+      return overviewTimestampSec;
+    }
     return [];
-  }, [columns, data]);
+  }, [columns, data, overviewTimestampSec]);
 
   const overviewSeries = useMemo<number[]>(() => {
     if (overviewTimestampSec.length > 0) {
@@ -507,7 +513,35 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return resolveSelectionX(selectionPoint?.timestampSec, (date) => detailScale(date), detailInnerWidth);
   }, [detailInnerWidth, detailScale, selectionPoint]);
 
-  const burstWindows = useBurstWindows();
+  const burstWindows = useDemoBurstWindows();
+  const burstWindowsWithTaxonomy = useMemo(() => {
+    return burstWindows.map((window, index, windows) => {
+      const taxonomy = classifyBurstWindow({
+        value: window.peak,
+        count: window.count,
+        durationSec: window.duration,
+        neighborhood: [windows[index - 1], windows[index + 1]]
+          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
+          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
+      });
+
+      return {
+        ...window,
+        burstClass: taxonomy.burstClass,
+        burstConfidence: taxonomy.burstConfidence,
+        burstScore: taxonomy.burstScore,
+        burstRationale: taxonomy.rationale,
+        burstRuleVersion: taxonomy.burstRuleVersion,
+        burstProvenance: taxonomy.burstProvenance,
+        tieBreakReason: taxonomy.tieBreakReason,
+        thresholdSource: taxonomy.thresholdSource,
+        neighborhoodSummary: taxonomy.neighborhoodSummary,
+      };
+    });
+  }, [burstWindows]);
+
+  const activeBurstWindowId = selectedBurstWindows[0]?.id ?? null;
+
   const burstTaxonomySummary = useMemo(() => {
     const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
       'prolonged-peak': 0,
@@ -516,20 +550,20 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       neutral: 0,
     };
 
-    for (const [index, window] of burstWindows.entries()) {
-      const taxonomy = classifyBurstWindow({
-        value: window.peak,
-        count: window.count,
-        durationSec: window.duration,
-        neighborhood: [burstWindows[index - 1], burstWindows[index + 1]]
-          .filter((neighbor): neighbor is typeof window => neighbor !== undefined)
-          .map((neighbor) => ({ value: neighbor.peak, count: neighbor.count, durationSec: neighbor.duration })),
-      });
-      counts[taxonomy.burstClass] += 1;
+    for (const window of burstWindowsWithTaxonomy) {
+      counts[window.burstClass] += 1;
     }
 
     return counts;
-  }, [burstWindows]);
+  }, [burstWindowsWithTaxonomy]);
+
+  const handleBurstWindowClick = useCallback(
+    (window: (typeof burstWindowsWithTaxonomy)[number]) => {
+      setSelectedBurstWindow(window);
+      setDetailsOpen(true);
+    },
+    [setDetailsOpen, setSelectedBurstWindow]
+  );
 
 
   const stripSelection = useMemo(() => {
@@ -821,8 +855,10 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     brushRef,
     overviewTicks,
     overviewTickFormat,
-    burstWindows,
+    burstWindows: burstWindowsWithTaxonomy,
     burstTaxonomySummary,
+    activeBurstWindowId,
+    onBurstWindowClick: handleBurstWindowClick,
     detailDensityMap,
     detailMax,
     resolvedDetailRenderMode,

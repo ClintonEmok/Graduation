@@ -3,6 +3,7 @@ import {
   buildBurstDraftBinsFromWindows,
   buildNonUniformDraftBinsFromSelection,
   buildDemoBurstWindowsFromSelection,
+  recommendGranularityForSelection,
   partitionSelectionByGranularity,
 } from './demo-burst-generation';
 
@@ -117,6 +118,38 @@ describe('partitionSelectionByGranularity', () => {
       { startTime: new Date('2025-03-01T00:00:00').getTime(), endTime: new Date('2025-04-01T00:00:00').getTime() },
       { startTime: new Date('2025-04-01T00:00:00').getTime(), endTime: end },
     ]);
+  });
+
+  test('partitions a quarterly selection into calendar-quarter bins', () => {
+    const start = new Date('2025-01-15T09:30:00').getTime();
+    const end = new Date('2025-11-10T12:00:00').getTime();
+
+    const bins = partitionSelectionByGranularity([start, end], 'quarterly');
+
+    expect(bins).toEqual([
+      { startTime: start, endTime: new Date('2025-04-01T00:00:00').getTime() },
+      { startTime: new Date('2025-04-01T00:00:00').getTime(), endTime: new Date('2025-07-01T00:00:00').getTime() },
+      { startTime: new Date('2025-07-01T00:00:00').getTime(), endTime: new Date('2025-10-01T00:00:00').getTime() },
+      { startTime: new Date('2025-10-01T00:00:00').getTime(), endTime: end },
+    ]);
+  });
+});
+
+describe('recommendGranularityForSelection', () => {
+  test('suggests hourly for short windows', () => {
+    expect(recommendGranularityForSelection({ start: 0, end: 3 * DAY_MS })).toBe('hourly');
+  });
+
+  test('suggests daily for medium windows', () => {
+    expect(recommendGranularityForSelection({ start: 0, end: 30 * DAY_MS })).toBe('daily');
+  });
+
+  test('suggests monthly for long windows', () => {
+    expect(recommendGranularityForSelection({ start: 0, end: 180 * DAY_MS })).toBe('monthly');
+  });
+
+  test('suggests quarterly for very long windows', () => {
+    expect(recommendGranularityForSelection({ start: 0, end: 2 * 365 * DAY_MS })).toBe('quarterly');
   });
 });
 

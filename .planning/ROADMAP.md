@@ -271,3 +271,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 13. UX/IA redesign + cube concept | 6 | Complete    | 2026-04-23 |
 | 14. Decode bursts + temporal anomalies | 6 | Not started | - |
 | 15. Support overlays + hardening | 10 | Not started | - |
+
+### Phase 16: 3D terrain and enhanced crime aggregation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16 to break down)

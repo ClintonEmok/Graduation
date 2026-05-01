@@ -80,12 +80,13 @@ export function useDashboardDemoSelectionStory() {
 
   return useMemo(() => {
     const activeSlice = slices.find((slice) => slice.id === activeSliceId) ?? null;
+    const activeBurstWindow = selectedBurstWindows[0] ?? null;
     const activeWindowLabel = formatWindowLabel(brushRange, minTimestampSec, maxTimestampSec);
     const compareStateLabel = brushRange ? 'Timeline-led compare' : 'Timeline-ready compare';
-    const linkedHighlightLabel = activeSlice
-      ? `${activeSlice.name?.trim() || (activeSlice.type === 'range' ? 'Range slice' : 'Point slice')} · linked to ${selectedBurstWindows.length} burst window${selectedBurstWindows.length === 1 ? '' : 's'}`
-      : selectedBurstWindows.length > 0
-        ? `${selectedBurstWindows.length} burst window${selectedBurstWindows.length === 1 ? '' : 's'} linked`
+    const linkedHighlightLabel = activeBurstWindow
+      ? `${activeBurstWindow.burstClass.replace('-', ' ')} · ${activeBurstWindow.burstRationale}`
+      : activeSlice
+        ? `${activeSlice.name?.trim() || (activeSlice.type === 'range' ? 'Range slice' : 'Point slice')} · linked to the active burst`
         : 'No linked highlight yet';
     const explanationLabel = selectedSource
       ? `Workflow ${workflowPhase} · source ${selectedSource} · current time ${currentTime.toFixed(1)}`
@@ -102,5 +103,5 @@ export function useDashboardDemoSelectionStory() {
       warpSource,
       warpFactor,
     });
-  }, [activeSliceId, brushRange, currentTime, maxTimestampSec, minTimestampSec, selectedBurstWindows.length, selectedSource, slices, warpFactor, warpMode, warpSource, workflowPhase]);
+  }, [activeSliceId, brushRange, currentTime, maxTimestampSec, minTimestampSec, selectedBurstWindows, selectedSource, slices, warpFactor, warpMode, warpSource, workflowPhase]);
 }

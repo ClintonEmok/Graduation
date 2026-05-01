@@ -1,6 +1,8 @@
 import { buildBurstWindowsFromSeries, type BurstWindow } from '@/components/viz/BurstList';
+import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { BURST_TAXONOMY_RULE_VERSION } from '@/lib/binning/burst-taxonomy';
 import type { TimeBin } from '@/lib/binning/types';
+import type { CrimeRecord } from '@/types/crime';
 
 export interface BurstDraftGenerationInputs {
   crimeTypes: string[];
@@ -9,7 +11,7 @@ export interface BurstDraftGenerationInputs {
     start: number | null;
     end: number | null;
   };
-  granularity: 'hourly' | 'daily' | 'weekly' | 'monthly';
+  granularity: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly';
 }
 
 export interface BurstDraftGenerationResult {
@@ -29,7 +31,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const WEEK_MS = 7 * DAY_MS;
 
-export type DemoSelectionGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly';
+export type DemoSelectionGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
 export interface DemoSelectionPartition {
   startTime: number;
@@ -48,7 +50,7 @@ export interface NonUniformDraftGenerationInputs {
   eventTypes?: string[];
 }
 
-const getGranularityStepMs = (granularity: Exclude<DemoSelectionGranularity, 'monthly'>): number => {
+const getGranularityStepMs = (granularity: Exclude<DemoSelectionGranularity, 'monthly' | 'quarterly'>): number => {
   switch (granularity) {
     case 'hourly':
       return HOUR_MS;
@@ -66,9 +68,20 @@ const getMonthlyPartitionEnd = (cursor: number): number => {
   return Number.isFinite(nextMonthStart) && nextMonthStart > cursor ? nextMonthStart : cursor + DAY_MS;
 };
 
+const getQuarterlyPartitionEnd = (cursor: number): number => {
+  const current = new Date(cursor);
+  const currentQuarterStartMonth = Math.floor(current.getMonth() / 3) * 3;
+  const nextQuarterStart = new Date(current.getFullYear(), currentQuarterStartMonth + 3, 1).getTime();
+  return Number.isFinite(nextQuarterStart) && nextQuarterStart > cursor ? nextQuarterStart : cursor + (3 * DAY_MS);
+};
+
 const getPartitionEnd = (cursor: number, end: number, granularity: DemoSelectionGranularity): number => {
   if (granularity === 'monthly') {
     return Math.min(end, getMonthlyPartitionEnd(cursor));
+  }
+
+  if (granularity === 'quarterly') {
+    return Math.min(end, getQuarterlyPartitionEnd(cursor));
   }
 
   return Math.min(end, cursor + getGranularityStepMs(granularity));
@@ -102,6 +115,33 @@ export const partitionSelectionByGranularity = (
   }
 
   return partitions;
+};
+
+export const recommendGranularityForSelection = (
+  timeWindow: { start: number | null; end: number | null } | null | undefined
+): DemoSelectionGranularity => {
+  const start = timeWindow?.start;
+  const end = timeWindow?.end;
+
+  if (!isValidNumber(start) || !isValidNumber(end) || end <= start) {
+    return 'daily';
+  }
+
+  const durationMs = Math.abs(end - start);
+
+  if (durationMs <= 14 * DAY_MS) {
+    return 'hourly';
+  }
+
+  if (durationMs <= 90 * DAY_MS) {
+    return 'daily';
+  }
+
+  if (durationMs <= 365 * DAY_MS) {
+    return 'monthly';
+  }
+
+  return 'quarterly';
 };
 
 const filterAndSortEventsWithinSelection = (events: TimedEvent[], selectionRange: [number, number]): TimedEvent[] => {
@@ -619,6 +659,161 @@ export const buildBurstDraftBinsFromWindows = (
       bins: [],
       eventCount: 0,
       warning: 'No burst windows overlap the selected range.',
+    };
+  }
+
+  return {
+    bins,
+    eventCount: bins.reduce((sum, bin) => sum + bin.count, 0),
+    warning: null,
+  };
+};
+
+export interface BurstDraftCrimeInputs {
+  burstWindows: BurstWindow[];
+  generationInputs: BurstDraftGenerationInputs;
+  crimeRecords: CrimeRecord[];
+}
+
+const averageTimestamp = (eventTimes: number[]): number => {
+  if (eventTimes.length === 0) {
+    return Number.NaN;
+  }
+
+  return eventTimes.reduce((sum, time) => sum + time, 0) / eventTimes.length;
+};
+
+export const buildBurstDraftBinsFromCrimeRecords = ({
+  burstWindows,
+  generationInputs,
+  crimeRecords,
+}: BurstDraftCrimeInputs): BurstDraftGenerationResult => {
+  const activeStart = generationInputs.timeWindow.start;
+  const activeEnd = generationInputs.timeWindow.end;
+
+  if (!isValidNumber(activeStart) || !isValidNumber(activeEnd)) {
+    return {
+      bins: [],
+      eventCount: 0,
+      warning: 'Choose a valid time window before generating burst drafts.',
+    };
+  }
+
+  const activeSelection = normalizeRange(activeStart / 1000, activeEnd / 1000);
+  if (activeSelection[1] <= activeSelection[0]) {
+    return {
+      bins: [],
+      eventCount: 0,
+      warning: 'Choose a valid time window before generating burst drafts.',
+    };
+  }
+
+  const typeFilters = normalizeTypeFilters(generationInputs.crimeTypes);
+  const crimeEvents = filterAndSortEventsWithinSelection(
+    crimeRecords.map((crime) => ({
+      time: crime.timestamp,
+      type: normalizeEventType(crime.type),
+    })),
+    activeSelection,
+  ).filter((event) => typeFilters.size === 0 || typeFilters.has(event.type.toLowerCase()));
+
+  if (crimeEvents.length === 0) {
+    return {
+      bins: [],
+      eventCount: 0,
+      warning: 'No crimes were returned for the selected burst range.',
+    };
+  }
+
+  const overlappingWindows = burstWindows
+    .filter((burstWindow) => hasOverlap(normalizeRange(burstWindow.start, burstWindow.end), activeSelection))
+    .sort((left, right) => left.start - right.start || left.end - right.end);
+
+  if (overlappingWindows.length === 0) {
+    return {
+      bins: [],
+      eventCount: 0,
+      warning: 'No burst windows overlap the selected range.',
+    };
+  }
+
+  const groupedEvents = groupEventsByPartition(
+    crimeEvents,
+    overlappingWindows.map((window) => ({ startTime: window.start, endTime: window.end }))
+  );
+  const analyses = groupedEvents.map(calculatePartitionBurstiness);
+  const densities = groupedEvents.map((events, index) => events.length / Math.max(1, overlappingWindows[index]?.duration ?? 1));
+  const maxDensity = Math.max(0, ...densities);
+
+  const bins = overlappingWindows
+    .map((burstWindow, index) => {
+      const burstRange = normalizeRange(burstWindow.start, burstWindow.end);
+      const clippedStart = Math.max(burstRange[0], activeSelection[0]);
+      const clippedEnd = Math.min(burstRange[1], activeSelection[1]);
+
+      if (!Number.isFinite(clippedStart) || !Number.isFinite(clippedEnd) || clippedEnd <= clippedStart) {
+        return null;
+      }
+
+      const partitionEvents = groupedEvents[index] ?? [];
+      const analysis = analyses[index] ?? calculatePartitionBurstiness(partitionEvents);
+      const normalizedDensity = maxDensity > 0 ? densities[index] / maxDensity : 0;
+      const neighborhood = [
+        { window: overlappingWindows[index - 1], events: groupedEvents[index - 1] },
+        { window: overlappingWindows[index + 1], events: groupedEvents[index + 1] },
+      ]
+        .filter((entry): entry is { window: BurstWindow; events: { time: number; type: string }[] | undefined } => entry.window !== undefined)
+        .map(({ window, events }) => {
+          const neighborEvents = events ?? [];
+          const neighborDensity = maxDensity > 0
+            ? (neighborEvents.length / Math.max(1, window.duration)) / maxDensity
+            : 0;
+
+          return {
+            value: neighborDensity,
+            count: neighborEvents.length,
+            durationSec: window.duration,
+          };
+        });
+      const taxonomy = classifyBurstWindow({
+        value: normalizedDensity,
+        count: partitionEvents.length,
+        durationSec: burstWindow.duration,
+        neighborhood,
+      });
+      const crimeTypes = Array.from(new Set(partitionEvents.map((event) => event.type).filter(Boolean)));
+
+      return {
+        id: `burst-draft-${burstWindow.id}-${index}`,
+        startTime: clippedStart * 1000,
+        endTime: clippedEnd * 1000,
+        count: partitionEvents.length,
+        crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : (crimeTypes.length > 0 ? crimeTypes : ['all-crime-types']),
+        districts: generationInputs.neighbourhood ? [generationInputs.neighbourhood] : undefined,
+        avgTimestamp: partitionEvents.length > 0 ? averageTimestamp(partitionEvents.map((event) => event.time)) * 1000 : ((clippedStart + clippedEnd) / 2) * 1000,
+        burstClass: taxonomy.burstClass,
+        burstRuleVersion: taxonomy.burstRuleVersion,
+        burstScore: taxonomy.burstScore,
+        burstinessCoefficient: analysis.coefficient,
+        burstinessFormula: analysis.formula,
+        burstinessCalculation: analysis.calculation,
+        burstinessByType: analysis.byType,
+        burstConfidence: taxonomy.burstConfidence,
+        warpWeight: roundToTwoDecimals(Math.max(0.75, 1 + normalizedDensity * 0.25)),
+        burstProvenance: `${taxonomy.burstProvenance}; fetched-crimes=${partitionEvents.length}`,
+        tieBreakReason: taxonomy.tieBreakReason,
+        thresholdSource: taxonomy.thresholdSource,
+        neighborhoodSummary: `${taxonomy.neighborhoodSummary}; events=${partitionEvents.length}`,
+      } satisfies TimeBin;
+    })
+    .filter((bin): bin is TimeBin => bin !== null)
+    .sort((left, right) => left.startTime - right.startTime);
+
+  if (bins.length === 0) {
+    return {
+      bins: [],
+      eventCount: 0,
+      warning: 'No crimes were returned for the selected burst range.',
     };
   }
 
