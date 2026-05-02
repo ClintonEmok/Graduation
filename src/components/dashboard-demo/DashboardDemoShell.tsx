@@ -5,6 +5,7 @@ import { Map, SquareStack } from 'lucide-react';
 import CubeVisualization from '@/components/viz/CubeVisualization';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
+import { Button } from '@/components/ui/button';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
@@ -37,51 +38,37 @@ export function DashboardDemoShell() {
 
   return (
     <main
-      className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100"
-      aria-label="Phase 13 guided analysis workflow"
+      className="relative h-screen w-screen overflow-hidden bg-background text-foreground"
+      aria-label="dashboard demo workspace"
       data-phase="phase-13-guided-analysis-workflow"
     >
       <div className="flex h-full min-w-0 flex-col pr-80">
-        <header className="flex items-center justify-between gap-4 border-b border-slate-800/80 bg-slate-950/95 px-4 py-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Phase 13 · Guided workflow</div>
-            <h1 className="mt-1 text-sm font-semibold tracking-tight text-slate-100">
-              Orient → Find → Compare → Inspect → Explain → Apply
-            </h1>
-            <p className="mt-1 text-[11px] text-slate-400">
-              Timeline first, map for where, cube for what relates to what.
-            </p>
-          </div>
+        <header className="border-b border-border bg-card/80 px-4 py-3 shadow-sm" />
 
-          <div className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-[11px] text-slate-300">
-            Shared dataset · one workflow · linked views
-          </div>
-        </header>
-
-        <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
-          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/80 p-1 backdrop-blur">
-            <button
+        <section className="relative min-h-0 flex-1 overflow-hidden bg-background" aria-label="dashboard demo shared viewport">
+          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-border bg-card/80 p-1 shadow-sm backdrop-blur">
+            <Button
               type="button"
               onClick={() => setActiveViewport('map')}
               aria-label="Show map viewport"
               title="Show map viewport"
-              className={`inline-flex items-center justify-center rounded-full p-2 transition-colors ${
-                activeViewport === 'map' ? 'bg-sky-500/20 text-sky-100' : 'text-slate-400 hover:text-slate-200'
-              }`}
+              variant={activeViewport === 'map' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              className="rounded-full"
             >
               <Map className="size-3.5" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setActiveViewport('cube')}
               aria-label="Show cube viewport"
               title="Show cube viewport"
-              className={`inline-flex items-center justify-center rounded-full p-2 transition-colors ${
-                activeViewport === 'cube' ? 'bg-violet-500/20 text-violet-100' : 'text-slate-400 hover:text-slate-200'
-              }`}
+              variant={activeViewport === 'cube' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              className="rounded-full"
             >
               <SquareStack className="size-3.5" />
-            </button>
+            </Button>
           </div>
 
           <div className="h-full w-full transition-opacity duration-200 ease-out">
@@ -93,7 +80,7 @@ export function DashboardDemoShell() {
           </div>
         </section>
 
-        <div className="shrink-0 border-t border-slate-800">
+        <div className="shrink-0 border-t border-border bg-card/70">
           <DemoTimelinePanel />
         </div>
       </div>

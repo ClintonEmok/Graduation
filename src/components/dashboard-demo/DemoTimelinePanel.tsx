@@ -4,12 +4,12 @@ import React, { useCallback } from 'react';
 import { ChevronRight, Settings2 } from 'lucide-react';
 
 import { DemoDualTimeline } from '@/components/timeline/DemoDualTimeline';
+import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { resolutionToNormalizedStep, type TimeResolution } from '@/lib/time-domain';
-import { useDemoTimelineSummary } from '@/components/timeline/hooks/useDemoTimelineSummary';
 
 const TIME_RESOLUTION_OPTIONS: TimeResolution[] = [
   'seconds',
@@ -22,7 +22,6 @@ const TIME_RESOLUTION_OPTIONS: TimeResolution[] = [
 ];
 
 export function DemoTimelinePanel() {
-  const summary = useDemoTimelineSummary();
   const {
     currentTime,
     timeResolution,
@@ -64,31 +63,12 @@ export function DemoTimelinePanel() {
   }, [setTimeScaleMode, setWarpFactor, warpMode, warpFactor]);
 
   return (
-    <div className="w-full h-full bg-background border-t p-4 flex flex-col gap-4">
-      <div className="w-full flex flex-col gap-4">
-        <div className="rounded-md border bg-muted/10 px-3 py-2">
-          <div className="pb-2 text-[10px] text-muted-foreground">
-            {summary.overviewLabel}
-          </div>
-          <div className="pb-2 text-[10px] text-muted-foreground">
-            {summary.overviewRangeLabel}
-          </div>
-          <div className="pb-2 text-[10px] text-muted-foreground">
-            {summary.primaryDriverLabel}
-          </div>
-          <div className="pb-2 text-[10px] text-muted-foreground">Overview is sampled across the full dataset · brush selects the active detail window</div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-            <span>Window: {summary.selectedWindowLabel}</span>
-            <span>Compare: {summary.compareLabel}</span>
-            <span>Scale: {summary.modeLabel}</span>
-            <span>Linked: {summary.linkedHighlightLabel}</span>
-            <span>Burst windows: {summary.burstLabel}</span>
-          </div>
-          <DemoDualTimeline />
-        </div>
+    <div className="flex h-full w-full flex-col gap-4 border-t border-border bg-card/70 p-4">
+      <div className="flex w-full flex-col gap-4">
+        <DemoDualTimeline />
 
-        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2 min-w-[120px] shrink-0">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-sm">
+          <div className="flex min-w-[120px] shrink-0 items-center gap-2">
             <Settings2 className="w-4 h-4" />
             <span>Temporal Resolution</span>
           </div>
@@ -103,59 +83,69 @@ export function DemoTimelinePanel() {
           </div>
           <div className="w-12 text-right font-mono">{timeResolution}</div>
 
-          <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background px-1.5 py-1">
-            <button
+          <div className="flex items-center gap-1 rounded-full border border-border bg-background px-1.5 py-1">
+            <Button
               type="button"
               onClick={handleStep.bind(null, -1)}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
+              variant="outline"
+              size="icon-xs"
+              className="rounded-full"
               title="Step backward"
             >
               <ChevronRight className="h-4 w-4 rotate-180" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleStep.bind(null, 1)}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background transition-colors hover:bg-accent"
+              variant="outline"
+              size="icon-xs"
+              className="rounded-full"
               title="Step forward"
             >
               <ChevronRight className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Time Scale</span>
-            <button
+            <Button
               type="button"
               onClick={handleScaleModeToggle}
-              className="rounded bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/20"
+              variant="secondary"
+              size="sm"
+              className="rounded-md px-3 py-1"
             >
               {warpMode === 'linear' ? 'Linear' : 'Adaptive'}
-            </button>
+            </Button>
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span>Warp source</span>
-            <button
+            <Button
               type="button"
               onClick={() => setWarpSource('slice-authored')}
-              className={`rounded px-2 py-1 font-medium transition-colors ${
+              variant={warpSource === 'slice-authored' ? 'secondary' : 'outline'}
+              size="sm"
+              className={`rounded-md px-2 py-1 ${
                 warpSource === 'slice-authored'
-                  ? 'bg-primary/15 text-primary'
+                  ? ''
                   : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
               }`}
             >
               Slice-authored
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setWarpSource('density')}
-              className={`rounded px-2 py-1 font-medium transition-colors ${
+              variant={warpSource === 'density' ? 'secondary' : 'outline'}
+              size="sm"
+              className={`rounded-md px-2 py-1 ${
                 warpSource === 'density'
-                  ? 'bg-primary/15 text-primary'
+                  ? ''
                   : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
               }`}
             >
               Density
-            </button>
+            </Button>
           </div>
           {warpMode === 'adaptive' ? (
             <div className="flex items-center gap-2 min-w-[220px]">

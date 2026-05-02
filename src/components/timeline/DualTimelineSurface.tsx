@@ -32,6 +32,8 @@ interface SurfaceSliceGeometry {
   isGeneratedDraft: boolean;
   isGeneratedApplied: boolean;
   overlapCount: number;
+  burstClass?: BurstTaxonomy;
+  isNeutralPartition?: boolean;
   color?: { fill?: string; stroke?: string } | string;
 }
 
@@ -99,6 +101,41 @@ const resolveColorValue = (color: SurfaceSliceGeometry['color'], key: 'fill' | '
   }
 
   return color?.[key];
+};
+
+const resolveDraftPalette = (burstClass: BurstTaxonomy | undefined, isNeutralPartition: boolean | undefined) => {
+  if (isNeutralPartition || burstClass === 'neutral') {
+    return {
+      fill: 'rgba(100, 116, 139, 0.10)',
+      stroke: 'rgba(148, 163, 184, 0.72)',
+    };
+  }
+
+  if (burstClass === 'prolonged-peak') {
+    return {
+      fill: 'rgba(34, 211, 238, 0.18)',
+      stroke: 'rgba(125, 211, 252, 0.92)',
+    };
+  }
+
+  if (burstClass === 'isolated-spike') {
+    return {
+      fill: 'rgba(168, 85, 247, 0.18)',
+      stroke: 'rgba(216, 180, 254, 0.92)',
+    };
+  }
+
+  if (burstClass === 'valley') {
+    return {
+      fill: 'rgba(16, 185, 129, 0.16)',
+      stroke: 'rgba(110, 231, 183, 0.9)',
+    };
+  }
+
+  return {
+    fill: 'rgba(245, 158, 11, 0.08)',
+    stroke: 'rgba(251, 191, 36, 0.82)',
+  };
 };
 
 export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
@@ -269,69 +306,25 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
 
               {pendingGeneratedGeometries.map((geometry: SurfaceSliceGeometry) => (
                 <g key={geometry.id}>
-                  <rect
-                    x={geometry.left}
-                    y={3}
-                    width={Math.max(2, geometry.width)}
-                    height={DETAIL_HEIGHT - 6}
-                    rx={3}
-                    fill="rgba(245, 158, 11, 0.08)"
-                    stroke="rgba(251, 191, 36, 0.82)"
-                    strokeWidth={1.2}
-                    strokeDasharray="4 3"
-                    pointerEvents="none"
-                  />
+                  {(() => {
+                    const palette = resolveDraftPalette(geometry.burstClass, geometry.isNeutralPartition);
+                    return (
+                      <rect
+                        x={geometry.left}
+                        y={3}
+                        width={Math.max(2, geometry.width)}
+                        height={DETAIL_HEIGHT - 6}
+                        rx={3}
+                        fill={geometry.isGeneratedApplied ? 'rgba(16, 185, 129, 0.18)' : palette.fill}
+                        stroke={geometry.isGeneratedApplied ? 'rgba(74, 222, 128, 0.92)' : palette.stroke}
+                        strokeWidth={geometry.isGeneratedApplied ? 1.4 : 1.25}
+                        strokeDasharray={geometry.isNeutralPartition || geometry.burstClass === 'neutral' ? '4 3' : '5 3'}
+                        pointerEvents="none"
+                      />
+                    );
+                  })()}
                 </g>
               ))}
-
-              {burstWindows
-                .filter((window: SurfaceBurstWindow) => window.burstClass && window.burstClass !== 'neutral')
-                .map((window: SurfaceBurstWindow) => {
-                  if (!Number.isFinite(window.start) || !Number.isFinite(window.end)) {
-                    return null;
-                  }
-
-                  const x0 = detailScale(new Date(window.start * 1000));
-                  const x1 = detailScale(new Date(window.end * 1000));
-                  if (!Number.isFinite(x0) || !Number.isFinite(x1)) {
-                    return null;
-                  }
-
-                  const left = Math.max(0, Math.min(detailInnerWidth, Math.min(x0, x1)));
-                  const right = Math.max(0, Math.min(detailInnerWidth, Math.max(x0, x1)));
-                  if (right <= left) {
-                    return null;
-                  }
-
-                  const fill = window.burstClass === 'prolonged-peak'
-                    ? 'rgba(251, 191, 36, 0.24)'
-                    : window.burstClass === 'isolated-spike'
-                      ? 'rgba(251, 113, 133, 0.24)'
-                      : 'rgba(96, 165, 250, 0.24)';
-                  const stroke = window.id === activeBurstWindowId
-                    ? 'rgba(248, 250, 252, 0.95)'
-                    : window.burstClass === 'prolonged-peak'
-                      ? 'rgba(251, 191, 36, 0.82)'
-                      : window.burstClass === 'isolated-spike'
-                        ? 'rgba(251, 113, 133, 0.82)'
-                        : 'rgba(96, 165, 250, 0.82)';
-
-                  return (
-                    <rect
-                      key={`burst-${window.id}`}
-                      x={left}
-                      y={3}
-                      width={Math.max(2, right - left)}
-                      height={DETAIL_HEIGHT - 6}
-                      rx={3}
-                      fill={fill}
-                      stroke={stroke}
-                      strokeWidth={window.id === activeBurstWindowId ? 2 : 1.2}
-                      opacity={window.id === activeBurstWindowId ? 1 : 0.9}
-                      pointerEvents="none"
-                    />
-                  );
-                })}
 
               {maxSliceOverlap >= 3 && <g transform={`translate(${Math.max(0, detailInnerWidth - 90)}, 4)`}><rect width={86} height={18} rx={9} fill="rgba(15, 23, 42, 0.75)" stroke="rgba(148, 163, 184, 0.55)" /><text x={43} y={12} textAnchor="middle" fontSize={10} fill="rgba(226, 232, 240, 0.95)">{maxSliceOverlap}x overlap</text></g>}
 

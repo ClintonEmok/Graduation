@@ -803,6 +803,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           isGeneratedDraft: true,
           isGeneratedApplied: false,
           overlapCount: 1,
+          burstClass: bin.burstClass,
+          isNeutralPartition: bin.isNeutralPartition,
           color: 'purple',
           warpEnabled: true,
           warpWeight: 1,

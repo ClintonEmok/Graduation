@@ -362,7 +362,12 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         }
       },
       setGenerationError: (message) => set({ generationError: message, generationStatus: message ? 'error' : 'idle' }),
-      clearPendingGeneratedBins: () => set({ pendingGeneratedBins: [], generationStatus: 'idle' }),
+      clearPendingGeneratedBins: () => set({
+        pendingGeneratedBins: [],
+        generationStatus: 'idle',
+        generationError: null,
+        lastGeneratedMetadata: null,
+      }),
       replacePendingGeneratedBins: (bins) => set({ pendingGeneratedBins: bins }),
       mergePendingGeneratedBins: (binIds) => set((state) => ({ pendingGeneratedBins: mergeBins(state.pendingGeneratedBins, binIds) })),
       splitPendingGeneratedBin: (binId, splitPoint) => set((state) => ({ pendingGeneratedBins: splitBin(state.pendingGeneratedBins, binId, splitPoint) })),

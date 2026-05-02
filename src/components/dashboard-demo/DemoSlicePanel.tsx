@@ -11,6 +11,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
@@ -19,6 +28,7 @@ import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
 import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { epochSecondsToNormalized, normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
@@ -102,6 +112,7 @@ export function DemoSlicePanel() {
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
+  const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) {
       return null;
@@ -337,7 +348,8 @@ export function DemoSlicePanel() {
   const handleClearPendingDrafts = useCallback(() => {
     setSelectedDraftId(null);
     clearPendingGeneratedBins();
-  }, [clearPendingGeneratedBins]);
+    clearSelectedBurstWindows();
+  }, [clearPendingGeneratedBins, clearSelectedBurstWindows]);
 
   const handleRemoveSlice = useCallback((sliceId: string) => {
     if (selectedSliceId === sliceId) {
@@ -350,47 +362,58 @@ export function DemoSlicePanel() {
   const handleClearSlices = useCallback(() => {
     setSelectedSliceId(null);
     clearSlices();
-  }, [clearSlices]);
+    clearPendingGeneratedBins();
+    clearSelectedBurstWindows();
+  }, [clearPendingGeneratedBins, clearSelectedBurstWindows, clearSlices]);
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100" aria-busy={isComputing}>
-      <header className="mb-3 space-y-1">
-        <h2 className="text-sm font-semibold text-slate-100">Slice Companion</h2>
-        <p className="text-[11px] text-slate-400">A secondary review rail for slice edits, locks, and visibility.</p>
-        <div className="text-[11px] text-slate-500">
+    <Card className="h-full min-h-0 overflow-y-auto border-border/70 bg-card/80 text-card-foreground shadow-sm" aria-busy={isComputing}>
+      <CardHeader className="gap-1 px-4 pb-3 pt-4">
+        <CardTitle className="text-sm font-semibold">Slice Companion</CardTitle>
+        <CardDescription className="text-xs">
+          A secondary review rail for slice edits, locks, and visibility.
+        </CardDescription>
+        <div className="text-xs text-muted-foreground">
           {lastAppliedAt ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}` : 'No applied state yet'}
         </div>
-      </header>
+      </CardHeader>
 
-      <div className="space-y-3">
-        <div className="rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2 text-[11px] text-slate-300">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold uppercase tracking-[0.18em] text-slate-200">Selection-first drafts</span>
-            <span>{selectionDraftSummary}</span>
-          </div>
-          <div className="mt-1 text-slate-500">{neutralDraftHint}</div>
-        </div>
+      <CardContent className="flex flex-col gap-3 px-4 pb-4">
+        <Card className="p-0 shadow-none">
+          <CardContent className="flex flex-col gap-1 p-3 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">Selection-first drafts</span>
+              <Badge variant="outline">{selectionDraftSummary}</Badge>
+            </div>
+            <div className="text-muted-foreground">{neutralDraftHint}</div>
+          </CardContent>
+        </Card>
 
         {pendingGeneratedBins.length > 0 ? (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-50">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold uppercase tracking-[0.18em] text-amber-100">Editable before apply</span>
-              <span>{selectionStateLabel}</span>
-            </div>
-            <div className="mt-1 text-amber-100/90">Selection-first drafts are ready for review.</div>
-          </div>
+          <Card className="border-amber-500/30 bg-amber-500/10 p-0 shadow-none">
+            <CardContent className="flex flex-col gap-1 p-3 text-xs text-amber-50">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold uppercase tracking-[0.18em] text-amber-100">Editable before apply</span>
+                <Badge variant="outline" className="border-amber-400/30 bg-amber-500/10 text-amber-100">
+                  {selectionStateLabel}
+                </Badge>
+              </div>
+              <div className="text-amber-100/90">Selection-first drafts are ready for review.</div>
+            </CardContent>
+          </Card>
         ) : null}
 
-        <section className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200">Pending selection-first drafts</div>
-              <div className="mt-1 text-xs text-slate-300">These draft bins stay editable before apply.</div>
+        <Card className="border-amber-500/20 bg-muted/20 p-0 shadow-none">
+          <CardContent className="flex flex-col gap-3 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-1">
+                <div className="text-[10px] uppercase tracking-[0.24em] text-amber-600 dark:text-amber-200">Pending selection-first drafts</div>
+                <div className="text-xs text-muted-foreground">These draft bins stay editable before apply.</div>
+              </div>
+              <Badge variant="outline" className="border-amber-400/30 bg-amber-500/10 text-amber-700 dark:text-amber-100">
+                Review before apply
+              </Badge>
             </div>
-            <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-              Review before apply
-            </span>
-          </div>
 
           {pendingGeneratedBins.length > 0 ? (
             <div className="mt-3 space-y-2">
@@ -414,51 +437,60 @@ export function DemoSlicePanel() {
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={() => {
                           setSelectedSliceId(null);
                           setSelectedDraftId(bin.id);
                         }}
-                        className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-100 transition-colors hover:border-amber-400"
+                        className="border-amber-500/40 bg-amber-500/10 text-amber-100 hover:border-amber-400 hover:bg-amber-500/20"
                         title="Open draft details"
                       >
                         Details
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={() => handleMergePendingDraft(index)}
                         disabled={!isMergeable}
-                        className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-100 transition-colors hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="border-amber-500/40 bg-amber-500/10 text-amber-100 hover:border-amber-400 hover:bg-amber-500/20"
                       >
                         Merge
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={() => handleSplitPendingDraft(bin.id)}
                         disabled={bin.endTime <= bin.startTime}
-                        className="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-medium text-slate-200 transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="border-border bg-background text-foreground hover:bg-accent"
                       >
                         Split
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={() => handleDeletePendingDraft(bin.id)}
-                        className="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-medium text-slate-200 transition-colors hover:bg-slate-900"
+                        className="border-border bg-background text-foreground hover:bg-accent"
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="mt-3 rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-3 text-[11px] text-slate-400">
+            <div className="mt-3 rounded-md border border-dashed border-border bg-background px-3 py-3 text-xs text-muted-foreground">
               Generate selection-first drafts to review and edit them here before apply.
             </div>
           )}
-        </section>
+          </CardContent>
+        </Card>
 
         <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
           <details open>
@@ -481,55 +513,57 @@ export function DemoSlicePanel() {
                     const isRecommended = option.value === suggestedGranularity;
 
                     return (
-                      <button
+                      <Button
                         key={option.value}
                         type="button"
+                        variant={isActive ? 'secondary' : isRecommended ? 'outline' : 'outline'}
+                        size="xs"
                         onClick={() => setGenerationInputs({ granularity: option.value })}
-                        className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
-                          isActive
-                            ? 'border-violet-300 bg-violet-500/20 text-violet-50'
-                            : isRecommended
-                              ? 'border-amber-300/60 bg-amber-500/10 text-amber-100 hover:border-amber-200'
-                              : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:border-slate-500'
-                        }`}
+                        className={`rounded-full px-3 py-1.5 ${isRecommended && !isActive ? 'border-amber-300/60 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-100' : ''}`}
                       >
                         <span className="inline-flex items-center gap-1">
                           {option.label}
                           {isRecommended ? <span className="text-[9px] uppercase tracking-[0.18em] text-amber-200">Recommended</span> : null}
                         </span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500">
                   <span>Active: {activeGranularityLabel}</span>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="xs"
                     onClick={() => setGenerationInputs({ granularity: suggestedGranularity })}
                     disabled={generationInputs.granularity === suggestedGranularity}
-                    className="rounded-full border border-violet-300/40 bg-violet-500/10 px-2 py-1 font-medium text-violet-100 transition-colors hover:border-violet-200 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-full border-violet-300/40 bg-violet-500/10 text-violet-100 hover:border-violet-200 hover:bg-violet-500/20"
                   >
                     Use suggested
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                <button
+                <Button
                   type="button"
+                  variant="default"
+                  size="sm"
                   onClick={handleGenerateBurstDrafts}
                   disabled={!canGenerateBurstDrafts}
-                  className="inline-flex items-center gap-2 rounded-md border border-violet-500/50 bg-violet-500/15 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition-colors hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="gap-2 bg-violet-600 text-violet-50 hover:bg-violet-500"
                 >
                   {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleClearPendingDrafts}
                   disabled={pendingGeneratedBins.length === 0}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="gap-2"
                 >
                   Clear draft
-                </button>
+                </Button>
               </div>
               <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
                 <div>{selectionDraftSummary}</div>
@@ -546,30 +580,36 @@ export function DemoSlicePanel() {
           <details open className="mt-2 border-t border-slate-800 pt-2">
             <summary className="cursor-pointer list-none py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Slice tools</summary>
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleAddPointSlice}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                className="gap-2"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Point
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleAddRangeSlice}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                className="gap-2"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Range
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleClearSlices}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                className="gap-2"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Clear
-              </button>
+              </Button>
             </div>
             {lastGeneratedMetadata?.warning ? (
               <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100">
@@ -581,7 +621,7 @@ export function DemoSlicePanel() {
 
         <div className="space-y-2">
           {slices.length === 0 ? (
-            <div className="rounded-md border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">
+            <div className="rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
               No slices active. Add a point or range to inspect the demo timeline companion.
             </div>
           ) : (
@@ -589,15 +629,18 @@ export function DemoSlicePanel() {
               const fallbackName = slice.type === 'point' ? `Slice ${index + 1}` : `Range ${index + 1}`;
 
               return (
-                <div key={slice.id} className="grid gap-2 rounded-md border border-slate-800 bg-slate-900/70 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                  <div className="space-y-2">
+                <Card key={slice.id} className="border-border/70 bg-card/60 p-0 shadow-none">
+                  <CardContent className="grid gap-2 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                    <div className="space-y-2">
                     {slice.isBurst ? (
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                        <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1">burst</span>
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <Badge variant="outline" className="rounded-full px-2 py-1">
+                          burst
+                        </Badge>
                         {formatBurstCoefficient(slice.burstScore) ? (
-                          <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-slate-300 normal-case tracking-[0.12em]">
+                          <Badge variant="outline" className="rounded-full px-2 py-1 normal-case tracking-[0.12em]">
                             Burstiness coefficient {formatBurstCoefficient(slice.burstScore)}
-                          </span>
+                          </Badge>
                         ) : null}
                       </div>
                     ) : null}
@@ -738,49 +781,54 @@ export function DemoSlicePanel() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 md:justify-end">
-                    <button
+                    <div className="flex items-center gap-1 md:justify-end">
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="xs"
                       onClick={() => {
                         setSelectedDraftId(null);
                         setSelectedSliceId(slice.id);
                       }}
-                      className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-950 px-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
+                      className="uppercase tracking-[0.16em]"
                       title="Open slice details"
                     >
                       Details
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="icon-xs"
                       onClick={() => toggleVisibility(slice.id)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-950 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
                       title={slice.isVisible ? 'Hide slice' : 'Show slice'}
                     >
                       {slice.isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="icon-xs"
                       onClick={() => toggleLock(slice.id)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-950 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
                       title={slice.isLocked ? 'Unlock slice' : 'Lock slice'}
                     >
                       {slice.isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="icon-xs"
                       onClick={() => handleRemoveSlice(slice.id)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-950 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
                       title="Remove slice"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
+                    </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })
           )}
         </div>
-      </div>
 
       <Dialog
         open={selectedSlice !== null}
@@ -810,7 +858,7 @@ export function DemoSlicePanel() {
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
                 <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
                 <div className="mt-1 text-xs text-slate-400">
-                  Score {formatBurstCoefficient(selectedSlice.burstScore) ?? '—'} · Burstiness {formatBurstCoefficient(selectedSlice.burstinessCoefficient) ?? '—'}
+                  Score {formatBurstCoefficient(selectedSlice.burstScore) ?? '—'} · Confidence {formatBurstCoefficient(selectedSlice.burstConfidence) ?? '—'}
                 </div>
               </div>
 
@@ -972,6 +1020,7 @@ export function DemoSlicePanel() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

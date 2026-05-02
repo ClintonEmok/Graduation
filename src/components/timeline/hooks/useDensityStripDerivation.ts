@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
+import { ADAPTIVE_BIN_COUNT } from '@/lib/adaptive-utils';
 import { clampToRange } from '@/components/timeline/lib/interaction-guards';
 
 export const DETAIL_DENSITY_RECOMPUTE_MAX_DAYS = 60;
+export const DETAIL_DENSITY_BIN_MULTIPLIER = 1.5;
+export const DETAIL_DENSITY_KERNEL_WIDTH = 1;
 
 export const computeDensityMap = (
   timestamps: number[],
@@ -76,9 +78,10 @@ export const deriveDetailDensityMap = (
 ): Float32Array | null => {
   const detailSpanDays = Math.abs(detailRangeSec[1] - detailRangeSec[0]) / 86400;
   const hasPoints = detailPoints.length > 0;
-  const binCount = densityMap?.length ?? ADAPTIVE_BIN_COUNT;
-  if (hasPoints && detailSpanDays <= DETAIL_DENSITY_RECOMPUTE_MAX_DAYS) {
-    return computeDensityMap(detailPoints, detailRangeSec, binCount, ADAPTIVE_KERNEL_WIDTH);
+  const baseBinCount = densityMap?.length ?? ADAPTIVE_BIN_COUNT;
+  if (hasPoints) {
+    const detailBinCount = Math.max(baseBinCount, Math.round(baseBinCount * DETAIL_DENSITY_BIN_MULTIPLIER));
+    return computeDensityMap(detailPoints, detailRangeSec, detailBinCount, DETAIL_DENSITY_KERNEL_WIDTH);
   }
 
   if (!densityMap || densityMap.length === 0) return densityMap;

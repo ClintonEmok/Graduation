@@ -13,11 +13,11 @@ describe('useDensityStripDerivation', () => {
     const derived = deriveDetailDensityMap(detailPoints, shortRange, densityMap, 0, 86_400 * 365);
 
     expect(derived).not.toBeNull();
-    expect(derived).toHaveLength(densityMap.length);
+    expect(derived).toHaveLength(Math.max(densityMap.length, Math.round(densityMap.length * 1.5)));
     expect(Array.from(derived ?? [])).not.toEqual(Array.from(densityMap));
   });
 
-  it('falls back to density map slicing when detail window exceeds threshold', () => {
+  it('recomputes density from detail points even when the detail window is long', () => {
     const densityMap = new Float32Array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]);
     const domainStart = 0;
     const domainEnd = 86_400 * 365;
@@ -27,6 +27,19 @@ describe('useDensityStripDerivation', () => {
     const derived = deriveDetailDensityMap(longWindowPoints, wideRange, densityMap, domainStart, domainEnd);
 
     expect(DETAIL_DENSITY_RECOMPUTE_MAX_DAYS).toBe(60);
+    expect(derived).not.toBeNull();
+    expect(derived).toHaveLength(Math.max(densityMap.length, Math.round(densityMap.length * 1.5)));
+    expect(Array.from(derived ?? [])).not.toEqual(Array.from(densityMap));
+  });
+
+  it('falls back to density map slicing when detail points are unavailable', () => {
+    const densityMap = new Float32Array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]);
+    const domainStart = 0;
+    const domainEnd = 86_400 * 365;
+    const wideRange: [number, number] = [0, 86_400 * 120];
+
+    const derived = deriveDetailDensityMap([], wideRange, densityMap, domainStart, domainEnd);
+
     expect(derived).not.toBeNull();
     const values = Array.from(derived ?? []);
     expect(values).toHaveLength(4);

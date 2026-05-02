@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Layers3, SquareStack } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
 import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { recommendGranularityForSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
@@ -70,6 +72,7 @@ export function WorkflowSkeleton() {
   const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
+  const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
   const timelineColumns = useTimelineDataStore((state) => state.columns);
   const crimeTypes = useTimelineDataStore((state) => state.crimeTypes);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -179,34 +182,41 @@ export function WorkflowSkeleton() {
     applyGeneratedBins(domain);
   };
 
+  const handleClearDraftSlices = useCallback(() => {
+    clearPendingGeneratedBins();
+    clearSelectedBurstWindows();
+  }, [clearPendingGeneratedBins, clearSelectedBurstWindows]);
+
   return (
-    <aside className="fixed left-4 top-4 z-30 h-[calc(100vh-2rem)] text-slate-100">
+    <aside className="fixed left-4 top-4 z-30 h-[calc(100vh-2rem)] text-foreground">
       <div
-        className={`h-full overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-950/95 shadow-2xl backdrop-blur transition-[width] duration-200 ease-out ${
+        className={`h-full overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-2xl backdrop-blur transition-[width] duration-200 ease-out ${
           isOpen ? 'w-[21rem]' : 'w-12'
         }`}
       >
         {isOpen ? (
           <div className="flex h-full flex-col">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 px-4 py-3">
+            <div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Workflow skeleton</p>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Workflow skeleton</p>
                 <h2 className="mt-1 text-sm font-semibold tracking-tight">Orient → Find → Compare → Inspect → Explain → Apply</h2>
-                <p className="mt-1 text-[11px] text-slate-400">Left-anchored manual stepper under the demo shell.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Left-anchored manual stepper under the demo shell.</p>
               </div>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="Collapse workflow drawer"
-                className="inline-flex size-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:text-slate-100"
+                variant="outline"
+                size="icon-sm"
+                className="rounded-full"
               >
                 <ChevronLeft className="size-4" />
-              </button>
+              </Button>
             </div>
 
             <div className="grid flex-1 min-h-0 grid-cols-[5.75rem_minmax(0,1fr)]">
-              <nav aria-label="Workflow steps" className="border-r border-slate-800/80 bg-slate-950/70 px-2 py-3">
+              <nav aria-label="Workflow steps" className="border-r border-border/70 bg-muted/20 px-2 py-3">
                 <div className="flex h-full flex-col gap-2">
                   {STEP_ORDER.map((step, index) => {
                     const isActive = step === activeStep;
@@ -239,24 +249,24 @@ export function WorkflowSkeleton() {
               </nav>
 
               <div className="flex min-h-0 flex-col">
-                <div className="border-b border-slate-800/80 px-4 py-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-slate-300">
+                <div className="border-b border-border/70 px-4 py-3">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
                     <StepIcon className="size-3.5 text-sky-300" />
                     {STEP_LABELS[activeStep]}
                   </div>
                   <h3 className="mt-3 text-sm font-semibold tracking-tight">{STEP_SUMMARIES[activeStep]}</h3>
-                  <p className="mt-2 text-[12px] leading-5 text-slate-400">{STEP_DETAIL_LINES[activeStep].join(' • ')}</p>
+                  <p className="mt-2 text-[12px] leading-5 text-muted-foreground">{STEP_DETAIL_LINES[activeStep].join(' • ')}</p>
                 </div>
 
                 <div className="flex-1 space-y-3 overflow-auto px-4 py-4">
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Previous</p>
-                    <p className="mt-1 text-sm text-slate-200">{STEP_LABELS[previousStep]}</p>
+                  <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Previous</p>
+                    <p className="mt-1 text-sm text-foreground">{STEP_LABELS[previousStep]}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Current</p>
-                    <p className="mt-1 text-sm text-slate-100">{STEP_LABELS[activeStep]}</p>
-                    <p className="mt-2 text-[12px] leading-5 text-slate-400">
+                  <div className="rounded-xl border border-border bg-background px-3 py-3 shadow-sm">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Current</p>
+                    <p className="mt-1 text-sm text-foreground">{STEP_LABELS[activeStep]}</p>
+                    <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
                       {activeStep === 'orient' && 'Use this stage to understand the data field and decide where to begin.'}
                       {activeStep === 'find' && 'Find the bursty periods and keep the current window visible.'}
                       {activeStep === 'compare' && 'Compare the same dataset under different temporal readings.'}
@@ -265,19 +275,19 @@ export function WorkflowSkeleton() {
                       {activeStep === 'apply' && 'Apply the confirmed state and return to analysis with the updated workflow.'}
                     </p>
                     {activeStep === 'find' || activeStep === 'apply' ? (
-                      <div className="mt-3 rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
+                      <div className="mt-3 rounded-lg border border-violet-500/30 bg-violet-500/10 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100">Selection-first drafts</p>
-                          <span className="text-[10px] text-violet-200">Brushed selection is canonical</span>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700 dark:text-violet-100">Selection-first drafts</p>
+                          <span className="text-[10px] text-violet-700/80 dark:text-violet-200">Brushed selection is canonical</span>
                         </div>
-                        <p className="mt-2 text-[11px] text-violet-100/90">
+                        <p className="mt-2 text-[11px] text-violet-700/90 dark:text-violet-100/90">
                           Suggested granularity follows the brushed window size. Hourly fits short spans, daily fits medium spans, and monthly or quarterly fit longer spans.
                         </p>
 
                         <div className="mt-3 space-y-2">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
-                            <div className="flex items-center gap-2 text-[10px] text-violet-100/80">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Granularity</div>
+                            <div className="flex items-center gap-2 text-[10px] text-violet-700/80 dark:text-violet-100/80">
                               <span>Suggested: {suggestedGranularityLabel}</span>
                               <button
                                 type="button"
@@ -314,18 +324,18 @@ export function WorkflowSkeleton() {
                               );
                             })}
                           </div>
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-[10px] text-muted-foreground">
                             Active: {activeGranularityLabel}
                           </div>
                         </div>
 
                         <div className="mt-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                          <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                             <span>Crime types</span>
                             <button
                               type="button"
                               onClick={() => setGenerationInputs({ crimeTypes: [] })}
-                              className="text-[10px] text-slate-400 hover:text-slate-200"
+                              className="text-[10px] text-muted-foreground hover:text-foreground"
                             >
                               All crime types
                             </button>
@@ -352,7 +362,7 @@ export function WorkflowSkeleton() {
                                 </button>
                               );
                             }) : (
-                              <span className="text-[11px] text-slate-500">All crime types are included by default.</span>
+                              <span className="text-[11px] text-muted-foreground">All crime types are included by default.</span>
                             )}
                           </div>
                         </div>
@@ -366,15 +376,15 @@ export function WorkflowSkeleton() {
                           {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
                         </button>
 
-                        <div className="mt-3 rounded-md border border-slate-800/80 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300">
+                        <div className="mt-3 rounded-md border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-foreground">
                           <div className="flex items-center justify-between gap-2">
                             <span>B {selectionBLabel}</span>
                             <span>State {selectionStateLabel}</span>
                           </div>
                           {selectionStateLabel === 'neutral' ? (
-                            <p className="mt-1 text-slate-500">Muted neutral partition keeps the brushed selection evenly split.</p>
+                            <p className="mt-1 text-muted-foreground">Muted neutral partition keeps the brushed selection evenly split.</p>
                           ) : (
-                            <p className="mt-1 text-slate-400">Selection-first drafts stay editable before apply.</p>
+                            <p className="mt-1 text-muted-foreground">Selection-first drafts stay editable before apply.</p>
                           )}
                         </div>
 
@@ -389,53 +399,56 @@ export function WorkflowSkeleton() {
                           </button>
                           <button
                             type="button"
-                            onClick={clearPendingGeneratedBins}
+                            onClick={handleClearDraftSlices}
                             disabled={pendingGeneratedBins.length === 0}
-                            className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Clear draft
                           </button>
                         </div>
 
                         {lastAppliedAt ? (
-                          <div className="mt-2 text-[10px] text-emerald-200/90">
+                        <div className="mt-2 text-[10px] text-emerald-700 dark:text-emerald-200/90">
                             Last apply: {new Date(lastAppliedAt).toLocaleTimeString()}
                           </div>
                         ) : null}
                         {generationError ? (
-                          <div className="mt-2 rounded border border-red-500/50 bg-red-500/10 px-2 py-1 text-[11px] text-red-100">
+                          <div className="mt-2 rounded border border-destructive/50 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
                             {generationError}
                           </div>
                         ) : null}
                       </div>
                     ) : null}
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Next</p>
-                    <p className="mt-1 text-sm text-slate-200">{STEP_LABELS[nextStep]}</p>
+                  <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Next</p>
+                    <p className="mt-1 text-sm text-foreground">{STEP_LABELS[nextStep]}</p>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-800/80 px-4 py-3">
+                <div className="border-t border-border/70 px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setActiveStep(previousStep)}
                       disabled={activeIndex === 0}
-                      className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full gap-1"
                     >
                       <ChevronLeft className="size-3.5" />
                       Back
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => setActiveStep(nextStep)}
                       disabled={activeIndex === STEP_ORDER.length - 1}
-                      className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-950 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                      size="sm"
+                      className="rounded-full gap-1"
                     >
                       Next
                       <ChevronRight className="size-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -443,21 +456,23 @@ export function WorkflowSkeleton() {
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-between py-3">
-            <button
+            <Button
               type="button"
               onClick={() => setIsOpen(true)}
               aria-label="Expand workflow drawer"
-              className="inline-flex size-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:text-slate-100"
+              variant="outline"
+              size="icon-sm"
+              className="rounded-full"
             >
               <ChevronRight className="size-4" />
-            </button>
+            </Button>
 
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
               {STEP_ORDER.map((step) => {
                 const isActive = step === activeStep;
                 const Icon = STEP_ICONS[step];
                 return (
-                  <button
+                  <Button
                     key={step}
                     type="button"
                     onClick={() => {
@@ -466,26 +481,30 @@ export function WorkflowSkeleton() {
                     }}
                     aria-label={`${STEP_LABELS[step]} step`}
                     aria-current={isActive ? 'step' : undefined}
-                    className={`inline-flex size-8 items-center justify-center rounded-full border transition-colors ${
+                    variant="outline"
+                    size="icon-sm"
+                    className={`rounded-full transition-colors ${
                       isActive
                         ? 'border-sky-400/60 bg-sky-500/15 text-sky-100'
                         : 'border-slate-800 bg-slate-900 text-slate-500 hover:border-slate-700 hover:text-slate-200'
                     }`}
                   >
                     <Icon className="size-3.5" />
-                  </button>
+                  </Button>
                 );
               })}
             </div>
 
-            <button
+            <Button
               type="button"
               onClick={() => setIsOpen(true)}
               aria-label="Expand workflow drawer"
-              className="inline-flex size-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:text-slate-100"
+              variant="outline"
+              size="icon-sm"
+              className="rounded-full"
             >
               <ChevronRight className="size-4" />
-            </button>
+            </Button>
           </div>
         )}
       </div>

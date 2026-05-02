@@ -71,8 +71,9 @@ describe('/dashboard-demo shell', () => {
 
     expect(pageSource).toMatch(/DashboardDemoShell/);
     expect(shellSource).not.toMatch(/WorkflowSkeleton/);
-    expect(shellSource).toMatch(/Phase 13 guided analysis workflow/);
-    expect(shellSource).toMatch(/Orient → Find → Compare → Inspect → Explain → Apply/);
+    expect(shellSource).not.toMatch(/Phase 13 guided analysis workflow/);
+    expect(shellSource).not.toMatch(/Orient → Find → Compare → Inspect → Explain → Apply/);
+    expect(shellSource).not.toMatch(/Shared dataset · one workflow · linked views/);
     expect(shellSource).toMatch(/useDashboardDemoSelectionStory/);
     expect(workflowSkeletonSource).toMatch(/Selection-first drafts/);
     expect(workflowSkeletonSource).toMatch(/Generate selection-first drafts/);
@@ -160,16 +161,17 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoTimelinePanelSource).toMatch(/Warp factor/);
     expect(demoTimelinePanelSource).toMatch(/Warp source/);
-    expect(demoTimelinePanelSource).toMatch(/Window: \{summary\.selectedWindowLabel\}/);
-    expect(demoTimelinePanelSource).toMatch(/Linked: \{summary\.linkedHighlightLabel\}/);
     expect(demoTimelinePanelSource).toMatch(/Slice-authored|Density/);
     expect(demoTimelinePanelSource).not.toMatch(/isPlaying|togglePlay|setSpeed|FastForward|Pause|Play|requestAnimationFrame/);
-    expect(demoTimelinePanelSource).toMatch(/Overview is sampled across the full dataset|brush selects the active detail window/);
+    expect(demoTimelinePanelSource).not.toMatch(/Overview is sampled across the full dataset|brush selects the active detail window|Window: \{summary\.selectedWindowLabel\}|Linked: \{summary\.linkedHighlightLabel\}|Burst windows: \{summary\.burstLabel\}/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
     expect(demoExplainPanelSource).toMatch(/Detection reason/);
     expect(demoExplainPanelSource).toMatch(/burstRationale/);
+    expect(demoExplainPanelSource).toMatch(/Burst windows/);
+    expect(demoExplainPanelSource).toMatch(/Clear burst pin/);
+    expect(demoExplainPanelSource).toMatch(/used as analysis input for draft bins/);
     expect(demoExplainPanelSource).toMatch(/True duration/);
     expect(demoExplainPanelSource).toMatch(/Relative cue/);
     expect(demoExplainPanelSource).toMatch(/No clear burst; balanced activity|Balanced window/);

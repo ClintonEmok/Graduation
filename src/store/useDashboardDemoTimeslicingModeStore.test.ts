@@ -317,4 +317,40 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().lastAppliedAt).toBeNull();
     expect(useSliceDomainStore.getState().slices).toHaveLength(0);
   });
+
+  test('clears generated draft state and selection-first metadata', () => {
+    useDashboardDemoTimeslicingModeStore.setState({
+      generationError: 'stale error',
+      pendingGeneratedBins: [
+        {
+          id: 'draft-clear',
+          startTime: 0,
+          endTime: HOUR_MS,
+          count: 4,
+          crimeTypes: ['THEFT'],
+          avgTimestamp: 1800,
+        },
+      ],
+      lastGeneratedMetadata: {
+        generatedAt: Date.now(),
+        binCount: 1,
+        eventCount: 4,
+        warning: 'stale warning',
+        inputs: {
+          crimeTypes: ['THEFT'],
+          neighbourhood: null,
+          timeWindow: { start: 0, end: HOUR_MS },
+          granularity: 'daily',
+        },
+      },
+      generationStatus: 'error',
+    });
+
+    useDashboardDemoTimeslicingModeStore.getState().clearPendingGeneratedBins();
+
+    expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(0);
+    expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('idle');
+    expect(useDashboardDemoTimeslicingModeStore.getState().generationError).toBeNull();
+    expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata).toBeNull();
+  });
 });

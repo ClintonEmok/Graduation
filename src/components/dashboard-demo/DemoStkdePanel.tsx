@@ -2,6 +2,15 @@
 
 import { useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { useDemoStkde } from '@/components/dashboard-demo/lib/useDemoStkde';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
@@ -126,142 +135,156 @@ export function DemoStkdePanel() {
   };
 
   return (
-    <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-slate-100">
-      <header className="space-y-1">
-        <div className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">STKDE Rail</div>
-        <p className="text-[11px] text-slate-400">Balanced hotspot surface for the selected district context.</p>
-        <div className="text-[11px] text-slate-500">District context: {selectedDistrictLabels.join(', ')}</div>
-      </header>
-
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3 text-[11px] text-slate-300">
-        <div className="flex items-center justify-between gap-2">
-          <span className="rounded-full border border-sky-400/40 bg-sky-500/10 px-2 py-1 text-sky-200">{STKDE_SCOPE_LABELS[scopeMode]}</span>
-          <button type="button" onClick={refresh} className="inline-flex items-center gap-1 rounded border border-slate-700 px-2 py-1 hover:bg-slate-800">
-            <RefreshCw className="h-3 w-3" />
-            Refresh
-          </button>
+    <Card className="border-border/70 bg-card/80 text-card-foreground shadow-sm">
+      <CardHeader className="gap-2 px-4 pb-3 pt-4">
+        <CardTitle className="text-xs uppercase tracking-[0.26em] text-muted-foreground">STKDE Rail</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Balanced hotspot surface for the selected district context.
+        </CardDescription>
+        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+          <Badge variant="outline">District context: {selectedDistrictLabels.join(', ')}</Badge>
         </div>
-        <div className="mt-2 text-slate-400">{summaryLabel}</div>
-        <div className="mt-1 text-slate-500">{heatmapCellCount.toLocaleString()} heatmap cells</div>
-        {error ? <div className="mt-2 rounded border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-rose-200">{error}</div> : null}
-        {isLoading ? <div className="mt-2 text-slate-500">Computing hotspot surface…</div> : null}
-      </div>
+      </CardHeader>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-slate-500">
-          <span>Presets</span>
-          <span>{activePreset ? `Active: ${activePreset.label}` : 'Preset-driven controls'}</span>
-        </div>
-        <div className="grid gap-2">
-          {STKDE_PRESETS.map((preset) => {
-            const isActive = activePreset?.id === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => applyPreset(preset)}
-                className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                  isActive ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-900'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em]">{preset.label}</span>
-                  <span className="text-[10px] text-slate-500">{STKDE_SCOPE_LABELS[preset.scopeMode]}</span>
-                </div>
-                <div className="mt-1 text-[11px] text-slate-400">{preset.description}</div>
-                <div className="mt-1 text-[10px] text-slate-500">
-                  {preset.params.spatialBandwidthMeters}m • {preset.params.temporalBandwidthHours}h • {preset.params.gridCellMeters}m • top {preset.params.topK}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <CardContent className="flex flex-col gap-4 px-4 pb-4">
+        <Card className="p-0 shadow-none">
+          <CardContent className="flex flex-col gap-3 p-3 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-100">
+                {STKDE_SCOPE_LABELS[scopeMode]}
+              </Badge>
+              <Button type="button" variant="outline" size="sm" onClick={refresh} className="gap-2">
+                <RefreshCw className="h-3 w-3" />
+                Refresh
+              </Button>
+            </div>
+            <div className="text-muted-foreground">{summaryLabel}</div>
+            <div className="text-muted-foreground">{heatmapCellCount.toLocaleString()} heatmap cells</div>
+            {error ? <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">{error}</div> : null}
+            {isLoading ? <div className="text-muted-foreground">Computing hotspot surface…</div> : null}
+          </CardContent>
+        </Card>
 
-      <div className="space-y-2 text-[11px] text-slate-300">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setScopeMode('applied-slices')}
-            className={`rounded border px-2 py-1 ${scopeMode === 'applied-slices' ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60'}`}
-          >
-            Applied slices
-          </button>
-          <button
-            type="button"
-            onClick={() => setScopeMode('full-viewport')}
-            className={`rounded border px-2 py-1 ${scopeMode === 'full-viewport' ? 'border-sky-400/70 bg-sky-500/15 text-sky-100' : 'border-slate-800 bg-slate-900/60'}`}
-          >
-            Full viewport
-          </button>
-        </div>
-        <p className="text-slate-500">Parameters are preset-only in the demo rail.</p>
-      </div>
-
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">District hotspots</h3>
-          <span className="text-[11px] text-slate-500">Top matches</span>
-        </div>
-        {rows.length === 0 ? (
-          <div className="rounded border border-dashed border-slate-700 px-3 py-4 text-xs text-slate-500">
-            No hotspots found for the current district context. Try Refresh or a wider preset.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {rows.map((row, index) => {
-              const selected = row.id === selectedHotspotId;
-              const hovered = row.id === hoveredHotspotId;
-
-              return (
-                <li key={row.id}>
-                  <button
+        <Card className="p-0 shadow-none">
+          <CardContent className="flex flex-col gap-3 p-3">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <span>Presets</span>
+              <span>{activePreset ? `Active: ${activePreset.label}` : 'Preset-driven controls'}</span>
+            </div>
+            <div className="grid gap-2">
+              {STKDE_PRESETS.map((preset) => {
+                const isActive = activePreset?.id === preset.id;
+                return (
+                  <Button
+                    key={preset.id}
                     type="button"
-                    className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                      selected
-                        ? 'border-rose-400/80 bg-rose-500/10'
-                        : hovered
-                          ? 'border-slate-500 bg-slate-800/80'
-                          : 'border-slate-700 bg-slate-900/80 hover:border-slate-500'
-                    }`}
-                    onMouseEnter={() => setHoveredHotspot(row.id)}
-                    onMouseLeave={() => setHoveredHotspot(null)}
-                    onFocus={() => setHoveredHotspot(row.id)}
-                    onBlur={() => setHoveredHotspot(null)}
-                    onClick={() => {
-                      setSelectedHotspot(row.id);
-                      const { latDelta, lonDelta } = toRadiusDegrees(row.centroid[1], row.radiusMeters);
-                      setSpatialFilter({
-                        minLng: row.centroid[0] - lonDelta,
-                        maxLng: row.centroid[0] + lonDelta,
-                        minLat: row.centroid[1] - latDelta,
-                        maxLat: row.centroid[1] + latDelta,
-                      });
+                    variant={isActive ? 'secondary' : 'outline'}
+                    onClick={() => applyPreset(preset)}
+                    className="h-auto flex-col items-start justify-start gap-1 rounded-lg px-3 py-2 text-left"
+                  >
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em]">{preset.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{STKDE_SCOPE_LABELS[preset.scopeMode]}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{preset.description}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {preset.params.spatialBandwidthMeters}m • {preset.params.temporalBandwidthHours}h • {preset.params.gridCellMeters}m • top {preset.params.topK}
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
-                      const selectedHotspot = response?.hotspots.find((hotspot) => hotspot.id === row.id);
-                      if (selectedHotspot) {
-                        setTemporalFilter({
-                          startEpochSec: selectedHotspot.peakStartEpochSec,
-                          endEpochSec: selectedHotspot.peakEndEpochSec,
-                        });
-                      }
-                    }}
-                    >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-slate-100">District cluster {index + 1}</span>
-                      <span className="text-[11px] text-slate-500">{row.supportLabel} support</span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                      <span>Place context: {selectedDistrictLabels.join(', ')}</span>
-                      <span>Shared hotspot surface</span>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </section>
+        <Card className="p-0 shadow-none">
+          <CardContent className="flex flex-col gap-2 p-3 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={scopeMode === 'applied-slices' ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setScopeMode('applied-slices')}
+              >
+                Applied slices
+              </Button>
+              <Button
+                type="button"
+                variant={scopeMode === 'full-viewport' ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setScopeMode('full-viewport')}
+              >
+                Full viewport
+              </Button>
+            </div>
+            <p className="text-muted-foreground">Parameters are preset-only in the demo rail.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="p-0 shadow-none">
+          <CardContent className="flex flex-col gap-3 p-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">District hotspots</h3>
+              <span className="text-[11px] text-muted-foreground">Top matches</span>
+            </div>
+            {rows.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
+                No hotspots found for the current district context. Try Refresh or a wider preset.
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {rows.map((row, index) => {
+                  const selected = row.id === selectedHotspotId;
+                  const hovered = row.id === hoveredHotspotId;
+
+                  return (
+                    <li key={row.id}>
+                      <Button
+                        type="button"
+                        variant={selected ? 'secondary' : 'outline'}
+                        className={`h-auto w-full flex-col items-start justify-start gap-1 rounded-lg px-3 py-2 text-left ${
+                          hovered && !selected ? 'border-muted-foreground/60' : ''
+                        }`}
+                        onMouseEnter={() => setHoveredHotspot(row.id)}
+                        onMouseLeave={() => setHoveredHotspot(null)}
+                        onFocus={() => setHoveredHotspot(row.id)}
+                        onBlur={() => setHoveredHotspot(null)}
+                        onClick={() => {
+                          setSelectedHotspot(row.id);
+                          const { latDelta, lonDelta } = toRadiusDegrees(row.centroid[1], row.radiusMeters);
+                          setSpatialFilter({
+                            minLng: row.centroid[0] - lonDelta,
+                            maxLng: row.centroid[0] + lonDelta,
+                            minLat: row.centroid[1] - latDelta,
+                            maxLat: row.centroid[1] + latDelta,
+                          });
+
+                          const selectedHotspot = response?.hotspots.find((hotspot) => hotspot.id === row.id);
+                          if (selectedHotspot) {
+                            setTemporalFilter({
+                              startEpochSec: selectedHotspot.peakStartEpochSec,
+                              endEpochSec: selectedHotspot.peakEndEpochSec,
+                            });
+                          }
+                        }}
+                      >
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <span className="text-sm font-medium text-foreground">District cluster {index + 1}</span>
+                          <span className="text-[11px] text-muted-foreground">{row.supportLabel} support</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>Place context: {selectedDistrictLabels.join(', ')}</span>
+                          <span>Shared hotspot surface</span>
+                        </div>
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </CardContent>
+    </Card>
   );
 }

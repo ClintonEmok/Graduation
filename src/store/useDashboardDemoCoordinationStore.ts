@@ -166,7 +166,7 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       return {
         selectedBurstWindows: isSameWindow ? [active] : [window],
       };
-    }),
+  }),
   clearSelectedBurstWindows: () => set({ selectedBurstWindows: [] }),
   setDetailsOpen: (open) => set({ detailsOpen: open }),
 }));
