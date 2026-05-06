@@ -50,7 +50,10 @@ export async function POST(request: Request) {
       | undefined;
 
     if (requestedMode === 'full-population') {
-      if (!isFullPopulationQaEnabled() || normalizedRequest.callerIntent !== 'stkde') {
+      if (normalizedRequest.filters.slices?.length) {
+        effectiveMode = 'sampled';
+        fallbackReasons.push('slice-aware-sampled');
+      } else if (!isFullPopulationQaEnabled() || normalizedRequest.callerIntent !== 'stkde') {
         effectiveMode = 'sampled';
         fallbackReasons.push('full-pop-guard');
       } else {

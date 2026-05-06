@@ -7,6 +7,8 @@ import {
   type StkdeHotspot,
   type StkdeRequest,
   type StkdeResponse,
+  type StkdeSliceDescriptor,
+  type StkdeSurfaceResponse,
 } from './contracts';
 import type { FullPopulationStkdeInputs } from './full-population-pipeline';
 
@@ -151,7 +153,7 @@ function buildIntensityFromSupport(
   return { intensity, maxIntensity };
 }
 
-function applyResponsePayloadGuard(response: StkdeResponse): StkdeResponse {
+function applyResponsePayloadGuard(response: StkdeSurfaceResponse): StkdeSurfaceResponse {
   let next = response;
   let payloadBytes = new TextEncoder().encode(JSON.stringify(next)).length;
   if (payloadBytes > STKDE_RESPONSE_SIZE_LIMIT_BYTES && next.heatmap.cells.length > 1) {
@@ -233,7 +235,7 @@ interface ComputeMetaOverrides {
   };
 }
 
-export function computeStkdeFromCrimes(
+function computeSingleStkdeSurfaceFromCrimes(
   request: StkdeRequest,
   crimes: CrimeRecord[],
   metaOverrides?: ComputeMetaOverrides,
@@ -333,7 +335,35 @@ export function computeStkdeFromCrimes(
     })
     .slice(0, request.params.topK);
 
-  let response: StkdeResponse = {
+  const sliceResults: Record<string, StkdeSurfaceResponse> = {};
+  const sliceDescriptors = request.filters.slices ?? [];
+  if (sliceDescriptors.length > 0) {
+    for (const slice of sliceDescriptors) {
+      const sliceCrimes = boundedEvents.filter(
+        (crime) => crime.timestamp >= slice.startEpochSec && crime.timestamp < slice.endEpochSec,
+      );
+      const sliceRequest: StkdeRequest = {
+        ...request,
+        domain: {
+          startEpochSec: slice.startEpochSec,
+          endEpochSec: slice.endEpochSec,
+        },
+        filters: {
+          ...request.filters,
+          slices: undefined,
+        },
+      };
+      sliceResults[slice.id] = computeSingleStkdeSurfaceFromCrimes(sliceRequest, sliceCrimes, {
+        requestedComputeMode: metaOverrides?.requestedComputeMode ?? request.computeMode,
+        effectiveComputeMode: metaOverrides?.effectiveComputeMode ?? request.computeMode,
+        fallbackApplied: metaOverrides?.fallbackApplied ?? (metaNotes.length > 0 ? metaNotes.join(',') : null),
+        clampsApplied: metaOverrides?.clampsApplied ?? [],
+        fullPopulationStats: metaOverrides?.fullPopulationStats,
+      }).response;
+    }
+  }
+
+  let response: StkdeSurfaceResponse = {
     meta: {
       eventCount: boundedEvents.length,
       computeMs: 0,
@@ -357,7 +387,15 @@ export function computeStkdeFromCrimes(
   response = applyResponsePayloadGuard(response);
 
   response.meta.computeMs = Math.max(0, Math.round((performance.now() - computeStart) * 100) / 100);
-  return { response, metaNotes };
+  return { response: { ...response, sliceResults }, metaNotes };
+}
+
+export function computeStkdeFromCrimes(
+  request: StkdeRequest,
+  crimes: CrimeRecord[],
+  metaOverrides?: ComputeMetaOverrides,
+): ComputeStkdeOutput {
+  return computeSingleStkdeSurfaceFromCrimes(request, crimes, metaOverrides);
 }
 
 export function computeStkdeFromAggregates(
@@ -457,5 +495,5 @@ export function computeStkdeFromAggregates(
 
   response = applyResponsePayloadGuard(response);
   response.meta.computeMs = Math.max(0, Math.round((performance.now() - computeStart) * 100) / 100);
-  return { response, metaNotes };
+  return { response: { ...response, sliceResults: {} }, metaNotes };
 }

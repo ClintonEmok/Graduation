@@ -16,6 +16,7 @@ export interface StkdeRequest {
     crimeTypes?: string[];
     bbox?: [number, number, number, number];
     districts?: string[];
+    slices?: StkdeSliceDescriptor[];
   };
   params: {
     spatialBandwidthMeters: number;
@@ -42,6 +43,12 @@ export interface StkdeHeatmapCell {
   support: number;
 }
 
+export interface StkdeSliceDescriptor {
+  id: string;
+  startEpochSec: number;
+  endEpochSec: number;
+}
+
 export interface StkdeHotspot {
   id: string;
   centroidLng: number;
@@ -53,7 +60,7 @@ export interface StkdeHotspot {
   radiusMeters: number;
 }
 
-export interface StkdeResponse {
+export interface StkdeSurfaceResponse {
   meta: {
     eventCount: number;
     computeMs: number;
@@ -76,6 +83,10 @@ export interface StkdeResponse {
   contracts: {
     scoreVersion: StkdeScoreVersion;
   };
+}
+
+export interface StkdeResponse extends StkdeSurfaceResponse {
+  sliceResults: Record<string, StkdeSurfaceResponse>;
 }
 
 export interface StkdeRequestValidationResult {
@@ -188,6 +199,35 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
     ? filtersRaw.districts.map((entry) => String(entry).trim()).filter(Boolean)
     : undefined;
 
+  const slices = Array.isArray(filtersRaw.slices)
+    ? filtersRaw.slices.map((entry, index) => {
+        const rawSlice = entry as Record<string, unknown>;
+        const id = String(rawSlice.id ?? '').trim() || `slice-${index + 1}`;
+        const sliceStartEpochSec = toFiniteEpoch(rawSlice.startEpochSec);
+        const sliceEndEpochSec = toFiniteEpoch(rawSlice.endEpochSec);
+
+        if (sliceStartEpochSec === null || sliceEndEpochSec === null) {
+          return { error: 'filters.slices entries must include finite start/end epoch seconds' } as const;
+        }
+        if (sliceStartEpochSec >= sliceEndEpochSec) {
+          return { error: 'filters.slices startEpochSec must be less than endEpochSec' } as const;
+        }
+
+        return {
+          id,
+          startEpochSec: sliceStartEpochSec,
+          endEpochSec: sliceEndEpochSec,
+        } as StkdeSliceDescriptor;
+      })
+    : undefined;
+
+  if (slices?.some((entry) => 'error' in entry)) {
+    return {
+      ok: false,
+      error: (slices.find((entry) => 'error' in entry) as { error: string }).error,
+    };
+  }
+
   const paramsRaw = (source.params ?? {}) as Record<string, unknown>;
   const limitsRaw = (source.limits ?? {}) as Record<string, unknown>;
   const clampsApplied: string[] = [];
@@ -215,6 +255,7 @@ export function validateAndNormalizeStkdeRequest(payload: unknown): StkdeRequest
       crimeTypes,
       bbox,
       districts,
+      slices: slices as StkdeSliceDescriptor[] | undefined,
     },
     params: {
       spatialBandwidthMeters: resolveClamped(
