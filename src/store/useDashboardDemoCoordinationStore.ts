@@ -5,6 +5,7 @@ export type DemoWorkflowPhase = 'generate' | 'review' | 'applied' | 'refine';
 export type DemoSyncStatusToken = 'syncing' | 'synchronized' | 'partial';
 export type DemoPanelName = 'timeline' | 'map' | 'cube';
 export type DemoBurstMetric = 'density' | 'burstiness';
+export type DemoComparisonSlot = 'left' | 'right';
 
 export interface DemoBurstWindowSelection {
   id: string;
@@ -23,6 +24,16 @@ export interface DemoBurstWindowSelection {
   tieBreakReason: string;
   thresholdSource: string;
   neighborhoodSummary: string;
+}
+
+export interface DemoDetailPeriodSelection {
+  id: string;
+  startSec: number;
+  endSec: number;
+  count: number;
+  label: string;
+  renderMode: 'points' | 'bins';
+  summary: string;
 }
 
 export interface DemoSyncStatus {
@@ -50,10 +61,13 @@ interface DashboardDemoCoordinationState {
   lastInteractionSource: DemoSelectionSource;
   brushRange: [number, number] | null;
   selectedBurstWindows: DemoBurstWindowSelection[];
+  selectedDetailPeriod: DemoDetailPeriodSelection | null;
   detailsOpen: boolean;
   workflowPhase: DemoWorkflowPhase;
   syncStatus: DemoSyncStatus;
   panelNoMatch: Partial<Record<DemoPanelName, DemoPanelNoMatchState>>;
+  comparisonSliceIds: Record<DemoComparisonSlot, string | null>;
+  comparisonSelectionOrder: DemoComparisonSlot[];
   setSelectedIndex: (index: number, source: Exclude<DemoSelectionSource, null>) => void;
   commitSelection: (index: number, source: Exclude<DemoSelectionSource, null>) => void;
   clearSelection: (reason?: string) => void;
@@ -63,7 +77,13 @@ interface DashboardDemoCoordinationState {
   setBrushRange: (range: [number, number] | null) => void;
   toggleBurstWindow: (window: DemoBurstWindowSelection) => void;
   clearSelectedBurstWindows: () => void;
+  setSelectedDetailPeriod: (period: DemoDetailPeriodSelection | null) => void;
+  clearSelectedDetailPeriod: () => void;
   setDetailsOpen: (open: boolean) => void;
+  setComparisonSliceId: (slot: DemoComparisonSlot, sliceId: string | null) => void;
+  pushComparisonSlice: (sliceId: string) => void;
+  swapComparisonSlices: () => void;
+  clearComparisonSlices: () => void;
 }
 
 export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinationState>((set) => ({
@@ -73,10 +93,13 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   lastInteractionSource: null,
   brushRange: null,
   selectedBurstWindows: [],
+  selectedDetailPeriod: null,
   detailsOpen: false,
   workflowPhase: 'generate',
   syncStatus: { status: 'synchronized' },
   panelNoMatch: {},
+  comparisonSliceIds: { left: null, right: null },
+  comparisonSelectionOrder: [],
   setSelectedIndex: (index, source) =>
     set({
       selectedIndex: index,
@@ -166,7 +189,70 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       return {
         selectedBurstWindows: isSameWindow ? [active] : [window],
       };
-  }),
+    }),
   clearSelectedBurstWindows: () => set({ selectedBurstWindows: [] }),
+  setSelectedDetailPeriod: (selectedDetailPeriod) => set({ selectedDetailPeriod }),
+  clearSelectedDetailPeriod: () => set({ selectedDetailPeriod: null }),
   setDetailsOpen: (open) => set({ detailsOpen: open }),
+  setComparisonSliceId: (slot, sliceId) =>
+    set((state) => {
+      const nextIds = { ...state.comparisonSliceIds, [slot]: sliceId };
+      const nextOrder = state.comparisonSelectionOrder.filter((item) => item !== slot);
+      if (sliceId !== null) {
+        nextOrder.push(slot);
+      }
+
+      return {
+        comparisonSliceIds: nextIds,
+        comparisonSelectionOrder: nextOrder,
+      };
+    }),
+  pushComparisonSlice: (sliceId) =>
+    set((state) => {
+      const { left, right } = state.comparisonSliceIds;
+
+      if (left === null) {
+        return {
+          comparisonSliceIds: { left: sliceId, right },
+          comparisonSelectionOrder: ['left', ...(right === null ? [] : ['right'])],
+        };
+      }
+
+      if (right === null) {
+        return {
+          comparisonSliceIds: { left, right: sliceId },
+          comparisonSelectionOrder: ['left', 'right'],
+        };
+      }
+
+      const oldestSlot = state.comparisonSelectionOrder[0] ?? 'left';
+      const newestOrder = oldestSlot === 'left' ? ['right', 'left'] : ['left', 'right'];
+
+      return {
+        comparisonSliceIds: {
+          left: oldestSlot === 'left' ? sliceId : left,
+          right: oldestSlot === 'right' ? sliceId : right,
+        },
+        comparisonSelectionOrder: newestOrder,
+      };
+    }),
+  swapComparisonSlices: () =>
+    set((state) => {
+      const nextIds = {
+        left: state.comparisonSliceIds.right,
+        right: state.comparisonSliceIds.left,
+      };
+
+      return {
+        comparisonSliceIds: nextIds,
+        comparisonSelectionOrder: state.comparisonSelectionOrder.length === 2
+          ? [...state.comparisonSelectionOrder].reverse() as DemoComparisonSlot[]
+          : state.comparisonSelectionOrder,
+      };
+    }),
+  clearComparisonSlices: () =>
+    set({
+      comparisonSliceIds: { left: null, right: null },
+      comparisonSelectionOrder: [],
+    }),
 }));
