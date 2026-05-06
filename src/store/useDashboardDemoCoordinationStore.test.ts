@@ -28,10 +28,13 @@ beforeEach(() => {
     lastInteractionSource: null,
     brushRange: null,
     selectedBurstWindows: [],
+    selectedDetailPeriod: null,
     detailsOpen: false,
     workflowPhase: 'generate',
     syncStatus: { status: 'synchronized' },
     panelNoMatch: {},
+    comparisonSliceIds: { left: null, right: null },
+    comparisonSelectionOrder: [],
   });
 });
 
@@ -58,5 +61,58 @@ describe('useDashboardDemoCoordinationStore', () => {
     store.clearSelectedBurstWindows();
 
     expect(useDashboardDemoCoordinationStore.getState().selectedBurstWindows).toHaveLength(0);
+  });
+
+  test('tracks detail period selection', () => {
+    const store = useDashboardDemoCoordinationStore.getState();
+
+    store.setSelectedDetailPeriod({
+      id: 'detail-bin-1',
+      startSec: 100,
+      endSec: 200,
+      count: 12,
+      label: 'Jan 1 → Jan 5',
+      renderMode: 'bins',
+      summary: '12 crimes in this detail period',
+    });
+
+    expect(useDashboardDemoCoordinationStore.getState().selectedDetailPeriod?.id).toBe('detail-bin-1');
+
+    store.clearSelectedDetailPeriod();
+
+    expect(useDashboardDemoCoordinationStore.getState().selectedDetailPeriod).toBeNull();
+  });
+
+  test('manages a two-slot comparison pair', () => {
+    const store = useDashboardDemoCoordinationStore.getState();
+
+    store.setComparisonSliceId('left', 'slice-a');
+    store.setComparisonSliceId('right', 'slice-b');
+
+    expect(useDashboardDemoCoordinationStore.getState().comparisonSliceIds).toEqual({
+      left: 'slice-a',
+      right: 'slice-b',
+    });
+
+    store.swapComparisonSlices();
+
+    expect(useDashboardDemoCoordinationStore.getState().comparisonSliceIds).toEqual({
+      left: 'slice-b',
+      right: 'slice-a',
+    });
+
+    store.pushComparisonSlice('slice-c');
+
+    expect(useDashboardDemoCoordinationStore.getState().comparisonSliceIds).toEqual({
+      left: 'slice-b',
+      right: 'slice-c',
+    });
+
+    store.clearComparisonSlices();
+
+    expect(useDashboardDemoCoordinationStore.getState().comparisonSliceIds).toEqual({
+      left: null,
+      right: null,
+    });
   });
 });
