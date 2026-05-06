@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-stopped_at: Phase 14 context gathered
-last_updated: "2026-04-30T06:35:34.469Z"
+status: complete
+stopped_at: Phase 01 plan execution complete
+last_updated: "2026-05-06T20:35:25Z"
 progress:
   total_phases: 20
-  completed_phases: 11
-  total_plans: 41
-  completed_plans: 35
+  completed_phases: 12
+  total_plans: 44
+  completed_plans: 38
 ---
 
 # Project State
@@ -19,13 +19,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 14 — Decode bursts + temporal anomalies
+**Current focus:** Phase 02 — 3D STKDE on Cube Planes
 
 ## Current Position
 
-Phase: 13 (UX/IA redesign + cube concept) — Complete
-Plan: 05 complete / 05
-Progress: █████████████████░░░ 35/41 plans complete
+Phase: 01 (Foundation — Store sync + slice planes) — Complete
+Plan: 03 complete / 03
+Progress: █████████████████░░ 38/44 plans complete
 
 ## Performance Metrics
 
@@ -136,6 +136,9 @@ Progress: █████████████████░░░ 35/41 pla
 - Treat the brushed selection as the canonical input for demo draft generation.
 - Default the demo generator to daily granularity and all crime types unless narrowed.
 - Preserve burst metadata and warp weight through merge, split, and apply operations.
+- Make monthly granularity a shared contract and use calendar-month binning when monthly is selected.
+- Route cube rendering through dashboard-demo store overrides so the demo shell controls the cube state.
+- Keep slice planes in-scene and lower helper noise so the 3D cube reads as a usable analysis surface.
 
 ### Pending Todos
 
@@ -152,15 +155,17 @@ Progress: █████████████████░░░ 35/41 pla
 - Phase 11 warping metric plan 01 is complete; plans 02-03 remain queued before workflow isolation.
 - Phase 11 warping metric plan 02 is complete; plan 03 remains queued for browser verification.
 - Phase 12 codebase rewrite is complete; Phase 13 UX/IA plans 01-05 are complete.
-- Phase 14 decode bursts + temporal anomalies is next.
+- Phase 01 foundation store sync + slice planes is complete.
+- Phase 02 3D STKDE on Cube Planes is next.
 
 ### Blockers/Concerns
 
 - `pnpm typecheck` currently fails due unrelated pre-existing missing-module and type errors elsewhere in the repo.
 - Broader lint on `DualTimeline.tsx` surfaces pre-existing React Compiler memoization warnings unrelated to this plan.
+- `pnpm vitest` via Corepack failed with a signature/key mismatch during verification; local `./node_modules/.bin/vitest` worked and was used for focused checks.
 
 ## Session Continuity
 
-Last session: 2026-04-30T06:35:34.451Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-decode-bursts-temporal-anomalies/14-CONTEXT.md
+Last session: 2026-05-06T20:35:25Z
+Stopped at: Completed 01-foundation-store-sync-slice-planes
+Resume file: None
