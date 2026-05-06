@@ -48,6 +48,7 @@ const GENERATION_GRANULARITIES: Array<{
   { value: 'hourly', label: 'Hourly', helper: 'Focus on bursts within a day', strategy: 'hourly' },
   { value: 'daily', label: 'Daily', helper: 'Compare day-to-day activity', strategy: 'daily' },
   { value: 'weekly', label: 'Weekly', helper: 'Broader investigation windows', strategy: 'weekly' },
+  { value: 'monthly', label: 'Monthly', helper: 'Compare activity by calendar month', strategy: 'monthly' },
 ];
 
 const STRATEGIES: Array<{ value: BinningStrategy; label: string; description: string }> = [

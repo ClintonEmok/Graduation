@@ -75,6 +75,9 @@ export function generateBins(
     case 'weekly':
       bins = generateIntervalBins(data, timeDomain, 7 * 24 * 60 * 60 * 1000);
       break;
+    case 'monthly':
+      bins = generateMonthlyBins(data, timeDomain);
+      break;
     case 'auto-adaptive':
       bins = generateAutoAdaptiveBins(data, timeDomain, constraints);
       break;
@@ -368,6 +371,57 @@ function generateIntervalBins(
     });
   }
   
+  return result.sort((a, b) => a.startTime - b.startTime);
+}
+
+/**
+ * Monthly bins grouped by calendar month boundaries
+ */
+function generateMonthlyBins(
+  data: CrimeEventData[],
+  domain: [number, number],
+): TimeBin[] {
+  const monthlyBins = new Map<string, CrimeEventData[]>();
+  const [domainStart, domainEnd] = domain[0] <= domain[1] ? domain : [domain[1], domain[0]];
+
+  for (const event of data) {
+    const eventDate = new Date(event.timestamp);
+    const key = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}`;
+    const nextEvents = monthlyBins.get(key) || [];
+    nextEvents.push(event);
+    monthlyBins.set(key, nextEvents);
+  }
+
+  const result: TimeBin[] = [];
+  let index = 0;
+
+  for (const [key, events] of Array.from(monthlyBins.entries()).sort(([left], [right]) => left.localeCompare(right))) {
+    const [yearText, monthText] = key.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText) - 1;
+    const startTime = new Date(year, month, 1).getTime();
+    const endTime = new Date(year, month + 1, 1).getTime();
+    const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
+    const avgTimestamp = sorted.reduce((sum, event) => sum + event.timestamp, 0) / sorted.length;
+
+    const boundedStart = Math.max(startTime, domainStart);
+    const boundedEnd = Math.min(endTime, domainEnd);
+
+    if (boundedEnd < boundedStart) {
+      continue;
+    }
+
+    result.push({
+      id: `month-${index++}`,
+      startTime: boundedStart,
+      endTime: Math.max(boundedStart, boundedEnd),
+      count: sorted.length,
+      crimeTypes: Array.from(new Set(sorted.map((event) => event.type))),
+      districts: Array.from(new Set(sorted.map((event) => event.district).filter(Boolean))) as string[],
+      avgTimestamp,
+    });
+  }
+
   return result.sort((a, b) => a.startTime - b.startTime);
 }
 

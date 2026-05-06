@@ -22,6 +22,7 @@ export type BinningStrategy =
   | 'hourly'             // Hourly intervals
   | 'daily'              // Daily intervals
   | 'weekly'             // Weekly intervals
+  | 'monthly'            // Calendar monthly intervals
   | 'custom'             // User-defined custom rule
   | 'auto-adaptive';     // Automatically detect best strategy
 
@@ -204,6 +205,14 @@ export const PRESET_RULES: Record<BinningStrategy, BinningConfig> = {
     constraints: {
       minTimeSpan: 576000000, // ~6.7 days
       maxTimeSpan: 691200000, // 8 days
+    },
+    domain: [0, 0],
+  },
+  'monthly': {
+    strategy: 'monthly',
+    constraints: {
+      minTimeSpan: 2419200000, // ~28 days
+      maxTimeSpan: 2678400000, // ~31 days
     },
     domain: [0, 0],
   },

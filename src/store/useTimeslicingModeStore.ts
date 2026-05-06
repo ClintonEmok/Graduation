@@ -14,7 +14,7 @@ export type TimeslicePreset =
   | 'business-hours'
   | 'custom';
 
-export type TimeslicingGranularity = 'hourly' | 'daily' | 'weekly';
+export type TimeslicingGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly';
 export type GenerationStatus = 'idle' | 'generating' | 'ready' | 'applied' | 'error';
 
 export interface GenerationInputs {
