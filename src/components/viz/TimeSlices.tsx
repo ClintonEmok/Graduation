@@ -5,7 +5,9 @@ import { useSliceStore } from '@/store/useSliceStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { SlicePlane } from './SlicePlane';
+import { BurstEvolutionOverlay } from './BurstEvolutionOverlay';
 import { scaleLinear } from 'd3-scale';
 import { getAdaptiveScaleConfig, getAdaptiveScaleConfigColumnar } from '@/lib/adaptive-scale';
 
@@ -26,6 +28,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
   const columns = useTimelineDataStore((state) => state.columns);
   const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
   const stkdeResponse = useDashboardDemoAnalysisStore((state) => state.stkdeResponse);
+  const selectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.selectedBurstWindows);
   
   // Compute relational scale for the slice scene
   const scale = useMemo(() => {
@@ -82,6 +85,8 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
           stkdeSurface={stkdeResponse?.sliceResults?.[slice.id] ?? null}
         />
       ))}
+
+      <BurstEvolutionOverlay slices={slices} burstWindows={selectedBurstWindows} timeToY={scale} />
     </group>
   );
 }
