@@ -20,8 +20,9 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY }: SlicePlaneP
   const isRange = slice.type === 'range';
   
   // Visual props
-  const color = slice.isLocked ? '#999' : (isRange ? '#ff00ff' : '#00ffff');
-  const opacity = isRange ? 0.1 : 0.2;
+  const color = slice.isLocked ? '#94a3b8' : (isRange ? '#a855f7' : '#22d3ee');
+  const opacity = slice.isLocked ? 0.08 : (isRange ? 0.1 : 0.16);
+  const helperOpacity = slice.isLocked ? 0.12 : 0.18;
 
   // Calculate range specifics
   const rangeYStart = isRange ? timeToY(slice.range?.[0] ?? 0) : y;
@@ -130,16 +131,16 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY }: SlicePlaneP
         <>
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[100, 100]} />
-            <meshBasicMaterial 
-              color={color} 
-              transparent 
-              opacity={opacity} 
-              side={THREE.DoubleSide} 
-              depthWrite={false}
-            />
+          <meshBasicMaterial 
+            color={color} 
+            transparent 
+            opacity={opacity} 
+            side={THREE.DoubleSide} 
+            depthWrite={false}
+          />
           </mesh>
           <gridHelper args={[100, 10]} position={[0, 0.01, 0]} rotation={[0, 0, 0]}>
-            <meshBasicMaterial color={color} transparent opacity={0.3} />
+            <meshBasicMaterial color={color} transparent opacity={helperOpacity} />
           </gridHelper>
         </>
       )}
@@ -157,8 +158,13 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY }: SlicePlaneP
         </mesh>
         
         <Html position={[2, 0, 0]} center className="pointer-events-none select-none">
-          <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap border border-white/20">
-            {label}
+          <div className="rounded-md border border-white/15 bg-slate-950/90 px-2 py-1 text-[10px] leading-tight text-slate-50 shadow-sm whitespace-nowrap">
+            <div className="font-medium tracking-wide">
+              {label}
+            </div>
+            <div className="text-[9px] uppercase tracking-[0.18em] text-slate-300">
+              {slice.isLocked ? 'Locked' : isRange ? 'Range' : 'Point'}
+            </div>
           </div>
         </Html>
       </group>
