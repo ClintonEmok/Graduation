@@ -113,6 +113,10 @@ export function DemoSlicePanel() {
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
   const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
+  const comparisonSliceIds = useDashboardDemoCoordinationStore((state) => state.comparisonSliceIds);
+  const setComparisonSliceId = useDashboardDemoCoordinationStore((state) => state.setComparisonSliceId);
+  const swapComparisonSlices = useDashboardDemoCoordinationStore((state) => state.swapComparisonSlices);
+  const clearComparisonSlices = useDashboardDemoCoordinationStore((state) => state.clearComparisonSlices);
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) {
       return null;
@@ -645,6 +649,11 @@ export function DemoSlicePanel() {
                       </div>
                     ) : null}
 
+                    <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {comparisonSliceIds.left === slice.id ? <Badge variant="secondary" className="rounded-full px-2 py-1">left slot</Badge> : null}
+                      {comparisonSliceIds.right === slice.id ? <Badge variant="secondary" className="rounded-full px-2 py-1">right slot</Badge> : null}
+                    </div>
+
                     <input
                       type="text"
                       value={slice.name ?? ''}
@@ -822,6 +831,50 @@ export function DemoSlicePanel() {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setComparisonSliceId('left', slice.id)}
+                        className="gap-1"
+                        title="Set this slice as the left comparison slice"
+                      >
+                        Left
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setComparisonSliceId('right', slice.id)}
+                        className="gap-1"
+                        title="Set this slice as the right comparison slice"
+                      >
+                        Right
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={swapComparisonSlices}
+                        className="gap-1"
+                        title="Swap the comparison slots"
+                        disabled={!comparisonSliceIds.left || !comparisonSliceIds.right}
+                      >
+                        Swap
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={clearComparisonSlices}
+                        className="gap-1"
+                        title="Clear the comparison pair"
+                      >
+                        Clear pair
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
