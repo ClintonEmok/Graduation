@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
+import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { SlicePlane } from './SlicePlane';
 import { scaleLinear } from 'd3-scale';
 import { getAdaptiveScaleConfig, getAdaptiveScaleConfigColumnar } from '@/lib/adaptive-scale';
@@ -24,6 +25,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
   const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
+  const stkdeResponse = useDashboardDemoAnalysisStore((state) => state.stkdeResponse);
   
   // Compute relational scale for the slice scene
   const scale = useMemo(() => {
@@ -77,6 +79,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
           onUpdate={(updates) => updateSlice(slice.id, updates)}
           yToTime={yToTime}
           timeToY={scale}
+          stkdeSurface={stkdeResponse?.sliceResults?.[slice.id] ?? null}
         />
       ))}
     </group>

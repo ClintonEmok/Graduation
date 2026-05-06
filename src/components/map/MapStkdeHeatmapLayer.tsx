@@ -3,6 +3,7 @@
 import { Layer, Source } from 'react-map-gl/maplibre';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { StkdeHeatmapCell } from '@/lib/stkde/contracts';
+import { buildStkdeHeatmapColorExpression } from '@/lib/stkde/heatmap-scale';
 
 interface MapStkdeHeatmapLayerProps {
   cells: StkdeHeatmapCell[];
@@ -74,23 +75,7 @@ export function MapStkdeHeatmapLayer({
               35,
             ],
             'heatmap-opacity': opacity,
-            'heatmap-color': [
-              'interpolate',
-              ['linear'],
-              ['heatmap-density'],
-              0,
-              'rgba(30, 64, 175, 0)',
-              0.2,
-              'rgba(59, 130, 246, 0.35)',
-              0.4,
-              'rgba(16, 185, 129, 0.5)',
-              0.6,
-              'rgba(234, 179, 8, 0.7)',
-              0.8,
-              'rgba(249, 115, 22, 0.8)',
-              1,
-              'rgba(239, 68, 68, 0.9)',
-            ],
+            'heatmap-color': buildStkdeHeatmapColorExpression(),
           }}
         />
       </Source>
