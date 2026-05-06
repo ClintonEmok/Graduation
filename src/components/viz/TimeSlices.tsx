@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
+import { useStore } from 'zustand';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
@@ -7,14 +8,22 @@ import { SlicePlane } from './SlicePlane';
 import { scaleLinear } from 'd3-scale';
 import { getAdaptiveScaleConfig, getAdaptiveScaleConfigColumnar } from '@/lib/adaptive-scale';
 
-export function TimeSlices() {
-  const slices = useSliceStore((state) => state.slices);
-  const addSlice = useSliceStore((state) => state.addSlice);
-  const updateSlice = useSliceStore((state) => state.updateSlice);
-  
+interface TimeSlicesProps {
+  sliceStoreOverride?: unknown;
+  timeStoreOverride?: unknown;
+}
+
+export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlicesProps) {
+  const sliceStore = (sliceStoreOverride ?? useSliceStore) as typeof useSliceStore;
+  const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
+
+  const slices = useStore(sliceStore, (state) => state.slices);
+  const addSlice = useStore(sliceStore, (state) => state.addSlice);
+  const updateSlice = useStore(sliceStore, (state) => state.updateSlice);
+
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
-  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
+  const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
   
   // Compute relational scale for the slice scene
   const scale = useMemo(() => {

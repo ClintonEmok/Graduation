@@ -2,13 +2,17 @@
 
 import React, { useEffect } from 'react';
 import { RefreshCcw } from 'lucide-react';
+import { useStore } from 'zustand';
 import { useUIStore } from '@/store/ui';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useCubeSpatialConstraintsStore } from '@/store/useCubeSpatialConstraintsStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useWarpProposalStore } from '@/store/useWarpProposalStore';
+import { useTimeStore } from '@/store/useTimeStore';
+import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
 import { useLogger } from '@/hooks/useLogger';
@@ -17,19 +21,37 @@ import type { DashboardDemoSelectionStory } from '@/components/dashboard-demo/li
 
 interface CubeVisualizationProps {
   selectionStory?: DashboardDemoSelectionStory | null;
+  filterStoreOverride?: unknown;
+  coordinationStoreOverride?: unknown;
+  adaptiveStoreOverride?: unknown;
+  timeStoreOverride?: unknown;
+  sliceStoreOverride?: unknown;
 }
 
-export default function CubeVisualization({ selectionStory = null }: CubeVisualizationProps) {
+export default function CubeVisualization({
+  selectionStory = null,
+  filterStoreOverride,
+  coordinationStoreOverride,
+  adaptiveStoreOverride,
+  timeStoreOverride,
+  sliceStoreOverride,
+}: CubeVisualizationProps) {
   const { triggerReset } = useUIStore();
   const { loadRealData, isLoading, columns } = useTimelineDataStore();
-  const selectedTypes = useFilterStore((state) => state.selectedTypes);
-  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
-  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
+  const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
+  const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
+  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
+  const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
+  const sliceStore = (sliceStoreOverride ?? useWarpSliceStore) as typeof useWarpSliceStore;
+
+  const selectedTypes = useStore(filterStore, (state) => state.selectedTypes);
+  const selectedDistricts = useStore(filterStore, (state) => state.selectedDistricts);
+  const selectedTimeRange = useStore(filterStore, (state) => state.selectedTimeRange);
+  const selectedSpatialBounds = useStore(filterStore, (state) => state.selectedSpatialBounds);
   const constraints = useCubeSpatialConstraintsStore((state) => state.constraints);
   const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
-  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
-  const warpSource = useAdaptiveStore((state) => state.warpSource);
+  const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
+  const warpSource = useStore(adaptiveStore, (state) => state.warpSource);
   const warpProposals = useWarpProposalStore((state) => state.proposals);
   const selectedWarpProposalId = useWarpProposalStore((state) => state.selectedProposalId);
   const appliedWarpProposalId = useWarpProposalStore((state) => state.appliedProposalId);
@@ -89,7 +111,14 @@ export default function CubeVisualization({ selectionStory = null }: CubeVisuali
       </div>
 
       <div className="flex-1 w-full relative bg-muted/20 flex items-center justify-center overflow-hidden">
-        <MainScene showMapBackground={false} />
+        <MainScene
+          showMapBackground={false}
+          filterStoreOverride={filterStore}
+          coordinationStoreOverride={coordinationStore}
+          adaptiveStoreOverride={adaptiveStore}
+          timeStoreOverride={timeStore}
+          sliceStoreOverride={sliceStore}
+        />
 
         <div className="absolute top-4 left-4 z-10 rounded-md border border-slate-500/50 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-100 shadow-sm backdrop-blur">
           <p>Relational mode: {warpSource} · warp {warpFactor.toFixed(2)}</p>

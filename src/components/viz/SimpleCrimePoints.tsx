@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { useStore } from 'zustand';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useThemeStore } from '@/store/useThemeStore';
@@ -72,7 +73,34 @@ const buildSliceAuthoredWarpMap = (
   return authoredMap;
 };
 
-export function SimpleCrimePoints() {
+const normalizeStoreSlices = (slices: Array<any>): Array<{ enabled: boolean; range: [number, number]; weight: number }> =>
+  slices.map((slice) => {
+    const range = Array.isArray(slice.range) && slice.range.length >= 2
+      ? [Number(slice.range[0]), Number(slice.range[1])] as [number, number]
+      : [Number(slice.time ?? 0), Number(slice.time ?? 0)] as [number, number];
+
+    return {
+      enabled: Boolean(slice.enabled ?? slice.warpEnabled ?? slice.isVisible ?? true),
+      range,
+      weight: Number.isFinite(Number(slice.weight ?? slice.warpWeight ?? 1)) ? Number(slice.weight ?? slice.warpWeight ?? 1) : 1,
+    };
+  });
+
+interface SimpleCrimePointsProps {
+  filterStoreOverride?: unknown;
+  coordinationStoreOverride?: unknown;
+  adaptiveStoreOverride?: unknown;
+  timeStoreOverride?: unknown;
+  sliceStoreOverride?: unknown;
+}
+
+export function SimpleCrimePoints({
+  filterStoreOverride,
+  coordinationStoreOverride,
+  adaptiveStoreOverride,
+  timeStoreOverride,
+  sliceStoreOverride,
+}: SimpleCrimePointsProps = {}) {
   // Get viewport bounds from store
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
@@ -81,22 +109,28 @@ export function SimpleCrimePoints() {
   const viewportFilters = useViewportStore((state) => state.filters);
   
   // Also get legacy filters (selectedTimeRange, selectedSpatialBounds) from filter store
-  const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const selectedSpatialBounds = useFilterStore((state) => state.selectedSpatialBounds);
-  const setSelectedIndex = useCoordinationStore((state) => state.setSelectedIndex);
-  const setDetailsOpen = useCoordinationStore((state) => state.setDetailsOpen);
+  const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
+  const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
+  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
+  const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
+  const sliceStore = (sliceStoreOverride ?? useWarpSliceStore) as typeof useWarpSliceStore;
+
+  const selectedTimeRange = useStore(filterStore, (state) => state.selectedTimeRange);
+  const selectedSpatialBounds = useStore(filterStore, (state) => state.selectedSpatialBounds);
+  const setSelectedIndex = useStore(coordinationStore, (state) => state.setSelectedIndex);
+  const setDetailsOpen = useStore(coordinationStore, (state) => state.setDetailsOpen);
 
   const theme = useThemeStore((state) => state.theme);
   const palette = PALETTES[theme];
-  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
-  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
-  const warpSource = useAdaptiveStore((state) => state.warpSource);
-  const warpMap = useAdaptiveStore((state) => state.warpMap);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
-  const warpSlices = useWarpSliceStore((state) => state.slices);
+  const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
+  const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
+  const warpSource = useStore(adaptiveStore, (state) => state.warpSource);
+  const warpMap = useStore(adaptiveStore, (state) => state.warpMap);
+  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain);
+  const warpSlices = useStore(sliceStore, (state) => state.slices);
 
   const authoredWarpMap = useMemo(
-    () => buildSliceAuthoredWarpMap(warpSlices, mapDomain, Math.max(96, warpMap?.length || 0)),
+    () => buildSliceAuthoredWarpMap(normalizeStoreSlices(warpSlices as Array<any>), mapDomain, Math.max(96, warpMap?.length || 0)),
     [mapDomain, warpMap?.length, warpSlices]
   );
   const effectiveWarpMap = warpSource === 'slice-authored' ? authoredWarpMap : warpMap;
@@ -117,8 +151,8 @@ export function SimpleCrimePoints() {
   const data = crimeRecords || [];
 
   // Get filter state
-  const selectedTypes = useFilterStore((state) => state.selectedTypes);
-  const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
+  const selectedTypes = useStore(filterStore, (state) => state.selectedTypes);
+  const selectedDistricts = useStore(filterStore, (state) => state.selectedDistricts);
 
   // Derive min/max from the full dataset range (not just the current viewport)
   const minTimestampSec = DATA_MIN_TIMESTAMP;

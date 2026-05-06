@@ -10,6 +10,11 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
 import { useDashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
+import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
+import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
+import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
 
 type DemoViewport = 'map' | 'cube';
 
@@ -75,7 +80,14 @@ export function DashboardDemoShell() {
             {activeViewport === 'map' ? (
               <DemoMapVisualization />
             ) : (
-              <CubeVisualization selectionStory={selectionStory} />
+              <CubeVisualization
+                selectionStory={selectionStory}
+                filterStoreOverride={useDashboardDemoFilterStore}
+                coordinationStoreOverride={useDashboardDemoCoordinationStore}
+                adaptiveStoreOverride={useDashboardDemoAdaptiveStore}
+                timeStoreOverride={useDashboardDemoTimeStore}
+                sliceStoreOverride={useDashboardDemoSliceStore}
+              />
             )}
           </div>
         </section>

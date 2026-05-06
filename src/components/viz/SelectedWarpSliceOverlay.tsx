@@ -2,6 +2,7 @@
 
 import { Edges, Html } from '@react-three/drei';
 import { useMemo } from 'react';
+import { useStore } from 'zustand';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -64,6 +65,25 @@ const buildSliceAuthoredWarpMap = (
   return authoredMap;
 };
 
+const normalizeStoreSlices = (slices: Array<any>): Array<{ enabled: boolean; range: [number, number]; weight: number }> =>
+  slices.map((slice) => {
+    const range = Array.isArray(slice.range) && slice.range.length >= 2
+      ? [Number(slice.range[0]), Number(slice.range[1])] as [number, number]
+      : [Number(slice.time ?? 0), Number(slice.time ?? 0)] as [number, number];
+
+    return {
+      enabled: Boolean(slice.enabled ?? slice.warpEnabled ?? slice.isVisible ?? true),
+      range,
+      weight: Number.isFinite(Number(slice.weight ?? slice.warpWeight ?? 1)) ? Number(slice.weight ?? slice.warpWeight ?? 1) : 1,
+    };
+  });
+
+interface SelectedWarpSliceOverlayProps {
+  adaptiveStoreOverride?: unknown;
+  timeStoreOverride?: unknown;
+  sliceStoreOverride?: unknown;
+}
+
 const toRawEpoch = (percent: number, domain: [number, number], usesNormalizedDomain: boolean) => {
   if (usesNormalizedDomain) {
     const normalized = clamp(percent, 0, 100);
@@ -73,7 +93,11 @@ const toRawEpoch = (percent: number, domain: [number, number], usesNormalizedDom
   return domainStart + (percent / 100) * (domainEnd - domainStart);
 };
 
-export function SelectedWarpSliceOverlay() {
+export function SelectedWarpSliceOverlay({
+  adaptiveStoreOverride,
+  timeStoreOverride,
+  sliceStoreOverride,
+}: SelectedWarpSliceOverlayProps = {}) {
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
   const viewportFilters = useViewportStore((state) => state.filters);
@@ -87,16 +111,22 @@ export function SelectedWarpSliceOverlay() {
     limit: 50000,
   });
 
-  const slices = useWarpSliceStore((state) => state.slices);
-  const selectedSliceId = useWarpSliceStore((state) => state.selectedSliceId);
-  const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
-  const warpFactor = useAdaptiveStore((state) => state.warpFactor);
-  const warpSource = useAdaptiveStore((state) => state.warpSource);
-  const warpMap = useAdaptiveStore((state) => state.warpMap);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const sliceStore = (sliceStoreOverride ?? useWarpSliceStore) as typeof useWarpSliceStore;
+  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
+  const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
+  const slices = useStore(sliceStore, (state) => state.slices);
+  const selectedSliceId = useStore(
+    sliceStore,
+    (state: any) => state.selectedSliceId ?? state.activeSliceId ?? state.activeWarpId ?? null
+  );
+  const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
+  const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
+  const warpSource = useStore(adaptiveStore, (state) => state.warpSource);
+  const warpMap = useStore(adaptiveStore, (state) => state.warpMap);
+  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain);
 
   const authoredWarpMap = useMemo(
-    () => buildSliceAuthoredWarpMap(slices, mapDomain, Math.max(96, warpMap?.length || 0)),
+    () => buildSliceAuthoredWarpMap(normalizeStoreSlices(slices as Array<any>), mapDomain, Math.max(96, warpMap?.length || 0)),
     [mapDomain, slices, warpMap?.length]
   );
   const effectiveWarpMap = warpSource === 'slice-authored' ? authoredWarpMap : warpMap;
@@ -150,19 +180,24 @@ export function SelectedWarpSliceOverlay() {
     if (!selectedSliceId) {
       return null;
     }
-    return slices.find((slice) => slice.id === selectedSliceId && slice.enabled) ?? null;
+    return slices.find((slice: any) => slice.id === selectedSliceId && (slice.enabled ?? slice.isVisible ?? true)) ?? null;
   }, [selectedSliceId, slices]);
 
+  const selectedSliceMeta = selectedSlice as any;
+  const selectedSliceRange: [number, number] = selectedSliceMeta?.range && selectedSliceMeta.range.length >= 2
+    ? [Number(selectedSliceMeta.range[0]), Number(selectedSliceMeta.range[1])]
+    : [Number(selectedSliceMeta?.time ?? 0), Number(selectedSliceMeta?.time ?? 0)];
+
   const sliceLabel = selectedSlice
-    ? `${selectedSlice.name?.trim() || (selectedSlice.type === 'range' ? 'Range slice' : 'Point slice')} · linked selection`
+    ? `${selectedSliceMeta?.name?.trim() || (selectedSliceMeta?.type === 'range' ? 'Range slice' : 'Point slice')} · linked selection`
     : 'Linked selection';
 
   if (!selectedSlice) {
     return null;
   }
 
-  const startPercent = Math.min(selectedSlice.range[0], selectedSlice.range[1]);
-  const endPercent = Math.max(selectedSlice.range[0], selectedSlice.range[1]);
+  const startPercent = Math.min(selectedSliceRange[0], selectedSliceRange[1]);
+  const endPercent = Math.max(selectedSliceRange[0], selectedSliceRange[1]);
 
   const startRaw = toRawEpoch(startPercent, mapDomain, usesNormalizedDomain);
   const endRaw = toRawEpoch(endPercent, mapDomain, usesNormalizedDomain);

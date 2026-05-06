@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { useStore } from 'zustand';
 import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
 import { SimpleCrimePoints } from './SimpleCrimePoints';
@@ -14,13 +15,31 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { resolveRouteBinningMode } from '@/lib/adaptive/route-binning-mode';
 import { SpatialConstraintOverlay } from './SpatialConstraintOverlay';
 import { SelectedWarpSliceOverlay } from './SelectedWarpSliceOverlay';
+import { TimeSlices } from './TimeSlices';
 
-export function MainScene({ showMapBackground = true }: { showMapBackground?: boolean }) {
+interface MainSceneProps {
+  showMapBackground?: boolean;
+  filterStoreOverride?: unknown;
+  coordinationStoreOverride?: unknown;
+  adaptiveStoreOverride?: unknown;
+  timeStoreOverride?: unknown;
+  sliceStoreOverride?: unknown;
+}
+
+export function MainScene({
+  showMapBackground = true,
+  filterStoreOverride,
+  coordinationStoreOverride,
+  adaptiveStoreOverride,
+  timeStoreOverride,
+  sliceStoreOverride,
+}: MainSceneProps) {
   // Initialize the selection sync conductor - ties all views together
   useSelectionSync();
 
   const mode = useUIStore((state) => state.mode);
-  const densityScope = useAdaptiveStore((state) => state.densityScope);
+  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
+  const densityScope = useStore(adaptiveStore, (state) => state.densityScope);
   const { data: viewportCrimes } = useViewportCrimeData({ bufferDays: 30 });
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
@@ -47,9 +66,9 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
     }
 
     if (minT !== Infinity && maxT > minT) {
-      useAdaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
+      adaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
     }
-  }, [densityScope, viewportCrimes]);
+  }, [adaptiveStore, densityScope, viewportCrimes]);
 
   // Global mode: hydrate relational maps from DB precompute, fallback to local compute if request fails.
   useEffect(() => {
@@ -61,7 +80,7 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
       const { columns, data } = useTimelineDataStore.getState();
 
       if (columns && columns.timestamp) {
-        useAdaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
+        adaptiveStore.getState().computeMaps(columns.timestamp, [0, 100]);
         return;
       }
 
@@ -94,12 +113,12 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
       }
 
       if (minY !== Infinity && maxY > minY) {
-        useAdaptiveStore.getState().computeMaps(yValues, [minY, maxY]);
+        adaptiveStore.getState().computeMaps(yValues, [minY, maxY]);
         return;
       }
 
       if (minT !== Infinity && maxT > minT) {
-        useAdaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
+        adaptiveStore.getState().computeMaps(timestamps, [minT, maxT]);
       }
     };
 
@@ -160,11 +179,21 @@ export function MainScene({ showMapBackground = true }: { showMapBackground?: bo
         {/* Canvas needs pointer-events-auto for controls to work */}
         <div className="h-full w-full pointer-events-auto">
           <Scene transparent={mode === 'map'}>
-            <SimpleCrimePoints />
+            <SimpleCrimePoints
+              filterStoreOverride={filterStoreOverride}
+              coordinationStoreOverride={coordinationStoreOverride}
+              adaptiveStoreOverride={adaptiveStoreOverride}
+              timeStoreOverride={timeStoreOverride}
+              sliceStoreOverride={sliceStoreOverride}
+            />
+            <TimeSlices sliceStoreOverride={sliceStoreOverride} timeStoreOverride={timeStoreOverride} />
             <SpatialConstraintOverlay />
-            <SelectedWarpSliceOverlay />
+            <SelectedWarpSliceOverlay
+              adaptiveStoreOverride={adaptiveStoreOverride}
+              timeStoreOverride={timeStoreOverride}
+              sliceStoreOverride={sliceStoreOverride}
+            />
 
-            
             <CameraControls
               ref={controlsRef}
               makeDefault
