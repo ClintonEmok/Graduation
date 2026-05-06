@@ -1,18 +1,15 @@
 "use client";
 
+import type { DemoDetailPeriodSelection, DemoBurstWindowSelection } from '@/store/useDashboardDemoCoordinationStore';
 import React from 'react';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
+import { BurstScoreRail } from '@/components/timeline/BurstScoreRail';
+import type { BurstScoreSeriesEntry } from '@/components/timeline/lib/burst-score-series';
 
 type BurstTaxonomy = 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
 
-interface SurfaceBurstWindow {
-  id: string;
-  start: number;
-  end: number;
-  peak: number;
-  count: number;
-  duration: number;
-  burstClass?: BurstTaxonomy;
+export interface SurfaceBurstWindow extends Omit<DemoBurstWindowSelection, 'metric'> {
+  metric: 'density';
 }
 
 interface SurfaceBucket {
@@ -66,10 +63,13 @@ interface DualTimelineSurfaceProps {
   resolvedDetailRenderMode: 'points' | 'bins';
   detailPoints: number[];
   detailBins: SurfaceBucket[];
+  selectedDetailPeriodId: string | null;
+  onDetailPeriodClick?: (period: DemoDetailPeriodSelection) => void;
   orderedSliceGeometries: SurfaceSliceGeometry[];
   activeSliceUpdatedAt: number | null;
   pendingGeneratedGeometries: SurfaceSliceGeometry[];
   maxSliceOverlap: number;
+  burstScoreSeries: BurstScoreSeriesEntry[];
   cursorX: number | null;
   selectionX: number | null;
   zoomRef: React.RefObject<SVGRectElement | null>;
@@ -168,10 +168,13 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     resolvedDetailRenderMode,
     detailPoints,
     detailBins,
+    selectedDetailPeriodId,
+    onDetailPeriodClick,
     orderedSliceGeometries,
     activeSliceUpdatedAt,
     pendingGeneratedGeometries,
     maxSliceOverlap,
+    burstScoreSeries,
     cursorX,
     selectionX,
     zoomRef,
@@ -184,6 +187,8 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     hoveredDetail,
     isDetailEmpty,
   } = props;
+  const overviewDensityScale = overviewScale as Parameters<typeof DensityHeatStrip>[0]['scale'];
+  const detailDensityScale = detailScale as Parameters<typeof DensityHeatStrip>[0]['scale'];
 
   return (
     <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
@@ -191,7 +196,10 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
         <div className="flex flex-wrap items-center gap-3" style={{ paddingLeft: OVERVIEW_MARGIN.left, paddingRight: OVERVIEW_MARGIN.right }}>
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
             <div className="flex w-full items-center justify-between gap-3">
-              <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
+              <div className="flex flex-col gap-0.5">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Overview density</div>
+                <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
+              </div>
               <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
                 <span className="leading-none">Low</span>
                 <span className="h-2 w-20 rounded-sm border border-foreground/15" style={{ background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)` }} aria-hidden="true" />
@@ -200,7 +208,7 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
             </div>
             <div className="relative w-full">
               {width > 0 ? (
-                <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} scale={overviewScale} height={12} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} />
+                <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} scale={overviewDensityScale} height={12} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} />
               ) : (
                 <div className="h-3" />
               )}
@@ -254,7 +262,11 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
 
         <div className="relative">
           <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
-            {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} /> : <div className="h-2" />}
+            <BurstScoreRail series={burstScoreSeries} width={detailInnerWidth} />
+          </div>
+
+          <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
+            {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailDensityScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} /> : <div className="h-2" />}
           </div>
 
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
@@ -263,18 +275,73 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
               <pattern id="sliceOverlapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="2" /></pattern>
             </defs>
             <g transform={`translate(${DETAIL_MARGIN.left},${DETAIL_MARGIN.top})`}>
+              <rect
+                ref={zoomRef}
+                width={detailInnerWidth}
+                height={DETAIL_HEIGHT}
+                fill="transparent"
+                pointerEvents="auto"
+                className="cursor-crosshair"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUpWithSelection}
+                onPointerLeave={handlePointerCancel}
+              />
+
               {resolvedDetailRenderMode === 'points'
                 ? detailPoints.map((timestamp: number, index: number) => {
                     const x = detailScale(new Date(timestamp * 1000));
                     return <circle key={`detail-point-${index}`} cx={x} cy={DETAIL_HEIGHT - 6} r={2} className="fill-primary/60" />;
                   })
                 : detailBins.map((bucket: SurfaceBucket, index: number) => {
-                    if (bucket.x0 === undefined || bucket.x1 === undefined) return null;
-                    const x0 = detailScale(new Date(bucket.x0 * 1000));
-                    const x1 = detailScale(new Date(bucket.x1 * 1000));
+                    const bucketStart = bucket.x0;
+                    const bucketEnd = bucket.x1;
+                    if (bucketStart === undefined || bucketEnd === undefined) return null;
+                    const x0 = detailScale(new Date(bucketStart * 1000));
+                    const x1 = detailScale(new Date(bucketEnd * 1000));
                     const barWidth = Math.max(0, x1 - x0 - 1);
                     const barHeight = (bucket.length / detailMax) * DETAIL_HEIGHT;
-                    return <rect key={`detail-bin-${index}`} x={x0} y={DETAIL_HEIGHT - barHeight} width={barWidth} height={barHeight} className="fill-primary/20" />;
+                    const periodId = `detail-bin-${bucketStart}-${bucketEnd}-${bucket.length}-${index}`;
+                    const isSelected = selectedDetailPeriodId === periodId;
+                    const handleClick = onDetailPeriodClick
+                      ? () =>
+                          onDetailPeriodClick({
+                            id: periodId,
+                            startSec: bucketStart,
+                            endSec: bucketEnd,
+                            count: bucket.length,
+                            label: `${new Date(bucketStart * 1000).toLocaleDateString()} → ${new Date(bucketEnd * 1000).toLocaleDateString()}`,
+                            renderMode: 'bins',
+                            summary: `${bucket.length.toLocaleString()} crimes in this detail bin`,
+                          })
+                      : undefined;
+                    return (
+                      <rect
+                        key={`detail-bin-${index}`}
+                        x={x0}
+                        y={DETAIL_HEIGHT - barHeight}
+                        width={barWidth}
+                        height={barHeight}
+                        className={`fill-primary/20 ${onDetailPeriodClick ? 'cursor-pointer' : ''}`}
+                        role={onDetailPeriodClick ? 'button' : undefined}
+                        tabIndex={onDetailPeriodClick ? 0 : undefined}
+                        aria-label={`Detail bin ${index + 1}`}
+                        onClick={handleClick}
+                        onKeyDown={
+                          onDetailPeriodClick
+                            ? (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  handleClick?.();
+                                }
+                              }
+                            : undefined
+                        }
+                        fill={isSelected ? 'rgba(59, 130, 246, 0.28)' : 'rgba(59, 130, 246, 0.18)'}
+                        stroke={isSelected ? 'rgba(96, 165, 250, 0.95)' : 'rgba(148, 163, 184, 0.5)'}
+                        strokeWidth={isSelected ? 1.8 : 1}
+                      />
+                    );
                   })}
 
               {orderedSliceGeometries.map((geometry: SurfaceSliceGeometry) => {
@@ -330,8 +397,6 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
 
               {cursorX !== null && <><line x1={cursorX} x2={cursorX} y1={0} y2={DETAIL_HEIGHT} stroke={TIME_CURSOR_COLOR} strokeWidth={2} filter="url(#timeCursorGlow)" /><circle cx={cursorX} cy={0} r={8} fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.45)" strokeWidth={1} pointerEvents="none" /><circle cx={cursorX} cy={0} r={5.5} fill={TIME_CURSOR_COLOR} stroke="rgba(255,255,255,0.95)" strokeWidth={2} filter="url(#timeCursorGlow)" /></>}
               {selectionX !== null && <g><line x1={selectionX} x2={selectionX} y1={0} y2={DETAIL_HEIGHT} stroke="rgba(125, 211, 252, 0.95)" strokeWidth={2.2} strokeDasharray="4 2"><animate attributeName="opacity" values="0.45;1;0.45" dur="1.7s" repeatCount="indefinite" /></line><circle cx={selectionX} cy={4} r={3.5} fill="rgba(186, 230, 253, 0.95)"><animate attributeName="r" values="3;4.5;3" dur="1.7s" repeatCount="indefinite" /></circle></g>}
-
-              <rect ref={zoomRef} width={detailInnerWidth} height={DETAIL_HEIGHT} fill="transparent" pointerEvents="auto" className="cursor-crosshair" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUpWithSelection} onPointerLeave={handlePointerCancel} />
 
               <g transform={`translate(0, ${DETAIL_HEIGHT})`} className="text-muted-foreground">
                 {detailTicks.map((tick: Date, index: number) => { const x = detailScale(tick); return <g key={`detail-tick-${index}`} transform={`translate(${x}, 0)`}><line y2={6} stroke="currentColor" /><text y={14} textAnchor="middle" fontSize={10} fill="currentColor">{detailTickFormat(tick)}</text></g>; })}

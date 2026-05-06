@@ -16,12 +16,14 @@ import {
   selectSlices,
   useDashboardDemoSliceStore,
 } from '@/store/useDashboardDemoSliceStore';
+import type { DemoDetailPeriodSelection } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { resolvePointByIndex } from '@/lib/selection';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildDemoSliceAuthoredWarpMap } from '@/components/dashboard-demo/lib/demo-warp-map';
+import { buildBurstScoreSeries } from '@/components/timeline/lib/burst-score-series';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { sampleTimelinePoints, selectTimelinePointsInRange } from '@/lib/timeline-series';
 import {
@@ -41,7 +43,7 @@ import {
 } from './lib/interaction-guards';
 import { type TickLabelStrategy } from './lib/tick-ux';
 import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
-import { DualTimelineSurface } from '@/components/timeline/DualTimelineSurface';
+import { DualTimelineSurface, type SurfaceBurstWindow } from '@/components/timeline/DualTimelineSurface';
 import { useDualTimelineViewModel } from './hooks/useDualTimelineViewModel';
 import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { useDemoBurstWindows } from '@/components/dashboard-demo/lib/useDemoBurstWindows';
@@ -211,6 +213,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const setBrushRange = useStore(useDashboardDemoCoordinationStore, (state) => state.setBrushRange);
   const selectedBurstWindows = useStore(useDashboardDemoCoordinationStore, (state) => state.selectedBurstWindows);
   const setSelectedBurstWindow = useStore(useDashboardDemoCoordinationStore, (state) => state.toggleBurstWindow);
+  const selectedDetailPeriod = useStore(useDashboardDemoCoordinationStore, (state) => state.selectedDetailPeriod);
+  const setSelectedDetailPeriod = useStore(useDashboardDemoCoordinationStore, (state) => state.setSelectedDetailPeriod);
   const setDetailsOpen = useStore(useDashboardDemoCoordinationStore, (state) => state.setDetailsOpen);
   const timeScaleMode = useStore(useDashboardDemoWarpStore, (state) => state.timeScaleMode);
   const warpSource = useStore(useDashboardDemoWarpStore, (state) => state.warpSource);
@@ -527,6 +531,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
       return {
         ...window,
+        metric: 'density' as const,
         burstClass: taxonomy.burstClass,
         burstConfidence: taxonomy.burstConfidence,
         burstScore: taxonomy.burstScore,
@@ -542,27 +547,19 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
   const activeBurstWindowId = selectedBurstWindows[0]?.id ?? null;
 
-  const burstTaxonomySummary = useMemo(() => {
-    const counts: Record<'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral', number> = {
-      'prolonged-peak': 0,
-      'isolated-spike': 0,
-      valley: 0,
-      neutral: 0,
-    };
-
-    for (const window of burstWindowsWithTaxonomy) {
-      counts[window.burstClass] += 1;
-    }
-
-    return counts;
-  }, [burstWindowsWithTaxonomy]);
-
   const handleBurstWindowClick = useCallback(
-    (window: (typeof burstWindowsWithTaxonomy)[number]) => {
+    (window: SurfaceBurstWindow) => {
       setSelectedBurstWindow(window);
       setDetailsOpen(true);
     },
     [setDetailsOpen, setSelectedBurstWindow]
+  );
+
+  const handleDetailPeriodClick = useCallback(
+    (period: DemoDetailPeriodSelection) => {
+      setSelectedDetailPeriod(period);
+    },
+    [setSelectedDetailPeriod]
   );
 
 
@@ -771,6 +768,27 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return [...sliceGeometries].sort((a, b) => stackWeight(a) - stackWeight(b));
   }, [sliceGeometries]);
 
+  const burstScoreSeries = useMemo(
+    () =>
+      buildBurstScoreSeries(
+        orderedSliceGeometries.map((geometry) => {
+          const slice = slices.find((item) => item.id === geometry.id);
+          const label = slice?.name?.trim() || (geometry.isPoint ? 'Point slice' : 'Range slice');
+
+          return {
+            id: geometry.id,
+            label,
+            left: geometry.left,
+            width: geometry.width,
+            isActive: geometry.isActive,
+            isBurst: geometry.isBurst,
+            burstScore: slice?.burstScore ?? null,
+          };
+        })
+      ),
+    [orderedSliceGeometries, slices]
+  );
+
   const pendingGeneratedGeometries = useMemo<TimelineSliceGeometry[]>(() => {
     if (!pendingGeneratedBins.length || detailInnerWidth <= 0) {
       return [];
@@ -813,18 +831,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
   }, [detailInnerWidth, detailScale, pendingGeneratedBins]);
 
-  const pendingGeneratedBinsByGeometryId = useMemo(() => {
-    return new Map(pendingGeneratedBins.map((bin) => [`pending-${bin.id}`, bin] as const));
-  }, [pendingGeneratedBins]);
-
-  const formatBurstCoefficient = (value: number | undefined) => {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-      return null;
-    }
-
-    return value.toFixed(2);
-  };
-
   const isTimelineLoading = isDataLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
   const timelineSummary = useDemoTimelineSummary();
@@ -858,7 +864,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     overviewTicks,
     overviewTickFormat,
     burstWindows: burstWindowsWithTaxonomy,
-    burstTaxonomySummary,
     activeBurstWindowId,
     onBurstWindowClick: handleBurstWindowClick,
     detailDensityMap,
@@ -866,10 +871,13 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     resolvedDetailRenderMode,
     detailPoints,
     detailBins,
+    selectedDetailPeriodId: selectedDetailPeriod?.id ?? null,
+    onDetailPeriodClick: handleDetailPeriodClick,
     orderedSliceGeometries,
     activeSliceUpdatedAt,
     pendingGeneratedGeometries,
     maxSliceOverlap,
+    burstScoreSeries,
     cursorX,
     selectionX,
     zoomRef,
