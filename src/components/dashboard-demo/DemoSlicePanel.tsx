@@ -107,6 +107,7 @@ export function DemoSlicePanel() {
   const deletePendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.deletePendingGeneratedBin);
   const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
+  const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
@@ -269,19 +270,9 @@ export function DemoSlicePanel() {
       ? normalizedToEpochSeconds(normalizedRange[1], minTimestampSec, maxTimestampSec) * 1000
       : null;
 
-    addSlice({
-      type: 'range',
-      time: (normalizedRange[0] + normalizedRange[1]) / 2,
-      range: normalizedRange,
-      source: 'manual',
-      warpEnabled: true,
-      warpWeight: 1,
-      isLocked: false,
-      isVisible: true,
-      startDateTimeMs,
-      endDateTimeMs,
-    });
-  }, [addSlice, currentTime, maxTimestampSec, minTimestampSec, timeRange, timeResolution]);
+    if (startDateTimeMs === null || endDateTimeMs === null) return;
+    addManualDraftRange({ startMs: startDateTimeMs, endMs: endDateTimeMs });
+  }, [addManualDraftRange, currentTime, maxTimestampSec, minTimestampSec, timeRange, timeResolution]);
 
   const handleGenerateBurstDrafts = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null) {

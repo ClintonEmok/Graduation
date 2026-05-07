@@ -68,6 +68,7 @@ interface DashboardDemoTimeslicingState {
   splitPendingGeneratedBin: (binId: string, splitPoint: number) => void;
   deletePendingGeneratedBin: (binId: string) => void;
   applyGeneratedBins: (domain: [number, number]) => boolean;
+  addManualDraftRange: (range: { startMs: number; endMs: number }) => void;
 }
 
 const mergeBins = (bins: TimeBin[], binIds: string[]): TimeBin[] => {
@@ -389,6 +390,23 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
 
         return true;
       },
+      addManualDraftRange: (range) =>
+        set((state) => {
+          const bin: TimeBin = {
+            id: `manual-range-${Date.now()}`,
+            startTime: range.startMs,
+            endTime: range.endMs,
+            count: 0,
+            crimeTypes: ['all-crime-types'],
+            districts: [],
+            avgTimestamp: (range.startMs + range.endMs) / 2,
+            isModified: true,
+          };
+          return {
+            pendingGeneratedBins: [...state.pendingGeneratedBins, bin],
+            generationStatus: 'ready',
+          };
+        }),
     }),
     {
       name: 'dashboard-demo-timeslicing-mode-v1',
