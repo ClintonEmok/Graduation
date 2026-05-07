@@ -6,6 +6,8 @@ import { TimeSlice } from '@/store/useSliceStore';
 import type { StkdeSurfaceResponse } from '@/lib/stkde/contracts';
 import { sampleStkdeHeatmapColor } from '@/lib/stkde/heatmap-scale';
 
+export const SLICE_CLUSTER_OVERLAY_ELEVATION = 0.16;
+
 interface SlicePlaneProps {
   slice: TimeSlice;
   y: number;
@@ -203,7 +205,7 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface,
       ) : null}
 
       {evolutionState === 'active' ? (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, SLICE_CLUSTER_OVERLAY_ELEVATION, 0]}>
           <planeGeometry args={[100, 100]} />
           <meshBasicMaterial color={activeStroke} transparent opacity={0.12} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>

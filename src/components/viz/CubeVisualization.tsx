@@ -17,6 +17,7 @@ import { MainScene } from './MainScene';
 import { SimpleCrimeLegend } from './SimpleCrimeLegend';
 import { useLogger } from '@/hooks/useLogger';
 import { useStkdeStore } from '@/store/useStkdeStore';
+import { useClusterStore } from '@/store/useClusterStore';
 import type { DashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
 
 interface CubeVisualizationProps {
@@ -83,6 +84,20 @@ export default function CubeVisualization({
   const appliedIntervalLabel = appliedInterval?.label ?? 'None';
 
   const selectedHotspot = stkdeResponse?.hotspots.find((hotspot) => hotspot.id === selectedHotspotId) ?? null;
+  const clusters = useClusterStore((state) => state.clusters);
+  const selectedClusterId = useClusterStore((state) => state.selectedClusterId);
+  const hoveredClusterId = useClusterStore((state) => state.hoveredClusterId);
+  const activeClusterId = hoveredClusterId ?? selectedClusterId;
+  const activeCluster = clusters.find((cluster) => cluster.id === activeClusterId) ?? null;
+
+  const formatClusterTimeRange = (range: [number, number]) => {
+    const [start, end] = range;
+    if (Math.max(start, end) > 10000) {
+      return `${new Date(start * 1000).toLocaleDateString()} → ${new Date(end * 1000).toLocaleDateString()}`;
+    }
+
+    return `${start.toFixed(1)}% → ${end.toFixed(1)}%`;
+  };
 
   useEffect(() => {
     if (!columns && !isLoading) {
@@ -135,6 +150,13 @@ export default function CubeVisualization({
             {' · '}
             {(appliedInterval ?? selectedInterval)?.isEdited ? 'Edited' : 'Original'}
           </p>
+          {activeCluster ? (
+            <div className="mt-2 rounded border border-violet-300/25 bg-violet-500/10 px-2 py-1 text-violet-100">
+              <p>Cluster context: {activeCluster.dominantType}</p>
+              <p>Members: {activeCluster.count}</p>
+              <p>Time span: {formatClusterTimeRange(activeCluster.timeRange)}</p>
+            </div>
+          ) : null}
           {selectionStory ? (
             <div className="mt-2 rounded border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-cyan-100">
               <p>Window: {selectionStory.activeWindowLabel}</p>

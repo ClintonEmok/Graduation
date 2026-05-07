@@ -16,6 +16,10 @@ import { resolveRouteBinningMode } from '@/lib/adaptive/route-binning-mode';
 import { SpatialConstraintOverlay } from './SpatialConstraintOverlay';
 import { SelectedWarpSliceOverlay } from './SelectedWarpSliceOverlay';
 import { TimeSlices } from './TimeSlices';
+import { ClusterManager } from './ClusterManager';
+import { ClusterHighlights } from './ClusterHighlights';
+import { ClusterLabels } from './ClusterLabels';
+import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 
 interface MainSceneProps {
   showMapBackground?: boolean;
@@ -43,6 +47,7 @@ export function MainScene({
   const { data: viewportCrimes } = useViewportCrimeData({ bufferDays: 30 });
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
+  const clusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const modeOverride = searchParams.get('mode');
@@ -186,7 +191,10 @@ export function MainScene({
               timeStoreOverride={timeStoreOverride}
               sliceStoreOverride={sliceStoreOverride}
             />
+            {clusteringEnabled ? <ClusterManager /> : null}
             <TimeSlices sliceStoreOverride={sliceStoreOverride} timeStoreOverride={timeStoreOverride} />
+            {clusteringEnabled ? <ClusterHighlights /> : null}
+            {clusteringEnabled ? <ClusterLabels /> : null}
             <SpatialConstraintOverlay />
             <SelectedWarpSliceOverlay
               adaptiveStoreOverride={adaptiveStoreOverride}
