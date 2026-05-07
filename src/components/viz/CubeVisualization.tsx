@@ -89,6 +89,7 @@ export default function CubeVisualization({
   const hoveredClusterId = useClusterStore((state) => state.hoveredClusterId);
   const activeClusterId = hoveredClusterId ?? selectedClusterId;
   const activeCluster = clusters.find((cluster) => cluster.id === activeClusterId) ?? null;
+  const activeClusterState = hoveredClusterId ? 'Hovered' : selectedClusterId ? 'Selected' : 'Idle';
 
   const formatClusterTimeRange = (range: [number, number]) => {
     const [start, end] = range;
@@ -152,6 +153,7 @@ export default function CubeVisualization({
           </p>
           {activeCluster ? (
             <div className="mt-2 rounded border border-violet-300/25 bg-violet-500/10 px-2 py-1 text-violet-100">
+              <p>State: {activeClusterState}</p>
               <p>Cluster context: {activeCluster.dominantType}</p>
               <p>Members: {activeCluster.count}</p>
               <p>Time span: {formatClusterTimeRange(activeCluster.timeRange)}</p>
