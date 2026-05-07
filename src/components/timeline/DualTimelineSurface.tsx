@@ -9,7 +9,7 @@ import type { BurstScoreSeriesEntry } from '@/components/timeline/lib/burst-scor
 type BurstTaxonomy = 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
 
 export interface SurfaceBurstWindow extends Omit<DemoBurstWindowSelection, 'metric'> {
-  metric: 'density';
+  metric?: 'density';
 }
 
 interface SurfaceBucket {
@@ -63,13 +63,14 @@ interface DualTimelineSurfaceProps {
   resolvedDetailRenderMode: 'points' | 'bins';
   detailPoints: number[];
   detailBins: SurfaceBucket[];
-  selectedDetailPeriodId: string | null;
+  selectedDetailPeriodId?: string | null;
   onDetailPeriodClick?: (period: DemoDetailPeriodSelection) => void;
   orderedSliceGeometries: SurfaceSliceGeometry[];
   activeSliceUpdatedAt: number | null;
   pendingGeneratedGeometries: SurfaceSliceGeometry[];
+  pendingManualGeometries?: SurfaceSliceGeometry[];
   maxSliceOverlap: number;
-  burstScoreSeries: BurstScoreSeriesEntry[];
+  burstScoreSeries?: BurstScoreSeriesEntry[];
   cursorX: number | null;
   selectionX: number | null;
   zoomRef: React.RefObject<SVGRectElement | null>;
@@ -168,13 +169,14 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     resolvedDetailRenderMode,
     detailPoints,
     detailBins,
-    selectedDetailPeriodId,
+    selectedDetailPeriodId = null,
     onDetailPeriodClick,
     orderedSliceGeometries,
     activeSliceUpdatedAt,
     pendingGeneratedGeometries,
+    pendingManualGeometries = [],
     maxSliceOverlap,
-    burstScoreSeries,
+    burstScoreSeries = [],
     cursorX,
     selectionX,
     zoomRef,
@@ -390,6 +392,23 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
                       />
                     );
                   })()}
+                </g>
+              ))}
+
+              {pendingManualGeometries.map((geometry: SurfaceSliceGeometry) => (
+                <g key={geometry.id}>
+                  <rect
+                    x={geometry.left}
+                    y={3}
+                    width={Math.max(2, geometry.width)}
+                    height={DETAIL_HEIGHT - 6}
+                    rx={3}
+                    fill="rgba(6, 182, 212, 0.16)"
+                    stroke="rgba(34, 211, 238, 0.85)"
+                    strokeWidth={1.25}
+                    strokeDasharray="4 3"
+                    pointerEvents="none"
+                  />
                 </g>
               ))}
 

@@ -1,44 +1,51 @@
 import React, { useMemo } from 'react';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import { useClusterStore } from '@/store/useClusterStore';
+import { PALETTES } from '@/lib/palettes';
+import { useThemeStore } from '@/store/useThemeStore';
 
 export function MapClusterHighlights() {
-  const { clusters, enabled, selectedClusterId } = useClusterStore();
+  const { clusters, selectedClusterId } = useClusterStore();
+  const theme = useThemeStore((state) => state.theme);
+  const palette = PALETTES[theme].categoryColors;
+
+  const resolveClusterColor = (dominantType: string) =>
+    palette[dominantType.toUpperCase()] || palette[dominantType] || '#8b5cf6';
 
   const geoJson = useMemo(() => {
-    if (!enabled || !clusters || clusters.length === 0) return null;
+    if (!clusters || clusters.length === 0) return null;
 
     const features = clusters.map((cluster) => {
       const isSelected = cluster.id === selectedClusterId;
-      return {
-        type: 'Feature' as const,
-        geometry: {
-          type: 'Polygon' as const,
+        return {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Polygon' as const,
           coordinates: [
             [
-              [cluster.minLon, cluster.minLat],
-              [cluster.maxLon, cluster.minLat],
-              [cluster.maxLon, cluster.maxLat],
-              [cluster.minLon, cluster.maxLat],
-              [cluster.minLon, cluster.minLat]
+              [cluster.bounds.minLon, cluster.bounds.minLat],
+              [cluster.bounds.maxLon, cluster.bounds.minLat],
+              [cluster.bounds.maxLon, cluster.bounds.maxLat],
+              [cluster.bounds.minLon, cluster.bounds.maxLat],
+              [cluster.bounds.minLon, cluster.bounds.minLat]
             ]
           ]
-        },
-        properties: {
-          id: cluster.id,
-          isSelected,
-          color: cluster.color,
-          count: cluster.count,
-          dominantType: cluster.dominantType
-        }
-      };
+          },
+          properties: {
+            id: cluster.id,
+            isSelected,
+            color: resolveClusterColor(cluster.dominantType),
+            count: cluster.count,
+            dominantType: cluster.dominantType
+          }
+        };
     });
 
     return {
       type: 'FeatureCollection' as const,
       features
     };
-  }, [clusters, enabled, selectedClusterId]);
+  }, [clusters, selectedClusterId]);
 
   if (!geoJson) return null;
 

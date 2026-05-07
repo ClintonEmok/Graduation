@@ -23,7 +23,8 @@ export interface BurstDraftGenerationResult {
 const normalizeRange = (start: number, end: number): [number, number] =>
   start <= end ? [start, end] : [end, start];
 
-const isValidNumber = (value: number | null): value is number => typeof value === 'number' && Number.isFinite(value);
+const isValidNumber = (value: number | null | undefined): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 const hasOverlap = (left: [number, number], right: [number, number]): boolean => left[0] < right[1] && right[0] < left[1];
 
@@ -640,7 +641,7 @@ export const buildBurstDraftBinsFromWindows = (
   }
 
   const bins = overlappingWindows
-    .map((burstWindow, index) => {
+    .map((burstWindow, index): TimeBin | null => {
       const burstRange = normalizeRange(burstWindow.start, burstWindow.end);
       const clippedStart = Math.max(burstRange[0], activeSelection[0]);
       const clippedEnd = Math.min(burstRange[1], activeSelection[1]);
@@ -759,12 +760,12 @@ export const buildBurstDraftBinsFromCrimeRecords = ({
       const analysis = analyses[index] ?? calculatePartitionBurstiness(partitionEvents);
       const normalizedDensity = maxDensity > 0 ? densities[index] / maxDensity : 0;
       const neighborhood = [
-        { window: overlappingWindows[index - 1], events: groupedEvents[index - 1] },
-        { window: overlappingWindows[index + 1], events: groupedEvents[index + 1] },
+        { window: overlappingWindows[index - 1], events: groupedEvents[index - 1] ?? [] },
+        { window: overlappingWindows[index + 1], events: groupedEvents[index + 1] ?? [] },
       ]
-        .filter((entry): entry is { window: BurstWindow; events: { time: number; type: string }[] | undefined } => entry.window !== undefined)
+        .filter((entry): entry is { window: BurstWindow; events: TimedEvent[] } => entry.window !== undefined)
         .map(({ window, events }) => {
-          const neighborEvents = events ?? [];
+          const neighborEvents = events;
           const neighborDensity = maxDensity > 0
             ? (neighborEvents.length / Math.max(1, window.duration)) / maxDensity
             : 0;
@@ -806,7 +807,7 @@ export const buildBurstDraftBinsFromCrimeRecords = ({
         neighborhoodSummary: `${taxonomy.neighborhoodSummary}; events=${partitionEvents.length}`,
       } satisfies TimeBin;
     })
-    .filter((bin): bin is TimeBin => bin !== null)
+    .flatMap((bin) => (bin === null ? [] : [bin]))
     .sort((left, right) => left.startTime - right.startTime);
 
   if (bins.length === 0) {

@@ -4,12 +4,9 @@ import React from 'react';
 import { X, Check, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfidenceBadge } from './ConfidenceBadge';
-import { 
-  useSuggestionStore, 
-  type Suggestion, 
-  type TimeScaleData, 
-  type IntervalBoundaryData 
-} from '@/store/useSuggestionStore';
+import { useSuggestionStore } from '@/store/useSuggestionStore';
+import { useSuggestionComparisonStore } from '@/store/useSuggestionComparisonStore';
+import type { IntervalBoundaryData, Suggestion, TimeScaleData } from '@/types/suggestion';
 
 interface ComparisonViewProps {
   suggestion1: Suggestion;
@@ -147,7 +144,8 @@ function renderVisualDiff(suggestion1: Suggestion, suggestion2: Suggestion): Rea
 }
 
 export function ComparisonView({ suggestion1, suggestion2 }: ComparisonViewProps) {
-  const { acceptSuggestion, clearComparison } = useSuggestionStore();
+  const acceptSuggestion = useSuggestionStore((state) => state.acceptSuggestion);
+  const clearComparison = useSuggestionComparisonStore((state) => state.clearComparison);
   
   const handleAccept = (id: string) => {
     acceptSuggestion(id);

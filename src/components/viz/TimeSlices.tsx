@@ -17,7 +17,6 @@ import { useFilterStore } from '@/store/useFilterStore';
 import { useClusterStore } from '@/store/useClusterStore';
 import { selectFilteredData } from '@/lib/data/selectors';
 import { analyzeClusters, groupClusterAnalysesBySlice } from '@/lib/clustering/cluster-analysis';
-import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 
 interface TimeSlicesProps {
   sliceStoreOverride?: unknown;
@@ -43,8 +42,6 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
-  const clusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
-  const clusterStoreEnabled = useClusterStore((state) => state.enabled);
   const clusterSensitivity = useClusterStore((state) => state.sensitivity);
   const setSliceClustersById = useClusterStore((state) => state.setSliceClustersById);
   
@@ -77,7 +74,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
   );
 
   const sliceClustersById = useMemo(() => {
-    if (!clusteringEnabled || !clusterStoreEnabled || slices.length === 0 || filteredPoints.length === 0) {
+    if (slices.length === 0 || filteredPoints.length === 0) {
       return {};
     }
 
@@ -98,7 +95,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
       });
 
     return groupClusterAnalysesBySlice(sliceAnalyses);
-  }, [clusterSensitivity, clusterStoreEnabled, clusteringEnabled, filteredPoints, slices]);
+  }, [clusterSensitivity, filteredPoints, slices]);
 
   useEffect(() => {
     setSliceClustersById(sliceClustersById);

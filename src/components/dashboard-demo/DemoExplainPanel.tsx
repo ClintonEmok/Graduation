@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
-import { selectActiveSliceId, selectSlices, useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
+import { selectActiveSliceId, selectSlices, useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useDemoBurstWindows } from '@/components/dashboard-demo/lib/useDemoBurstWindows';
 
 const WORKFLOW_NEXT_ACTION: Record<string, string> = {
@@ -54,8 +54,8 @@ export function DemoExplainPanel() {
   const syncStatus = useDashboardDemoCoordinationStore((state) => state.syncStatus);
   const selectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.selectedBurstWindows);
   const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
-  const activeSliceId = useDashboardDemoSliceStore(selectActiveSliceId);
-  const slices = useDashboardDemoSliceStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const slices = useSliceDomainStore(selectSlices);
   const burstWindows = useDemoBurstWindows();
 
   const activeSlice = useMemo(

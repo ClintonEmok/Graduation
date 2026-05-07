@@ -195,7 +195,7 @@ export function SimpleCrimePoints({
   const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
   const warpSource = useStore(adaptiveStore, (state) => state.warpSource);
   const warpMap = useStore(adaptiveStore, (state) => state.warpMap);
-  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain);
+  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain) ?? [0, 100];
   const warpSlices = useStore(sliceStore, (state) => state.slices);
 
   const authoredWarpMap = useMemo(
@@ -309,6 +309,7 @@ export function SimpleCrimePoints({
       return ((value - minYData) / yRange) * 100 - 50;
     };
 
+    // The adaptive warp map can operate on either raw epoch seconds or a normalized 0-100 percent domain.
     const usesNormalizedDomain = mapDomain[0] >= 0 && mapDomain[1] <= 100;
 
     for (let i = 0; i < data.length; i += 1) {
@@ -442,43 +443,45 @@ export function SimpleCrimePoints({
   if (count === 0) return null;
 
   return (
-    <points
-      frustumCulled={false}
-      onPointerMove={(event) => {
-        event.stopPropagation();
-        if (typeof event.index === 'number') {
-          setHoveredIndex(event.index);
-        }
-      }}
-      onClick={(event) => {
-        event.stopPropagation();
-        if (typeof event.index !== 'number') return;
-        const sourceIndex = indices[event.index];
-        if (typeof sourceIndex !== 'number') return;
-        setSelectedIndex(sourceIndex, 'cube');
-        setDetailsOpen(true);
-      }}
-      onPointerOut={() => setHoveredIndex(null)}
-    >
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-      </bufferGeometry>
-      <pointsMaterial size={1.1} sizeAttenuation vertexColors depthWrite={false} />
-      {hovered && (
-        <Html position={[hovered.position.x, hovered.position.y, hovered.position.z]} center>
-          <div className="rounded-md border border-border bg-background/90 px-2 py-1 text-[11px] text-foreground shadow-sm">
-            <div className="font-medium">{hovered.type}</div>
-            <div className="text-[10px] text-muted-foreground">{hovered.timeLabel}</div>
-          </div>
-        </Html>
-      )}
-    </points>
+    <>
+      <points
+        frustumCulled={false}
+        onPointerMove={(event) => {
+          event.stopPropagation();
+          if (typeof event.index === 'number') {
+            setHoveredIndex(event.index);
+          }
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (typeof event.index !== 'number') return;
+          const sourceIndex = indices[event.index];
+          if (typeof sourceIndex !== 'number') return;
+          setSelectedIndex(sourceIndex, 'cube');
+          setDetailsOpen(true);
+        }}
+        onPointerOut={() => setHoveredIndex(null)}
+      >
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={1.1} sizeAttenuation vertexColors depthWrite={false} />
+        {hovered && (
+          <Html position={[hovered.position.x, hovered.position.y, hovered.position.z]} center>
+            <div className="rounded-md border border-border bg-background/90 px-2 py-1 text-[11px] text-foreground shadow-sm">
+              <div className="font-medium">{hovered.type}</div>
+              <div className="text-[10px] text-muted-foreground">{hovered.timeLabel}</div>
+            </div>
+          </Html>
+        )}
+      </points>
 
-    <group renderOrder={-2}>
-      <CrimeShapeLayer shape="sphere" bucket={shapeBuckets.sphere} />
-      <CrimeShapeLayer shape="cube" bucket={shapeBuckets.cube} />
-      <CrimeShapeLayer shape="cone" bucket={shapeBuckets.cone} />
-    </group>
+      <group renderOrder={-2}>
+        <CrimeShapeLayer shape="sphere" bucket={shapeBuckets.sphere} />
+        <CrimeShapeLayer shape="cube" bucket={shapeBuckets.cube} />
+        <CrimeShapeLayer shape="cone" bucket={shapeBuckets.cone} />
+      </group>
+    </>
   );
 }

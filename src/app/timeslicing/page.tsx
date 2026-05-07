@@ -25,7 +25,7 @@ const MIN_VALID_DATA_EPOCH = 946684800;
 export default function TimeslicingPage() {
   const [timelineContainerRef, timelineBounds] = useMeasure<HTMLDivElement>();
 
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain) ?? [0, 100];
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
 

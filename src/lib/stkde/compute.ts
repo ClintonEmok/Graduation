@@ -153,7 +153,7 @@ function buildIntensityFromSupport(
   return { intensity, maxIntensity };
 }
 
-function applyResponsePayloadGuard(response: StkdeSurfaceResponse): StkdeSurfaceResponse {
+function applyResponsePayloadGuard<T extends StkdeSurfaceResponse & { sliceResults?: Record<string, StkdeSurfaceResponse> }>(response: T): T {
   let next = response;
   let payloadBytes = new TextEncoder().encode(JSON.stringify(next)).length;
   if (payloadBytes > STKDE_RESPONSE_SIZE_LIMIT_BYTES && next.heatmap.cells.length > 1) {
@@ -491,9 +491,10 @@ export function computeStkdeFromAggregates(
     contracts: {
       scoreVersion: 'stkde-v1',
     },
+    sliceResults: {},
   };
 
   response = applyResponsePayloadGuard(response);
   response.meta.computeMs = Math.max(0, Math.round((performance.now() - computeStart) * 100) / 100);
-  return { response: { ...response, sliceResults: {} }, metaNotes };
+  return { response, metaNotes };
 }

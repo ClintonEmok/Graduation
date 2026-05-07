@@ -83,7 +83,7 @@ export function TimeslicingAlgosRouteShell() {
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const warpMap = useAdaptiveStore((state) => state.warpMap);
 
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain) ?? [0, 100];
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);

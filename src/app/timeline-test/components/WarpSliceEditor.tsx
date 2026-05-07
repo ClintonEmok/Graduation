@@ -43,7 +43,7 @@ const parseDateAndTimeInput = (dateValue: string, timeValue: string) => {
 
 export function WarpSliceEditor() {
   const warpSource = useAdaptiveStore((state) => state.warpSource);
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain) ?? [0, 100];
   const slices = useWarpSliceStore((state) => state.slices);
   const addSlice = useWarpSliceStore((state) => state.addSlice);
   const updateSlice = useWarpSliceStore((state) => state.updateSlice);

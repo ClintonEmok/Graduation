@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import { classifyBurstWindow, type BurstTaxonomy } from '@/lib/binning/burst-taxonomy';
 
 const EPSILON = 1e-6;

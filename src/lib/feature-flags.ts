@@ -49,15 +49,6 @@ export const FLAG_DEFINITIONS: FeatureFlag[] = [
     status: 'experimental',
     default: false,
   },
-  // Phase 17: Cluster Highlighting
-  {
-    id: 'clustering',
-    name: 'Cluster Highlighting',
-    description: 'Auto-detect and label dense regions',
-    category: 'visualization',
-    status: 'experimental',
-    default: false,
-  },
   // Phase 18: Trajectories
   {
     id: 'trajectories',

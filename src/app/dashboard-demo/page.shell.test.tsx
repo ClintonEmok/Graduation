@@ -22,6 +22,14 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/dashboard-demo/DemoTimelinePanel.tsx', import.meta.url),
       'utf8'
     );
+    const demoDualTimelineSurfaceSource = readFileSync(
+      new URL('../../components/timeline/DualTimelineSurface.tsx', import.meta.url),
+      'utf8'
+    );
+    const demoTimelineSettingsSource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoTimelineSettingsCard.tsx', import.meta.url),
+      'utf8'
+    );
     const demoMapVisualizationSource = readFileSync(
       new URL('../../components/dashboard-demo/DemoMapVisualization.tsx', import.meta.url),
       'utf8'
@@ -127,9 +135,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoStkdeHookSource).toMatch(/callerIntent: 'dashboard-demo'/);
     expect(demoStkdeHookSource).toMatch(/buildStkdeViewModel/);
     expect(demoStkdeHookSource).toMatch(/DEFAULT_STKDE_BBOX/);
-    expect(demoStatsSource).toMatch(/Stats Summary/);
+    expect(demoStatsSource).toMatch(/Focus range/);
     expect(demoStatsSource).toMatch(/selectedDistrictLabels/);
-    expect(demoStatsSource).toMatch(/Spatial distribution/);
+    expect(demoStatsSource).toMatch(/Start/);
+    expect(demoStatsSource).toMatch(/End/);
     expect(demoStatsSource).toMatch(/TabsList/);
     expect(demoStatsSource).toMatch(/TabsTrigger value="hourly"/);
     expect(demoStatsSource).toMatch(/TabsTrigger value="daily"/);
@@ -141,6 +150,22 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsSource).toMatch(/Daily trend/);
     expect(demoStatsSource).toMatch(/Monthly trend/);
     expect(demoStatsSource).toMatch(/PulseChart/);
+    expect(demoStatsSource).toMatch(/Selected period/);
+    expect(demoStatsSource).toMatch(/Crime flow/);
+    expect(demoStatsSource).toMatch(/Catalyst cue/);
+    expect(demoStatsSource).toMatch(/Top crimes/);
+    expect(demoStatsSource).toMatch(/District context/);
+    expect(demoStatsSource).toMatch(/Distribution/);
+    expect(demoStatsSource).not.toMatch(/Top types\W/);
+    expect(demoStatsSource).not.toMatch(/all districts/);
+    expect(demoTimelineSettingsSource).not.toMatch(/Timeline settings/);
+    expect(demoTimelineSettingsSource).not.toMatch(/Compact rendering controls for the timeline surface/);
+    expect(demoTimelineSettingsSource).toMatch(/Temporal resolution/);
+    expect(demoTimelineSettingsSource).toMatch(/Time scale/);
+    expect(demoTimelineSettingsSource).toMatch(/Slice source/);
+    expect(demoTimelineSettingsSource).toMatch(/Warp factor/);
+    expect(demoTimelineSettingsSource).toMatch(/Linear|Adaptive/);
+    expect(demoTimelineSettingsSource).toMatch(/Slice-authored|Density/);
     expect(demoStatsMapOverlaySource).toMatch(/heatmap/);
     expect(demoStatsMapOverlaySource).toMatch(/demo-stats-districts/);
     expect(demoStatsMapOverlaySource).toMatch(/chicago-police-districts\.geojson/);
@@ -157,13 +182,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoStkdePanelSource).toMatch(/No hotspots found for the current district context/);
     expect(demoStkdePanelSource).not.toMatch(/Spatial BW|Temporal BW|Grid cell|Top K|Min support|Time window|type="number"|Intensity/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
-    expect(demoTimelinePanelSource).toMatch(/useDashboardDemoWarpStore/);
-    expect(demoTimelinePanelSource).toMatch(/useDashboardDemoTimeStore/);
-    expect(demoTimelinePanelSource).toMatch(/Warp factor/);
-    expect(demoTimelinePanelSource).toMatch(/Warp source/);
-    expect(demoTimelinePanelSource).toMatch(/Slice-authored|Density/);
-    expect(demoTimelinePanelSource).not.toMatch(/isPlaying|togglePlay|setSpeed|FastForward|Pause|Play|requestAnimationFrame/);
-    expect(demoTimelinePanelSource).not.toMatch(/Overview is sampled across the full dataset|brush selects the active detail window|Window: \{summary\.selectedWindowLabel\}|Linked: \{summary\.linkedHighlightLabel\}|Burst windows: \{summary\.burstLabel\}/);
+    expect(demoTimelinePanelSource).not.toMatch(/useDashboardDemoWarpStore|useDashboardDemoTimeStore|Warp factor|Warp source|Temporal Resolution|Time Scale|requestAnimationFrame/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
@@ -176,7 +195,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoExplainPanelSource).toMatch(/Relative cue/);
     expect(demoExplainPanelSource).toMatch(/No clear burst; balanced activity|Balanced window/);
     expect(demoExplainPanelSource).toMatch(/selectedBurstWindows\[0\]/);
-    expect(demoSlicePanelSource).toMatch(/useDashboardDemoSliceStore/);
+    expect(demoSlicePanelSource).toMatch(/useSliceDomainStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
@@ -225,7 +244,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).toMatch(/warpSource/);
     expect(demoDualTimelineSource).toMatch(/computeDensityMap/);
     expect(demoDualTimelineSource).toMatch(/setPrecomputedMaps/);
-    expect(demoDualTimelineSource).toMatch(/useDashboardDemoSliceStore/);
+    expect(demoDualTimelineSource).toMatch(/useSliceDomainStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoFilterStore/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);
@@ -242,6 +261,9 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSource).not.toMatch(/adaptiveWarpMapOverride|adaptiveWarpDomainOverride|warpOverlayBandsOverride/);
     expect(demoDualTimelineSource).not.toMatch(/timeStoreOverride|filterStoreOverride|coordinationStoreOverride|adaptiveStoreOverride|sliceDomainStoreOverride|timeslicingModeStoreOverride/);
     expect(demoDualTimelineSource).not.toMatch(/showWarpConnectors|warpConnectorStyle/);
+    expect(demoDualTimelineSurfaceSource).toMatch(/Overview density/);
+    expect(demoDualTimelineSurfaceSource).not.toMatch(/Detail density/);
+    expect(demoDualTimelineSurfaceSource).not.toMatch(/Binned detail/);
     expect(workflowSkeletonSource).toMatch(/Orient/);
     expect(workflowSkeletonSource).toMatch(/Find/);
     expect(workflowSkeletonSource).toMatch(/Compare/);

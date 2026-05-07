@@ -23,8 +23,8 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
-import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
-import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
+import { useSliceDomainStore } from '@/store/useSliceDomainStore';
+import type { TimeSlice } from '@/store/useSliceDomainStore';
 import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
@@ -87,13 +87,13 @@ export function DemoSlicePanel() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const { isComputing } = useDebouncedDensity();
 
-  const slices = useDashboardDemoSliceStore((state) => state.slices);
-  const addSlice = useDashboardDemoSliceStore((state) => state.addSlice);
-  const removeSlice = useDashboardDemoSliceStore((state) => state.removeSlice);
-  const updateSlice = useDashboardDemoSliceStore((state) => state.updateSlice);
-  const toggleLock = useDashboardDemoSliceStore((state) => state.toggleLock);
-  const toggleVisibility = useDashboardDemoSliceStore((state) => state.toggleVisibility);
-  const clearSlices = useDashboardDemoSliceStore((state) => state.clearSlices);
+  const slices = useSliceDomainStore((state) => state.slices);
+  const addSlice = useSliceDomainStore((state) => state.addSlice);
+  const removeSlice = useSliceDomainStore((state) => state.removeSlice);
+  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
+  const toggleLock = useSliceDomainStore((state) => state.toggleLock);
+  const toggleVisibility = useSliceDomainStore((state) => state.toggleVisibility);
+  const clearSlices = useSliceDomainStore((state) => state.clearSlices);
 
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);

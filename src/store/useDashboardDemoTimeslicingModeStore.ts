@@ -222,7 +222,7 @@ const copyBurstMetadata = (bin: TimeBin | undefined): Partial<TimeBin> => {
 
 export const stripTransientTimeslicingState = (
   state: Partial<DashboardDemoTimeslicingState> | undefined
-): Partial<DashboardDemoTimeslicingState> => ({
+): Pick<DashboardDemoTimeslicingState, 'mode' | 'customIntervals' | 'autoConfig' | 'sliceTemplates' | 'generationInputs'> => ({
   mode: state?.mode ?? 'auto',
   customIntervals: state?.customIntervals ?? [],
   autoConfig: state?.autoConfig ?? {

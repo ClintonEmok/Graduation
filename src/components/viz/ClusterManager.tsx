@@ -20,7 +20,6 @@ export const ClusterManager: React.FC = () => {
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
   
-  const enabled = useClusterStore((state) => state.enabled);
   const sensitivity = useClusterStore((state) => state.sensitivity);
   const setClusters = useClusterStore((state) => state.setClusters);
   const setSliceClustersById = useClusterStore((state) => state.setSliceClustersById);
@@ -29,12 +28,6 @@ export const ClusterManager: React.FC = () => {
 
   // Perform clustering
   const performClustering = useCallback(() => {
-    if (!enabled) {
-      setClusters([]);
-      setSliceClustersById({});
-      return;
-    }
-
     // 1. Get filtered data
     const filteredDataState: FilteredDataState = { columns, data, minTimestampSec, maxTimestampSec };
     const filteredPoints = selectFilteredData(filteredDataState, {
@@ -74,7 +67,7 @@ export const ClusterManager: React.FC = () => {
   }, [
     columns, data, minTimestampSec, maxTimestampSec,
     selectedTypes, selectedDistricts, selectedTimeRange,
-    enabled, sensitivity, timeScaleMode, setClusters, setSliceClustersById
+    sensitivity, timeScaleMode, setClusters, setSliceClustersById
   ]);
 
   // Debounced execution

@@ -4,7 +4,6 @@ import { useRef, useEffect } from 'react';
 import { useStore } from 'zustand';
 import { useUIStore } from '../../store/ui';
 import { Scene } from './Scene';
-import { SimpleCrimePoints } from './SimpleCrimePoints';
 import MapBase from '../map/MapBase';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -19,7 +18,6 @@ import { TimeSlices } from './TimeSlices';
 import { ClusterManager } from './ClusterManager';
 import { ClusterHighlights } from './ClusterHighlights';
 import { ClusterLabels } from './ClusterLabels';
-import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 
 interface MainSceneProps {
   showMapBackground?: boolean;
@@ -47,7 +45,6 @@ export function MainScene({
   const { data: viewportCrimes } = useViewportCrimeData({ bufferDays: 30 });
   const controlsRef = useRef<CameraControls>(null);
   const resetVersion = useUIStore((state) => state.resetVersion);
-  const clusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const modeOverride = searchParams.get('mode');
@@ -184,17 +181,10 @@ export function MainScene({
         {/* Canvas needs pointer-events-auto for controls to work */}
         <div className="h-full w-full pointer-events-auto">
           <Scene transparent={mode === 'map'}>
-            <SimpleCrimePoints
-              filterStoreOverride={filterStoreOverride}
-              coordinationStoreOverride={coordinationStoreOverride}
-              adaptiveStoreOverride={adaptiveStoreOverride}
-              timeStoreOverride={timeStoreOverride}
-              sliceStoreOverride={sliceStoreOverride}
-            />
-            {clusteringEnabled ? <ClusterManager /> : null}
+            <ClusterManager />
             <TimeSlices sliceStoreOverride={sliceStoreOverride} timeStoreOverride={timeStoreOverride} />
-            {clusteringEnabled ? <ClusterHighlights /> : null}
-            {clusteringEnabled ? <ClusterLabels /> : null}
+            <ClusterHighlights />
+            <ClusterLabels />
             <SpatialConstraintOverlay />
             <SelectedWarpSliceOverlay
               adaptiveStoreOverride={adaptiveStoreOverride}

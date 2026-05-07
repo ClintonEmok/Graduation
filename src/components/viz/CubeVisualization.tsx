@@ -53,6 +53,7 @@ export default function CubeVisualization({
   const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
   const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
   const warpSource = useStore(adaptiveStore, (state) => state.warpSource);
+  const effectiveWarpFactor = Number.isFinite(warpFactor) ? warpFactor : 1;
   const warpProposals = useWarpProposalStore((state) => state.proposals);
   const selectedWarpProposalId = useWarpProposalStore((state) => state.selectedProposalId);
   const appliedWarpProposalId = useWarpProposalStore((state) => state.appliedProposalId);
@@ -84,6 +85,7 @@ export default function CubeVisualization({
   const appliedIntervalLabel = appliedInterval?.label ?? 'None';
 
   const selectedHotspot = stkdeResponse?.hotspots.find((hotspot) => hotspot.id === selectedHotspotId) ?? null;
+  const slices = useStore(sliceStore, (state) => state.slices);
   const clusters = useClusterStore((state) => state.clusters);
   const selectedClusterId = useClusterStore((state) => state.selectedClusterId);
   const hoveredClusterId = useClusterStore((state) => state.hoveredClusterId);
@@ -137,7 +139,7 @@ export default function CubeVisualization({
         />
 
         <div className="absolute top-4 left-4 z-10 rounded-md border border-slate-500/50 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-100 shadow-sm backdrop-blur">
-          <p>Relational mode: {warpSource} · warp {warpFactor.toFixed(2)}</p>
+          <p>Relational mode: {warpSource} · warp {effectiveWarpFactor.toFixed(2)}</p>
           <p>Active structure: {activeConstraintLabel}</p>
           <p>Linked selection: {selectedInterval?.label ?? appliedIntervalLabel}</p>
           <p>Proposal story: {appliedProposalLabel}</p>
@@ -171,6 +173,14 @@ export default function CubeVisualization({
         <div className="absolute bottom-4 left-4 z-10">
           <SimpleCrimeLegend />
         </div>
+        {slices.length === 0 && clusters.length === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="rounded-md border border-dashed border-slate-300/30 bg-slate-950/60 backdrop-blur px-4 py-3 text-xs text-slate-300 text-center">
+              <p className="font-medium text-slate-200">No slices active</p>
+              <p className="mt-1 text-[10px] text-slate-400">Create slices to see cluster analysis</p>
+            </div>
+          </div>
+        )}
         {(selectedTypes.length > 0 || selectedDistricts.length > 0 || selectedTimeRange || selectedSpatialBounds) && (
           <div className="absolute bottom-4 right-4 z-10 rounded-md border bg-background/85 backdrop-blur px-3 py-2 text-[10px] text-muted-foreground shadow-sm">
             Filters: {[

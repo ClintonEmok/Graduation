@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import type { TimeslicingAlgosTimeScale } from './mode-selection';
 import { BINNING_STRATEGY_OPTIONS } from './algorithm-options';
 

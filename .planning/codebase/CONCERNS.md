@@ -1,249 +1,151 @@
-# Timeline Refactor Runtime Analysis
+# Codebase Concerns: KDE / STKDE Functionality
 
-**Analysis Date:** 2026-04-23
-**Files Analyzed:**
-- `src/components/timeline/DualTimeline.tsx`
-- `src/components/timeline/DemoDualTimeline.tsx`
-- `src/components/timeline/DualTimelineSurface.tsx`
-- `src/components/timeline/DensityHeatStrip.tsx`
-- `src/components/timeline/hooks/useDualTimelineViewModel.ts`
-- `src/components/timeline/hooks/useScaleTransforms.ts`
-- `src/components/timeline/hooks/useBrushZoomSync.ts`
-- `src/components/timeline/hooks/useDensityStripDerivation.ts`
-- `src/components/timeline/hooks/usePointSelection.ts`
-- `src/components/timeline/lib/interaction-guards.ts`
-- `src/components/timeline/lib/tick-ux.ts`
+**Analysis Date:** 2026-05-06
 
----
+## KDE Computation Architecture
 
-## 1. Current Runtime Data Path
+### Core Computation Files
 
-### DualTimeline.tsx
+**`src/lib/stkde/compute.ts`** — Main KDE computation
+- `computeStkdeFromCrimes()` (line 236): Entry point for sampled crime data
+- `computeStkdeFromAggregates()` (line 363): Entry point for full-population DuckDB aggregation
+- `buildStkdeGridConfig()` (line 42): Builds spatial grid configuration
+- `buildIntensityFromSupport()` (line 115): Applies Gaussian kernel smoothing over support counts
+- `computePeakWindow()` (line 80): Finds densest temporal window within a cell
+- `computePeakWindowFromBuckets()` (line 185): Bucket-based peak window for aggregated data
 
-```
-useTimelineDataStore
-  ├── columns (Arrow columnar format) → normalizedToEpochSeconds() → timestampSeconds
-  └── data (row CrimeRecord[])      → timestamp fallback
+**`src/lib/stkde/full-population-pipeline.ts`** — DuckDB-based full population
+- `buildFullPopulationStkdeInputs()` (line 89): Chunks through crime table, aggregates by grid cell + temporal bucket
+- Produces `FullPopulationStkdeInputs` with `cellSupport` (Float64Array) and `cellTemporalBuckets` (Map)
+- Uses `temporalBandwidthHours * 3600` as bucket size for temporal aggregation
 
-useViewportCrimeData → viewportCrimes (CrimeRecord[])  [via useCrimeData]
-  └── CrimeRecord.timestamp
+**`src/lib/stkde/contracts.ts`** — Request/response types
+- `StkdeRequest`, `StkdeResponse`, `StkdeHotspot`, `StkdeHeatmapCell` types
+- `validateAndNormalizeStkdeRequest()` (line 141): Request validation with clamping
 
-timestampSeconds ─────────────────┬─→ overviewBins (d3 bin, 50 thresholds)
-                                   └─→ detailPoints (filtered by detailRangeSec, max 4000)
-                                        └── detailBins (d3 bin, detailBinCount=60)
+### API Route
 
-useScaleTransforms ─────────────────┬─→ overviewScale (adaptive warping applied)
-                                   └─→ detailScale (adaptive warping applied)
+**`src/app/api/stkde/hotspots/route.ts`** — POST handler
+- Chooses `sampled` vs `full-population` mode
+- `buildFullPopulationStkdeInputs()` → `computeStkdeFromAggregates()` OR
+- `queryCrimesInRange()` → `computeStkdeFromCrimes()`
+- Returns `StkdeResponse` with `heatmap.cells` and `hotspots[]`
 
-useDualTimelineViewModel ──────────┬─→ overviewTicks / detailTicks
-                                   └─→ overviewTickFormat / detailTickFormat
+### Worker
 
-detailPoints ──→ useDensityStripDerivation ──→ detailDensityMap
-                                                     └── detailSpanDays (decides render mode)
+**`src/workers/stkdeHotspot.worker.ts`** — Client-side hotspot filtering
+- `projectHotspots()` (line 28): Filters hotspots by intensity, support, temporal window, spatial bbox
+- Used by `StkdeRouteShell` and `useDashboardStkde` for interactive filtering
 
-useBurstWindows ─────────────────→ burstWindows ──→ useAutoBurstSlices(burstWindows)
-                                                     └── burstTaxonomySummary
+### Stores
 
-surfaceProps ──→ DualTimelineSurface → SVG + canvas render
-```
+**`src/store/useStkdeStore.ts`** — Core state
+- `response: StkdeResponse | null`
+- `params: StkdeParams` (spatialBW, temporalBW, gridCell, topK, minSupport, timeWindow)
+- `scopeMode: 'applied-slices' | 'full-viewport'`
+- `spatialFilter`, `temporalFilter` for worker-based filtering
+- `selectedHotspotId`, `hoveredHotspotId`
 
-### DemoDualTimeline.tsx
+**`src/store/useDashboardDemoAnalysisStore.ts`** — Demo state
+- `stkdeResponse`, `stkdeParams`, `stkdeScopeMode` for dashboard demo
 
-```
-useTimelineDataStore (same store)
-  ├── columns → timestampSeconds
-  └── data fallback
+### Rendering
 
-timestampSeconds ──→ computeDensityMap() → nextDensityWarpMap
-        │
-        └──→ nextDensityMap → setPrecomputedMaps() [useEffect, store update]
-                                 │
-                                 └──→ store: useDashboardDemoWarpStore.densityMap
+**`src/components/map/MapStkdeHeatmapLayer.tsx`** — MapLibre heatmap rendering
+- Uses MapLibre `heatmap` layer type
+- `heatmap-weight` from `intensity`, `heatmap-radius` interpolated by zoom
+- Color gradient: blue(0) → cyan(0.2) → green(0.4) → yellow(0.6) → orange(0.8) → red(1)
+- Active hotspot rendered as circle layer
 
-timestampSeconds ─────────────────┬─→ overviewBins
-                                   └─→ detailPoints (uses store densityMap, NOT local)
-                                        └── detailBins
-
-useScaleTransforms ─────────────────┬─→ overviewScale
-                                   ├─→ detailScale
-                                   └─→ detailInteractionScale [DEAD: not passed to surface]
-
-useDensityStripDerivation (uses store densityMap)
-
-surfaceProps ──→ DualTimelineSurface
-```
-
-**Key structural difference:** DualTimeline uses `useViewportCrimeData` for detail points (live viewport-filtered fetch), while DemoDualTimeline derives density locally then writes to store then reads back from store for detailPoints.
+**`src/app/stkde/lib/StkdeRouteShell.tsx`** — STKDE QA page
+- Fetches `/api/stkde/hotspots` directly, stores response in local state
+- Passes `response.heatmap.cells` to `MapStkdeHeatmapLayer`
 
 ---
 
-## 2. Likely Regressions Introduced by Refactor
+## Data Flow
 
-### ISSUE A: Dead DensityHeatStrip import in DualTimeline.tsx
-
-**File:** `src/components/timeline/DualTimeline.tsx` line 25
-**Code:**
-```typescript
-import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 ```
-This import is dead — `DensityHeatStrip` is rendered inside `DualTimelineSurface`, not `DualTimeline`. The surface receives `densityMap` and constructs the strip internally (lines 76, 138 in `DualTimelineSurface.tsx`). If a refactor accidentally removes the internal usage or if the import is meant to be a breaking-change marker, this is at minimum a dead import.
-
-### ISSUE B: `useAutoBurstSlices` called in DualTimeline but NOT in DemoDualTimeline
-
-**DualTimeline.tsx line 527:**
-```typescript
-useAutoBurstSlices(burstWindowsForAutoSlices);
+User Action → Store params → API POST /api/stkde/hotspots
+    → computeStkdeFromCrimes() OR buildFullPopulationStkdeInputs() + computeStkdeFromAggregates()
+    → StkdeResponse { heatmap.cells[], hotspots[] }
+    → MapStkdeHeatmapLayer renders heatmap via MapLibre
+    → stkdeHotspot.worker filters hotspots client-side
 ```
 
-**DemoDualTimeline.tsx:** No equivalent call. Both call `useBurstWindows()` but only DualTimeline drives the auto-slice generation from it. This means:
-- Dashboard demo (which uses `DemoDualTimeline`) never auto-generates burst slices
-- The burst taxonomy summary counts in DemoDualTimeline will always be zero unless slices are manually authored
-- If Phase 12 moved `useAutoBurstSlices` out of a shared helper or store initialization and into DualTimeline specifically, DemoDualTimeline loses that behavior
+**Sampled path:** Crime records loaded via `queryCrimesInRange()` → `computeStkdeFromCrimes()` filters by domain/bbox/types, builds grid, applies Gaussian kernel.
 
-### ISSUE C: `detailInteractionScale` computed but never used in DemoDualTimeline
-
-**DemoDualTimeline.tsx lines 399-409 and 754:**
-```typescript
-const { detailInteractionScale } = useScaleTransforms({...});
-// ...
-}, [activeSliceId, detailInnerWidth, detailInteractionScale, detailScale, ...]);
-```
-`detailInteractionScale` is returned from `useScaleTransforms` and included in the dependency array, but it's never referenced in `surfaceProps` (only `overviewScale` and `detailScale` are passed). This is either a cut-and-leave from the refactor or a missing feature where the raw (non-warp-distorted) detail scale should be passed to the surface for something.
-
-### ISSUE D: DualTimeline imports unused constants also duplicated in Surface
-
-**DualTimeline.tsx lines 42-49:**
-```typescript
-const OVERVIEW_HEIGHT = 42;
-const DETAIL_HEIGHT = 60;
-const AXIS_HEIGHT = 28;
-const DENSITY_DOMAIN: [number, number] = [0, 1];
-const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
-const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
-const TIME_CURSOR_COLOR = '#10b981';
-```
-These are all duplicated in `DualTimelineSurface.tsx` (lines 10-13) and are never read from DualTimeline's scope — they're forwarded as part of props or hardcoded in the surface. They represent the old monolith pattern where DualTimeline owned the render. Post-refactor, they're inert.
-
-### ISSUE E: `TimelineSliceGeometry` interface diverges between the two components
-
-**DualTimeline.tsx lines 105-117** — 12 fields (no `rawLeft`, `rawWidth`, `warpEnabled`, `warpWeight`).
-**DemoDualTimeline.tsx lines 157-173** — 15 fields (adds `rawLeft`, `rawWidth`, `warpEnabled`, `warpWeight`).
-
-Both feed `orderedSliceGeometries` to `DualTimelineSurface`, which uses it as `geometry: any`. If geometries from DualTimeline are missing `rawLeft`/`rawWidth`, the surface will receive `undefined` for those fields. The surface does `geometry.left` and `geometry.width` (not the raw variants), so rendering isn't broken, but any future code expecting `rawLeft`/`rawWidth` on DualTimeline geometries will silently get `undefined`.
+**Full-population path:** DuckDB aggregates crimes into grid cells with temporal buckets → `computeStkdeFromAggregates()` applies kernel to pre-aggregated support counts.
 
 ---
 
-## 3. Empty or Inconsistent Output Causes
+## Whether KDE Can Be Computed Per Time Slice
 
-### CAUSE 1: Empty overviewBins on initial render (no data loaded yet)
+**Current answer: NO — KDE is computed over the entire domain once.**
 
-**Path:** `minTimestampSec`/`maxTimestampSec` are `null` → `domainStart`/`domainEnd` fallback to `[0, 100]` → `overviewBins` d3 bin with domain `[0, 100]` on an empty `timestampSeconds` → returns `[]`.
+### What Exists
 
-This is not a crash — `DensityHeatStrip` handles empty `densityMap` gracefully (line 74-78 draws a low-opacity bar). The overview SVG bars render nothing. The detail shows "No data in this range" via `isDetailEmpty`.
+1. **Temporal filtering at display level only**: `stkdeHotspot.worker.ts` (line 37-39) can filter hotspots by a `temporalWindow` — but this is post-computation filtering, NOT per-slice KDE computation.
 
-**Risk level:** Low — this is handled, but the UX is a blank timeline until data loads.
+2. **`timeWindowHours` parameter**: The algorithm finds the peak temporal window within each grid cell (line 305, 401). This identifies WHEN密度 is highest inside each cell, but doesn't produce separate density surfaces per slice.
 
-### CAUSE 2: Race between density map computation and consumption in DemoDualTimeline
+3. **Applied-slices scope mode** in `useDashboardStkde` (line 202-216): When `scopeMode === 'applied-slices'`, the `startEpochSec` and `endEpochSec` sent to the API are derived from the union of all applied slice ranges. The KDE is computed once over the combined range — not once per slice.
 
-**Sequence:**
-1. Render: `nextDensityMap` computed locally, `densityMap` (from store) is whatever was last there (likely empty)
-2. `useEffect` fires: `setPrecomputedMaps(nextDensityMap, ...)` updates store
-3. Re-render: store now has the density data, `detailPoints` recalculates
+### What's Missing for "KDE Per Slice"
 
-On a slow DuckDB query or initial load, DemoDualTimeline could render detail before the density map is in the store. DualTimeline avoids this by reading `viewportCrimes` directly for detail points (no store round-trip).
+1. **No loop over slices in compute layer**: Neither `computeStkdeFromCrimes` nor `computeStkdeFromAggregates` accepts an array of time ranges. They take a single `domain: { startEpochSec, endEpochSec }`.
 
-**Risk level:** Medium — causes brief "no data" flash in demo mode.
+2. **No per-slice density accumulation**: The heatmap cells contain a single `intensity` and `support` value. There is no mechanism to produce N separate heatmaps for N slices.
 
-### CAUSE 3: `normalizedToEpochSeconds` called with null guard but fallback path also returns empty
+3. **No slice-aware rendering layer**: `MapStkdeHeatmapLayer` renders a single GeoJSON FeatureCollection. There's no concept of rendering multiple overlapping heatmaps keyed by time slice, or toggling visibility per slice.
 
-**DualTimeline.tsx lines 274-286:**
-```typescript
-const timestampSeconds = useMemo<number[]>(() => {
-  if (columns && columns.length > 0 && minTimestampSec !== null && maxTimestampSec !== null) {
-    // ... compute from columns
-  }
-  if (data && data.length > 0) {
-    return data.map((point) => point.timestamp as number);
-  }
-  return [];
-}, [...]);
-```
-If both paths are empty, `timestampSeconds = []`. Downstream: `overviewBins` returns `[]`, `detailPoints` returns `[]`, `isDetailEmpty = true`. The "No data in this range" message appears.
+4. **No slice-ID tracking through computation**: Crime records have timestamps but the compute functions don't track which slice each crime belongs to — they just filter by domain bounds.
 
-This is correct behavior when there's genuinely no data, but if the intent is to show a loading state, the `isLoading` flag from `useViewportCrimeData` (`isViewportLoading`) should suppress the empty message. However, `isDetailEmpty` is set to `!isTimelineLoading && detailPoints.length === 0`, so it correctly waits for load to finish before showing the empty state.
-
-### CAUSE 4: DualTimeline's `timestampSeconds` uses different property name than expected
-
-**DualTimeline.tsx line 309:**
-```typescript
-const points = viewportCrimes
-  .map(crime => crime.timestamp)  // Use 'timestamp' not 'date'
-```
-This comment indicates a potential property name mismatch. If `CrimeRecord` types have been updated so that the correct field is `date` instead of `timestamp`, this `.map(crime => crime.timestamp)` silently returns `undefined` for every record, resulting in an empty `detailPoints` array.
-
-### CAUSE 5: `useViewportCrimeData` is deprecated and wraps `useCrimeData`
-
-**`src/hooks/useViewportCrimeData.ts` lines 10-11:**
-```typescript
-* @deprecated Use useCrimeData directly for new code.
-* This hook is kept for backward compatibility with existing consumers.
-```
-If `useCrimeData` has any behavioral differences from the old `useViewportCrimeData`, DualTimeline inherits those differences without anyone noticing. This should be audited.
+5. **`full-population-pipeline.ts` is single-domain only**: The DuckDB aggregation groups by `(col_idx, row_idx, bucket_start)` where `bucket_start = FLOOR(ts / bucketSizeSec) * bucketSizeSec`. This produces temporal buckets, but they're used only for peak window detection per cell — not for per-slice surfaces.
 
 ---
 
-## 4. Top 3 Issues to Inspect First on localhost:3000
+## Rendering Approach for Density Layers
 
-### INSPECT 1: Dashboard demo — verify burst auto-generation works
+**Current: MapLibre native heatmap layer**
 
-**What to check:** Load the dashboard demo page (`/dashboard` or wherever `DemoDualTimeline` is used). Create a viewport/time range with bursty crime patterns. Look at whether any burst slices are auto-generated in the timeline.
+`MapStkdeHeatmapLayer.tsx` uses `react-map-gl/maplibre`:
+- Source type: `geojson` with Point features, properties `{ intensity, support }`
+- Layer type: `heatmap` with paint properties
+- Zoom-adaptive radius: 10px @ zoom 8 → 35px @ zoom 15
+- Opacity: 0.85 default
 
-**Expected:** Auto-generated purple burst slices appear in the detail view.
-**Bug signal:** No burst slices appear despite dense crime clusters. The `useAutoBurstSlices` call is missing from DemoDualTimeline entirely.
-
-**Files to verify:** `src/components/timeline/DemoDualTimeline.tsx` — confirm whether `useAutoBurstSlices` should be called after `useBurstWindows()`.
-
-### INSPECT 2: DualTimeline — check detail panel for data vs "No data in this range"
-
-**What to check:** Load the main dashboard or timeline page using `DualTimeline`. Open browser devtools, watch the network tab for the `/api/crime` (or viewport data fetch). Check whether:
-1. `viewportCrimes` returns data
-2. `detailPoints` is non-empty
-3. The detail panel shows actual points/bars, not the empty state overlay
-
-**Expected:** Points or bins render in the detail SVG.
-**Bug signal:** The detail panel consistently shows "No data in this range" even for date ranges that should have crime data. Check:
-- `src/components/timeline/DualTimeline.tsx` line 309: is `crime.timestamp` the correct property?
-- `useViewportCrimeData` fetching correct epoch range
-- `minTimestampSec`/`maxTimestampSec` populating in `useTimelineDataStore`
-
-### INSPECT 3: Verify adaptive warping renders correctly when enabled
-
-**What to check:** Toggle time scale mode to `'adaptive'` (via store/state). The overview density strip and detail strip should show compressed time for high-density regions and expanded time for low-density regions.
-
-**Expected:** Warped rendering with non-linear tick spacing.
-**Bug signal:** The scale looks linear despite warp being enabled. Check:
-- `useScaleTransforms` (`src/components/timeline/hooks/useScaleTransforms.ts` line 71-119): does `applyAdaptiveWarping` return the adaptive scale?
-- `warpMap` is non-null and length ≥ 2
-- `warpFactor > 0`
-- `useDualTimelineViewModel` receives correct `timeScaleMode` (`'adaptive'`)
-
-Also verify that `DualTimelineSurface` correctly renders the adaptive axis gradient (line 113 checks `timeScaleMode === 'adaptive'`).
+**What is NOT available:**
+- No WebGL custom shader rendering for density (contrast with `src/components/viz/shaders/heatmap.ts` which exists but appears to be unused for STKDE)
+- No deck.gl HeatmapLayer or other WebGL-based density rendering
+- No time-animation of density surfaces
 
 ---
 
-## Summary Table
+## What's Missing for "KDE Per Slice"
 
-| # | Severity | Location | Issue |
-|---|----------|----------|-------|
-| A | Low | `DualTimeline.tsx:25` | Dead `DensityHeatStrip` import |
-| B | **High** | `DemoDualTimeline.tsx` missing | `useAutoBurstSlices` not called — burst auto-generation broken in demo |
-| C | Low | `DemoDualTimeline.tsx:399` | `detailInteractionScale` computed but unused |
-| D | Low | `DualTimeline.tsx:42-49` | 7 unused constants duplicated in surface |
-| E | Medium | Both components | `TimelineSliceGeometry` interface divergence — raw fields missing in DualTimeline |
-| 1 | Low | Data path init | Initial blank render until data loads |
-| 2 | **Medium** | `DemoDualTimeline.tsx:331-334` | Density map store race — brief empty state |
-| 3 | Low | Data path | Correct empty-state handling, but loading UX |
-| 4 | **High** | `DualTimeline.tsx:309` | `crime.timestamp` vs `crime.date` — silent data loss |
-| 5 | Medium | `useViewportCrimeData.ts:10` | Deprecated hook — behavioral drift risk |
+| Gap | File(s) | Impact |
+|-----|---------|--------|
+| Multi-domain compute | `src/lib/stkde/compute.ts` | Must refactor `computeStkdeFromCrimes`/`computeStkdeFromAggregates` to accept `domains: TimeSlice[]` and produce per-slice results |
+| Per-slice aggregation | `src/lib/stkde/full-population-pipeline.ts` | Must track which slice each aggregate bucket belongs to, or compute separate aggregations per slice |
+| Slice-keyed response | `src/lib/stkde/contracts.ts` | `StkdeResponse` must be extended to `{ slices: { sliceId: string, cells: StkdeHeatmapCell[], hotspots: StkdeHotspot[] }[] }` |
+| Multi-heatmap rendering | `src/components/map/MapStkdeHeatmapLayer.tsx` | Must support rendering multiple heatmap layers with per-slice visibility toggles |
+| Slice selection binding | `src/components/stkde/DashboardStkdePanel.tsx` | Must show per-slice density results, not a single merged result |
+| Time-animation | None | No component animates density over time slices |
+| Worker support for per-slice hotspots | `src/workers/stkdeHotspot.worker.ts` | Currently operates on flat hotspot array — needs slice-aware filtering |
 
-**Priority fix order:** Issue 4 (timestamp field) → Issue B (auto burst slices in demo) → Issue 2 (store race in DemoDualTimeline) → then inspect adaptive warping.
+---
+
+## Tech Debt
+
+**Temporal bucket resolution hardcoded to `temporalBandwidthHours * 3600`**: `full-population-pipeline.ts` line 113. If you want finer temporal resolution per slice, this bucket size limits you.
+
+**Hotspot peak window is post-hoc**: `computePeakWindow`/`computePeakWindowFromBuckets` finds the densest window AFTER building the spatial surface. There's no way to pre-filter crimes to a specific slice before KDE computation.
+
+**No coordinate normalization pipeline for STKDE input**: Contrast with `src/lib/coordinate-normalization.ts` which normalizes crime coordinates (x, z) alongside (lon, lat). STKDE compute uses raw `lon/lat` directly.
+
+**Worker timeout hardcoded at 8000ms**: `useDashboardStkde.ts` line 24. Long hotspot lists may hit this limit silently.
+
+---
+
+*Concerns audit: 2026-05-06*

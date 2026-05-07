@@ -42,7 +42,7 @@ function SegmentLine({ segment, fromY, toY }: { segment: BurstEvolutionConnector
   return (
     <line key={segment.id}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" array={buildLinePoints(fromY, toY)} count={2} itemSize={3} />
+        <bufferAttribute attach="attributes-position" args={[buildLinePoints(fromY, toY), 3]} />
       </bufferGeometry>
       <lineBasicMaterial color={color} transparent opacity={0.72} linewidth={1} />
     </line>

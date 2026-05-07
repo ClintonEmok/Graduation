@@ -23,29 +23,53 @@ export const OKABE_ITO = {
 
 const DEFAULT_CATEGORY_COLORS = {
   'THEFT': '#FFD700', // Gold
+  'BATTERY': '#F59E0B', // Amber
+  'CRIMINAL DAMAGE': '#FB7185', // Rose
+  'NARCOTICS': '#38BDF8', // Sky
   'ASSAULT': '#FF4500', // OrangeRed
+  'OTHER OFFENSE': '#A78BFA', // Violet
   'BURGLARY': '#1E90FF', // DodgerBlue
+  'MOTOR VEHICLE THEFT': '#22C55E', // Green
+  'DECEPTIVE PRACTICE': '#14B8A6', // Teal
   'ROBBERY': '#32CD32', // LimeGreen
   'VANDALISM': '#DA70D6', // Orchid
+  'CRIMINAL TRESPASS': '#E879F9', // Fuchsia
+  'WEAPONS VIOLATION': '#F97316', // Orange
   'OTHER': '#FFFFFF',
 };
 
 // Normalize keys to match CRIME_TYPE_MAP (uppercase)
 const COLORBLIND_CATEGORY_COLORS = {
   'THEFT': OKABE_ITO.yellow,
+  'BATTERY': OKABE_ITO.orange,
+  'CRIMINAL DAMAGE': OKABE_ITO.reddishPurple,
+  'NARCOTICS': OKABE_ITO.skyBlue,
   'ASSAULT': OKABE_ITO.vermilion,
+  'OTHER OFFENSE': OKABE_ITO.grey,
   'BURGLARY': OKABE_ITO.skyBlue,
+  'MOTOR VEHICLE THEFT': OKABE_ITO.bluishGreen,
+  'DECEPTIVE PRACTICE': OKABE_ITO.blue,
   'ROBBERY': OKABE_ITO.bluishGreen,
   'VANDALISM': OKABE_ITO.reddishPurple,
+  'CRIMINAL TRESPASS': OKABE_ITO.reddishPurple,
+  'WEAPONS VIOLATION': OKABE_ITO.orange,
   'OTHER': OKABE_ITO.grey,
 };
 
 const LIGHT_CATEGORY_COLORS = {
   'THEFT': '#B8860B', // DarkGoldenRod (darker for contrast on white)
+  'BATTERY': '#B45309', // Amber
+  'CRIMINAL DAMAGE': '#BE123C', // Rose
+  'NARCOTICS': '#0284C7', // Sky
   'ASSAULT': '#CC3700', // Darker OrangeRed
+  'OTHER OFFENSE': '#6D28D9', // Violet
   'BURGLARY': '#0066CC', // Darker DodgerBlue
+  'MOTOR VEHICLE THEFT': '#15803D', // Green
+  'DECEPTIVE PRACTICE': '#0F766E', // Teal
   'ROBBERY': '#008000', // Darker Green
   'VANDALISM': '#9932CC', // DarkOrchid
+  'CRIMINAL TRESPASS': '#C026D3', // Fuchsia
+  'WEAPONS VIOLATION': '#EA580C', // Orange
   'OTHER': '#666666',
 };
 

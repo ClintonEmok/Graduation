@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 
 const isAdaptiveBinningMode = (value: string | null | undefined): value is AdaptiveBinningMode => {
   return value === 'uniform-time' || value === 'uniform-events';

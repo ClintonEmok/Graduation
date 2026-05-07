@@ -14,11 +14,9 @@ import { useAdaptiveStore } from "@/store/useAdaptiveStore";
 import { useTimelineDataStore } from "@/store/useTimelineDataStore";
 import { useFilterStore } from "@/store/useFilterStore";
 import { useSliceStore } from "@/store/useSliceStore";
-import {
-  type IntervalBoundaryData,
-  type TimeScaleData,
-  useSuggestionStore,
-} from "@/store/useSuggestionStore";
+import { useSuggestionStore } from "@/store/useSuggestionStore";
+import { useSuggestionHistoryStore } from "@/store/useSuggestionHistoryStore";
+import type { IntervalBoundaryData, TimeScaleData } from "@/types/suggestion";
 import { useTimeStore } from "@/store/useTimeStore";
 import { useWarpSliceStore } from "@/store/useWarpSliceStore";
 import {
@@ -31,7 +29,7 @@ const DEFAULT_END_EPOCH = 1767571200;
 const MIN_VALID_DATA_EPOCH = 946684800;
 
 export default function TimelineTest3DPage() {
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain) ?? [0, 100];
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const warpSource = useAdaptiveStore((state) => state.warpSource);
   const timeScaleMode = useTimeStore((state) => state.timeScaleMode);
@@ -53,7 +51,7 @@ export default function TimelineTest3DPage() {
   const fullAutoNoResultReason = useSuggestionStore(
     (state) => state.fullAutoNoResultReason
   );
-  const addToHistory = useSuggestionStore((state) => state.addToHistory);
+  const addToHistory = useSuggestionHistoryStore((state) => state.addToHistory);
 
   const hasValidAdaptiveDomain =
     mapDomain[1] > mapDomain[0] && mapDomain[0] >= MIN_VALID_DATA_EPOCH;
@@ -257,14 +255,18 @@ export default function TimelineTest3DPage() {
         const acceptedAt = Date.now();
         addToHistory({
           id: `full-auto-package-${proposalSet.id}-warp-${acceptedAt}`,
-          type: "time-scale",
-          confidence: proposalSet.confidence,
-          data: {
-            name: `${proposalSet.warp.name} (Package Rank ${proposalSet.rank})`,
-            intervals: proposalSet.warp.intervals,
+          suggestion: {
+            id: `full-auto-package-${proposalSet.id}-warp-${acceptedAt}`,
+            type: "time-scale",
+            confidence: proposalSet.confidence,
+            data: {
+              name: `${proposalSet.warp.name} (Package Rank ${proposalSet.rank})`,
+              intervals: proposalSet.warp.intervals,
+            },
+            createdAt: acceptedAt,
+            status: "accepted",
           },
-          createdAt: acceptedAt,
-          status: "accepted",
+          acceptedAt,
         });
       } catch {
         useWarpSliceStore.setState({

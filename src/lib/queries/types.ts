@@ -18,8 +18,7 @@ export interface QueryFilters {
   districts?: string[];
 }
 
-// Re-export AdaptiveBinningMode from canonical location
-export type { AdaptiveBinningMode } from '@/types/adaptive';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 
 export interface GlobalAdaptiveMaps {
   binCount: number;

@@ -121,17 +121,7 @@ export function useDemoStkde(): DemoStkdeResult {
 
   const queryState = useMemo<StkdeQueryState>(
     () =>
-      toQueryState(stkdeScopeMode, timeRange.startEpoch, timeRange.endEpoch, {
-        computeMode: 'sampled',
-        startEpochSec: timeRange.startEpoch,
-        endEpochSec: timeRange.endEpoch,
-        spatialBandwidthMeters: stkdeParams.spatialBandwidthMeters,
-        temporalBandwidthHours: stkdeParams.temporalBandwidthHours,
-        gridCellMeters: stkdeParams.gridCellMeters,
-        topK: stkdeParams.topK,
-        minSupport: stkdeParams.minSupport,
-        timeWindowHours: stkdeParams.timeWindowHours,
-      }),
+      toQueryState(stkdeScopeMode, timeRange.startEpoch, timeRange.endEpoch, stkdeParams),
     [stkdeParams, stkdeScopeMode, timeRange.endEpoch, timeRange.startEpoch]
   );
 

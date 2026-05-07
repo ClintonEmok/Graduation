@@ -16,10 +16,10 @@ describe('/demo/non-uniform-time-slicing showcase', () => {
     expect(showcaseSource).toMatch(/score /);
     expect(showcaseSource).toMatch(/warp /);
     expect(showcaseSource).toMatch(/floor /);
-    expect(showcaseSource).toMatch(/Hourly, daily, and weekly bins/);
-    expect(showcaseSource).not.toMatch(/quarterly/);
+    expect(showcaseSource).toMatch(/Hourly, daily, weekly, monthly, and quarterly bins/);
+    expect(showcaseSource).toMatch(/quarterly/);
 
-    expect(helperSource).toMatch(/'hourly' \| 'daily' \| 'weekly'/);
+    expect(helperSource).toMatch(/'hourly' \| 'daily' \| 'weekly' \| 'monthly' \| 'quarterly'/);
     expect(helperSource).toMatch(/peerRelativeScore/);
     expect(helperSource).toMatch(/widthShare/);
     expect(helperSource).toMatch(/neutralFallback/);

@@ -14,7 +14,7 @@ import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
-import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
+import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 
 type DemoViewport = 'map' | 'cube';
 
@@ -86,7 +86,7 @@ export function DashboardDemoShell() {
                 coordinationStoreOverride={useDashboardDemoCoordinationStore}
                 adaptiveStoreOverride={useDashboardDemoAdaptiveStore}
                 timeStoreOverride={useDashboardDemoTimeStore}
-                sliceStoreOverride={useDashboardDemoSliceStore}
+                sliceStoreOverride={useSliceDomainStore}
               />
             )}
           </div>

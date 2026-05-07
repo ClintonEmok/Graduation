@@ -55,15 +55,17 @@ const granularityLabels: Record<DemoSelectionGranularity, string> = {
   daily: 'Daily',
   weekly: 'Weekly',
   monthly: 'Monthly',
+  quarterly: 'Quarterly',
 };
 
-const granularityOptions: DemoSelectionGranularity[] = ['hourly', 'daily', 'weekly', 'monthly'];
+const granularityOptions: DemoSelectionGranularity[] = ['hourly', 'daily', 'weekly', 'monthly', 'quarterly'];
 
 const granularitySpanMs: Record<DemoSelectionGranularity, number> = {
   hourly: 48 * HOUR_MS,
   daily: 10 * DAY_MS,
   weekly: 8 * WEEK_MS,
   monthly: 120 * DAY_MS,
+  quarterly: 365 * DAY_MS,
 };
 
 const padHour = (hour: number): string => String(hour).padStart(2, '0');

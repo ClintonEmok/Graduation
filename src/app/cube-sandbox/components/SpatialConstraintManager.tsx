@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import {
   useCubeSpatialConstraintsStore,
 } from '@/store/useCubeSpatialConstraintsStore';
-import { useDataStore } from '@/store/useDataStore';
 import { getDistrictName } from '@/lib/category-maps';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 
 const DEFAULT_TEMPORAL_BOUNDS = { minY: 0, maxY: 10 };
 
@@ -20,7 +20,7 @@ type DistrictConstraintSeed = {
 };
 
 export function SpatialConstraintManager() {
-  const columns = useDataStore((state) => state.columns);
+  const columns = useTimelineDataStore((state) => state.columns);
   const constraints = useCubeSpatialConstraintsStore((state) => state.constraints);
   const activeConstraintId = useCubeSpatialConstraintsStore((state) => state.activeConstraintId);
   const createConstraint = useCubeSpatialConstraintsStore((state) => state.createConstraint);

@@ -5,6 +5,7 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useHeatmapStore } from '@/store/useHeatmapStore';
 import { useClusterStore } from '@/store/useClusterStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
+import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
   SheetContent,
@@ -22,13 +23,31 @@ import { Eye, EyeOff, Lock, Unlock, Trash2, Plus, RefreshCw, Calendar as Calenda
 import { normalizedToEpochSeconds, epochSecondsToNormalized } from '@/lib/time-domain';
 import { format } from 'date-fns';
 
+const computeDateTimeMs = (normalized: number, minTimestampSec: number | null, maxTimestampSec: number | null): number | null => {
+  if (minTimestampSec === null || maxTimestampSec === null) return null;
+  return normalizedToEpochSeconds(normalized, minTimestampSec, maxTimestampSec) * 1000;
+};
+
 interface SliceManagerUIProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
-  const { slices, addSlice, removeSlice, updateSlice, toggleLock, toggleVisibility, clearSlices } = useSliceStore();
+  const {
+    slices,
+    addSlice,
+    removeSlice,
+    updateSlice,
+    toggleLock,
+    toggleVisibility,
+    clearSlices,
+    pendingDraftSlices,
+    addDraftSlice,
+    removeDraftSlice,
+    clearDraftSlices,
+    applyDraftSlices,
+  } = useSliceStore();
   const { minTimestampSec, maxTimestampSec } = useTimelineDataStore();
   const { isEnabled: isHeatmapFeatureEnabled } = useFeatureFlagsStore();
   
@@ -44,29 +63,46 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
   } = useHeatmapStore();
 
   const showHeatmapSection = isHeatmapFeatureEnabled('heatmap');
-  const showClusterSection = isHeatmapFeatureEnabled('clustering');
+  const showClusterSection = slices.length > 0;
 
   const {
-    enabled: isClusteringActive,
-    setEnabled: setClusteringActive,
     sensitivity: clusterSensitivity,
     setSensitivity: setClusterSensitivity
   } = useClusterStore();
 
   const handleAddPointSlice = () => {
-    addSlice({ type: 'point', time: 50 });
+    addDraftSlice({
+      type: 'point',
+      time: 50,
+      source: 'manual',
+      warpEnabled: true,
+      warpWeight: 1,
+      isLocked: false,
+      isVisible: true,
+      startDateTimeMs: computeDateTimeMs(50, minTimestampSec, maxTimestampSec),
+    });
   };
 
   const handleAddRangeSlice = () => {
-    addSlice({ type: 'range', range: [40, 60] });
+    addDraftSlice({
+      type: 'range',
+      time: 50,
+      range: [40, 60],
+      source: 'manual',
+      warpEnabled: true,
+      warpWeight: 1,
+      isLocked: false,
+      isVisible: true,
+      startDateTimeMs: computeDateTimeMs(40, minTimestampSec, maxTimestampSec),
+      endDateTimeMs: computeDateTimeMs(60, minTimestampSec, maxTimestampSec),
+    });
   };
 
   const handleGenerate = () => {
-    // Generate 3 evenly spaced point slices
     clearSlices();
-    addSlice({ type: 'point', time: 25 });
-    addSlice({ type: 'point', time: 50 });
-    addSlice({ type: 'point', time: 75 });
+    addDraftSlice({ type: 'point', time: 25, source: 'manual', warpEnabled: true, warpWeight: 1, startDateTimeMs: computeDateTimeMs(25, minTimestampSec, maxTimestampSec) });
+    addDraftSlice({ type: 'point', time: 50, source: 'manual', warpEnabled: true, warpWeight: 1, startDateTimeMs: computeDateTimeMs(50, minTimestampSec, maxTimestampSec) });
+    addDraftSlice({ type: 'point', time: 75, source: 'manual', warpEnabled: true, warpWeight: 1, startDateTimeMs: computeDateTimeMs(75, minTimestampSec, maxTimestampSec) });
   };
   
   const formatTime = (normalized: number) => {
@@ -178,34 +214,26 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
 
             {showClusterSection && (
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Zap className="h-4 w-4 text-yellow-500" />
-                            <h3 className="text-sm font-medium">Clustering</h3>
-                        </div>
-                        <Switch 
-                            checked={isClusteringActive} 
-                            onCheckedChange={setClusteringActive} 
-                        />
+                    <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-yellow-500" />
+                        <h3 className="text-sm font-medium">Clustering</h3>
                     </div>
                     
-                    {isClusteringActive && (
-                        <div className="space-y-4 pt-2 border-l-2 border-accent pl-4 ml-2">
-                            <div className="space-y-2">
-                                <div className="flex justify-between">
-                                    <Label className="text-xs">Sensitivity</Label>
-                                    <span className="text-[10px] text-muted-foreground">{(clusterSensitivity * 100).toFixed(0)}%</span>
-                                </div>
-                                <Slider 
-                                    value={[clusterSensitivity * 100]} 
-                                    onValueChange={([val]: number[]) => setClusterSensitivity(val / 100)} 
-                                    min={0} 
-                                    max={100} 
-                                    step={1} 
-                                />
+                    <div className="space-y-4 pt-2 border-l-2 border-accent pl-4 ml-2">
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <Label className="text-xs">Sensitivity</Label>
+                                <span className="text-[10px] text-muted-foreground">{(clusterSensitivity * 100).toFixed(0)}%</span>
                             </div>
+                            <Slider 
+                                value={[clusterSensitivity * 100]} 
+                                onValueChange={([val]: number[]) => setClusterSensitivity(val / 100)} 
+                                min={0} 
+                                max={100} 
+                                step={1} 
+                            />
                         </div>
-                    )}
+                    </div>
                     
                     <div className="h-px bg-border my-2" />
                 </div>
@@ -228,8 +256,47 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
                 </Button>
             </div>
 
+            {pendingDraftSlices.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-medium text-cyan-500">
+                    {pendingDraftSlices.length} draft{pendingDraftSlices.length > 1 ? 's' : ''} pending
+                  </h4>
+                  <div className="flex gap-1">
+                    <Button size="sm" className="h-7 text-xs" onClick={applyDraftSlices}>
+                      Apply All
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={clearDraftSlices}>
+                      Discard
+                    </Button>
+                  </div>
+                </div>
+                {pendingDraftSlices.map((draft) => (
+                  <div key={draft.id} className="flex items-center gap-2 border border-cyan-500/30 p-2.5 rounded-md bg-cyan-500/5">
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-bold uppercase text-cyan-400 px-1.5 py-0.5 bg-cyan-500/10 rounded shrink-0">
+                        {draft.type}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {draft.type === 'point' ? formatTime(draft.time) : formatRange(draft.range)}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => removeDraftSlice(draft.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <div className="h-px bg-border my-2" />
+              </div>
+            )}
+
             <div className="space-y-2">
-                {slices.length === 0 && (
+                {slices.length === 0 && pendingDraftSlices.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
                         No slices active. Add one to probe the data.
                     </p>
@@ -252,6 +319,11 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
                                 <span className="text-[10px] font-bold uppercase text-muted-foreground px-1.5 py-0.5 bg-accent rounded">
                                     {slice.type}
                                 </span>
+                                {slice.isBurst && (
+                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                        B{slice.burstScore != null ? ` ${slice.burstScore.toFixed(1)}` : ''}
+                                    </Badge>
+                                )}
                                 {slice.type === 'point' ? (
                                     <Popover>
                                         <PopoverTrigger asChild>
@@ -331,6 +403,26 @@ export function SliceManagerUI({ isOpen, onClose }: SliceManagerUIProps) {
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[10px] font-medium text-muted-foreground w-10">Warp</span>
+                            <Switch
+                                checked={slice.warpEnabled ?? true}
+                                onCheckedChange={(checked) => updateSlice(slice.id, { warpEnabled: checked })}
+                                className="scale-75 origin-left"
+                            />
+                            <Slider
+                                value={[slice.warpWeight ?? 1]}
+                                onValueChange={([val]: number[]) => updateSlice(slice.id, { warpWeight: val })}
+                                min={0.25}
+                                max={3}
+                                step={0.05}
+                                disabled={!(slice.warpEnabled ?? true)}
+                                className="flex-1 h-6"
+                            />
+                            <span className="text-[10px] text-muted-foreground w-6 text-right">
+                                {(slice.warpWeight ?? 1).toFixed(1)}
+                            </span>
                         </div>
                     </div>
                 ))}

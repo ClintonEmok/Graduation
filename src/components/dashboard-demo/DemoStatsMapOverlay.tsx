@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Layer, Source } from 'react-map-gl/maplibre';
-import type { Feature, FeatureCollection, Point, Polygon } from 'geojson';
+import type { FeatureCollection, Point, Polygon } from 'geojson';
 import { useDemoNeighborhoodStats } from '@/components/dashboard-demo/lib/useDemoNeighborhoodStats';
 import { ALL_DEMO_DISTRICTS, useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import type { CrimeRecord } from '@/types/crime';
@@ -99,7 +99,7 @@ export function DemoStatsMapOverlay() {
   return (
     <>
       {filteredDistrictBoundaries ? (
-        <Source id="demo-stats-districts" type="geojson" data={filteredDistrictBoundaries as FeatureCollection<Feature, PoliceDistrictProperties>}>
+        <Source id="demo-stats-districts" type="geojson" data={filteredDistrictBoundaries}>
           <Layer
             id="demo-stats-district-fill"
             type="fill"

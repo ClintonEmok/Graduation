@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSuggestionStore } from '@/store/useSuggestionStore';
+import { useSuggestionComparisonStore } from '@/store/useSuggestionComparisonStore';
+import { useSuggestionHistoryStore } from '@/store/useSuggestionHistoryStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useCrimeFilters, useViewportStart, useViewportEnd } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
@@ -83,15 +85,8 @@ export function SuggestionPanel() {
     deselectAll,
     acceptSelected,
     rejectSelected,
-    showUndoToast,
     undoSuggestion,
-    lastAction,
     minConfidence,
-    comparisonIds,
-    setComparisonId,
-    clearComparison,
-    acceptedHistory,
-    clearHistory,
     reapplyFromHistory,
     fullAutoProposalSets,
     selectedFullAutoSetId,
@@ -101,6 +96,9 @@ export function SuggestionPanel() {
     hasFullAutoLowConfidence,
     selectFullAutoProposalSet,
   } = useSuggestionStore();
+
+  const { acceptedHistory, clearHistory, lastAction, showUndoToast } = useSuggestionHistoryStore();
+  const { comparisonIds, setComparisonId, clearComparison } = useSuggestionComparisonStore();
 
   const activeWarpId = useWarpSliceStore((state) => state.activeWarpId);
   const getActiveWarp = useWarpSliceStore((state) => state.getActiveWarp);

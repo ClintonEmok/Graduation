@@ -214,19 +214,19 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       if (left === null) {
         return {
           comparisonSliceIds: { left: sliceId, right },
-          comparisonSelectionOrder: ['left', ...(right === null ? [] : ['right'])],
+          comparisonSelectionOrder: ['left', ...(right === null ? [] : ['right'])] as DemoComparisonSlot[],
         };
       }
 
       if (right === null) {
         return {
           comparisonSliceIds: { left, right: sliceId },
-          comparisonSelectionOrder: ['left', 'right'],
+          comparisonSelectionOrder: ['left', 'right'] as DemoComparisonSlot[],
         };
       }
 
       const oldestSlot = state.comparisonSelectionOrder[0] ?? 'left';
-      const newestOrder = oldestSlot === 'left' ? ['right', 'left'] : ['left', 'right'];
+      const newestOrder = (oldestSlot === 'left' ? ['right', 'left'] : ['left', 'right']) as DemoComparisonSlot[];
 
       return {
         comparisonSliceIds: {

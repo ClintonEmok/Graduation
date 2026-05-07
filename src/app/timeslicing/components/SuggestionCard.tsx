@@ -8,12 +8,8 @@ import { ContextBadge } from './ContextBadge';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
-import { 
-  useSuggestionStore, 
-  type Suggestion, 
-  type TimeScaleData, 
-  type IntervalBoundaryData 
-} from '@/store/useSuggestionStore';
+import { useSuggestionStore } from '@/store/useSuggestionStore';
+import type { IntervalBoundaryData, Suggestion, TimeScaleData } from '@/types/suggestion';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { useContextExtractor } from '@/hooks/useContextExtractor';
 import { useSmartProfiles } from '@/hooks/useSmartProfiles';

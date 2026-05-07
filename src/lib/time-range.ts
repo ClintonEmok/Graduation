@@ -23,7 +23,9 @@ export function normalizeTimeRange(range: TimeRangeLike): TimeRangeTuple | null 
   const start = typeof range.startEpoch === 'number' ? range.startEpoch : range.start;
   const end = typeof range.endEpoch === 'number' ? range.endEpoch : range.end;
 
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (typeof start !== 'number' || typeof end !== 'number' || !Number.isFinite(start) || !Number.isFinite(end)) {
+    return null;
+  }
   return [Math.min(start, end), Math.max(start, end)];
 }
 

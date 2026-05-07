@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
-import { useDashboardDemoSliceStore, selectActiveSliceId, selectSlices } from '@/store/useDashboardDemoSliceStore';
+import { useSliceDomainStore, selectActiveSliceId, selectSlices } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 
@@ -72,8 +72,8 @@ export function useDashboardDemoSelectionStory() {
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
   const warpSource = useDashboardDemoWarpStore((state) => state.warpSource);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
-  const activeSliceId = useDashboardDemoSliceStore(selectActiveSliceId);
-  const slices = useDashboardDemoSliceStore(selectSlices);
+  const activeSliceId = useSliceDomainStore(selectActiveSliceId);
+  const slices = useSliceDomainStore(selectSlices);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const currentTime = useDashboardDemoTimeStore((state) => state.currentTime);

@@ -1,4 +1,4 @@
-import type { TimeSlice } from '@/store/useDashboardDemoSliceStore';
+import type { TimeSlice } from '@/store/useSliceDomainStore';
 import {
   buildComparableWarpMap,
   scoreComparableWarpBins,

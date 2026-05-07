@@ -8,7 +8,7 @@ import { useIntervalProposalStore } from '@/store/useIntervalProposalStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
-import { useDataStore } from '@/store/useDataStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useWarpProposalStore } from '@/store/useWarpProposalStore';
 
 describe('resetSandboxState', () => {
@@ -169,7 +169,7 @@ describe('resetSandboxState', () => {
 
   test('restores uniform mode, clears filters, and empties slice state', async () => {
     const loadRealData = vi.fn(async () => {});
-    useDataStore.setState({ loadRealData });
+    useTimelineDataStore.setState({ loadRealData });
 
     await resetSandboxState();
 

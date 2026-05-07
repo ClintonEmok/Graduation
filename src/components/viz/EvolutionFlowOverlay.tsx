@@ -67,7 +67,7 @@ export function EvolutionFlowOverlay({
           <group key={segment.id}>
             <line>
               <bufferGeometry>
-                <bufferAttribute attach="attributes-position" array={points} count={2} itemSize={3} />
+                <bufferAttribute attach="attributes-position" args={[points, 3]} />
               </bufferGeometry>
               <lineBasicMaterial color={segment.isActive ? '#67e8f9' : '#94a3b8'} transparent opacity={segment.isActive ? 0.95 : 0.55} linewidth={1} />
             </line>

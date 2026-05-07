@@ -1,4 +1,5 @@
-import type { AdaptiveBinningMode, QueryFragment } from './types';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
+import type { QueryFragment } from './types';
 import { buildNormalizedSqlExpression, NORMALIZED_COORDINATE_RANGE } from '../coordinate-normalization';
 import { clampDensityResolution } from './sanitization';
 

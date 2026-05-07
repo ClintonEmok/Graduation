@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import type { AdaptiveBinDiagnosticRow } from './adaptive-bin-diagnostics';
 import type { SelectionDetailFallbackReason } from './selection-detail-dataset';
 

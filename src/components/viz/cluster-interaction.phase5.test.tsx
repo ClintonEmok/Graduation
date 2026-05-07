@@ -6,8 +6,8 @@ describe('Phase 5 cluster interaction contract', () => {
     const storeSource = readFileSync(new URL('../../store/useClusterStore.ts', import.meta.url), 'utf8');
     const labelsSource = readFileSync(new URL('./ClusterLabels.tsx', import.meta.url), 'utf8');
     const highlightsSource = readFileSync(new URL('./ClusterHighlights.tsx', import.meta.url), 'utf8');
+    const mainSceneSource = readFileSync(new URL('./MainScene.tsx', import.meta.url), 'utf8');
     const cubeSource = readFileSync(new URL('./CubeVisualization.tsx', import.meta.url), 'utf8');
-    const pointsSource = readFileSync(new URL('./SimpleCrimePoints.tsx', import.meta.url), 'utf8');
 
     expect(storeSource).toMatch(/hoveredClusterId/);
     expect(storeSource).toMatch(/setHoveredClusterId/);
@@ -23,10 +23,13 @@ describe('Phase 5 cluster interaction contract', () => {
     expect(highlightsSource).toMatch(/hoveredClusterId/);
     expect(highlightsSource).toMatch(/selectedClusterId/);
 
+    expect(mainSceneSource).toMatch(/ClusterManager/);
+    expect(mainSceneSource).toMatch(/ClusterHighlights/);
+    expect(mainSceneSource).toMatch(/ClusterLabels/);
+    expect(mainSceneSource).not.toMatch(/SimpleCrimePoints/);
+
     expect(cubeSource).toMatch(/Cluster context/);
     expect(cubeSource).toMatch(/Time span/);
     expect(cubeSource).toMatch(/State: \{activeClusterState\}/);
-
-    expect(pointsSource).toMatch(/selectedSpatialBounds/);
   });
 });

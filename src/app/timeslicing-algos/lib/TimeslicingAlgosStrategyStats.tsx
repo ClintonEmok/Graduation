@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import { computeBinningStrategyStats } from './strategy-stats';
 import { buildStrategyComparison } from './strategy-comparison';
 

@@ -20,6 +20,14 @@ export interface ComputeSliceGeometryOptions {
   density?: number;
 }
 
+const resolveSliceBoundsPercent = (slice: TimeSlice): [number, number] => {
+  if (slice.type === 'range' && slice.range) {
+    return [Math.min(slice.range[0], slice.range[1]), Math.max(slice.range[0], slice.range[1])];
+  }
+
+  return [slice.time, slice.time];
+};
+
 /**
  * Compute geometry for a single time slice
  */
@@ -30,8 +38,9 @@ export function computeSliceGeometry({
   height,
   density = 1,
 }: ComputeSliceGeometryOptions): SliceGeometry {
-  const startX = xScale(slice.startPercent / 100);
-  const endX = xScale(slice.endPercent / 100);
+  const [startPercent, endPercent] = resolveSliceBoundsPercent(slice);
+  const startX = xScale(startPercent / 100);
+  const endX = xScale(endPercent / 100);
   const width = Math.max(1, endX - startX);
 
   return {
@@ -60,31 +69,37 @@ export function clusterSlices(
 
   const clusters: SliceCluster[] = [];
   let currentCluster: TimeSlice[] = [slices[0]];
-  let maxDensity = slices[0].density || 1;
+  let maxDensity = 1;
 
   for (let i = 1; i < slices.length; i++) {
     const slice = slices[i];
     const prevSlice = currentCluster[currentCluster.length - 1];
-    const gap = slice.startPercent - prevSlice.endPercent;
+    const [sliceStartPercent, sliceEndPercent] = resolveSliceBoundsPercent(slice);
+    const [, prevEndPercent] = resolveSliceBoundsPercent(prevSlice);
+    const gap = sliceStartPercent - prevEndPercent;
 
     if (gap < gapThreshold * 100) {
       currentCluster.push(slice);
-      maxDensity = Math.max(maxDensity, slice.density || 1);
     } else {
       clusters.push({
         slices: currentCluster,
-        totalWidth: currentCluster.reduce((sum, s) => sum + (s.endPercent - s.startPercent), 0),
+        totalWidth: currentCluster.reduce((sum, s) => {
+          const [startPercent, endPercent] = resolveSliceBoundsPercent(s);
+          return sum + (endPercent - startPercent);
+        }, 0),
         maxDensity,
       });
       currentCluster = [slice];
-      maxDensity = slice.density || 1;
     }
   }
 
   if (currentCluster.length > 0) {
     clusters.push({
       slices: currentCluster,
-      totalWidth: currentCluster.reduce((sum, s) => sum + (s.endPercent - s.startPercent), 0),
+      totalWidth: currentCluster.reduce((sum, s) => {
+        const [startPercent, endPercent] = resolveSliceBoundsPercent(s);
+        return sum + (endPercent - startPercent);
+      }, 0),
       maxDensity,
     });
   }

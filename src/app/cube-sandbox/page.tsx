@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { SandboxContextPanel } from "./components/SandboxContextPanel";
 import { SandboxShell } from "./components/SandboxShell";
 import { resetSandboxState } from "./lib/resetSandboxState";
@@ -42,5 +42,9 @@ export default function CubeSandboxPage() {
     <SandboxContextPanel onReset={() => void handleReset()} isResetting={isResetting} />
   );
 
-  return <SandboxShell contextPanel={contextPanel} />;
+  return (
+    <Suspense fallback={null}>
+      <SandboxShell contextPanel={contextPanel} />
+    </Suspense>
+  );
 }

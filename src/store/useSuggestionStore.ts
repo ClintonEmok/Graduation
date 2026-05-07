@@ -381,16 +381,15 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
     historyState.clearUndoState();
     historyState.clearHistory();
 
-    set({
-      suggestions: [],
-      activeSuggestionId: null,
-      isEmptyState: false,
-      generationError: null,
-      selectedIds: new Set(),
-      comparisonIds: [null, null],
-      fullAutoProposalSets: [],
-      selectedFullAutoSetId: null,
-      recommendedFullAutoSetId: null,
+      set({
+        suggestions: [],
+        activeSuggestionId: null,
+        isEmptyState: false,
+        generationError: null,
+        selectedIds: new Set(),
+        fullAutoProposalSets: [],
+        selectedFullAutoSetId: null,
+        recommendedFullAutoSetId: null,
       fullAutoLowConfidenceReason: null,
       fullAutoNoResultReason: null,
       hasFullAutoLowConfidence: false,
@@ -417,7 +416,6 @@ export const useSuggestionStore = create<SuggestionStore>((set, get) => ({
         isEmptyState: false,
         generationError: null,
         selectedIds: new Set(),
-        comparisonIds: [null, null] as [null, null],
         fullAutoProposalSets: [],
         selectedFullAutoSetId: null,
         recommendedFullAutoSetId: null,

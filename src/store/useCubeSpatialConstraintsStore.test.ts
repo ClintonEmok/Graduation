@@ -1,7 +1,7 @@
 /* @vitest-environment node */
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { resetSandboxState } from '@/app/cube-sandbox/lib/resetSandboxState';
-import { useDataStore } from './useDataStore';
+import { useTimelineDataStore } from './useTimelineDataStore';
 import { useCubeSpatialConstraintsStore } from './useCubeSpatialConstraintsStore';
 
 const baseGeometry = {
@@ -136,7 +136,7 @@ describe('useCubeSpatialConstraintsStore', () => {
 
   test('preserves definitions through sandbox reset entrypoint', async () => {
     const loadRealData = vi.fn(async () => {});
-    useDataStore.setState({ loadRealData });
+    useTimelineDataStore.setState({ loadRealData });
 
     const first = useCubeSpatialConstraintsStore.getState().createConstraint({
       label: 'Reset stable A',

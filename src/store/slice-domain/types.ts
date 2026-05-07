@@ -143,10 +143,19 @@ export type SliceAdjustmentState = {
   ) => void;
 };
 
+export type SliceDraftState = {
+  pendingDraftSlices: TimeSlice[];
+  addDraftSlice: (initial: Partial<TimeSlice>) => void;
+  removeDraftSlice: (id: string) => void;
+  clearDraftSlices: () => void;
+  applyDraftSlices: () => void;
+};
+
 export type SliceDomainState =
   & SliceCoreState
   & SliceSelectionState
   & SliceCreationState
-  & SliceAdjustmentState;
+  & SliceAdjustmentState
+  & SliceDraftState;
 
 export type SliceDomainStateCreator<T> = StateCreator<SliceDomainState, [], [], T>;

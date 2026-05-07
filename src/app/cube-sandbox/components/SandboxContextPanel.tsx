@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { FilterOverlay } from '@/components/viz/FilterOverlay';
 import { WarpSliceEditor } from '@/app/timeline-test/components/WarpSliceEditor';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
-import { useDataStore } from '@/store/useDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 
@@ -18,10 +18,10 @@ const formatBounds = (value: number) => value.toFixed(2);
 
 export function SandboxContextPanel({ onReset, isResetting }: SandboxContextPanelProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const columns = useDataStore((state) => state.columns);
-  const isLoading = useDataStore((state) => state.isLoading);
-  const isMock = useDataStore((state) => state.isMock);
-  const dataCount = useDataStore((state) => state.dataCount);
+  const columns = useTimelineDataStore((state) => state.columns);
+  const isLoading = useTimelineDataStore((state) => state.isLoading);
+  const isMock = useTimelineDataStore((state) => state.isMock);
+  const dataCount = useTimelineDataStore((state) => state.dataCount);
   const selectedTypes = useFilterStore((state) => state.selectedTypes);
   const selectedDistricts = useFilterStore((state) => state.selectedDistricts);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);

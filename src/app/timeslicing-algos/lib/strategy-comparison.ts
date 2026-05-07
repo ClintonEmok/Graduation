@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import type { BinningStrategyStats } from './strategy-stats';
 
 export interface StrategyComparisonDelta {

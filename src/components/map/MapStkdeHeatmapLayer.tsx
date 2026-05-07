@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, Source } from 'react-map-gl/maplibre';
+import type { ExpressionSpecification } from 'maplibre-gl';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { StkdeHeatmapCell } from '@/lib/stkde/contracts';
 import { buildStkdeHeatmapColorExpression } from '@/lib/stkde/heatmap-scale';
@@ -75,7 +76,7 @@ export function MapStkdeHeatmapLayer({
               35,
             ],
             'heatmap-opacity': opacity,
-            'heatmap-color': buildStkdeHeatmapColorExpression(),
+            'heatmap-color': buildStkdeHeatmapColorExpression() as unknown as ExpressionSpecification,
           }}
         />
       </Source>

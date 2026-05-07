@@ -9,6 +9,10 @@ import debounce from 'lodash.debounce';
 import { normalizeTimeRange } from '@/lib/time-range';
 
 interface AggregatedBinResponse {
+  x: number;
+  y: number;
+  z: number;
+  count: number;
   dominantType: string;
   [key: string]: unknown;
 }

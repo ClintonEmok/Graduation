@@ -123,13 +123,14 @@ export function SelectedWarpSliceOverlay({
   const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
   const warpSource = useStore(adaptiveStore, (state) => state.warpSource);
   const warpMap = useStore(adaptiveStore, (state) => state.warpMap);
-  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain);
+  const mapDomain = useStore(adaptiveStore, (state) => state.mapDomain) ?? [0, 100];
 
   const authoredWarpMap = useMemo(
     () => buildSliceAuthoredWarpMap(normalizeStoreSlices(slices as Array<any>), mapDomain, Math.max(96, warpMap?.length || 0)),
     [mapDomain, slices, warpMap?.length]
   );
   const effectiveWarpMap = warpSource === 'slice-authored' ? authoredWarpMap : warpMap;
+  // The adaptive warp domain can be either normalized percentages or raw epoch seconds.
   const usesNormalizedDomain = mapDomain[0] >= 0 && mapDomain[1] <= 100;
 
   const { yMin, yRange } = useMemo(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import { useStore } from 'zustand';
 import MapBase from './MapBase';
@@ -13,6 +14,8 @@ import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
 import { MapTypeLegend } from './MapTypeLegend';
 import { MapStkdeHeatmapLayer } from './MapStkdeHeatmapLayer';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
@@ -35,13 +38,6 @@ interface MapVisualizationProps {
   adaptiveStoreOverride?: unknown;
   mapLayerStoreOverride?: unknown;
 }
-
-type DragPoint = {
-  x: number;
-  y: number;
-  lat: number;
-  lon: number;
-};
 
 export default function MapVisualization({
   stkdeResponse: demoStkdeResponse = null,
@@ -84,7 +80,6 @@ export default function MapVisualization({
   const mapLayerStore = (mapLayerStoreOverride ?? useMapLayerStore) as typeof useMapLayerStore;
 
   const selectedSpatialBounds = useStore(filterStore, (state) => state.selectedSpatialBounds);
-  const setSpatialBounds = useStore(filterStore, (state) => state.setSpatialBounds);
   const clearSpatialBounds = useStore(filterStore, (state) => state.clearSpatialBounds);
   const selectedTypes = useStore(filterStore, (state) => state.selectedTypes);
   const toggleType = useStore(filterStore, (state) => state.toggleType);
@@ -113,31 +108,10 @@ export default function MapVisualization({
     return hotspot ? ([hotspot.centroidLng, hotspot.centroidLat] as [number, number]) : null;
   }, [selectedHotspotId, stkdeResponse]);
 
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [colorMode, setColorMode] = useState<'burst' | 'type'>('burst');
   const [hoveredTypeId, setHoveredTypeId] = useState<number | null>(null);
-  const [dragStart, setDragStart] = useState<DragPoint | null>(null);
-  const [dragCurrent, setDragCurrent] = useState<DragPoint | null>(null);
   const [lastClick, setLastClick] = useState<{lat: number, lon: number} | null>(null);
-
-  const getDragPoint = (event: MapLayerMouseEvent) => {
-    const map = mapRef.current;
-    if (!map) return null;
-    const { x, y } = event.point;
-    const { lng, lat } = map.unproject([x, y]);
-    return { x, y, lat, lon: lng };
-  };
-
-  const dragBounds = useMemo<LatLonBounds | null>(() => {
-    if (!dragStart || !dragCurrent) return null;
-    return {
-      minLat: Math.min(dragStart.lat, dragCurrent.lat),
-      maxLat: Math.max(dragStart.lat, dragCurrent.lat),
-      minLon: Math.min(dragStart.lon, dragCurrent.lon),
-      maxLon: Math.max(dragStart.lon, dragCurrent.lon)
-    };
-  }, [dragStart, dragCurrent]);
+  const [isControlsOpen, setIsControlsOpen] = useState(true);
 
   const selectedBounds = useMemo<LatLonBounds | null>(() => {
     if (!selectedSpatialBounds) return null;
@@ -149,81 +123,12 @@ export default function MapVisualization({
     };
   }, [selectedSpatialBounds]);
 
-  const resetDrag = () => {
-    setIsDragging(false);
-    setDragStart(null);
-    setDragCurrent(null);
-  };
-
   const selectionPoint = useMemo(() => {
     if (selectedIndex === null) return null;
     return resolvePointByIndex(selectedIndex);
   }, [selectedIndex]);
 
-  const finalizeBounds = () => {
-    if (!isSelecting || !isDragging || !dragStart || !dragCurrent) {
-      resetDrag();
-      return;
-    }
-
-    const distance = Math.hypot(dragCurrent.x - dragStart.x, dragCurrent.y - dragStart.y);
-    if (distance < 4) {
-      resetDrag();
-      return;
-    }
-
-    const minLat = Math.min(dragStart.lat, dragCurrent.lat);
-    const maxLat = Math.max(dragStart.lat, dragCurrent.lat);
-    const minLon = Math.min(dragStart.lon, dragCurrent.lon);
-    const maxLon = Math.max(dragStart.lon, dragCurrent.lon);
-
-    const [x1, z1] = project(minLat, minLon);
-    const [x2, z2] = project(maxLat, maxLon);
-
-    setSpatialBounds({
-      minX: Math.min(x1, x2),
-      maxX: Math.max(x1, x2),
-      minZ: Math.min(z1, z2),
-      maxZ: Math.max(z1, z2),
-      minLat,
-      maxLat,
-      minLon,
-      maxLon
-    });
-    
-    log('map_region_selected', { minLat, maxLat, minLon, maxLon });
-
-    resetDrag();
-    setIsSelecting(false);
-  };
-
-  const handleMouseDown = (event: MapLayerMouseEvent) => {
-    if (!isSelecting) return;
-    const point = getDragPoint(event);
-    if (!point) return;
-    setDragStart(point);
-    setDragCurrent(point);
-    setIsDragging(true);
-  };
-
-  const handleMouseMove = (event: MapLayerMouseEvent) => {
-    if (!isSelecting || !isDragging || !dragStart) return;
-    const point = getDragPoint(event);
-    if (!point) return;
-    setDragCurrent(point);
-  };
-
-  const handleMouseUp = () => {
-    if (isSelecting) {
-      finalizeBounds();
-      return;
-    }
-    // Point selection moved to handleClick
-  };
-
   const handleClick = (event: MapLayerMouseEvent) => {
-    if (isSelecting) return;
-    
     const { lng, lat } = event.lngLat;
     setLastClick({ lat, lon: lng });
 
@@ -246,23 +151,9 @@ export default function MapVisualization({
     }
   };
 
-  const handleMouseLeave = () => {
-    if (!isSelecting) return;
-    finalizeBounds();
-  };
-
-  const toggleSelectionMode = () => {
-    const nextState = !isSelecting;
-    setIsSelecting(nextState);
-    log('map_selection_mode_toggled', { active: nextState });
-    resetDrag();
-  };
-
   const handleClearBounds = () => {
     log('map_selection_cleared');
     clearSpatialBounds();
-    resetDrag();
-    setIsSelecting(false);
   };
 
   const handleMoveEnd = (event: { viewState: { zoom: number; latitude: number; longitude: number } }) => {
@@ -278,14 +169,8 @@ export default function MapVisualization({
     <div className="w-full h-full relative">
       <MapBase
         ref={mapRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
         onClick={handleClick}
-        onMouseLeave={handleMouseLeave}
         onMoveEnd={handleMoveEnd}
-        dragPan={!isSelecting}
-        cursor={isSelecting ? 'crosshair' : undefined}
       >
         {visibility.events ? (
           <MapEventLayer
@@ -315,7 +200,7 @@ export default function MapVisualization({
             opacity={opacity.stkde}
           />
         ) : null}
-        <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={dragBounds} />
+        <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={null} />
         <MapDebugOverlay clickPoint={lastClick} selectedPoint={selectionPoint} />
 
         {selectionPoint && (
@@ -324,93 +209,98 @@ export default function MapVisualization({
       </MapBase>
       
       {/* Overlay UI */}
-      <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-md border shadow-sm z-10">
-        <h2 className="text-sm font-semibold">Overview Map</h2>
-        <div className="mt-1 text-[10px] text-muted-foreground">
-          {isStkdeVisible ? 'Overview density with hotspot cues' : 'Density-first overview'}
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">
-            <button
-              type="button"
-              onClick={() => setColorMode('burst')}
-              className={`rounded px-2 py-0.5 transition-colors ${
-                colorMode === 'burst'
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Density
-            </button>
-            <button
-              type="button"
-              onClick={() => setColorMode('type')}
-              className={`rounded px-2 py-0.5 transition-colors ${
-                colorMode === 'type'
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Type
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={toggleSelectionMode}
-            className={`text-xs px-2 py-1 rounded border transition ${
-              isSelecting ? 'bg-primary/20 border-primary text-primary' : 'bg-background border-border'
-            }`}
-          >
-            {isSelecting ? 'Cancel Selection' : 'Select Region'}
-          </button>
-          <button
-            type="button"
-            onClick={handleClearBounds}
-            className="text-xs px-2 py-1 rounded border bg-background border-border"
-            disabled={!selectedSpatialBounds}
-          >
-            Clear
-          </button>
-        </div>
-        {/* Debug Info */}
-        {lastClick && (
-          <div className="mt-2 text-[10px] text-muted-foreground font-mono">
-            Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
-          </div>
-        )}
-        {(selectedTypes.length > 0 || selectedDistricts.length > 0 || selectedTimeRange || selectedSpatialBounds) && (
-          <div className="mt-2 text-[10px] text-muted-foreground">
-            Filters: {[
-              selectedTypes.length > 0 ? `Types ${selectedTypes.length}` : null,
-              selectedDistricts.length > 0 ? `Districts ${selectedDistricts.length}` : null,
-              selectedTimeRange ? 'Time' : null,
-              selectedSpatialBounds ? 'Region' : null
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </div>
-        )}
-        <div className={`mt-2 text-[10px] ${isSampled ? 'text-amber-300' : 'text-muted-foreground'}`}>
-          {formatCount(dataCount)} points in view
-          {isSampled && totalMatches !== null && totalMatches > dataCount
-            ? ` (sampled from ${formatCount(totalMatches)})`
-            : ''}
-        </div>
-        {colorMode === 'burst' ? (
-          <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-orange-500" />
-            <span>Density ≥ {Math.round(burstThreshold * 100)}%</span>
-          </div>
-        ) : (
-          <div className="mt-2">
-            <MapTypeLegend
-              selectedTypes={selectedTypes}
-              hoveredTypeId={hoveredTypeId}
-              onHoverType={setHoveredTypeId}
-              onToggleType={toggleType}
-            />
-          </div>
-        )}
+      <div className="absolute left-4 top-4 z-10 w-[20rem] max-w-[calc(100%-2rem)]">
+        <Card className="border-border/70 bg-background/85 shadow-sm backdrop-blur-sm">
+          <CardContent className="p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('burst')}
+                    className={`rounded px-2 py-0.5 transition-colors ${
+                      colorMode === 'burst'
+                        ? 'bg-foreground text-background'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Density
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('type')}
+                    className={`rounded px-2 py-0.5 transition-colors ${
+                      colorMode === 'type'
+                        ? 'bg-foreground text-background'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Type
+                  </button>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleClearBounds}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-sm px-2 text-xs"
+                  disabled={!selectedSpatialBounds}
+                >
+                  Clear
+                </Button>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setIsControlsOpen((value) => !value)}
+                variant="ghost"
+                size="icon-xs"
+                className="rounded-sm"
+                aria-label={isControlsOpen ? 'Collapse map controls' : 'Expand map controls'}
+              >
+                {isControlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {isControlsOpen ? (
+              <div className="mt-2 space-y-2">
+                <div className="text-[10px] text-muted-foreground">
+                  {isStkdeVisible ? 'Overview density with hotspot cues' : 'Density-first overview'}
+                </div>
+                {/* Debug Info */}
+                {lastClick && (
+                  <div className="text-[10px] font-mono text-muted-foreground">
+                    Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
+                  </div>
+                )}
+                {(selectedTypes.length > 0 || selectedDistricts.length > 0 || selectedTimeRange || selectedSpatialBounds) && (
+                  <div className="text-[10px] text-muted-foreground">
+                    Filters: {[
+                      selectedTypes.length > 0 ? `Types ${selectedTypes.length}` : null,
+                      selectedDistricts.length > 0 ? `Districts ${selectedDistricts.length}` : null,
+                      selectedTimeRange ? 'Time' : null,
+                      selectedSpatialBounds ? 'Region' : null
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </div>
+                )}
+                {colorMode === 'burst' ? (
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full bg-orange-500" />
+                    <span>Density ≥ {Math.round(burstThreshold * 100)}%</span>
+                  </div>
+                ) : (
+                  <MapTypeLegend
+                    selectedTypes={selectedTypes}
+                    hoveredTypeId={hoveredTypeId}
+                    onHoverType={setHoveredTypeId}
+                    onToggleType={toggleType}
+                  />
+                )}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

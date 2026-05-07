@@ -50,5 +50,5 @@ export function buildStkdeHeatmapColorExpression() {
     ['linear'],
     ['heatmap-density'],
     ...STKDE_HEATMAP_COLOR_STOPS.flatMap(([stop, color]) => [stop, color]),
-  ] as const;
+  ];
 }

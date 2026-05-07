@@ -8,7 +8,7 @@ import { useThemeStore } from '@/store/useThemeStore';
 import { useFilterStore } from '@/store/useFilterStore';
 
 export const ClusterLabels: React.FC = () => {
-  const { clusters, enabled, selectedClusterId, hoveredClusterId, setSelectedClusterId, setHoveredClusterId, clearClusterSelection } = useClusterStore();
+  const { clusters, selectedClusterId, hoveredClusterId, setSelectedClusterId, setHoveredClusterId, clearClusterSelection } = useClusterStore();
   const setSpatialBounds = useFilterStore((state) => state.setSpatialBounds);
   const clearSpatialBounds = useFilterStore((state) => state.clearSpatialBounds);
   const controls = useThree((state: any) => state.controls) as any;
@@ -34,7 +34,7 @@ export const ClusterLabels: React.FC = () => {
       .slice(0, 5);
   }, [clusters]);
 
-  if (!enabled || topClusters.length === 0) return null;
+  if (topClusters.length === 0) return null;
 
   return (
     <group name="cluster-labels">

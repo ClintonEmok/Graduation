@@ -4,14 +4,14 @@ import { PALETTES } from '@/lib/palettes';
 import { useThemeStore } from '@/store/useThemeStore';
 
 export const ClusterHighlights: React.FC = () => {
-  const { clusters, enabled, selectedClusterId, hoveredClusterId } = useClusterStore();
+  const { clusters, selectedClusterId, hoveredClusterId } = useClusterStore();
   const theme = useThemeStore((state) => state.theme);
   const palette = PALETTES[theme].categoryColors;
 
   const resolveClusterColor = (dominantType: string) =>
     palette[dominantType.toUpperCase()] || palette[dominantType] || '#a855f7';
 
-  if (!enabled || !clusters || clusters.length === 0) return null;
+  if (!clusters || clusters.length === 0) return null;
 
   return (
     <group name="cluster-highlights">

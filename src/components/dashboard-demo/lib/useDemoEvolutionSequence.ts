@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useStore } from 'zustand';
-import { useDashboardDemoSliceStore } from '@/store/useDashboardDemoSliceStore';
+import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 
 export interface DemoEvolutionSliceInput {
@@ -122,7 +122,7 @@ export function buildDemoEvolutionSequence({
 }
 
 export function useDemoEvolutionSequence() {
-  const slices = useStore(useDashboardDemoSliceStore, (state) => state.slices);
+  const slices = useStore(useSliceDomainStore, (state) => state.slices);
   const currentTime = useDashboardDemoTimeStore((state) => state.currentTime);
   const isPlaying = useDashboardDemoTimeStore((state) => state.isPlaying);
   const speed = useDashboardDemoTimeStore((state) => state.speed);

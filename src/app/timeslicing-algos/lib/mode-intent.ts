@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import { resolveRouteBinningMode } from '@/lib/adaptive/route-binning-mode';
 
 export type TimeslicingAlgosModeIntent = AdaptiveBinningMode | 'adaptive';

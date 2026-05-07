@@ -141,6 +141,12 @@ export function analyzeClusters(
       stabilizeNumber(bounds.maxY - bounds.minY),
       stabilizeNumber(bounds.maxZ - bounds.minZ),
     ];
+    const center: [number, number, number] = [
+      stabilizeNumber((bounds.minX + bounds.maxX) / 2),
+      stabilizeNumber((bounds.minY + bounds.maxY) / 2),
+      stabilizeNumber((bounds.minZ + bounds.maxZ) / 2),
+    ];
+    const timeRange: [number, number] = [stabilizeNumber(minTime), stabilizeNumber(maxTime)];
 
     return {
       id: clusterId,
@@ -162,13 +168,9 @@ export function analyzeClusters(
         minLon: stabilizeNumber(bounds.minLon),
         maxLon: stabilizeNumber(bounds.maxLon),
       },
-      center: [
-        stabilizeNumber((bounds.minX + bounds.maxX) / 2),
-        stabilizeNumber((bounds.minY + bounds.maxY) / 2),
-        stabilizeNumber((bounds.minZ + bounds.maxZ) / 2),
-      ],
+      center,
       size,
-      timeRange: [stabilizeNumber(minTime), stabilizeNumber(maxTime)],
+      timeRange,
     };
   });
 

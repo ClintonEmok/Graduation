@@ -4,10 +4,8 @@ import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   useSuggestionStore,
-  type TimeScaleData,
-  type IntervalBoundaryData,
-  type SuggestionContextMetadata,
 } from '@/store/useSuggestionStore';
+import type { IntervalBoundaryData, SuggestionContextMetadata, TimeScaleData } from '@/types/suggestion';
 import { generateWarpProfiles, type WarpProfile } from '@/lib/warp-generation';
 import { detectBoundaries, type BoundaryMethod } from '@/lib/interval-detection';
 import { generateRankedAutoProposalSets } from '@/lib/full-auto-orchestrator';

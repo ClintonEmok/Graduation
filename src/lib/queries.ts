@@ -1,5 +1,6 @@
 import { CHICAGO_BOUNDS, lonLatToNormalized } from './coordinate-normalization';
 import { ensureSortedCrimesTable, getDb, isMockDataEnabled } from './db';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 import {
   buildAdaptiveBurstQuery,
   buildAdaptiveDensityQuery,
@@ -17,7 +18,6 @@ import {
   toNumber,
 } from './queries/index';
 import type {
-  AdaptiveBinningMode,
   CrimeRecord,
   DensityBin,
   GlobalAdaptiveMaps,

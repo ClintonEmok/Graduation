@@ -1,4 +1,4 @@
-import type { AdaptiveBinningMode } from '@/store/useAdaptiveStore';
+import type { AdaptiveBinningMode } from '@/types/adaptive';
 
 export type TimeslicingAlgosTimeScale = 'linear' | 'adaptive';
 

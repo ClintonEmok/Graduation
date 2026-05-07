@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Shield, Sparkles } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { DualTimeline } from '@/components/timeline/DualTimeline';
@@ -66,7 +66,7 @@ export default function DashboardV2Page() {
   const viewportEnd = useViewportStore((state) => state.endDate);
   const selectedTimeRange = useFilterStore((state) => state.selectedTimeRange);
 
-  const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+  const mapDomain = useAdaptiveStore((state) => state.mapDomain) ?? [0, 100];
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
 
@@ -407,7 +407,9 @@ export default function DashboardV2Page() {
                 ) : null}
                 {cubeVisible ? (
                   <div className="min-h-0">
-                    <CubeVisualization />
+                    <Suspense fallback={null}>
+                      <CubeVisualization />
+                    </Suspense>
                   </div>
                 ) : null}
               </div>
