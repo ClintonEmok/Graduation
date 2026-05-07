@@ -1,4 +1,4 @@
-# Roadmap: Adaptive Space-Time Cube Prototype — MVP Finale (v2.0)
+# Roadmap: MVP Finale (v2.0)
 
 ## Overview
 
@@ -6,11 +6,13 @@ Milestone **MVP Finale** delivers the remaining supervisor objectives for the Ad
 
 Dashboard-demo is now the main app. The old dashboard route is legacy.
 
-**Phase numbering resets** from the v1.0 roadmap (previously phases 1–16). These 6 phases run sequentially.
+**Phase numbering resets** from the v1.0 roadmap (phases 1–16). These 6 phases run sequentially.
 
 **Total requirements:** 26
 
 **Not in scope:** User workflow / guided workflow beyond what already exists in `WorkflowSkeleton`. Can be added as a follow-up milestone if desired.
+
+---
 
 ## Phases
 
@@ -32,7 +34,7 @@ Dashboard-demo is now the main app. The old dashboard route is legacy.
 | PLANE-02 | Slice plane interaction (drag, double-click create, resize) | Uses existing SlicePlane.tsx — wire to demo store |
 | PLANE-03 | Slice plane visual polish (colors, labels, grid helpers) | Match existing palette, add time labels, clean up opacity |
 
-**Success criteria (what must be TRUE):**
+**Success criteria:**
 1. Cube crime points respond to demo warp factor and slice state
 2. Time slice planes are visible and interactive in the 3D scene
 3. Monthly granularity is available as a first-class option
@@ -46,8 +48,6 @@ Dashboard-demo is now the main app. The old dashboard route is legacy.
 
 **Depends on:** Phase 1 (planes must exist in scene, cube must read demo state)
 
-**Plans:** 3 plans
-
 **Requirements (3):** KDE3D-01, KDE3D-02, KDE3D-03
 
 | ID | Requirement | Notes |
@@ -56,16 +56,11 @@ Dashboard-demo is now the main app. The old dashboard route is legacy.
 | KDE3D-02 | Render STKDE heatmap texture on slice planes | Use R3F plane geometry with heatmap texture overlay per slice |
 | KDE3D-03 | Reactive STKDE updates on slice/time changes | Debounced re-computation when active slice set or time range changes |
 
-**Success criteria (what must be TRUE):**
+**Success criteria:**
 1. Each visible slice plane shows a heatmap overlay of its crime density
 2. STKDE recomputes when slices change (add/remove/resize)
 3. Heatmap color scale matches the existing 2D map STKDE convention
 4. Up to 5 slice planes render simultaneously without frame drop
-
-Plans:
-- [ ] 02-01-PLAN.md — Make STKDE compute slice-keyed outputs
-- [ ] 02-02-PLAN.md — Render STKDE heatmaps on cube planes
-- [ ] 02-03-PLAN.md — Recompute demo STKDE on slice/time changes
 
 ---
 
@@ -85,19 +80,11 @@ Plans:
 | BURST-02 | Burst tracking across slices | Identify same burst class appearing in adjacent slices, draw connection lines |
 | BURST-03 | Burst metrics timeline | Timeline overlay showing burst scores per slice (bar/line chart in the rail) |
 
-**Success criteria (what must be TRUE):**
+**Success criteria:**
 1. User can select two adjacent slices and see a comparison panel
 2. Burst lifecycle is visible as a curve spanning slice planes
 3. Same burst across adjacent slices is visually connected
 4. Burst scores are shown in the timeline or rail as a per-slice metric
-
-**Plans:** 4 plans
-
-Plans:
-- [ ] 03-01-PLAN.md — comparison model and two-slot slice selection state
-- [ ] 03-02-PLAN.md — adjacent slice comparison panel and rail tab wiring
-- [ ] 03-03-PLAN.md — burst lifecycle overlay across cube planes
-- [ ] 03-04-PLAN.md — burst score rail timeline in the bottom rail
 
 ---
 
@@ -144,7 +131,7 @@ Plans:
 | CLUS-03 | Per-slice clustering | Compute DBSCAN per slice plane and render 2D hulls on each plane |
 | CLUS-04 | Cluster interaction (hover/select/filter) | Hover to see cluster composition, click to filter points, style by cluster ID |
 
-**Success criteria (what must be TRUE):**
+**Success criteria:**
 1. DBSCAN runs on cube crime points and returns cluster assignments
 2. Cluster hulls render as transparent 3D volumes or 2D polygons on slices
 3. Hovering a cluster shows its member count, crime types, and time span
@@ -166,7 +153,7 @@ Plans:
 | CAT-02 | Click-to-filter by category | Click legend item filters cube (and map) to that category |
 | CAT-03 | Shape encoding for categories | Different marker shapes (sphere, cube, cone) per broad category in cube |
 
-**Success criteria (what must be TRUE):**
+**Success criteria:**
 1. Legend auto-populates from the crime types present in current viewport
 2. Clicking a legend item toggles that type's visibility in cube and map
 3. At least 3 distinct marker shapes are used for broad categories
