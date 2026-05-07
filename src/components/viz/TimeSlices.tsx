@@ -6,8 +6,10 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useDemoEvolutionSequence } from '@/components/dashboard-demo/lib/useDemoEvolutionSequence';
 import { SlicePlane } from './SlicePlane';
 import { BurstEvolutionOverlay } from './BurstEvolutionOverlay';
+import { EvolutionFlowOverlay } from './EvolutionFlowOverlay';
 import { scaleLinear } from 'd3-scale';
 import { getAdaptiveScaleConfig, getAdaptiveScaleConfigColumnar } from '@/lib/adaptive-scale';
 
@@ -29,6 +31,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
   const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
   const stkdeResponse = useDashboardDemoAnalysisStore((state) => state.stkdeResponse);
   const selectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.selectedBurstWindows);
+  const evolutionSequence = useDemoEvolutionSequence();
   
   // Compute relational scale for the slice scene
   const scale = useMemo(() => {
@@ -83,10 +86,20 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
           yToTime={yToTime}
           timeToY={scale}
           stkdeSurface={stkdeResponse?.sliceResults?.[slice.id] ?? null}
+          evolutionState={
+            evolutionSequence.activeSliceId === slice.id
+              ? 'active'
+              : evolutionSequence.previousSliceId === slice.id
+                ? 'previous'
+                : evolutionSequence.nextSliceId === slice.id
+                  ? 'next'
+                  : 'distant'
+          }
         />
       ))}
 
       <BurstEvolutionOverlay slices={slices} burstWindows={selectedBurstWindows} timeToY={scale} />
+      <EvolutionFlowOverlay slices={slices} activeSliceId={evolutionSequence.activeSliceId} timeToY={scale} />
     </group>
   );
 }

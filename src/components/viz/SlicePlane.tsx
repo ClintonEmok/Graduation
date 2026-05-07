@@ -13,9 +13,10 @@ interface SlicePlaneProps {
   yToTime: (y: number) => number;
   timeToY: (t: number) => number;
   stkdeSurface?: StkdeSurfaceResponse | null;
+  evolutionState?: 'active' | 'previous' | 'next' | 'distant';
 }
 
-export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface }: SlicePlaneProps) {
+export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface, evolutionState = 'distant' }: SlicePlaneProps) {
   const { camera, gl } = useThree();
   const [isDragging, setIsDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -24,8 +25,9 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface 
 
   // Visual props
   const color = slice.isLocked ? '#94a3b8' : (isRange ? '#a855f7' : '#22d3ee');
-  const opacity = slice.isLocked ? 0.08 : (isRange ? 0.1 : 0.16);
-  const helperOpacity = slice.isLocked ? 0.12 : 0.18;
+  const evolutionMultiplier = evolutionState === 'active' ? 1.25 : evolutionState === 'previous' || evolutionState === 'next' ? 0.9 : 0.62;
+  const opacity = (slice.isLocked ? 0.08 : (isRange ? 0.1 : 0.16)) * evolutionMultiplier;
+  const helperOpacity = (slice.isLocked ? 0.12 : 0.18) * evolutionMultiplier;
 
   // Calculate range specifics
   const rangeYStart = isRange ? timeToY(slice.range?.[0] ?? 0) : y;
@@ -165,18 +167,15 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface 
 
   if (!slice.isVisible) return null;
 
+  const activeStroke = evolutionState === 'active' ? 'rgba(125, 211, 252, 0.95)' : 'rgba(125, 211, 252, 0.55)';
+
   return (
     <group position={[0, centerY, 0]}>
       {/* Visual Representation */}
       {isRange ? (
         <mesh>
           <boxGeometry args={[100, height, 100]} />
-          <meshBasicMaterial 
-            color={color} 
-            transparent 
-            opacity={opacity} 
-            depthWrite={false}
-          />
+          <meshBasicMaterial color={color} transparent opacity={opacity} depthWrite={false} />
         </mesh>
       ) : (
         <>
@@ -199,13 +198,14 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface 
       {heatmapTexture ? (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]}>
           <planeGeometry args={[100, 100]} />
-          <meshBasicMaterial
-            map={heatmapTexture}
-            transparent
-            opacity={0.92}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
+          <meshBasicMaterial map={heatmapTexture} transparent opacity={0.92 * evolutionMultiplier} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      ) : null}
+
+      {evolutionState === 'active' ? (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]}>
+          <planeGeometry args={[100, 100]} />
+          <meshBasicMaterial color={activeStroke} transparent opacity={0.12} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
       ) : null}
 
@@ -218,7 +218,7 @@ export function SlicePlane({ slice, y, onUpdate, yToTime, timeToY, stkdeSurface 
           onPointerOut={() => setHovered(false)}
         >
           <sphereGeometry args={[1.5, 16, 16]} />
-          <meshBasicMaterial color={isDragging || hovered ? '#ffffff' : color} />
+          <meshBasicMaterial color={isDragging || hovered || evolutionState === 'active' ? '#ffffff' : color} />
         </mesh>
         
         <Html position={[2, 0, 0]} center className="pointer-events-none select-none">
