@@ -150,6 +150,14 @@ Plans:
 3. Hovering a cluster shows its member count, crime types, and time span
 4. Click-to-filter isolates a cluster's points across all slices
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — shared DBSCAN cluster analysis and store model
+- [ ] 05-02-PLAN.md — 3D cluster hulls and label overlays in the cube
+- [ ] 05-03-PLAN.md — per-slice cluster overlays on the slice planes
+- [ ] 05-04-PLAN.md — cluster hover, select, and spatial-bound filtering
+
 ---
 
 ### Phase 6: Category Encoding
