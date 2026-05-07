@@ -185,6 +185,12 @@ Progress: █████████████████░ 54/55 plans com
 - Cube and map legends share the same dynamic category list and toggle state.
 - The cube adds category-shape encoding with sphere, cube, and cone overlays.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260507-o0y | delete-slicemanagerui-remove-pendingdraf | 2026-05-07 | 1bc9198 | [./quick/260507-o0y-delete-slicemanagerui-remove-pendingdraf/](./quick/260507-o0y-delete-slicemanagerui-remove-pendingdraf/) |
+
 ### Blockers/Concerns
 
 - `pnpm typecheck` currently fails due unrelated pre-existing missing-module and type errors elsewhere in the repo.
@@ -196,6 +202,6 @@ Progress: █████████████████░ 54/55 plans com
 
 ## Session Continuity
 
-Last session: 2026-05-07T01:56:34Z
-Stopped at: Completed quick-o0y (delete SliceManagerUI, wire Range button to pendingGeneratedBins)
+Last session: 2026-05-07T15:17:57Z
+Stopped at: Completed quick task 260507-o0y: Delete SliceManagerUI, remove pendingDraftSlices/SliceDraftState/draft overlay artifacts, add addManualDraftRange, wire Range to pendingGeneratedBins
 Resume file: None
