@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-stopped_at: Phase 06 plan creation complete
-last_updated: "2026-05-07T01:43:02Z"
+stopped_at: Phase 06 plan execution complete
+last_updated: "2026-05-07T01:56:34Z"
 progress:
   total_phases: 20
   completed_phases: 14
@@ -19,13 +19,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 06 — Category Encoding
+**Current focus:** Phase 07 — Dashboard Demo Preset Thresholds
 
 ## Current Position
 
-Phase: 06 (Category Encoding) — Planned
-Plan: 03 planned / 03
-Progress: █████████████████░ 51/55 plans complete
+Phase: 06 (Category Encoding) — Complete
+Plan: 03 complete / 03
+Progress: █████████████████░ 54/55 plans complete
 
 ## Performance Metrics
 
@@ -153,7 +153,7 @@ Progress: █████████████████░ 51/55 plans com
 - Phase 3 demo timeline rewrite is complete.
 - Phase 4 demo stats + STKDE wiring is complete.
 - Phase 5 clustering is complete.
-- Phase 6 category encoding is planned.
+- Phase 6 category encoding is complete.
 - Phase 6 warp follow-up is complete.
 - Phase 7 dashboard-demo preset thresholds is complete.
 - Phase 8 contextual data enrichment plan follows after the inserted threshold phase.
@@ -179,6 +179,12 @@ Progress: █████████████████░ 51/55 plans com
 - The cube renders global cluster volumes, per-slice cluster overlays, and active cluster context.
 - Hover/select/filter behavior is locked to the existing spatial-bound filter path.
 
+### Phase 06 Completion
+
+- Category legends now derive from actual viewport crime data.
+- Cube and map legends share the same dynamic category list and toggle state.
+- The cube adds category-shape encoding with sphere, cube, and cone overlays.
+
 ### Blockers/Concerns
 
 - `pnpm typecheck` currently fails due unrelated pre-existing missing-module and type errors elsewhere in the repo.
@@ -191,5 +197,5 @@ Progress: █████████████████░ 51/55 plans com
 ## Session Continuity
 
 Last session: 2026-05-07T01:43:02Z
-Stopped at: Completed 05-clustering
+Stopped at: Completed 06-category-encoding
 Resume file: None
