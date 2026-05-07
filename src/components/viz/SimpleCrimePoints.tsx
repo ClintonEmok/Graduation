@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useLayoutEffect, useRef } from 'react';
 import { useStore } from 'zustand';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useViewportStore } from '@/lib/stores/viewportStore';
@@ -16,6 +16,7 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { useWarpSliceStore } from '@/store/useWarpSliceStore';
 import { normalizeTimeRange } from '@/lib/time-range';
+import { resolveCategoryShape, type CategoryShape } from '@/lib/category-shapes';
 
 // Full date range constants from the dataset (2001-2026)
 const DATA_MIN_TIMESTAMP = 978307200;  // 2001-01-01
@@ -85,6 +86,74 @@ const normalizeStoreSlices = (slices: Array<any>): Array<{ enabled: boolean; ran
       weight: Number.isFinite(Number(slice.weight ?? slice.warpWeight ?? 1)) ? Number(slice.weight ?? slice.warpWeight ?? 1) : 1,
     };
   });
+
+type ShapeBucket = {
+  positions: number[];
+  colors: number[];
+  indices: number[];
+};
+
+const SHAPE_GEOMETRY_LABELS: Record<CategoryShape, 'sphereGeometry' | 'boxGeometry' | 'coneGeometry'> = {
+  sphere: 'sphereGeometry',
+  cube: 'boxGeometry',
+  cone: 'coneGeometry',
+};
+
+function CrimeShapeLayer({
+  shape,
+  bucket,
+}: {
+  shape: CategoryShape;
+  bucket: ShapeBucket;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const count = bucket.indices.length;
+
+  useLayoutEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    for (let i = 0; i < count; i += 1) {
+      const base = i * 3;
+      dummy.position.set(bucket.positions[base] ?? 0, bucket.positions[base + 1] ?? 0, bucket.positions[base + 2] ?? 0);
+      dummy.scale.setScalar(shape === 'cube' ? 0.78 : shape === 'sphere' ? 0.66 : 0.72);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+
+      color.setRGB(bucket.colors[base] ?? 1, bucket.colors[base + 1] ?? 1, bucket.colors[base + 2] ?? 1);
+      mesh.setColorAt(i, color);
+    }
+
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) {
+      mesh.instanceColor.needsUpdate = true;
+    }
+  }, [bucket.colors, bucket.indices.length, bucket.positions, count, shape]);
+
+  if (count === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, count]}
+      raycast={() => {}}
+      frustumCulled={false}
+      renderOrder={-1}
+    >
+      {shape === 'sphere' ? (
+        <sphereGeometry args={[0.5, 8, 8]} />
+      ) : shape === 'cube' ? (
+        <boxGeometry args={[0.82, 0.82, 0.82]} />
+      ) : (
+        <coneGeometry args={[0.55, 0.95, 8]} />
+      )}
+      <meshStandardMaterial vertexColors transparent opacity={0.35} depthWrite={false} />
+    </instancedMesh>
+  );
+}
 
 interface SimpleCrimePointsProps {
   filterStoreOverride?: unknown;
@@ -158,10 +227,15 @@ export function SimpleCrimePoints({
   const minTimestampSec = DATA_MIN_TIMESTAMP;
   const maxTimestampSec = DATA_MAX_TIMESTAMP;
 
-  const { positions, colors, indices, count } = useMemo(() => {
+  const { positions, colors, indices, count, shapeBuckets } = useMemo(() => {
     const positionsList: number[] = [];
     const colorsList: number[] = [];
     const indices: number[] = [];
+    const shapeBuckets: Record<CategoryShape, ShapeBucket> = {
+      sphere: { positions: [], colors: [], indices: [] },
+      cube: { positions: [], colors: [], indices: [] },
+      cone: { positions: [], colors: [], indices: [] },
+    };
 
     const resolveColor = (label: string) => {
       const key = label.toUpperCase();
@@ -290,13 +364,20 @@ export function SimpleCrimePoints({
       colorsList.push(color.r, color.g, color.b);
 
       indices.push(i);
+
+      const shape = resolveCategoryShape(record.type);
+      const bucket = shapeBuckets[shape];
+      bucket.positions.push(x, y + 0.3, z);
+      bucket.colors.push(color.r, color.g, color.b);
+      bucket.indices.push(i);
     }
 
     return {
       positions: new Float32Array(positionsList),
       colors: new Float32Array(colorsList),
       indices,
-      count: indices.length
+      count: indices.length,
+      shapeBuckets,
     };
   }, [
     data,
@@ -393,5 +474,11 @@ export function SimpleCrimePoints({
         </Html>
       )}
     </points>
+
+    <group renderOrder={-2}>
+      <CrimeShapeLayer shape="sphere" bucket={shapeBuckets.sphere} />
+      <CrimeShapeLayer shape="cube" bucket={shapeBuckets.cube} />
+      <CrimeShapeLayer shape="cone" bucket={shapeBuckets.cone} />
+    </group>
   );
 }
