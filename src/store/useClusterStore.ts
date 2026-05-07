@@ -1,38 +1,36 @@
 import { create } from 'zustand';
-
-export interface Cluster {
-  id: string;
-  center: [number, number, number];
-  size: [number, number, number];
-  count: number;
-  dominantType: string;
-  color: string;
-  minLat: number;
-  maxLat: number;
-  minLon: number;
-  maxLon: number;
-}
+import type { ClusterAnalysisCluster } from '@/lib/clustering/cluster-analysis';
 
 interface ClusterState {
-  clusters: Cluster[];
+  clusters: ClusterAnalysisCluster[];
+  sliceClustersById: Record<string, ClusterAnalysisCluster[]>;
   enabled: boolean;
   sensitivity: number;
   selectedClusterId: string | null;
+  hoveredClusterId: string | null;
   
-  setClusters: (clusters: Cluster[]) => void;
+  setClusters: (clusters: ClusterAnalysisCluster[]) => void;
+  setSliceClustersById: (sliceClustersById: Record<string, ClusterAnalysisCluster[]>) => void;
   setEnabled: (enabled: boolean) => void;
   setSensitivity: (sensitivity: number) => void;
   setSelectedClusterId: (id: string | null) => void;
+  setHoveredClusterId: (id: string | null) => void;
+  clearClusterSelection: () => void;
 }
 
 export const useClusterStore = create<ClusterState>((set) => ({
   clusters: [],
+  sliceClustersById: {},
   enabled: true,
   sensitivity: 0.5,
   selectedClusterId: null,
+  hoveredClusterId: null,
 
   setClusters: (clusters) => set({ clusters }),
+  setSliceClustersById: (sliceClustersById) => set({ sliceClustersById }),
   setEnabled: (enabled) => set({ enabled }),
   setSensitivity: (sensitivity) => set({ sensitivity }),
   setSelectedClusterId: (selectedClusterId) => set({ selectedClusterId }),
+  setHoveredClusterId: (hoveredClusterId) => set({ hoveredClusterId }),
+  clearClusterSelection: () => set({ selectedClusterId: null, hoveredClusterId: null }),
 }));
