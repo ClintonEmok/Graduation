@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Filter, Home, Layers, Settings, Eye, EyeOff, GripVertical, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Home, Settings, Eye, EyeOff, GripVertical, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { FilterOverlay } from './FilterOverlay';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import { SliceManagerUI } from './SliceManagerUI';
 import { useUIStore } from '@/store/ui';
 import { useDraggable } from '@/hooks/useDraggable';
 import { useURLFeatureFlags } from '@/hooks/useURLFeatureFlags';
@@ -21,7 +20,6 @@ type FloatingToolbarProps = {
 export function FloatingToolbar({ variant = 'floating', onDetach, onDock }: FloatingToolbarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isSliceManagerOpen, setIsSliceManagerOpen] = useState(false);
   
   const showContext = useUIStore((state) => state.showContext);
   const toggleContext = useUIStore((state) => state.toggleContext);
@@ -107,21 +105,6 @@ export function FloatingToolbar({ variant = 'floating', onDetach, onDock }: Floa
           </TooltipContent>
         </Tooltip>
         
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="rounded-full p-3 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              aria-label="Layers"
-              onClick={() => setIsSliceManagerOpen(true)}
-            >
-              <Layers className="h-5 w-5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Layers</p>
-          </TooltipContent>
-        </Tooltip>
         
         <Tooltip>
           <TooltipTrigger asChild>
@@ -196,7 +179,6 @@ export function FloatingToolbar({ variant = 'floating', onDetach, onDock }: Floa
 
       <FilterOverlay isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-      <SliceManagerUI isOpen={isSliceManagerOpen} onClose={() => setIsSliceManagerOpen(false)} />
       <URLConflictDialog
         isOpen={showConflictDialog}
         urlFlags={urlFlags}

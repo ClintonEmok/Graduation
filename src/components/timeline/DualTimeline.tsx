@@ -199,7 +199,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const activeSliceUpdatedAt = useStore(sliceDomainStore, selectActiveSliceUpdatedAt);
   const getSliceOverlapCounts = useStore(sliceDomainStore, select((state) => state.getOverlapCounts));
   const pendingGeneratedBins = useStore(timeslicingModeStore, (state) => state.pendingGeneratedBins);
-  const pendingDraftSlices = useStore(sliceDomainStore, (state) => state.pendingDraftSlices);
   const warpSlices = useStore(useWarpSliceStore, (state) => state.slices);
   const effectiveWarpMap = adaptiveWarpMapOverride !== undefined ? adaptiveWarpMapOverride : warpMap;
   const effectiveWarpDomain = adaptiveWarpDomainOverride ?? mapDomain;
@@ -682,52 +681,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
   }, [detailInnerWidth, detailScale, pendingGeneratedBins]);
 
-  const pendingManualGeometries = useMemo<TimelineSliceGeometry[]>(() => {
-    if (!pendingDraftSlices.length || detailInnerWidth <= 0) {
-      return [];
-    }
-
-    return pendingDraftSlices
-      .map<TimelineSliceGeometry | null>((draft) => {
-        const normalizedTime = draft.type === 'range' && draft.range
-          ? (draft.range[0] + draft.range[1]) / 2
-          : draft.time;
-        const halfWidth = draft.type === 'range' && draft.range
-          ? (draft.range[1] - draft.range[0]) / 2
-          : 0.5;
-        const startPercent = Math.max(0, normalizedTime - halfWidth);
-        const endPercent = Math.min(100, normalizedTime + halfWidth);
-
-        const startDate = new Date(startPercent / 100 * (maxTimestampSec ?? 86400) * 1000);
-        const endDate = new Date(endPercent / 100 * (maxTimestampSec ?? 86400) * 1000);
-        const startX = detailScale(startDate);
-        const endX = detailScale(endDate);
-        if (!Number.isFinite(startX) || !Number.isFinite(endX)) {
-          return null;
-        }
-
-        const left = Math.max(0, Math.min(detailInnerWidth, Math.min(startX, endX)));
-        const right = Math.max(0, Math.min(detailInnerWidth, Math.max(startX, endX)));
-        if (right <= 0 || left >= detailInnerWidth || right <= left) {
-          return null;
-        }
-
-        return {
-          id: `manual-draft-${draft.id}`,
-          left,
-          width: Math.max(2, right - left),
-          isActive: false,
-          isBurst: false,
-          isPoint: draft.type === 'point',
-          isSuggestion: false,
-          isGeneratedDraft: false,
-          isGeneratedApplied: false,
-          overlapCount: 1,
-          color: undefined,
-        };
-      })
-      .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
-  }, [detailInnerWidth, detailScale, pendingDraftSlices, maxTimestampSec]);
 
   const isTimelineLoading = isViewportLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
@@ -798,7 +751,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     orderedSliceGeometries,
     activeSliceUpdatedAt,
     pendingGeneratedGeometries,
-    pendingManualGeometries,
     maxSliceOverlap,
     cursorX,
     selectionX,
