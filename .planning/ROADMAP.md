@@ -180,6 +180,13 @@ Plans:
 3. At least 3 distinct marker shapes are used for broad categories
 4. Category filter state is stored in demo filter store and syncs across views
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — shared viewport legend data helper
+- [ ] 06-02-PLAN.md — dynamic cube/map legends and category toggles
+- [ ] 06-03-PLAN.md — cube category shape encoding
+
 ---
 
 ## Progress
