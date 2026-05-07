@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-stopped_at: Phase 02 plan execution complete
-last_updated: "2026-05-06T20:51:59Z"
+stopped_at: Phase 03 plan execution complete
+last_updated: "2026-05-07T23:14:14Z"
 progress:
   total_phases: 20
-  completed_phases: 13
-  total_plans: 44
-  completed_plans: 41
+  completed_phases: 14
+  total_plans: 48
+  completed_plans: 45
 ---
 
 # Project State
@@ -19,13 +19,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
-**Current focus:** Phase 03 — Adjacent Slice Comparison + Burst Evolution
+**Current focus:** Phase 04 — Evolution View
 
 ## Current Position
 
-Phase: 02 (3D STKDE on Cube Planes) — Complete
-Plan: 03 complete / 03
-Progress: █████████████████░ 41/44 plans complete
+Phase: 03 (Adjacent Slice Comparison + Burst Evolution) — Complete
+Plan: 04 complete / 04
+Progress: █████████████████░ 45/48 plans complete
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: █████████████████░ 41/44 plans com
 - Phase 12 added: Codebase rewrite to improve code quality and proper separation of logic from UI where possible.
 - Phase 14 updated: Decode bursts + temporal anomalies.
 - Phase 16 added: 3D terrain and enhanced crime aggregation.
+- Phase 03 added: Adjacent slice comparison + burst evolution.
 
 ### Decisions
 
@@ -139,6 +140,9 @@ Progress: █████████████████░ 41/44 plans com
 - Make monthly granularity a shared contract and use calendar-month binning when monthly is selected.
 - Route cube rendering through dashboard-demo store overrides so the demo shell controls the cube state.
 - Keep slice planes in-scene and lower helper noise so the 3D cube reads as a usable analysis surface.
+- Keep the adjacent comparison helper pure with explicit left/right slots and push-based slot rotation.
+- Drive burst lifecycle connectors from selected burst windows while filtering hidden slices.
+- Normalize burst score rails against the strongest visible slice and keep zero-score fallback bars readable.
 
 ### Pending Todos
 
@@ -157,7 +161,8 @@ Progress: █████████████████░ 41/44 plans com
 - Phase 12 codebase rewrite is complete; Phase 13 UX/IA plans 01-05 are complete.
 - Phase 01 foundation store sync + slice planes is complete.
 - Phase 02 3D STKDE on Cube Planes is complete.
-- Phase 03 adjacent slice comparison + burst evolution is next.
+- Phase 03 adjacent slice comparison + burst evolution is complete.
+- Phase 04 evolution view is next.
 
 ### Blockers/Concerns
 
@@ -165,9 +170,10 @@ Progress: █████████████████░ 41/44 plans com
 - Broader lint on `DualTimeline.tsx` surfaces pre-existing React Compiler memoization warnings unrelated to this plan.
 - `pnpm vitest` via Corepack failed with a signature/key mismatch during verification; local `./node_modules/.bin/vitest` worked and was used for focused checks.
 - Phase 02 introduced slice-aware STKDE responses, shared heatmap palette wiring, and debounced latest-only demo refreshes.
+- Phase 03 introduced the adjacent comparison model, burst lifecycle overlay, and burst score rail.
 
 ## Session Continuity
 
-Last session: 2026-05-06T20:51:59Z
-Stopped at: Completed 02-3d-stkde-on-cube-planes
+Last session: 2026-05-07T23:14:14Z
+Stopped at: Completed 03-adjacent-slice-comparison-burst-evolution
 Resume file: None

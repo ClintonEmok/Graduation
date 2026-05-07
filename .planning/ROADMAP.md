@@ -91,6 +91,14 @@ Plans:
 3. Same burst across adjacent slices is visually connected
 4. Burst scores are shown in the timeline or rail as a per-slice metric
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — comparison model and two-slot slice selection state
+- [ ] 03-02-PLAN.md — adjacent slice comparison panel and rail tab wiring
+- [ ] 03-03-PLAN.md — burst lifecycle overlay across cube planes
+- [ ] 03-04-PLAN.md — burst score rail timeline in the bottom rail
+
 ---
 
 ### Phase 4: Evolution View
