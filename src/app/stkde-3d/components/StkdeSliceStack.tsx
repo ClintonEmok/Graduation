@@ -15,21 +15,8 @@ function yForIndex(index: number): number {
 
 function kdeColor(t: number): string {
   const intensity = Math.min(1, Math.max(0, t));
-  if (intensity < 0.33) {
-    const g = Math.round(intensity * 3 * 160);
-    const b = Math.round(80 + intensity * 3 * 175);
-    return `rgb(5, ${g}, ${b})`;
-  }
-  if (intensity < 0.66) {
-    const r = Math.round((intensity - 0.33) * 3 * 220);
-    const g = Math.round(160 - (intensity - 0.33) * 3 * 100);
-    const b = Math.round(255 - (intensity - 0.33) * 3 * 200);
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-  const r = Math.round(220 + (intensity - 0.66) * 3 * 35);
-  const g = Math.round(60 - (intensity - 0.66) * 3 * 55);
-  const b = Math.round(55 - (intensity - 0.66) * 3 * 55);
-  return `rgb(${Math.min(255, r)}, ${Math.max(0, g)}, ${Math.max(0, b)})`;
+  const value = Math.round(24 + intensity * 205);
+  return `rgb(${value}, ${value}, ${value})`;
 }
 
 function buildHeatmapTexture(cells: KdeCell[]): THREE.CanvasTexture | null {
@@ -109,8 +96,8 @@ export function StkdeSliceStack({
             ? 0.35
             : 0.1;
 
-        const gridOpacity = isActive ? 0.25 : isAdjacent ? 0.1 : 0.03;
-        const planeOpacity = Math.min(0.95, 0.85 * opacityMultiplier);
+        const gridOpacity = isActive ? 0.08 : isAdjacent ? 0.03 : 0.01;
+        const planeOpacity = Math.min(0.4, 0.3 * opacityMultiplier);
         const texture = textures.get(i) ?? undefined;
 
         const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;
@@ -148,9 +135,9 @@ export function StkdeSliceStack({
                 >
                   <ringGeometry args={[49.2, 50, 64]} />
                   <meshBasicMaterial
-                    color="#38bdf8"
+                    color="#d4d4d8"
                     transparent
-                    opacity={0.7}
+                    opacity={0.26}
                     depthWrite={false}
                     side={THREE.DoubleSide}
                   />
@@ -161,9 +148,9 @@ export function StkdeSliceStack({
                 >
                   <ringGeometry args={[48.5, 49.8, 64]} />
                   <meshBasicMaterial
-                    color="#7dd3fc"
+                    color="#f4f4f5"
                     transparent
-                    opacity={0.3}
+                    opacity={0.1}
                     depthWrite={false}
                     side={THREE.DoubleSide}
                   />
@@ -178,9 +165,9 @@ export function StkdeSliceStack({
               >
                 <ringGeometry args={[49.4, 50, 64]} />
                 <meshBasicMaterial
-                  color="#94a3b8"
+                  color="#a1a1aa"
                   transparent
-                  opacity={0.2}
+                  opacity={0.06}
                   depthWrite={false}
                   side={THREE.DoubleSide}
                 />
