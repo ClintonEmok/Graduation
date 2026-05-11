@@ -13,11 +13,7 @@ export function BurstScoreRail({
   width: number;
 }) {
   if (series.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
-        No burst scores yet.
-      </div>
-    );
+    return null;
   }
 
   const strongest = series.reduce((best, entry) => (entry.score > best.score ? entry : best), series[0]);
