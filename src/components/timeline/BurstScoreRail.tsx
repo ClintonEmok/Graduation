@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from '@/components/ui/badge';
 import type { BurstScoreSeriesEntry } from './lib/burst-score-series';
 
 const formatScore = (value: number) => value.toFixed(0);
@@ -20,13 +19,6 @@ export function BurstScoreRail({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        <span>Burst score rail</span>
-        <Badge variant="outline" className="rounded-full">
-          Peak {strongest.label} · {formatScore(strongest.score)}
-        </Badge>
-      </div>
-
       <div className="relative h-16 overflow-hidden rounded-md border border-border/60 bg-muted/10" style={{ width }}>
         <div className="absolute inset-x-0 bottom-0 h-px bg-border/80" />
         {series.map((entry) => {
@@ -46,11 +38,6 @@ export function BurstScoreRail({
                   title={`${entry.label}: ${formatScore(entry.score)}`}
                 />
               </div>
-              {entry.width > 24 ? (
-                <div className="pb-1 text-center text-[10px] leading-none text-muted-foreground">
-                  {entry.label}
-                </div>
-              ) : null}
             </div>
           );
         })}

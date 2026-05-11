@@ -12,6 +12,7 @@ describe('BurstScoreRail contract', () => {
     expect(demoDualTimelineSource).toContain('burstScoreSeries');
     expect(surfaceSource).toContain('BurstScoreRail');
     expect(railSource).not.toContain('No burst scores yet');
-    expect(railSource).toContain('Peak');
+    expect(railSource).not.toContain('Peak');
+    expect(railSource).not.toContain('Burst score rail');
   });
 });
