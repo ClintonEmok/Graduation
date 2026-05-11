@@ -18,7 +18,8 @@ This project uses standard statistical primitives and then composes them into ap
 - Lin, J. (1991). *Divergence measures based on the Shannon entropy*. *IEEE Transactions on Information Theory*, 37(1), 145-151. https://doi.org/10.1109/18.61115
 
 ## What Is Custom
-- `computeSpatialBBinned()` combines entropy-based concentration with Jensen-Shannon divergence as `clamp01(concentration * (0.25 + 0.75 * surprise))` so low-divergence bins still retain a stable floor.
+- `computeSpatialBBinned()` supports selectable spatial formulas: ANN, entropy, JS divergence, and the balanced composite.
+- The balanced default combines entropy-based concentration with Jensen-Shannon divergence as `clamp01(concentration * (0.25 + 0.75 * surprise))` so low-divergence bins still retain a stable floor.
 - `combinedB` in the API is a project-specific weighting of temporal and spatial scores.
 - Burst ranking, thresholds, and slice allocation are app logic, not borrowed directly from a single paper.
 

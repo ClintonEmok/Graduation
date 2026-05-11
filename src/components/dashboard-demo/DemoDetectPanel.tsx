@@ -11,21 +11,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { toEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
-import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
+import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import {
   partitionSelectionByGranularity,
   recommendGranularityForSelection,
+  type DemoSelectionGranularity,
 } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import {
   BURST_METRIC_OPTIONS,
+  SPATIAL_FORMULA_OPTIONS,
   allocateSlices,
   fetchBurstBins,
   resolveBurstMetricValue,
+  type SpatialFormula,
   type BurstMetric,
 } from '@/lib/burst-detection';
 import type { BurstBinResult } from '@/lib/burst-detection';
@@ -36,6 +39,20 @@ const GRANULARITY_OPTIONS = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
 ] as const;
+
+const GRANULARITY_ORDER: DemoSelectionGranularity[] = ['quarterly', 'monthly', 'weekly', 'daily', 'hourly'];
+const GRANULARITY_RANK = new Map<DemoSelectionGranularity, number>(
+  GRANULARITY_ORDER.map((granularity, index) => [granularity, index]),
+);
+
+const coarsenGranularity = (
+  preferred: DemoSelectionGranularity,
+  suggested: DemoSelectionGranularity,
+): DemoSelectionGranularity => {
+  const preferredRank = GRANULARITY_RANK.get(preferred) ?? GRANULARITY_ORDER.length - 1;
+  const suggestedRank = GRANULARITY_RANK.get(suggested) ?? GRANULARITY_ORDER.length - 1;
+  return GRANULARITY_ORDER[Math.min(preferredRank, suggestedRank)];
+};
 
 export function DemoDetectPanel() {
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
@@ -52,25 +69,37 @@ export function DemoDetectPanel() {
   const crimeTypes = useTimelineDataStore((state) => state.crimeTypes);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
-  const timeRange = useDashboardDemoTimeStore((state) => state.timeRange);
-  const canGenerate = generationStatus !== 'generating' && minTimestampSec !== null && maxTimestampSec !== null;
+  const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
+  const canGenerate =
+    generationStatus !== 'generating' &&
+    minTimestampSec !== null &&
+    maxTimestampSec !== null &&
+    selectedTimeRange !== null;
 
   const [burstBins, setBurstBins] = useState<BurstBinResult[] | null>(null);
   const [burstTargetSliceCount, setBurstTargetSliceCount] = useState<number | null>(null);
   const [isFetchingBurst, setIsFetchingBurst] = useState(false);
   const [burstMetric, setBurstMetric] = useState<BurstMetric>('combined');
+  const [spatialFormula, setSpatialFormula] = useState<SpatialFormula>('balanced');
 
   const selectedWindowBounds = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) return null;
-    const [windowStart, windowEnd] = timeRange;
-    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+    if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return null;
+    const [windowStart, windowEnd] = selectedTimeRange;
+    const start = toEpochSeconds(windowStart) * 1000;
+    const end = toEpochSeconds(windowEnd) * 1000;
     return { start, end };
-  }, [maxTimestampSec, minTimestampSec, timeRange]);
+  }, [maxTimestampSec, minTimestampSec, selectedTimeRange]);
 
   const suggestedGranularity = useMemo(
     () => recommendGranularityForSelection(selectedWindowBounds),
     [selectedWindowBounds],
+  );
+  const scanGranularity = useMemo(
+    () =>
+      selectedWindowBounds
+        ? coarsenGranularity(generationInputs.granularity, suggestedGranularity)
+        : generationInputs.granularity,
+    [generationInputs.granularity, selectedWindowBounds, suggestedGranularity],
   );
 
   const suggestedGranularityLabel = GRANULARITY_OPTIONS.find(
@@ -82,6 +111,7 @@ export function DemoDetectPanel() {
   )?.label ?? 'Daily';
 
   const activeBurstMetricLabel = BURST_METRIC_OPTIONS.find((o) => o.value === burstMetric)?.label ?? 'Combined';
+  const activeSpatialFormulaLabel = SPATIAL_FORMULA_OPTIONS.find((o) => o.value === spatialFormula)?.label ?? 'Balanced';
 
   const availableCrimeTypes = useMemo(() => {
     if (crimeTypes.length > 0) return crimeTypes;
@@ -98,15 +128,15 @@ export function DemoDetectPanel() {
   const selectedCrimeTypes = generationInputs.crimeTypes;
 
   const handleFetchBurstBins = useCallback(async () => {
-    if (minTimestampSec === null || maxTimestampSec === null) return;
-    const [ws, we] = timeRange;
-    const start = normalizedToEpochSeconds(ws, minTimestampSec, maxTimestampSec);
-    const end = normalizedToEpochSeconds(we, minTimestampSec, maxTimestampSec);
+    if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return;
+    const [ws, we] = selectedTimeRange;
+    const start = toEpochSeconds(ws) * 1000;
+    const end = toEpochSeconds(we) * 1000;
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
 
     const partitions = partitionSelectionByGranularity(
-      [start * 1000, end * 1000],
-      generationInputs.granularity,
+      [start, end],
+      scanGranularity,
     );
 
     if (partitions.length === 0) {
@@ -123,7 +153,8 @@ export function DemoDetectPanel() {
           startEpoch: partition.startTime / 1000,
           endEpoch: partition.endTime / 1000,
         })),
-        granularity: generationInputs.granularity,
+        granularity: scanGranularity,
+        spatialFormula,
         crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : undefined,
       });
       setBurstBins(result.bins);
@@ -132,18 +163,18 @@ export function DemoDetectPanel() {
       toast.error('Failed to fetch burst data');
     }
     setIsFetchingBurst(false);
-  }, [minTimestampSec, maxTimestampSec, timeRange, generationInputs.granularity, generationInputs.crimeTypes]);
+  }, [generationInputs.crimeTypes, maxTimestampSec, minTimestampSec, scanGranularity, selectedTimeRange, spatialFormula]);
 
   const handleGenerateBurstDrafts = async () => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
+    if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) {
       toast.error('Selection-first generation failed', {
         description: 'Choose a valid brushed selection before generating drafts.',
       });
       return;
     }
-    const [windowStart, windowEnd] = timeRange;
-    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+    const [windowStart, windowEnd] = selectedTimeRange;
+    const start = toEpochSeconds(windowStart) * 1000;
+    const end = toEpochSeconds(windowEnd) * 1000;
     setGenerationInputs({ timeWindow: { start, end } });
     const generated = await generateBurstDraftBinsFromWindows();
     const state = useDashboardDemoTimeslicingModeStore.getState();
@@ -244,7 +275,7 @@ export function DemoDetectPanel() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span>Burst formula</span>
+              <span>Burst metric</span>
               <span className="text-muted-foreground/70">Active: {activeBurstMetricLabel}</span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -255,6 +286,33 @@ export function DemoDetectPanel() {
                     key={option.value}
                     type="button"
                     onClick={() => setBurstMetric(option.value)}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                      isActive
+                        ? 'border-violet-300 bg-violet-500/20 text-violet-50'
+                        : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
+                    }`}
+                    title={option.description}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              <span>Spatial formula</span>
+              <span className="text-muted-foreground/70">Active: {activeSpatialFormulaLabel}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {SPATIAL_FORMULA_OPTIONS.map((option) => {
+                const isActive = spatialFormula === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSpatialFormula(option.value)}
                     className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       isActive
                         ? 'border-violet-300 bg-violet-500/20 text-violet-50'

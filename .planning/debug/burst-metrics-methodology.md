@@ -24,7 +24,8 @@ This project uses a mixed burst-metrics stack: standard literature metrics provi
 - `src/app/api/adaptive/bursts/route.ts` — API layer that exposes burst outputs to the UI.
 
 ## Current detect-side spatial formula
-- `computeSpatialBBinned()` combines entropy-based concentration with Jensen-Shannon divergence as `clamp01(concentration * (0.25 + 0.75 * surprise))`.
+- `computeSpatialBBinned()` now supports ANN, entropy, JS divergence, and a balanced composite.
+- The balanced composite combines entropy-based concentration with Jensen-Shannon divergence as `clamp01(concentration * (0.25 + 0.75 * surprise))`.
 - The surprise floor keeps spatial scores from collapsing to near-zero when the JS divergence is tiny but the bin is still concentrated.
 
 ## Notes

@@ -12,7 +12,7 @@ function kdeColor(t: number): string {
 
 export function computeSliceKde(
   points: Array<{ x: number; z: number }>,
-): { cells: KdeCell[]; maxIntensity: number } {
+): { cells: KdeCell[]; maxIntensity: number; meanIntensity: number } {
   const gridRows = GRID_SIZE;
   const gridCols = GRID_SIZE;
   const cellWidth = 100 / gridCols;
@@ -34,6 +34,7 @@ export function computeSliceKde(
 
   const intensity = new Float32Array(gridRows * gridCols);
   let maxIntensity = 0;
+  let intensitySum = 0;
 
   for (let row = 0; row < gridRows; row++) {
     for (let col = 0; col < gridCols; col++) {
@@ -59,6 +60,7 @@ export function computeSliceKde(
       }
 
       intensity[centerIdx] = sum;
+      intensitySum += sum;
       if (sum > maxIntensity) maxIntensity = sum;
     }
   }
@@ -84,7 +86,8 @@ export function computeSliceKde(
     }
   }
 
-  return { cells, maxIntensity: safeMax };
+  const meanIntensity = intensitySum / (gridRows * gridCols);
+  return { cells, maxIntensity: safeMax, meanIntensity };
 }
 
 export { kdeColor };

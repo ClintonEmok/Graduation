@@ -8,6 +8,7 @@ describe('/dashboard-demo shell', () => {
     const railTabsSource = readFileSync(new URL('../../components/dashboard-demo/DashboardDemoRailTabs.tsx', import.meta.url), 'utf8');
     const demoStatsSource = readFileSync(new URL('../../components/dashboard-demo/DemoStatsPanel.tsx', import.meta.url), 'utf8');
     const demoStkdePanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoStkdePanel.tsx', import.meta.url), 'utf8');
+    const demoDetectPanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoDetectPanel.tsx', import.meta.url), 'utf8');
     const demoAnalysisStoreSource = readFileSync(new URL('../../store/useDashboardDemoAnalysisStore.ts', import.meta.url), 'utf8');
     const demoNeighborhoodStatsSource = readFileSync(
       new URL('../../components/dashboard-demo/lib/useDemoNeighborhoodStats.ts', import.meta.url),
@@ -181,6 +182,9 @@ describe('/dashboard-demo shell', () => {
     expect(demoStkdePanelSource).toMatch(/District context/);
     expect(demoStkdePanelSource).toMatch(/No hotspots found for the current district context/);
     expect(demoStkdePanelSource).not.toMatch(/Spatial BW|Temporal BW|Grid cell|Top K|Min support|Time window|type="number"|Intensity/);
+    expect(demoDetectPanelSource).toMatch(/selectedTimeRange/);
+    expect(demoDetectPanelSource).toMatch(/selectedTimeRange !== null/);
+    expect(demoDetectPanelSource).toMatch(/disabled=\{isFetchingBurst \|\| !canGenerate\}/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
     expect(demoTimelinePanelSource).not.toMatch(/useDashboardDemoWarpStore|useDashboardDemoTimeStore|Warp factor|Warp source|Temporal Resolution|Time Scale|requestAnimationFrame/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);

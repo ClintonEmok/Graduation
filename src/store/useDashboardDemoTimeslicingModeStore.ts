@@ -5,6 +5,7 @@ import type { TimeBin } from '@/lib/binning/types';
 import type { CrimeRecord } from '@/types/crime';
 import { useTimelineDataStore } from './useTimelineDataStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
+import { useDashboardDemoWarpStore } from './useDashboardDemoWarpStore';
 
 export type TimeslicingMode = 'auto' | 'manual';
 
@@ -384,6 +385,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         }
 
         useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
+        useDashboardDemoWarpStore.getState().setWarpSource('density');
 
         set({
           lastAppliedAt: Date.now(),

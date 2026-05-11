@@ -8,4 +8,5 @@ export interface KdeCell {
 export interface SliceKdeResult {
   cells: KdeCell[];
   maxIntensity: number;
+  meanIntensity: number;
 }
