@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { computeSpatialBBinned } from './burst-detection';
+import {
+  allocateSlices,
+  computeSpatialBBinned,
+  resolveBurstMetricValue,
+} from './burst-detection';
 
 describe('computeSpatialBBinned', () => {
   it('keeps highly concentrated bins from collapsing when surprise is tiny', () => {
@@ -37,5 +41,35 @@ describe('computeSpatialBBinned', () => {
 
     expect(score).toBeGreaterThan(0.25);
     expect(score).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('burst metric selection', () => {
+  const bins = [
+    { startEpoch: 0, endEpoch: 10, recordCount: 12, temporalB: 0.9, spatialB: 0.1, combinedB: 0.5 },
+    { startEpoch: 10, endEpoch: 20, recordCount: 8, temporalB: 0.1, spatialB: 0.9, combinedB: 0.5 },
+  ];
+
+  it('resolves the requested metric from each burst bin', () => {
+    expect(resolveBurstMetricValue(bins[0], 'temporal')).toBe(0.9);
+    expect(resolveBurstMetricValue(bins[0], 'spatial')).toBe(0.1);
+    expect(resolveBurstMetricValue(bins[0], 'combined')).toBe(0.5);
+  });
+
+  it('allocates slices according to the selected burst metric', () => {
+    expect(allocateSlices(bins, 6, 'temporal')).toEqual([
+      { sourceBinIndex: 0, slicesAllocated: 5 },
+      { sourceBinIndex: 1, slicesAllocated: 1 },
+    ]);
+
+    expect(allocateSlices(bins, 6, 'spatial')).toEqual([
+      { sourceBinIndex: 0, slicesAllocated: 1 },
+      { sourceBinIndex: 1, slicesAllocated: 5 },
+    ]);
+
+    expect(allocateSlices(bins, 6, 'combined')).toEqual([
+      { sourceBinIndex: 0, slicesAllocated: 3 },
+      { sourceBinIndex: 1, slicesAllocated: 3 },
+    ]);
   });
 });

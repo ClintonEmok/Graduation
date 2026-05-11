@@ -3,6 +3,14 @@ const GRID_CELL_SIZE = 100 / GRID_SIZE;
 const GRID_CELL_COUNT = GRID_SIZE * GRID_SIZE;
 const EPSILON = 1e-12;
 
+export type BurstMetric = 'temporal' | 'spatial' | 'combined';
+
+export const BURST_METRIC_OPTIONS: Array<{ value: BurstMetric; label: string; description: string }> = [
+  { value: 'temporal', label: 'Temporal', description: 'Weights inter-event timing only' },
+  { value: 'spatial', label: 'Spatial', description: 'Weights spatial concentration only' },
+  { value: 'combined', label: 'Combined', description: 'Blends temporal and spatial burstiness' },
+];
+
 export interface BurstBinResult {
   startEpoch: number;
   endEpoch: number;
@@ -126,6 +134,22 @@ function computeSpatialB(
   return clamp01(concentration * surpriseLift);
 }
 
+export function resolveBurstMetricValue(bin: BurstBinResult, metric: BurstMetric): number {
+  switch (metric) {
+    case 'temporal':
+      return bin.temporalB;
+    case 'spatial':
+      return bin.spatialB;
+    case 'combined':
+    default:
+      return bin.combinedB;
+  }
+}
+
+export function sumBurstMetric(bins: BurstBinResult[], metric: BurstMetric): number {
+  return bins.reduce((sum, bin) => sum + resolveBurstMetricValue(bin, metric), 0);
+}
+
 export async function fetchBurstBins(params: {
   partitions: BurstBinRange[];
   crimeTypes?: string[];
@@ -183,14 +207,16 @@ export async function fetchBurstBins(params: {
 export function allocateSlices(
   bins: BurstBinResult[],
   targetCount: number,
+  metric: BurstMetric = 'combined',
 ): Array<{ sourceBinIndex: number; slicesAllocated: number }> {
-  const totalB = bins.reduce((sum, b) => sum + b.combinedB, 0);
+  const totalB = sumBurstMetric(bins, metric);
   if (totalB <= 0) {
     return bins.map((_, i) => ({ sourceBinIndex: i, slicesAllocated: 1 }));
   }
 
   const allocations = bins.map((bin, i) => {
-    const raw = (bin.combinedB / totalB) * targetCount;
+    const score = resolveBurstMetricValue(bin, metric);
+    const raw = (score / totalB) * targetCount;
     const atLeast = Math.max(1, Math.round(raw));
     return { sourceBinIndex: i, slicesAllocated: atLeast, raw };
   });

@@ -17,8 +17,17 @@ import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTi
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { recommendGranularityForSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
-import { fetchBurstBins, allocateSlices } from '@/lib/burst-detection';
+import {
+  partitionSelectionByGranularity,
+  recommendGranularityForSelection,
+} from '@/components/dashboard-demo/lib/demo-burst-generation';
+import {
+  BURST_METRIC_OPTIONS,
+  allocateSlices,
+  fetchBurstBins,
+  resolveBurstMetricValue,
+  type BurstMetric,
+} from '@/lib/burst-detection';
 import type { BurstBinResult } from '@/lib/burst-detection';
 
 const GRANULARITY_OPTIONS = [
@@ -47,7 +56,9 @@ export function DemoDetectPanel() {
   const canGenerate = generationStatus !== 'generating' && minTimestampSec !== null && maxTimestampSec !== null;
 
   const [burstBins, setBurstBins] = useState<BurstBinResult[] | null>(null);
+  const [burstTargetSliceCount, setBurstTargetSliceCount] = useState<number | null>(null);
   const [isFetchingBurst, setIsFetchingBurst] = useState(false);
+  const [burstMetric, setBurstMetric] = useState<BurstMetric>('combined');
 
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) return null;
@@ -70,6 +81,8 @@ export function DemoDetectPanel() {
     (o) => o.value === generationInputs.granularity,
   )?.label ?? 'Daily';
 
+  const activeBurstMetricLabel = BURST_METRIC_OPTIONS.find((o) => o.value === burstMetric)?.label ?? 'Combined';
+
   const availableCrimeTypes = useMemo(() => {
     if (crimeTypes.length > 0) return crimeTypes;
     if (!timelineColumns?.type || timelineColumns.type.length === 0) return [];
@@ -91,16 +104,30 @@ export function DemoDetectPanel() {
     const end = normalizedToEpochSeconds(we, minTimestampSec, maxTimestampSec);
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
 
+    const partitions = partitionSelectionByGranularity(
+      [start * 1000, end * 1000],
+      generationInputs.granularity,
+    );
+
+    if (partitions.length === 0) {
+      toast.error('No partitions to score', {
+        description: 'Choose a wider selection or a coarser granularity.',
+      });
+      return;
+    }
+
     setIsFetchingBurst(true);
     try {
       const result = await fetchBurstBins({
-        startEpoch: Math.floor(start),
-        endEpoch: Math.floor(end),
-        binCount: 10,
+        partitions: partitions.map((partition) => ({
+          startEpoch: partition.startTime / 1000,
+          endEpoch: partition.endTime / 1000,
+        })),
         granularity: generationInputs.granularity,
         crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : undefined,
       });
       setBurstBins(result.bins);
+      setBurstTargetSliceCount(result.targetSliceCount);
     } catch {
       toast.error('Failed to fetch burst data');
     }
@@ -142,6 +169,7 @@ export function DemoDetectPanel() {
     clearPendingGeneratedBins();
     clearSelectedBurstWindows();
     setBurstBins(null);
+    setBurstTargetSliceCount(null);
   }, [clearPendingGeneratedBins, clearSelectedBurstWindows]);
 
   const selectionStateLabel = pendingGeneratedBins.length === 0
@@ -166,8 +194,8 @@ export function DemoDetectPanel() {
 
   const allocations = useMemo(() => {
     if (!burstBins || burstBins.length === 0) return null;
-    return allocateSlices(burstBins, burstBins.length * 3);
-  }, [burstBins]);
+    return allocateSlices(burstBins, burstTargetSliceCount ?? burstBins.length * 3, burstMetric);
+  }, [burstBins, burstTargetSliceCount, burstMetric]);
 
   return (
     <div className="space-y-3">
@@ -211,6 +239,33 @@ export function DemoDetectPanel() {
             </div>
             <div className="text-[10px] text-muted-foreground">
               Active: {activeGranularityLabel}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              <span>Burst formula</span>
+              <span className="text-muted-foreground/70">Active: {activeBurstMetricLabel}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {BURST_METRIC_OPTIONS.map((option) => {
+                const isActive = burstMetric === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setBurstMetric(option.value)}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                      isActive
+                        ? 'border-violet-300 bg-violet-500/20 text-violet-50'
+                        : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
+                    }`}
+                    title={option.description}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -288,6 +343,7 @@ export function DemoDetectPanel() {
               <div className="space-y-1">
                 {burstBins.map((bin, i) => {
                   const alloc = allocations?.[i];
+                  const selectedScore = resolveBurstMetricValue(bin, burstMetric);
                   return (
                     <div
                       key={i}
@@ -300,6 +356,7 @@ export function DemoDetectPanel() {
                         <div className="flex gap-3 text-[10px] text-muted-foreground">
                           <span>{bin.recordCount} events</span>
                           {alloc && <span>{alloc.slicesAllocated} slices</span>}
+                          <span>{activeBurstMetricLabel} {selectedScore.toFixed(2)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
