@@ -1,208 +1,135 @@
-# Roadmap: Adaptive Space-Time Cube Prototype — MVP Finale (v2.0)
+# Roadmap: Adaptive Space-Time Cube Prototype — v3.0
 
 ## Overview
 
-Milestone **MVP Finale** delivers the remaining supervisor objectives for the Adaptive Space-Time Cube Prototype. It builds on the working dashboard-demo foundation and completes: time slicing consistency, cube↔demo store sync, slice plane rendering in 3D, 3D STKDE on cube planes, adjacent slice comparison, burst evolution visualization, clustering, and category encoding.
+Milestone **v3.0 — Burstiness-Driven Adaptive Slicing** delivers the core adaptive time
+mechanism the prototype was designed for. Equal-width temporal bins become non-uniform —
+proportional to burstiness scores — so the timeline expands around dense/spiky intervals
+and compresses quiet periods. The same bins render as 3D slice planes with KDE heatmaps,
+creating a unified burst-aware spatiotemporal view.
 
-Dashboard-demo is now the main app. The old dashboard route is legacy.
+**Current focus:** v3.0 milestone
 
-**Phase numbering resets** from the v1.0 roadmap (previously phases 1–16). These 6 phases run sequentially.
+## Milestones
 
-**Total requirements:** 26
+- ✅ **v1.0** Thesis Prototype — Phases 01-25 (shipped 2026-02-07)
+- ✅ **v1.1** Manual Timeslicing — Phases 26-33 (shipped 2026-02-22)
+- ✅ **v1.2** Semi-Automated Timeslicing Workflows — Phases 34-39 (shipped 2026-03-02)
+- ✅ **v1.3** Fully Automated Timeslicing Workflows — Phases 40-42 (shipped 2026-03-04)
+- ✅ **v2.0** 3D Timeline-Test Parity — Phases 43-45 (shipped 2026-03-06)
+- ✅ **v2.1** Refactoring and Decomposition — Phases 46-51 (shipped 2026-03-10)
+- ✅ **v2.2** Timeslicing Fidelity — Phases 52-53 (shipped 2026-03-11)
+- ✅ **v2.3** Adaptive Timeslicing Algos Hardening — Phase 54 (shipped with tech debt)
+- ✅ **v2.4** STKDE Exploration Surface — Phase 55 (shipped 2026-03-16)
+- ✅ **v2.5** Stats Dashboard + Neighbourhood Diagnostics — Phases 57-59 (shipped 2026-03-23)
+- ✅ **MVP Finale** Phases 01-06 (completed 2026-05-07)
+  - 01: Store sync + slice planes
+  - 02: 3D STKDE on cube planes
+  - 03: Adjacent slice comparison + burst evolution
+  - 04: Evolution view with playback
+  - 05: DBSCAN clustering
+  - 06: Category encoding
+- 📋 **v3.0 Burstiness-Driven Adaptive Slicing** — Current milestone
 
-**Not in scope:** User workflow / guided workflow beyond what already exists in `WorkflowSkeleton`. Can be added as a follow-up milestone if desired.
+## v3.0 Phases
 
-## Phases
+### Phase 1: Burstiness Engine
 
-### Phase 1: Foundation — Store sync + slice planes
+**Goal:** Compute burstiness scores per time bin and allocate slices non-uniformly.
 
-**Goal:** Cube reads from demo stores, slice planes render in MainScene, and the granularity type gap is closed.
+**Depends on:** Nothing (new API + lib)
 
-**Depends on:** Nothing (dashboard-demo already works)
-
-**Requirements (7):** SLICE-01, SLICE-02, LINK-01, LINK-02, PLANE-01, PLANE-02, PLANE-03
-
-| ID | Requirement | Notes |
-|----|-------------|-------|
-| SLICE-01 | Add `monthly` to `TimeslicingGranularity` type | Trivial fix — already in `ComparableWarpGranularity` and `TimeslicePreset` |
-| SLICE-02 | Fix any remaining binning type inconsistencies | Ensure `TimeslicingGranularity`, `ComparableWarpGranularity`, `TimeslicePreset`, and `BinningStrategy` all agree |
-| LINK-01 | Wire `CubeVisualization` to accept demo store overrides | Follow the same pattern as `MapVisualization` (filterStoreOverride, etc.) |
-| LINK-02 | Timeline-to-cube selection/warp propagation | Ensure demo timeline slice + warp state reaches SimpleCrimePoints in cube |
-| PLANE-01 | Render `<TimeSlices />` in `MainScene` | Component exists but is not in the scene tree |
-| PLANE-02 | Slice plane interaction (drag, double-click create, resize) | Uses existing SlicePlane.tsx — wire to demo store |
-| PLANE-03 | Slice plane visual polish (colors, labels, grid helpers) | Match existing palette, add time labels, clean up opacity |
-
-**Success criteria (what must be TRUE):**
-1. Cube crime points respond to demo warp factor and slice state
-2. Time slice planes are visible and interactive in the 3D scene
-3. Monthly granularity is available as a first-class option
-4. All cube state reads come from demo stores, not global stores
-
----
-
-### Phase 2: 3D STKDE on Cube Planes
-
-**Goal:** Compute STKDE per slice and render heatmap layers on each slice plane in the 3D cube.
-
-**Depends on:** Phase 1 (planes must exist in scene, cube must read demo state)
-
-**Plans:** 3 plans
-
-**Requirements (3):** KDE3D-01, KDE3D-02, KDE3D-03
+**Requirements:** BURST-01, BURST-02, BURST-03, BURST-04
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| KDE3D-01 | Multi-domain STKDE computation per slice | Extend `computeStkdeFromCrimes` to accept slice array, return slice-keyed response |
-| KDE3D-02 | Render STKDE heatmap texture on slice planes | Use R3F plane geometry with heatmap texture overlay per slice |
-| KDE3D-03 | Reactive STKDE updates on slice/time changes | Debounced re-computation when active slice set or time range changes |
+| BURST-01 | Temporal B score per bin computed server-side | CV of inter-event intervals |
+| BURST-02 | Spatial B score as cross-reference | 1 - meanKDE/peakKDE |
+| BURST-03 | Combined B = 0.5 x temporalB + 0.5 x spatialB | Single burstiness metric |
+| BURST-04 | N slices allocated across bins proportional to combined B | Non-uniform slice allocation |
 
 **Success criteria (what must be TRUE):**
-1. Each visible slice plane shows a heatmap overlay of its crime density
-2. STKDE recomputes when slices change (add/remove/resize)
-3. Heatmap color scale matches the existing 2D map STKDE convention
-4. Up to 5 slice planes render simultaneously without frame drop
-
-Plans:
-- [ ] 02-01-PLAN.md — Make STKDE compute slice-keyed outputs
-- [ ] 02-02-PLAN.md — Render STKDE heatmaps on cube planes
-- [ ] 02-03-PLAN.md — Recompute demo STKDE on slice/time changes
+1. `/api/adaptive/bursts` returns bins with temporalB, spatialB, combinedB
+2. Bursty bins get more slices than quiet bins
+3. Client lib fetches and caches burst data
 
 ---
 
-### Phase 3: Adjacent Slice Comparison + Burst Evolution
+### Phase 2: UI Redesign
 
-**Goal:** Users can compare adjacent slices side-by-side and see burst lifecycle across consecutive slices.
+**Goal:** Simplify dashboard-demo by removing WorkflowSkeleton and restructuring the rail.
 
-**Depends on:** Phase 2 (slices with KDE provide the density context for comparison)
+**Depends on:** Phase 1 (detect tab needs burst scores)
 
-**Requirements (5):** EVOL-01, EVOL-02, BURST-01, BURST-02, BURST-03
+**Requirements:** UI-01, UI-02, UI-03, UI-04
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| EVOL-01 | Adjacent slice comparison UI | Side-by-side or overlay view showing two slices' density/counts |
-| EVOL-02 | Metric diff between adjacent slices | Numeric diff (count delta, type composition change, density ratio) |
-| BURST-01 | Burst lifecycle visualization | Render burst intensity curve across consecutive slice planes in cube |
-| BURST-02 | Burst tracking across slices | Identify same burst class appearing in adjacent slices, draw connection lines |
-| BURST-03 | Burst metrics timeline | Timeline overlay showing burst scores per slice (bar/line chart in the rail) |
+| UI-01 | Remove WorkflowSkeleton from the shell | ~21rem left panel eliminated |
+| UI-02 | Map/3D toggle replaces Map/Cube toggle | Cleaner binary toggle |
+| UI-03 | 5-tab right rail: Scan, Detect, Slices, Inspect, Configure | Consolidated rail |
+| UI-04 | Auto-transition: apply slices → 3D view + Inspect tab | Implicit workflow flow |
 
 **Success criteria (what must be TRUE):**
-1. User can select two adjacent slices and see a comparison panel
-2. Burst lifecycle is visible as a curve spanning slice planes
-3. Same burst across adjacent slices is visually connected
-4. Burst scores are shown in the timeline or rail as a per-slice metric
-
-**Plans:** 4 plans
-
-Plans:
-- [ ] 03-01-PLAN.md — comparison model and two-slot slice selection state
-- [ ] 03-02-PLAN.md — adjacent slice comparison panel and rail tab wiring
-- [ ] 03-03-PLAN.md — burst lifecycle overlay across cube planes
-- [ ] 03-04-PLAN.md — burst score rail timeline in the bottom rail
+1. WorkflowSkeleton.tsx deleted, no regressions
+2. Rail has exactly 5 tabs
+3. Toggle switches between Map and 3D views
+4. Applying slices in Detect automatically switches to 3D + Inspect
 
 ---
 
-### Phase 4: Evolution View
+### Phase 3: STKDE-3D Port
 
-**Goal:** An evolution view component that shows temporal progression across all slices as an animated or stepped sequence.
+**Goal:** Port standalone `/stkde-3d` scene into dashboard 3D view.
 
-**Depends on:** Phase 3 (comparison/burst logic feeds into evolution)
+**Depends on:** Phase 2 (needs new shell)
 
-**Requirements (3):** EVOL-03, EVOL-04, EVOL-05
+**Requirements:** 3D-01, 3D-02, 3D-03
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| EVOL-03 | Evolution view component | Dedicated view (rail tab or overlay) showing all slices in temporal sequence |
-| EVOL-04 | Slice-to-slice transition animation | Animated transition between slices in the cube (crossfade plane KDE) |
-| EVOL-05 | Pattern flow visualization | Visualize how crime patterns flow/change across time (e.g., directional arrows or flow lines between plane positions) |
+| 3D-01 | Demo3dSpatialView renders in 3D toggle slot | R3F Canvas + MapTileSource |
+| 3D-02 | Detect tab has burst controls + results table | Consolidated from stepper + slice panel |
+| 3D-03 | Inspect tab has scrubber, playback, opacity | STKDE-3D sidebar controls |
 
 **Success criteria (what must be TRUE):**
-1. User can step through slices in temporal order and see KDE update per step
-2. Automatic playback mode steps through slices at configurable speed
-3. Flow arrows or transition hints show how clusters move between slices
-4. Evolution view is accessible from the rail tabs
-
-**Plans:** 2 plans
-
-Plans:
-- [ ] 04-01-PLAN.md — evolution sequence model and rail panel
-- [ ] 04-02-PLAN.md — rail tab wiring, transition animation, and flow visualization
+1. 3D view shows KDE heatmaps per applied slice
+2. Scrubber steps through slices in 3D
+3. Detect tab shows burst scores and generation controls
+4. Configure tab has warp, adaptive/linear, threshold controls
 
 ---
 
-### Phase 5: Clustering
+### Phase 4: Coordination Flow
 
-**Goal:** Integrate DBSCAN clustering and render cluster hulls on slice planes and in the cube volume.
+**Goal:** Extract shared KDE, clean up stores, wire auto-transition logic.
 
-**Depends on:** Phase 4 (evolution provides the temporal context for cluster movement)
+**Depends on:** Phases 1-3
 
-**Requirements (4):** CLUS-01, CLUS-02, CLUS-03, CLUS-04
+**Requirements:** COORD-01, COORD-02, COORD-03
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| CLUS-01 | Integrate `density-clustering` package (DBSCAN) | Package already in package.json — wire into a clustering module |
-| CLUS-02 | 3D clustering visualization on cube | Render cluster hulls (convex or alpha shapes) in the cube volume |
-| CLUS-03 | Per-slice clustering | Compute DBSCAN per slice plane and render 2D hulls on each plane |
-| CLUS-04 | Cluster interaction (hover/select/filter) | Hover to see cluster composition, click to filter points, style by cluster ID |
+| COORD-01 | computeSliceKde in shared lib | Both API and 3D view import from same place |
+| COORD-02 | Remove workflowPhase from coordination store | No stepper phases |
+| COORD-03 | Auto-transition after apply | Detect → Inspect + 3D |
 
 **Success criteria (what must be TRUE):**
-1. DBSCAN runs on cube crime points and returns cluster assignments
-2. Cluster hulls render as transparent 3D volumes or 2D polygons on slices
-3. Hovering a cluster shows its member count, crime types, and time span
-4. Click-to-filter isolates a cluster's points across all slices
-
-**Plans:** 4 plans
-
-Plans:
-- [ ] 05-01-PLAN.md — shared DBSCAN cluster analysis and store model
-- [ ] 05-02-PLAN.md — 3D cluster hulls and label overlays in the cube
-- [ ] 05-03-PLAN.md — per-slice cluster overlays on the slice planes
-- [ ] 05-04-PLAN.md — cluster hover, select, and spatial-bound filtering
-
----
-
-### Phase 6: Category Encoding
-
-**Goal:** Replace the hardcoded 6-type legend with a dynamic legend, add click-to-filter by crime category, and introduce shape encoding.
-
-**Depends on:** Phase 5 (clustering cluster membership can filter by type)
-
-**Requirements (3):** CAT-01, CAT-02, CAT-03
-
-| ID | Requirement | Notes |
-|----|-------------|-------|
-| CAT-01 | Dynamic legend from actual data | Replace `SimpleCrimeLegend` hardcoded types with data-driven legend from `palettes.ts` |
-| CAT-02 | Click-to-filter by category | Click legend item filters cube (and map) to that category |
-| CAT-03 | Shape encoding for categories | Different marker shapes (sphere, cube, cone) per broad category in cube |
-
-**Success criteria (what must be TRUE):**
-1. Legend auto-populates from the crime types present in current viewport
-2. Clicking a legend item toggles that type's visibility in cube and map
-3. At least 3 distinct marker shapes are used for broad categories
-4. Category filter state is stored in demo filter store and syncs across views
-
-**Plans:** 3 plans
-
-Plans:
-- [ ] 06-01-PLAN.md — shared viewport legend data helper
-- [ ] 06-02-PLAN.md — dynamic cube/map legends and category toggles
-- [ ] 06-03-PLAN.md — cube category shape encoding
-
----
+1. `src/lib/kde/compute-slice-kde.ts` exists and is imported by both API and 3D view
+2. workflowPhase removed, no regressions
+3. Apply action in Detect tab triggers viewport + tab switch
 
 ## Progress
 
-**Execution Order:** Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
-
 | Phase | Requirements | Status |
 |-------|-------------|--------|
-| 1. Foundation — Store sync + slice planes | 7 | Not started |
-| 2. 3D STKDE on Cube Planes | 3 | Not started |
-| 3. Adjacent Slice Comparison + Burst Evolution | 5 | Not started |
-| 4. Evolution View | 3 | Not started |
-| 5. Clustering | 4 | Not started |
-| 6. Category Encoding | 3 | Not started |
+| 1. Burstiness Engine | 4 | Not started |
+| 2. UI Redesign | 4 | Not started |
+| 3. STKDE-3D Port | 3 | Not started |
+| 4. Coordination Flow | 3 | Not started |
 
 ## Deferred
 
-- **User workflow:** The guided 6-step workflow in `WorkflowSkeleton.tsx` is already in place. Deeper workflow integration (tying evolution, clustering, and category analysis into the step-by-step flow) is deferred.
-- **Map-to-cube 2D/3D linking:** Explicitly out of scope per user decision. Selection sync is timeline→cube only.
+- **Burst taxonomy labels**: Prolonged peak / isolated spike / valley classification. Temporal B provides the raw score; semantic labels can be a follow-up.
+- **Full-range generation**: Using full population data instead of sampled fetches. Current API sampling is sufficient for interactive use.
+- **Edit history / undo**: Manual slice editing history. Existing store snapshots provide basic undo.

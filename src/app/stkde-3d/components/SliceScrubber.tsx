@@ -2,6 +2,16 @@
 
 import type { EvolvingSlice } from '../lib/types';
 
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+function formatSliceDate(epochSeconds: number): string {
+  return DATE_FORMATTER.format(new Date(epochSeconds * 1000));
+}
+
 interface SliceScrubberProps {
   slices: EvolvingSlice[];
   activeIndex: number;
@@ -97,8 +107,8 @@ export function SliceScrubber({
             <div className="flex justify-between">
               <span className="text-slate-400">Time range</span>
               <span className="text-slate-100">
-                {activeSlice.startPercent.toFixed(0)}% -{' '}
-                {activeSlice.endPercent.toFixed(0)}%
+                {formatSliceDate(activeSlice.startEpoch)} -{' '}
+                {formatSliceDate(activeSlice.endEpoch)}
               </span>
             </div>
             <div className="mt-2">

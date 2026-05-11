@@ -1,151 +1,626 @@
-# Codebase Concerns: KDE / STKDE Functionality
+# State Management & Store Memory Audit
 
-**Analysis Date:** 2026-05-06
-
-## KDE Computation Architecture
-
-### Core Computation Files
-
-**`src/lib/stkde/compute.ts`** — Main KDE computation
-- `computeStkdeFromCrimes()` (line 236): Entry point for sampled crime data
-- `computeStkdeFromAggregates()` (line 363): Entry point for full-population DuckDB aggregation
-- `buildStkdeGridConfig()` (line 42): Builds spatial grid configuration
-- `buildIntensityFromSupport()` (line 115): Applies Gaussian kernel smoothing over support counts
-- `computePeakWindow()` (line 80): Finds densest temporal window within a cell
-- `computePeakWindowFromBuckets()` (line 185): Bucket-based peak window for aggregated data
-
-**`src/lib/stkde/full-population-pipeline.ts`** — DuckDB-based full population
-- `buildFullPopulationStkdeInputs()` (line 89): Chunks through crime table, aggregates by grid cell + temporal bucket
-- Produces `FullPopulationStkdeInputs` with `cellSupport` (Float64Array) and `cellTemporalBuckets` (Map)
-- Uses `temporalBandwidthHours * 3600` as bucket size for temporal aggregation
-
-**`src/lib/stkde/contracts.ts`** — Request/response types
-- `StkdeRequest`, `StkdeResponse`, `StkdeHotspot`, `StkdeHeatmapCell` types
-- `validateAndNormalizeStkdeRequest()` (line 141): Request validation with clamping
-
-### API Route
-
-**`src/app/api/stkde/hotspots/route.ts`** — POST handler
-- Chooses `sampled` vs `full-population` mode
-- `buildFullPopulationStkdeInputs()` → `computeStkdeFromAggregates()` OR
-- `queryCrimesInRange()` → `computeStkdeFromCrimes()`
-- Returns `StkdeResponse` with `heatmap.cells` and `hotspots[]`
-
-### Worker
-
-**`src/workers/stkdeHotspot.worker.ts`** — Client-side hotspot filtering
-- `projectHotspots()` (line 28): Filters hotspots by intensity, support, temporal window, spatial bbox
-- Used by `StkdeRouteShell` and `useDashboardStkde` for interactive filtering
-
-### Stores
-
-**`src/store/useStkdeStore.ts`** — Core state
-- `response: StkdeResponse | null`
-- `params: StkdeParams` (spatialBW, temporalBW, gridCell, topK, minSupport, timeWindow)
-- `scopeMode: 'applied-slices' | 'full-viewport'`
-- `spatialFilter`, `temporalFilter` for worker-based filtering
-- `selectedHotspotId`, `hoveredHotspotId`
-
-**`src/store/useDashboardDemoAnalysisStore.ts`** — Demo state
-- `stkdeResponse`, `stkdeParams`, `stkdeScopeMode` for dashboard demo
-
-### Rendering
-
-**`src/components/map/MapStkdeHeatmapLayer.tsx`** — MapLibre heatmap rendering
-- Uses MapLibre `heatmap` layer type
-- `heatmap-weight` from `intensity`, `heatmap-radius` interpolated by zoom
-- Color gradient: blue(0) → cyan(0.2) → green(0.4) → yellow(0.6) → orange(0.8) → red(1)
-- Active hotspot rendered as circle layer
-
-**`src/app/stkde/lib/StkdeRouteShell.tsx`** — STKDE QA page
-- Fetches `/api/stkde/hotspots` directly, stores response in local state
-- Passes `response.heatmap.cells` to `MapStkdeHeatmapLayer`
+**Analysis Date:** 2026-05-08
+**Focus Area:** Zustand Store Memory Footprint
+**Project:** Adaptive Space-Time Cube Prototype
 
 ---
 
-## Data Flow
+## Executive Summary
 
-```
-User Action → Store params → API POST /api/stkde/hotspots
-    → computeStkdeFromCrimes() OR buildFullPopulationStkdeInputs() + computeStkdeFromAggregates()
-    → StkdeResponse { heatmap.cells[], hotspots[] }
-    → MapStkdeHeatmapLayer renders heatmap via MapLibre
-    → stkdeHotspot.worker filters hotspots client-side
+The project has **56 Zustand store files** with significant data duplication and memory risk. The most critical issues are:
+
+1. **CRITICAL**: `useTimelineDataStore` stores full columnar crime data in memory (8.5M+ records potential)
+2. **HIGH**: Multiple dashboard demo stores duplicate production store data
+3. **HIGH**: Store-to-store subscriptions create implicit dependencies that bypass React's reconciliation
+
+---
+
+## Store Memory Payload Analysis
+
+### 1. `useTimelineDataStore` - ⚠️ CRITICAL MEMORY RISK
+
+**Location:** `src/store/useTimelineDataStore.ts`
+
+**State Contents:**
+```typescript
+data: DataPoint[];              // Full point data array
+columns: ColumnarData | null;    // Columnar format (Float32Array, Uint8Array, etc.)
+overviewTimestampSec: number[];
+crimeTypes: string[];
+minX, maxX, minZ, maxZ: number | null;
+minTimestampSec, maxTimestampSec: number | null;
+isLoading, isMock, dataCount: metadata
 ```
 
-**Sampled path:** Crime records loaded via `queryCrimesInRange()` → `computeStkdeFromCrimes()` filters by domain/bbox/types, builds grid, applies Gaussian kernel.
+**Memory Estimates (8.5M crime records):**
+| Field | Type | Size per 8.5M records |
+|-------|------|----------------------|
+| `x` (Float32Array) | 4 bytes | ~34 MB |
+| `z` (Float32Array) | 4 bytes | ~34 MB |
+| `lat` (Float32Array) | 4 bytes | ~34 MB |
+| `lon` (Float32Array) | 4 bytes | ~34 MB |
+| `timestampSec` (Float64Array) | 8 bytes | ~68 MB |
+| `timestamp` (Float32Array) | 4 bytes | ~34 MB |
+| `type` (Uint8Array) | 1 byte | ~8.5 MB |
+| `district` (Uint8Array) | 1 byte | ~8.5 MB |
+| `block` (string[]) | ~50 bytes avg | ~425 MB |
+| **Total ColumnarData** | | **~680 MB** |
+| `data` (DataPoint[]) | ~100 bytes each | **~850 MB** (duplicate!) |
 
-**Full-population path:** DuckDB aggregates crimes into grid cells with temporal buckets → `computeStkdeFromAggregates()` applies kernel to pre-aggregated support counts.
+**Key Finding:** The store holds BOTH `data: DataPoint[]` (row-based) AND `columns: ColumnarData` (column-based). For 8.5M records, this could exceed **1.5 GB** of memory just for this store.
 
----
+**Severity:** 🔴 **CRITICAL**
+- Both data arrays are kept in memory simultaneously
+- No lazy loading - all data loaded at once via `loadRealData()`
+- Data persists until page refresh
+- No pagination or viewport-based loading
 
-## Whether KDE Can Be Computed Per Time Slice
-
-**Current answer: NO — KDE is computed over the entire domain once.**
-
-### What Exists
-
-1. **Temporal filtering at display level only**: `stkdeHotspot.worker.ts` (line 37-39) can filter hotspots by a `temporalWindow` — but this is post-computation filtering, NOT per-slice KDE computation.
-
-2. **`timeWindowHours` parameter**: The algorithm finds the peak temporal window within each grid cell (line 305, 401). This identifies WHEN密度 is highest inside each cell, but doesn't produce separate density surfaces per slice.
-
-3. **Applied-slices scope mode** in `useDashboardStkde` (line 202-216): When `scopeMode === 'applied-slices'`, the `startEpochSec` and `endEpochSec` sent to the API are derived from the union of all applied slice ranges. The KDE is computed once over the combined range — not once per slice.
-
-### What's Missing for "KDE Per Slice"
-
-1. **No loop over slices in compute layer**: Neither `computeStkdeFromCrimes` nor `computeStkdeFromAggregates` accepts an array of time ranges. They take a single `domain: { startEpochSec, endEpochSec }`.
-
-2. **No per-slice density accumulation**: The heatmap cells contain a single `intensity` and `support` value. There is no mechanism to produce N separate heatmaps for N slices.
-
-3. **No slice-aware rendering layer**: `MapStkdeHeatmapLayer` renders a single GeoJSON FeatureCollection. There's no concept of rendering multiple overlapping heatmaps keyed by time slice, or toggling visibility per slice.
-
-4. **No slice-ID tracking through computation**: Crime records have timestamps but the compute functions don't track which slice each crime belongs to — they just filter by domain bounds.
-
-5. **`full-population-pipeline.ts` is single-domain only**: The DuckDB aggregation groups by `(col_idx, row_idx, bucket_start)` where `bucket_start = FLOOR(ts / bucketSizeSec) * bucketSizeSec`. This produces temporal buckets, but they're used only for peak window detection per cell — not for per-slice surfaces.
+**Recommendation:**
+- Remove `data: DataPoint[]` - `columns` is sufficient for all consumers
+- Implement streaming/chunked loading for large datasets
+- Consider offloading to IndexedDB with viewport-based queries
 
 ---
 
-## Rendering Approach for Density Layers
+### 2. `useAdaptiveStore` - ⚠️ HIGH MEMORY RISK
 
-**Current: MapLibre native heatmap layer**
+**Location:** `src/store/useAdaptiveStore.ts`
 
-`MapStkdeHeatmapLayer.tsx` uses `react-map-gl/maplibre`:
-- Source type: `geojson` with Point features, properties `{ intensity, support }`
-- Layer type: `heatmap` with paint properties
-- Zoom-adaptive radius: 10px @ zoom 8 → 35px @ zoom 15
-- Opacity: 0.85 default
+**State Contents:**
+```typescript
+densityMap: Float32Array | null;    // ADAPTIVE_BIN_COUNT entries
+burstinessMap: Float32Array | null; // ADAPTIVE_BIN_COUNT entries
+countMap: Float32Array | null;       // ADAPTIVE_BIN_COUNT entries
+warpMap: Float32Array | null;        // ADAPTIVE_BIN_COUNT entries
+```
 
-**What is NOT available:**
-- No WebGL custom shader rendering for density (contrast with `src/components/viz/shaders/heatmap.ts` which exists but appears to be unused for STKDE)
-- No deck.gl HeatmapLayer or other WebGL-based density rendering
-- No time-animation of density surfaces
+**Memory Estimates:**
+| Field | ADAPTIVE_BIN_COUNT (likely 200-500) |
+|-------|-------------------------------------|
+| Float32Array × 4 | ~8-16 KB per array |
+| **Total** | **~32-64 KB** |
 
----
+**Severity:** 🟡 **MEDIUM**
+- Fixed-size TypedArrays are memory-efficient
+- Maps recomputed on data change, old arrays garbage collected
+- Worker-based computation prevents main thread blocking
 
-## What's Missing for "KDE Per Slice"
-
-| Gap | File(s) | Impact |
-|-----|---------|--------|
-| Multi-domain compute | `src/lib/stkde/compute.ts` | Must refactor `computeStkdeFromCrimes`/`computeStkdeFromAggregates` to accept `domains: TimeSlice[]` and produce per-slice results |
-| Per-slice aggregation | `src/lib/stkde/full-population-pipeline.ts` | Must track which slice each aggregate bucket belongs to, or compute separate aggregations per slice |
-| Slice-keyed response | `src/lib/stkde/contracts.ts` | `StkdeResponse` must be extended to `{ slices: { sliceId: string, cells: StkdeHeatmapCell[], hotspots: StkdeHotspot[] }[] }` |
-| Multi-heatmap rendering | `src/components/map/MapStkdeHeatmapLayer.tsx` | Must support rendering multiple heatmap layers with per-slice visibility toggles |
-| Slice selection binding | `src/components/stkde/DashboardStkdePanel.tsx` | Must show per-slice density results, not a single merged result |
-| Time-animation | None | No component animates density over time slices |
-| Worker support for per-slice hotspots | `src/workers/stkdeHotspot.worker.ts` | Currently operates on flat hotspot array — needs slice-aware filtering |
-
----
-
-## Tech Debt
-
-**Temporal bucket resolution hardcoded to `temporalBandwidthHours * 3600`**: `full-population-pipeline.ts` line 113. If you want finer temporal resolution per slice, this bucket size limits you.
-
-**Hotspot peak window is post-hoc**: `computePeakWindow`/`computePeakWindowFromBuckets` finds the densest window AFTER building the spatial surface. There's no way to pre-filter crimes to a specific slice before KDE computation.
-
-**No coordinate normalization pipeline for STKDE input**: Contrast with `src/lib/coordinate-normalization.ts` which normalizes crime coordinates (x, z) alongside (lon, lat). STKDE compute uses raw `lon/lat` directly.
-
-**Worker timeout hardcoded at 8000ms**: `useDashboardStkde.ts` line 24. Long hotspot lists may hit this limit silently.
+**Additional Concern:**
+```typescript
+// Lines 62-68: Module-level worker instance persists across HMR
+let worker: Worker | null = null;
+if (typeof window !== 'undefined') {
+  worker = new Worker(new URL('../workers/adaptiveTime.worker.ts', import.meta.url));
+}
+```
+Worker is held at module scope - not cleaned up on store reset.
 
 ---
 
-*Concerns audit: 2026-05-06*
+### 3. `useBinningStore` - ⚠️ HIGH DUPLICATION
+
+**Location:** `src/store/useBinningStore.ts`
+
+**State Contents:**
+```typescript
+bins: TimeBin[];
+data: CrimeEventData[];        // DUPLICATED from TimelineDataStore
+savedConfigurations: SavedConfiguration[];
+modificationHistory: Array<{...}>;
+```
+
+**Memory Issue:**
+- `data: CrimeEventData[]` (line 59, 69) duplicates crime event data
+- `modificationHistory` grows unbounded (line 149-152, 189-193, 204-207, 227-230)
+- No cleanup of modification history
+
+**Severity:** 🟡 **MEDIUM**
+- History array never shrinks
+- Each bin operation pushes to history
+- For long editing sessions, this could accumulate significant memory
+
+**Recommendation:** Add `maxHistorySize` constant and prune oldest entries when exceeded.
+
+---
+
+### 4. `useDashboardDemoTimeslicingModeStore` - ⚠️ MAJOR DUPLICATION
+
+**Location:** `src/store/useDashboardDemoTimeslicingModeStore.ts`
+
+**State Contents:**
+```typescript
+pendingGeneratedBins: TimeBin[];  // Full bin data in DEMO store!
+lastGeneratedMetadata: GenerationResultMetadata | null;
+sliceTemplates: Array<{...}>;
+```
+
+**Key Finding:** This store holds `TimeBin[]` with full burst metadata (lines 296, 312-318), duplicating data that should exist only in the production `useSliceDomainStore`.
+
+**Severity:** 🟠 **HIGH**
+- 58 lines of dashboard demo stores (see line count earlier)
+- Separate persistence layer for demo data
+- Duplicates production store patterns unnecessarily
+
+**Recommendation:** This store should not persist bin data - it should use the production stores directly.
+
+---
+
+### 5. `useSliceDomainStore` - 🟡 MEDIUM (with slice-domain pattern issues)
+
+**Location:** `src/store/useSliceDomainStore.ts` + `src/store/slice-domain/`
+
+**State Contents:**
+```typescript
+// From createSliceCoreSlice
+slices: TimeSlice[];            // Array of all time slices
+activeSliceId: string | null;
+activeSliceUpdatedAt: number;
+
+// From createSliceSelectionSlice
+selectedIds: Set<string>;       // Set allocation
+selectedCount: number;
+
+// From createSliceCreationSlice
+previewStart, previewEnd: number | null;
+ghostPosition: GhostPosition | null;
+// ... more creation state
+
+// From createSliceAdjustmentSlice
+draggingSliceId: string | null;
+liveBoundarySec: number | null;
+tooltip: TooltipPayload | null;
+// ... more adjustment state
+```
+
+**Memory Issues:**
+1. `Set<string>` allocation for `selectedIds` - creates new Set on every change (lines 10, 24, 32, 38, 42)
+2. All slices stored in single array - no virtualization for large slice counts
+3. `cachedCreationPreviewFeedback` in selectors.ts (line 39) - module-level cache that may become stale
+
+**Persistence Concern (lines 10-21):**
+```typescript
+persist(
+  (...args) => ({ ... }),
+  {
+    name: 'slice-domain-v1',
+    partialize: (state) => ({ slices: state.slices }), // Only slices persist
+  }
+)
+```
+
+Slices persist to localStorage, but creation/adjustment state does not. This asymmetry means users lose slice definitions but not work-in-progress.
+
+**Severity:** 🟡 **MEDIUM**
+
+---
+
+### 6. `useCoordinationStore` - 🟢 LOW
+
+**Location:** `src/store/useCoordinationStore.ts`
+
+**State Contents:**
+```typescript
+selectedIndex: number | null;
+brushRange: [number, number] | null;
+selectedBurstWindows: Array<{start, end, metric}>;
+syncStatus: SyncStatus;
+panelNoMatch: Partial<Record<PanelName, PanelNoMatchState>>;
+```
+
+**Memory Assessment:** Minimal - only stores selection metadata, not actual data.
+
+**Concern:** `selectedBurstWindows` array grows via `toggleBurstWindow` with `slice(-3)` limit (line 150). Only 3 burst windows stored at a time - this is correct for the use case.
+
+**Severity:** 🟢 **LOW**
+
+---
+
+### 7. `useFilterStore` - 🟢 LOW
+
+**Location:** `src/store/useFilterStore.ts`
+
+**State Contents:**
+```typescript
+selectedTypes: number[];
+selectedDistricts: number[];
+selectedTimeRange: [number, number] | null;
+selectedSpatialBounds: SpatialBounds | null;
+presets: FilterPreset[];
+```
+
+**Memory Assessment:** Small arrays and localStorage-persisted presets.
+
+**Persisted to localStorage:** `presets` array (line 118-119)
+
+**Concern:** `loadPresetsFromStorage()` called on every store creation - no caching of parsed presets.
+
+**Severity:** 🟢 **LOW**
+
+---
+
+### 8. `useStkdeStore` - 🟡 MEDIUM
+
+**Location:** `src/store/useStkdeStore.ts`
+
+**State Contents:**
+```typescript
+response: StkdeResponse | null;    // Full hotspot response
+runMeta: {...} | null;            // Metadata about last run
+params: StkdeParams;               // Configuration
+```
+
+**Key Finding:** `StkdeResponse` can be large (contains hotspot geometries, grid data). Stored in state at line 145.
+
+**Severity:** 🟡 **MEDIUM**
+
+---
+
+### 9. `useAggregationStore` - 🟢 LOW
+
+**Location:** `src/store/useAggregationStore.ts`
+
+**State Contents:**
+```typescript
+bins: Bin[];                    // Aggregation bins
+lodFactor: number;
+gridResolution: {x, y, z};
+```
+
+**Memory Assessment:** Small - bins array is regenerated on demand.
+
+**Severity:** 🟢 **LOW**
+
+---
+
+### 10. `useHeatmapStore` - 🟢 LOW (uses persist middleware)
+
+**Location:** `src/store/useHeatmapStore.ts`
+
+**Memory Assessment:** Trivial - only UI settings persisted.
+
+**Severity:** 🟢 **LOW**
+
+---
+
+## Data Duplication Analysis
+
+### 🔴 CRITICAL: TimelineDataStore Duplicate Storage
+
+**Problem:** `src/store/useTimelineDataStore.ts` lines 63-76
+
+```typescript
+data: DataPoint[],        // Row-based format (legacy?)
+columns: ColumnarData | null,  // Columnar format (efficient)
+```
+
+Both formats stored simultaneously. `data` is populated via `generateMockData()` (line 80) and `setData()` (line 78), but `columns` is the format actually used by consumers (see grep results showing `columns` used in 50+ locations vs `data` in ~10).
+
+**Consumers of `columns`:**
+- `src/components/viz/CubeVisualization.tsx`
+- `src/components/viz/ClusterManager.tsx`
+- `src/components/viz/MainScene.tsx`
+- `src/components/timeline/DualTimeline.tsx`
+- Many dashboard components
+
+**Consumers of `data`:**
+- `src/components/viz/TimeSlices.tsx` (line 36)
+- `src/components/viz/ClusterManager.tsx` (line 15)
+- `src/components/timeline/DualTimeline.tsx` (line 167)
+
+**Impact:** ~50% memory waste for timeline data.
+
+---
+
+### 🟠 HIGH: Dashboard Demo Stores Duplicate Production Stores
+
+**Affected Stores:**
+- `useDashboardDemoAdaptiveStore` → duplicates `useAdaptiveStore`
+- `useDashboardDemoCoordinationStore` → duplicates `useCoordinationStore`
+- `useDashboardDemoFilterStore` → duplicates `useFilterStore`
+- `useDashboardDemoTimeStore` → duplicates `useTimeStore`
+- `useDashboardDemoTimeslicingModeStore` → duplicates `useSliceDomainStore` (with bin data!)
+- `useDashboardDemoWarpStore` → duplicates `useWarpSliceStore`
+- `useDashboardDemoAnalysisStore` → unknown additional
+- `useDashboardDemoMapLayerStore` → duplicates `useMapLayerStore`
+
+**Problem:** Dashboard demo mode maintains completely separate state instead of using the production stores with modified UI state.
+
+**Lines of code in demo stores:** 530 + 120 + 80 + 60 + 50 + 40 + 40 + 30 ≈ **~950 lines** of duplicated store code.
+
+**Recommendation:** Dashboard demo should use production stores directly with a `demoMode` flag, not mirror all state in separate stores.
+
+---
+
+### 🟡 MEDIUM: TanStack Query Cache vs Zustand Duplication
+
+**Finding:** `src/hooks/useCrimeData.ts` uses TanStack Query for API calls, but many components subscribe to `useTimelineDataStore` directly for the same data.
+
+```typescript
+// useCrimeData.ts line 140-157
+const query = useQuery({
+  queryKey: ['crimes', 'viewport', ...],
+  queryFn: () => fetchCrimesInRange(...),
+  // ...
+});
+```
+
+**vs**
+
+```typescript
+// Direct store access
+const columns = useTimelineDataStore((state) => state.columns);
+```
+
+**Problem:** `loadRealData()` in `useTimelineDataStore` calls `/api/crime/stream` directly and stores the result. Meanwhile `useCrimeData` calls `/api/crimes/range`. These are different endpoints returning potentially different data formats.
+
+**Severity:** 🟡 **MEDIUM** - Two different data fetching paths with potential for inconsistency.
+
+---
+
+## Subscription Pattern Analysis
+
+### 🟠 HIGH: `.getState()` Usage Pattern (342 matches)
+
+**Problem:** Extensive use of `store.getState()` instead of React subscriptions creates implicit dependencies that bypass React's reconciliation.
+
+**Examples:**
+```typescript
+// src/components/viz/MainScene.tsx line 82
+const { columns, data } = useTimelineDataStore.getState();
+
+// src/app/dashboard-v2/page.tsx line 305
+useAdaptiveStore.getState().computeMaps(timestamps, [domainStartSec, domainEndSec], { binningMode: 'uniform-events' });
+
+// src/store/useDashboardDemoTimeslicingModeStore.ts line 386
+useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
+```
+
+**Impact:**
+1. Components don't re-render when state changes (they read once)
+2. Creates tight coupling between stores
+3. Makes state flow hard to track
+4. Potential for stale data if stores change underneath
+
+**Correct Pattern:**
+```typescript
+// Instead of:
+const mapDomain = useAdaptiveStore.getState().mapDomain;
+
+// Do:
+const mapDomain = useAdaptiveStore((state) => state.mapDomain);
+```
+
+**Found 342 `.getState()` calls** - this is a systemic issue.
+
+---
+
+### 🟡 MEDIUM: Store-to-Store Subscriptions in Slices
+
+**In `src/store/slice-domain/createSliceCoreSlice.ts`:**
+
+```typescript
+// Lines 23-24, 32, 94-95
+const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+const mapDomain = useAdaptiveStore.getState().mapDomain;
+```
+
+These are called inside slice creator functions, not inside React components. This means:
+
+1. The slice reads other store state at creation time, not reactively
+2. If `minTimestampSec` changes, the slice function doesn't re-run
+3. Derived calculations may become stale
+
+**In `src/store/useSliceStore.ts`:**
+```typescript
+// Lines 25-26, 34
+const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+const mapDomain = useAdaptiveStore.getState().mapDomain;
+```
+
+Same pattern - called inside hook, not reactive.
+
+---
+
+### 🟡 MEDIUM: Selector Performance in `src/store/slice-domain/selectors.ts`
+
+```typescript
+// Line 39-63: cachedCreationPreviewFeedback
+let cachedCreationPreviewFeedback: CreationPreviewFeedback | null = null;
+export const selectCreationPreviewFeedback = select((state) => {
+  // ... comparison logic
+  if (prev !== null && prev.isValid === next.isValid && ...) {
+    return prev;  // Returns cached object
+  }
+  cachedCreationPreviewFeedback = next;
+  return next;
+});
+```
+
+**Problem:** Module-level cache means the same selector returns different objects based on previous calls. This defeats React's memoization and can cause unnecessary re-renders.
+
+**Severity:** 🟡 **MEDIUM** - Cache invalidation depends on value equality, not state change.
+
+---
+
+## Re-render Cascade Analysis
+
+### 🟠 HIGH: Dense Slices Array Causing Full Re-renders
+
+**In `src/store/slice-domain/createSliceCoreSlice.ts`:**
+
+```typescript
+// Line 297: updateSlice creates new array reference
+slices: sortSlices(state.slices.map((slice) => (slice.id === id ? { ...slice, ...updates } : slice))),
+```
+
+Every slice update creates a new sorted array and passes it to `set()`. This causes ALL components subscribed to `slices` to re-render, even if the changed slice isn't relevant to them.
+
+**Mitigation present:** The store uses `selectSlices` and `selectVisibleSlices` selectors, but these still return the entire array. No memoization at the store level.
+
+---
+
+### 🟠 HIGH: creationSlice/adjustmentSlice Cause Frequent Updates
+
+**State structure means any preview update or drag causes full state replacement:**
+
+```typescript
+// createSliceCreationSlice.ts line 79-86
+updatePreview: (start, end) => {
+  set({
+    previewStart: normalizedStart,
+    previewEnd: normalizedEnd,
+    ghostPosition: { x: normalizedStart, width: Math.max(0, normalizedEnd - normalizedStart) },
+  });
+},
+```
+
+Every mouse move during drag updates multiple state fields, causing re-renders in all subscribing components.
+
+---
+
+### 🟡 MEDIUM: selectedBurstWindows Toggle Pattern
+
+**In `useCoordinationStore.ts` line 137-151:**
+
+```typescript
+toggleBurstWindow: (window) =>
+  set((state) => {
+    const exists = state.selectedBurstWindows.some(...);
+    if (exists) {
+      return { selectedBurstWindows: state.selectedBurstWindows.filter(...) };
+    }
+    const next = [...state.selectedBurstWindows, window];
+    return { selectedBurstWindows: next.slice(-3) };  // Creates new array
+  }),
+```
+
+Creates new array reference on every toggle, even when the underlying data hasn't meaningfully changed.
+
+---
+
+## Store Architecture Issues
+
+### 1. slice-domain Pattern Creates Large Store
+
+**Problem:** `useSliceDomainStore` is a single store with 4 slice concerns:
+- `SliceCoreState` (lines 34-55 in types.ts)
+- `SliceSelectionState` (lines 57-66)
+- `SliceCreationState` (lines 83-103)
+- `SliceAdjustmentState` (lines 119-144)
+
+All combined into one store via spread. This means any state change in ANY slice causes subscribers to re-evaluate.
+
+**Recommendation:** Split into separate stores:
+- `useSliceStore` (core slices only)
+- `useSliceSelectionStore` (selection state)
+- `useSliceCreationStore` (creation UI state)
+- `useSliceAdjustmentStore` (drag/drop state)
+
+---
+
+### 2. Dashboard Demo Stores Shouldn't Exist
+
+**Problem:** 8 separate stores for "demo" mode that duplicate production stores.
+
+**Recommendation:** Use a `demoMode: boolean` flag in production stores instead of separate stores.
+
+---
+
+### 3. No Virtualization for Large Arrays
+
+**Slices:** `slices: TimeSlice[]` can grow large. No virtualization - all slices in memory.
+
+**Bins:** `bins: TimeBin[]` in `useBinningStore` can grow.
+
+**Recommendation:** Implement windowing/virtualization for slice/bin arrays.
+
+---
+
+## Recommendations Summary
+
+### 🔴 CRITICAL (Fix Immediately)
+
+1. **Remove `data` array from `useTimelineDataStore`**
+   - Keep only `ColumnarData columns` which is more efficient
+   - All consumers already use `columns` or can be updated
+
+2. **Implement chunked/streaming data loading**
+   - Don't load 8.5M records into memory at once
+   - Use viewport-based loading with TanStack Query
+
+### 🟠 HIGH (Fix Soon)
+
+3. **Eliminate Dashboard Demo duplicate stores**
+   - Use production stores with `demoMode` flag
+   - Or make demo mode a route/flag, not a parallel store structure
+
+4. **Replace `.getState()` calls with reactive subscriptions**
+   - 342 calls is systemic
+   - Creates stale data issues
+   - Breaks React reconciliation
+
+5. **Add history size limits to `useBinningStore`**
+   - `modificationHistory` grows unbounded
+
+### 🟡 MEDIUM (Technical Debt)
+
+6. **Split `useSliceDomainStore` into separate stores**
+   - Core slices vs UI state belong in different stores
+   - Reduces re-render cascades
+
+7. **Fix `selectCreationPreviewFeedback` selector cache**
+   - Module-level cache bypasses React memoization
+
+8. **Clean up module-level worker in `useAdaptiveStore`**
+   - Worker held at module scope, not cleaned up
+
+9. **Add pagination to `useFilterStore` presets**
+   - LocalStorage can fill up with presets
+
+10. **Virtualize large slice/bin arrays**
+    - Windowing for arrays that can grow to 100+ items
+
+---
+
+## Stores That Can Be Merged/Eliminated
+
+| Store | Recommendation | Rationale |
+|-------|----------------|-----------|
+| `useDashboardDemoAdaptiveStore` | **ELIMINATE** | Duplicate of `useAdaptiveStore` |
+| `useDashboardDemoCoordinationStore` | **ELIMINATE** | Duplicate of `useCoordinationStore` |
+| `useDashboardDemoFilterStore` | **ELIMINATE** | Duplicate of `useFilterStore` |
+| `useDashboardDemoTimeStore` | **ELIMINATE** | Duplicate of `useTimeStore` |
+| `useDashboardDemoMapLayerStore` | **ELIMINATE** | Duplicate of `useMapLayerStore` |
+| `useDashboardDemoWarpStore` | **ELIMINATE** | Duplicate of `useWarpSliceStore` |
+| `useDashboardDemoAnalysisStore` | **INVESTIGATE** | May contain unique demo logic |
+| `useDashboardDemoTimeslicingModeStore` | **MERGE INTO PRODUCTION** | Should use production slice stores |
+| `useSliceAdjustmentStore` | **MERGE INTO** `useSliceDomainStore` | Redundant - already in slice-domain |
+| `useSliceCreationStore` | **MERGE INTO** `useSliceDomainStore` | Redundant - already in slice-domain |
+| `useSliceSelectionStore` | **MERGE INTO** `useSliceDomainStore` | Redundant - already in slice-domain |
+
+**Total Eliminated/Merged:** 10-11 stores out of 56 (~20%)
+
+---
+
+## Severity Ratings Summary
+
+| Store | Severity | Primary Issue |
+|-------|----------|---------------|
+| `useTimelineDataStore` | 🔴 CRITICAL | 1.5GB+ memory with duplicate formats |
+| Dashboard Demo Stores (8) | 🟠 HIGH | Massive duplication, ~950 LOC waste |
+| `useBinningStore` | 🟠 HIGH | Unbounded history growth |
+| `useSuggestionStore` | 🟡 MEDIUM | Set allocations on every change |
+| `useSliceDomainStore` | 🟡 MEDIUM | Too large, too many concerns |
+| `useStkdeStore` | 🟡 MEDIUM | Response stored in state |
+| `useAdaptiveStore` | 🟡 MEDIUM | Worker cleanup issue |
+| `useCoordinationStore` | 🟢 LOW | OK as-is |
+| `useFilterStore` | 🟢 LOW | OK as-is |
+| `useAggregationStore` | 🟢 LOW | OK as-is |
+| `useHeatmapStore` | 🟢 LOW | OK as-is |
+| `useTimeStore` | 🟢 LOW | OK as-is |
+
+---
+
+*Audit completed: 2026-05-08*
+*Focus: State Management & Store Memory*

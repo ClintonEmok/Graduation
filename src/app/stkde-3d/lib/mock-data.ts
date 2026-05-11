@@ -1,9 +1,13 @@
+import type { CrimeRecord } from '@/types/crime';
 import { CHICAGO_BOUNDS, mapChicagoToScene } from './chicago-bounds';
+import { computeSliceKde } from './slice-kde';
 import type { EvolvingSlice, MockCrimeEvent, Stkde3dHotspot } from './types';
 
 const SLICE_COUNT = 10;
 const EVENTS_PER_SLICE = 300;
 const NOISE_RATIO = 0.12;
+const MOCK_RANGE_START = 978307200;
+const MOCK_RANGE_END = 1767225599;
 
 const CRIME_TYPES = [
   'Theft', 'Burglary', 'Assault', 'Robbery',
@@ -191,6 +195,13 @@ function computeBurstScore(
   return clamp((concentration - 0.05) / 0.6, 0, 1);
 }
 
+function computeRealBurstScore(events: MockCrimeEvent[]): number {
+  if (events.length === 0) return 0;
+
+  const { maxIntensity } = computeSliceKde(events);
+  return clamp((maxIntensity / events.length) * 24, 0, 1);
+}
+
 export interface Stkde3dMockData {
   slices: EvolvingSlice[];
   sliceEvents: MockCrimeEvent[][];
@@ -201,8 +212,12 @@ export function generateStkde3dMockData(): Stkde3dMockData {
   const sliceEvents: MockCrimeEvent[][] = [];
 
   for (let i = 0; i < SLICE_COUNT; i++) {
-    const startPercent = (i / SLICE_COUNT) * 100;
-    const endPercent = ((i + 1) / SLICE_COUNT) * 100;
+    const startEpoch = Math.floor(
+      MOCK_RANGE_START + (i / SLICE_COUNT) * (MOCK_RANGE_END - MOCK_RANGE_START),
+    );
+    const endEpoch = Math.floor(
+      MOCK_RANGE_START + ((i + 1) / SLICE_COUNT) * (MOCK_RANGE_END - MOCK_RANGE_START),
+    );
 
     const events = generateSliceEvents(i, EVENTS_PER_SLICE);
     sliceEvents.push(events);
@@ -225,8 +240,49 @@ export function generateStkde3dMockData(): Stkde3dMockData {
     slices.push({
       index: i,
       label: `Slice ${i + 1}`,
-      startPercent,
-      endPercent,
+      startEpoch,
+      endEpoch,
+      burstScore,
+      crimeCount: events.length,
+    });
+  }
+
+  return { slices, sliceEvents };
+}
+
+export function generateStkde3dRealData(records: CrimeRecord[]): Stkde3dMockData {
+  const sortedRecords = [...records].sort((a, b) => a.timestamp - b.timestamp);
+  const slices: EvolvingSlice[] = [];
+  const sliceEvents: MockCrimeEvent[][] = [];
+
+  if (sortedRecords.length === 0) {
+    return { slices, sliceEvents };
+  }
+
+  for (let i = 0; i < SLICE_COUNT; i++) {
+    const startIndex = Math.floor((i / SLICE_COUNT) * sortedRecords.length);
+    const endIndex = i === SLICE_COUNT - 1
+      ? sortedRecords.length
+      : Math.floor(((i + 1) / SLICE_COUNT) * sortedRecords.length);
+
+    const recordsInSlice = sortedRecords.slice(startIndex, endIndex);
+    const events = recordsInSlice.map((record) => ({
+      x: record.x,
+      z: record.z,
+      type: record.type,
+    }));
+
+    sliceEvents.push(events);
+
+    const burstScore = Number(computeRealBurstScore(events).toFixed(3));
+
+    slices.push({
+      index: i,
+      label: `Slice ${i + 1}`,
+      startEpoch: recordsInSlice[0] ? recordsInSlice[0].timestamp : sortedRecords[0]!.timestamp,
+      endEpoch: recordsInSlice[recordsInSlice.length - 1]
+        ? recordsInSlice[recordsInSlice.length - 1]!.timestamp
+        : sortedRecords[sortedRecords.length - 1]!.timestamp,
       burstScore,
       crimeCount: events.length,
     });

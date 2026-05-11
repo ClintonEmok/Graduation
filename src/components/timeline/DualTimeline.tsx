@@ -107,7 +107,6 @@ interface TimelineSliceGeometry {
   width: number;
   isActive: boolean;
   isBurst: boolean;
-  isPoint: boolean;
   isSuggestion: boolean;
   isGeneratedDraft: boolean;
   isGeneratedApplied: boolean;
@@ -580,7 +579,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
             width: Math.max(2, right - left),
             isActive: activeSliceId === slice.id,
             isBurst: !!slice.isBurst,
-            isPoint: false,
             isSuggestion: (slice as { source?: string }).source === 'suggestion',
             isGeneratedDraft: false,
             isGeneratedApplied: slice.source === 'generated-applied',
@@ -603,7 +601,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           width: 2,
           isActive: activeSliceId === slice.id,
           isBurst: !!slice.isBurst,
-          isPoint: true,
           isSuggestion: (slice as { source?: string }).source === 'suggestion',
           isGeneratedDraft: false,
           isGeneratedApplied: slice.source === 'generated-applied',
@@ -618,12 +615,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 
   const maxSliceOverlap = useMemo(
     () =>
-      sliceGeometries.reduce((maxOverlap, geometry) => {
-        if (geometry.isPoint) {
-          return maxOverlap;
-        }
-        return Math.max(maxOverlap, geometry.overlapCount);
-      }, 1),
+      sliceGeometries.reduce((maxOverlap, geometry) => Math.max(maxOverlap, geometry.overlapCount), 1),
     [sliceGeometries]
   );
 
@@ -670,7 +662,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
           width: Math.max(2, right - left),
           isActive: false,
           isBurst: false,
-          isPoint: false,
           isSuggestion: false,
           isGeneratedDraft: true,
           isGeneratedApplied: false,

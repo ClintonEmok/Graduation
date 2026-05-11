@@ -24,7 +24,6 @@ interface SurfaceSliceGeometry {
   width: number;
   isActive: boolean;
   isBurst: boolean;
-  isPoint: boolean;
   isSuggestion: boolean;
   isGeneratedDraft: boolean;
   isGeneratedApplied: boolean;

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { buildNonUniformDraftBinsFromSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import type { TimeBin } from '@/lib/binning/types';
 import type { CrimeRecord } from '@/types/crime';
+import { useTimelineDataStore } from './useTimelineDataStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
 
 export type TimeslicingMode = 'auto' | 'manual';
@@ -68,7 +69,9 @@ interface DashboardDemoTimeslicingState {
   splitPendingGeneratedBin: (binId: string, splitPoint: number) => void;
   deletePendingGeneratedBin: (binId: string) => void;
   applyGeneratedBins: (domain: [number, number]) => boolean;
-  addManualDraftRange: (range: { startMs: number; endMs: number }) => void;
+  addManualDraftRange: (range: { startMs: number; endMs: number }) => string;
+  updatePendingBinRange: (binId: string, startMs: number, endMs: number) => void;
+  computeManualDraftBin: (binId: string) => Promise<boolean>;
 }
 
 const mergeBins = (bins: TimeBin[], binIds: string[]): TimeBin[] => {
@@ -390,10 +393,11 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
 
         return true;
       },
-      addManualDraftRange: (range) =>
+      addManualDraftRange: (range) => {
+        const id = `manual-range-${Date.now()}`;
         set((state) => {
           const bin: TimeBin = {
-            id: `manual-range-${Date.now()}`,
+            id,
             startTime: range.startMs,
             endTime: range.endMs,
             count: 0,
@@ -406,7 +410,97 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
             pendingGeneratedBins: [...state.pendingGeneratedBins, bin],
             generationStatus: 'ready',
           };
-        }),
+        });
+        return id;
+      },
+      updatePendingBinRange: (binId, startMs, endMs) =>
+        set((state) => ({
+          pendingGeneratedBins: state.pendingGeneratedBins.map((bin) =>
+            bin.id === binId
+              ? { ...bin, startTime: startMs, endTime: endMs, avgTimestamp: (startMs + endMs) / 2 }
+              : bin
+          ),
+        })),
+      computeManualDraftBin: async (binId) => {
+        const state = get();
+        const bin = state.pendingGeneratedBins.find((b) => b.id === binId);
+        if (!bin) return false;
+
+        set({ generationStatus: 'generating', generationError: null });
+
+        try {
+          const searchParams = new URLSearchParams({
+            startEpoch: String(Math.floor(Math.min(bin.startTime, bin.endTime) / 1000)),
+            endEpoch: String(Math.floor(Math.max(bin.startTime, bin.endTime) / 1000)),
+            bufferDays: '0',
+            limit: '100000',
+          });
+
+          const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
+          if (!response.ok) throw new Error(`Crime data fetch failed with status ${response.status}`);
+
+          const result = (await response.json()) as { data?: CrimeRecord[] };
+          const crimes = Array.isArray(result.data) ? result.data : [];
+
+          const typeSet = new Set<string>();
+          crimes.forEach((c) => typeSet.add(c.type));
+          const crimeTypes = Array.from(typeSet);
+
+          const avgTs = crimes.length > 0
+            ? crimes.reduce((sum, c) => sum + c.timestamp * 1000, 0) / crimes.length
+            : (bin.startTime + bin.endTime) / 2;
+
+          const eventTimes = crimes.map((c) => c.timestamp * 1000).sort((a, b) => a - b);
+          let burstClass: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral' = 'neutral';
+          let burstinessCoefficient = 0;
+          let burstScore = 50;
+          let burstConfidence = 0;
+
+          if (eventTimes.length >= 2) {
+            const intervals = eventTimes.slice(1).map((t, i) => t - eventTimes[i]);
+            const mean = intervals.reduce((s, v) => s + v, 0) / intervals.length;
+            const variance = intervals.reduce((s, v) => s + (v - mean) ** 2, 0) / intervals.length;
+            const stdDev = Math.sqrt(variance);
+            const denom = stdDev + mean;
+            burstinessCoefficient = denom === 0 ? 0 : (stdDev - mean) / denom;
+            burstScore = Math.round(((burstinessCoefficient + 1) / 2) * 100);
+            burstConfidence = Math.round(Math.abs(burstinessCoefficient) * 100);
+
+            if (burstinessCoefficient > 0.3) {
+              burstClass = 'prolonged-peak';
+            } else if (burstinessCoefficient < -0.3) {
+              burstClass = 'valley';
+            }
+          }
+
+          set((s) => ({
+            pendingGeneratedBins: s.pendingGeneratedBins.map((b) =>
+              b.id === binId
+                ? {
+                    ...b,
+                    count: crimes.length,
+                    crimeTypes,
+                    avgTimestamp: avgTs,
+                    isModified: true,
+                    burstClass,
+                    burstScore,
+                    burstinessCoefficient,
+                    burstConfidence,
+                    isNeutralPartition: burstClass === 'neutral',
+                    warpWeight: burstClass === 'neutral' ? 1 : 1 + Math.max(0, burstinessCoefficient),
+                  }
+                : b
+            ),
+            generationStatus: 'ready',
+          }));
+
+          return true;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Failed to compute manual draft data';
+          set({ generationStatus: 'error', generationError: msg });
+          return false;
+        }
+      },
     }),
     {
       name: 'dashboard-demo-timeslicing-mode-v1',

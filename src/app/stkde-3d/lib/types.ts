@@ -8,8 +8,8 @@ export interface KdeCell {
 export interface EvolvingSlice {
   index: number;
   label: string;
-  startPercent: number;
-  endPercent: number;
+  startEpoch: number;
+  endEpoch: number;
   burstScore: number;
   crimeCount: number;
 }

@@ -2,19 +2,77 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
-import { generateStkde3dMockData } from './lib/mock-data';
+import { generateStkde3dMockData, generateStkde3dRealData } from './lib/mock-data';
 import { computeSliceKde } from './lib/slice-kde';
 import { Stkde3DScene } from './components/Stkde3DScene';
 import { SliceScrubber } from './components/SliceScrubber';
+import type { CrimeRecord } from '@/types/crime';
+
+const REAL_DATA_RANGE = {
+  startEpoch: 978307200,
+  endEpoch: 1767225599,
+  limit: 1200,
+};
+
+type DatasetState = {
+  slices: ReturnType<typeof generateStkde3dMockData>['slices'];
+  sliceEvents: ReturnType<typeof generateStkde3dMockData>['sliceEvents'];
+  source: 'real' | 'mock';
+};
 
 export default function Stkde3DPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [dataset, setDataset] = useState<DatasetState | null>(null);
 
-  const { slices, sliceEvents } = useMemo(() => {
-    return generateStkde3dMockData();
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDataset() {
+      try {
+        const params = new URLSearchParams({
+          startEpoch: REAL_DATA_RANGE.startEpoch.toString(),
+          endEpoch: REAL_DATA_RANGE.endEpoch.toString(),
+          bufferDays: '0',
+          limit: REAL_DATA_RANGE.limit.toString(),
+        });
+
+        const response = await fetch(`/api/crimes/range?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = (await response.json()) as { data?: CrimeRecord[] };
+        const realDataset = generateStkde3dRealData(result.data ?? []);
+
+        if (realDataset.slices.length === 0) {
+          throw new Error('No real crime subset returned');
+        }
+
+        if (!cancelled) {
+          setDataset({ ...realDataset, source: 'real' });
+          setActiveIndex(0);
+        }
+      } catch {
+        if (!cancelled) {
+          const fallback = generateStkde3dMockData();
+          setDataset({ ...fallback, source: 'mock' });
+          setActiveIndex(0);
+        }
+      }
+    }
+
+    loadDataset();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const slices = useMemo(() => dataset?.slices ?? [], [dataset]);
+  const sliceEvents = useMemo(() => dataset?.sliceEvents ?? [], [dataset]);
+  const isRealData = dataset?.source === 'real';
 
   const sliceKdes = useMemo(
     () => sliceEvents.map((events) => computeSliceKde(events).cells),
@@ -36,6 +94,14 @@ export default function Stkde3DPage() {
     return () => window.clearTimeout(timeout);
   }, [activeIndex, isPlaying, playbackSpeed, slices.length]);
 
+  if (!dataset) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
+        <div className="text-sm text-slate-400">Loading real crime subset...</div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="flex h-screen flex-col">
@@ -46,7 +112,7 @@ export default function Stkde3DPage() {
             </h1>
             <p className="text-xs text-slate-400">
               KDE heatmaps stacked through time &mdash; {slices.length} slices
-              across {totalEvents.toLocaleString()} mock events
+              across {totalEvents.toLocaleString()} {isRealData ? 'real' : 'mock'} events
             </p>
           </div>
 
@@ -76,7 +142,7 @@ export default function Stkde3DPage() {
             </label>
 
             <span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200">
-              Looping playback
+              {isRealData ? 'Real subset' : 'Mock fallback'}
             </span>
           </div>
         </header>

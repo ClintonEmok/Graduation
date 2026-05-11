@@ -11,12 +11,14 @@ import { SlicePlane } from './SlicePlane';
 import { BurstEvolutionOverlay } from './BurstEvolutionOverlay';
 import { EvolutionFlowOverlay } from './EvolutionFlowOverlay';
 import { SliceClusterOverlay } from './SliceClusterOverlay';
+import { SliceCrimePoints } from './SliceCrimePoints';
 import { scaleLinear } from 'd3-scale';
 import { getAdaptiveScaleConfig, getAdaptiveScaleConfigColumnar } from '@/lib/adaptive-scale';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useClusterStore } from '@/store/useClusterStore';
 import { selectFilteredData } from '@/lib/data/selectors';
 import { analyzeClusters, groupClusterAnalysesBySlice } from '@/lib/clustering/cluster-analysis';
+import type { FilteredPoint } from '@/lib/data/types';
 
 interface TimeSlicesProps {
   sliceStoreOverride?: unknown;
@@ -102,6 +104,21 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
     return () => setSliceClustersById({});
   }, [setSliceClustersById, sliceClustersById]);
 
+  const slicePointsById = useMemo(() => {
+    if (slices.length === 0 || filteredPoints.length === 0) return {};
+
+    const result: Record<string, FilteredPoint[]> = {};
+    for (const slice of slices) {
+      if (slice.isVisible === false) continue;
+      const range = slice.type === 'range' && slice.range
+        ? slice.range
+        : [Math.max(0, slice.time - 2), Math.min(100, slice.time + 2)];
+      const [start, end] = range[0] <= range[1] ? range : [range[1], range[0]];
+      result[slice.id] = filteredPoints.filter((point) => point.y >= start && point.y <= end);
+    }
+    return result;
+  }, [filteredPoints, slices]);
+
   const handleDoubleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     // Calculate Y from point (in local coords? MainScene centers everything? 
@@ -138,14 +155,15 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
             evolutionState={
               evolutionSequence.activeSliceId === slice.id
                 ? 'active'
-                : evolutionSequence.previousSliceId === slice.id
+                : evolutionSequence.previousSliceIds.includes(slice.id)
                   ? 'previous'
-                  : evolutionSequence.nextSliceId === slice.id
+                  : evolutionSequence.nextSliceIds.includes(slice.id)
                     ? 'next'
                     : 'distant'
             }
           />
           <SliceClusterOverlay slice={slice} y={scale(slice.time)} />
+          <SliceCrimePoints points={slicePointsById[slice.id] ?? []} />
         </group>
       ))}
 

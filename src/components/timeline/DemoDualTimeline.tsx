@@ -164,7 +164,6 @@ interface TimelineSliceGeometry {
   rawWidth: number;
   isActive: boolean;
   isBurst: boolean;
-  isPoint: boolean;
   isSuggestion: boolean;
   isGeneratedDraft: boolean;
   isGeneratedApplied: boolean;
@@ -696,7 +695,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
             rawWidth: Math.max(2, rawRight - rawLeft),
             isActive: activeSliceId === slice.id,
             isBurst: !!slice.isBurst,
-            isPoint: false,
             isSuggestion: (slice as { source?: string }).source === 'suggestion',
             isGeneratedDraft: false,
             isGeneratedApplied: slice.source === 'generated-applied',
@@ -724,7 +722,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           rawWidth: 2,
           isActive: activeSliceId === slice.id,
           isBurst: !!slice.isBurst,
-          isPoint: true,
           isSuggestion: (slice as { source?: string }).source === 'suggestion',
           isGeneratedDraft: false,
           isGeneratedApplied: slice.source === 'generated-applied',
@@ -741,12 +738,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
   const maxSliceOverlap = useMemo(
     () =>
-      sliceGeometries.reduce((maxOverlap, geometry) => {
-        if (geometry.isPoint) {
-          return maxOverlap;
-        }
-        return Math.max(maxOverlap, geometry.overlapCount);
-      }, 1),
+      sliceGeometries.reduce((maxOverlap, geometry) => Math.max(maxOverlap, geometry.overlapCount), 1),
     [sliceGeometries]
   );
 
@@ -773,7 +765,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       buildBurstScoreSeries(
         orderedSliceGeometries.map((geometry) => {
           const slice = slices.find((item) => item.id === geometry.id);
-          const label = slice?.name?.trim() || (geometry.isPoint ? 'Point slice' : 'Range slice');
+          const label = slice?.name?.trim() || 'Applied slice';
 
           return {
             id: geometry.id,
@@ -816,7 +808,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           rawWidth: Math.max(2, right - left),
           isActive: false,
           isBurst: false,
-          isPoint: false,
           isSuggestion: false,
           isGeneratedDraft: true,
           isGeneratedApplied: false,

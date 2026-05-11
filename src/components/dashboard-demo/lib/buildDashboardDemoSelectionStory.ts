@@ -86,7 +86,7 @@ export function useDashboardDemoSelectionStory() {
     const linkedHighlightLabel = activeBurstWindow
       ? `${activeBurstWindow.burstClass.replace('-', ' ')} · ${activeBurstWindow.burstRationale}`
       : activeSlice
-        ? `${activeSlice.name?.trim() || (activeSlice.type === 'range' ? 'Range slice' : 'Point slice')} · linked to the active burst`
+        ? `${activeSlice.name?.trim() || 'Applied slice'} · linked to the active burst`
         : 'No linked highlight yet';
     const explanationLabel = selectedSource
       ? `Workflow ${workflowPhase} · source ${selectedSource} · current time ${currentTime.toFixed(1)}`

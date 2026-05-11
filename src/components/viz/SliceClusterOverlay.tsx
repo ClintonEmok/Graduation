@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Line } from '@react-three/drei';
+import { useShallow } from 'zustand/react/shallow';
 import { useClusterStore } from '@/store/useClusterStore';
 import { PALETTES } from '@/lib/palettes';
 import { useThemeStore } from '@/store/useThemeStore';
@@ -12,7 +13,9 @@ interface SliceClusterOverlayProps {
 }
 
 export function SliceClusterOverlay({ slice, y }: SliceClusterOverlayProps) {
-  const sliceClusters = useClusterStore((state) => state.sliceClustersById[slice.id] ?? []);
+  const sliceClusters = useClusterStore(
+    useShallow((state) => state.sliceClustersById[slice.id] ?? [])
+  );
   const selectedClusterId = useClusterStore((state) => state.selectedClusterId);
   const hoveredClusterId = useClusterStore((state) => state.hoveredClusterId);
   const theme = useThemeStore((state) => state.theme);

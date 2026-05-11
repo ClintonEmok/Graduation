@@ -1,22 +1,22 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Map, SquareStack } from 'lucide-react';
-import CubeVisualization from '@/components/viz/CubeVisualization';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Map, Box, Sparkles } from 'lucide-react';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { Button } from '@/components/ui/button';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
-import { useDashboardDemoSelectionStory } from '@/components/dashboard-demo/lib/buildDashboardDemoSelectionStory';
-import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
+import { Demo3dSpatialView } from '@/components/dashboard-demo/Demo3dSpatialView';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
-import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
-import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
+import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { toast } from 'sonner';
 
-type DemoViewport = 'map' | 'cube';
+type DemoViewport = 'map' | '3d';
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
@@ -24,15 +24,13 @@ export function DashboardDemoShell() {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const setViewport = useViewportStore((state) => state.setViewport);
-  const selectionStory = useDashboardDemoSelectionStory();
+  const timeRange = useDashboardDemoCoordinationStore((state) => state.brushRange) ?? [0, 100];
+  const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
 
   useEffect(() => {
     void (async () => {
       await loadSummaryData();
     })();
-
-    return () => {
-    };
   }, [loadSummaryData]);
 
   useEffect(() => {
@@ -41,14 +39,89 @@ export function DashboardDemoShell() {
     setViewport(minTimestampSec, maxTimestampSec);
   }, [maxTimestampSec, minTimestampSec, setViewport]);
 
+  const appliedSliceCount = useSliceDomainStore(
+    (s) => s.slices.filter((sl) => sl.source === 'generated-applied' && sl.type === 'range').length,
+  );
+  const autoSwitchKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (appliedSliceCount === 0) {
+      autoSwitchKeyRef.current = null;
+      return;
+    }
+
+    const nextKey = lastAppliedAt === null
+      ? `hydrated:${appliedSliceCount}`
+      : `applied:${lastAppliedAt}`;
+
+    if (autoSwitchKeyRef.current === nextKey) {
+      return;
+    }
+
+    if (lastAppliedAt !== null || autoSwitchKeyRef.current === null) {
+      setActiveViewport('3d');
+    }
+    autoSwitchKeyRef.current = nextKey;
+  }, [appliedSliceCount, lastAppliedAt]);
+
+  const [showcaseLoading, setShowcaseLoading] = useState(false);
+
+  const handleShowcase = useCallback(async () => {
+    if (minTimestampSec === null || maxTimestampSec === null) return;
+    const [rangeStart, rangeEnd] = timeRange;
+    if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) return;
+
+    setShowcaseLoading(true);
+    const { useDashboardDemoTimeslicingModeStore } = await import('@/store/useDashboardDemoTimeslicingModeStore');
+
+    try {
+      const timeslicingStore = useDashboardDemoTimeslicingModeStore.getState();
+      const windowStartMs = normalizedToEpochSeconds(rangeStart, minTimestampSec, maxTimestampSec) * 1000;
+      const windowEndMs = normalizedToEpochSeconds(rangeEnd, minTimestampSec, maxTimestampSec) * 1000;
+
+      timeslicingStore.setGenerationInputs({
+        timeWindow: { start: windowStartMs, end: windowEndMs },
+        granularity: 'monthly',
+      });
+
+      const success = await timeslicingStore.generateBurstDraftBinsFromWindows();
+      if (!success) {
+        toast.error('Showcase generation failed', { description: 'Could not generate burst drafts.' });
+        setShowcaseLoading(false);
+        return;
+      }
+
+      timeslicingStore.applyGeneratedBins([windowStartMs, windowEndMs]);
+      setActiveViewport('3d');
+      toast.success('Showcase ready', { description: 'Slice planes, KDE, and evolution flow are active.' });
+    } catch {
+      toast.error('Showcase setup failed');
+    }
+
+    setShowcaseLoading(false);
+  }, [maxTimestampSec, minTimestampSec, timeRange]);
+
   return (
     <main
       className="relative h-screen w-screen overflow-hidden bg-background text-foreground"
       aria-label="dashboard demo workspace"
-      data-phase="phase-13-guided-analysis-workflow"
     >
       <div className="flex h-full min-w-0 flex-col pr-80">
-        <header className="border-b border-border bg-card/80 px-4 py-3 shadow-sm" />
+        <header className="border-b border-border bg-card/80 px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Adaptive Space-Time Cube</span>
+            <Button
+              type="button"
+              onClick={handleShowcase}
+              disabled={showcaseLoading || minTimestampSec === null}
+              size="sm"
+              className="gap-2"
+            >
+              <Sparkles className="size-3.5" />
+              {showcaseLoading ? 'Setting up…' : 'Showcase'}
+            </Button>
+          </div>
+        </header>
 
         <section className="relative min-h-0 flex-1 overflow-hidden bg-background" aria-label="dashboard demo shared viewport">
           <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-border bg-card/80 p-1 shadow-sm backdrop-blur">
@@ -65,14 +138,14 @@ export function DashboardDemoShell() {
             </Button>
             <Button
               type="button"
-              onClick={() => setActiveViewport('cube')}
-              aria-label="Show cube viewport"
-              title="Show cube viewport"
-              variant={activeViewport === 'cube' ? 'secondary' : 'ghost'}
+              onClick={() => setActiveViewport('3d')}
+              aria-label="Show 3D viewport"
+              title="Show 3D viewport"
+              variant={activeViewport === '3d' ? 'secondary' : 'ghost'}
               size="icon-sm"
               className="rounded-full"
             >
-              <SquareStack className="size-3.5" />
+              <Box className="size-3.5" />
             </Button>
           </div>
 
@@ -80,14 +153,7 @@ export function DashboardDemoShell() {
             {activeViewport === 'map' ? (
               <DemoMapVisualization />
             ) : (
-              <CubeVisualization
-                selectionStory={selectionStory}
-                filterStoreOverride={useDashboardDemoFilterStore}
-                coordinationStoreOverride={useDashboardDemoCoordinationStore}
-                adaptiveStoreOverride={useDashboardDemoAdaptiveStore}
-                timeStoreOverride={useDashboardDemoTimeStore}
-                sliceStoreOverride={useSliceDomainStore}
-              />
+              <Demo3dSpatialView />
             )}
           </div>
         </section>

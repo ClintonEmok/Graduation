@@ -190,7 +190,7 @@ export function SelectedWarpSliceOverlay({
     : [Number(selectedSliceMeta?.time ?? 0), Number(selectedSliceMeta?.time ?? 0)];
 
   const sliceLabel = selectedSlice
-    ? `${selectedSliceMeta?.name?.trim() || (selectedSliceMeta?.type === 'range' ? 'Range slice' : 'Point slice')} · linked selection`
+    ? `${selectedSliceMeta?.name?.trim() || 'Applied slice'} · linked selection`
     : 'Linked selection';
 
   if (!selectedSlice) {

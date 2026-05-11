@@ -27,6 +27,8 @@ export interface DemoEvolutionSequence {
   activeIndex: number;
   previousSliceId: string | null;
   nextSliceId: string | null;
+  previousSliceIds: string[];
+  nextSliceIds: string[];
   playbackLabel: string;
   isEmpty: boolean;
   canStepBackward: boolean;
@@ -76,6 +78,8 @@ export function buildDemoEvolutionSequence({
       activeIndex: -1,
       previousSliceId: null,
       nextSliceId: null,
+      previousSliceIds: [],
+      nextSliceIds: [],
       playbackLabel: 'No slices available',
       isEmpty: true,
       canStepBackward: false,
@@ -107,6 +111,16 @@ export function buildDemoEvolutionSequence({
   const previousFrame = clampedIndex > 0 ? frames[clampedIndex - 1] ?? null : null;
   const nextFrame = clampedIndex < frames.length - 1 ? frames[clampedIndex + 1] ?? null : null;
 
+  const previousSliceIds: string[] = [];
+  for (let i = Math.max(0, clampedIndex - 3); i < clampedIndex; i++) {
+    previousSliceIds.push(frames[i].id);
+  }
+
+  const nextSliceIds: string[] = [];
+  for (let i = clampedIndex + 1; i <= Math.min(frames.length - 1, clampedIndex + 3); i++) {
+    nextSliceIds.push(frames[i].id);
+  }
+
   return {
     orderedSliceIds: frames.map((frame) => frame.id),
     frames,
@@ -114,6 +128,8 @@ export function buildDemoEvolutionSequence({
     activeIndex: clampedIndex,
     previousSliceId: previousFrame?.id ?? null,
     nextSliceId: nextFrame?.id ?? null,
+    previousSliceIds,
+    nextSliceIds,
     playbackLabel: `${isPlaying ? 'Auto-play' : 'Paused'} · ${formatStepLabel(clampedIndex, frames.length)} · ${Math.max(0.25, speed).toFixed(2)}x`,
     isEmpty: false,
     canStepBackward: clampedIndex > 0,
