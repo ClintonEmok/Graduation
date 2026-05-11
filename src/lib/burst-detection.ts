@@ -1,4 +1,7 @@
-import { computeSliceKde } from '@/lib/kde';
+const GRID_SIZE = 32;
+const GRID_CELL_SIZE = 100 / GRID_SIZE;
+const GRID_CELL_COUNT = GRID_SIZE * GRID_SIZE;
+const EPSILON = 1e-12;
 
 export interface BurstBinResult {
   startEpoch: number;
@@ -15,6 +18,19 @@ export interface BurstResponse {
   totalB: number;
 }
 
+const GRANULARITY_TARGET_SLICE_COUNTS: Record<string, number> = {
+  hourly: 8,
+  daily: 6,
+  weekly: 5,
+  monthly: 4,
+  quarterly: 3,
+};
+
+export interface BurstBinRange {
+  startEpoch: number;
+  endEpoch: number;
+}
+
 function computeTemporalB(interEventGaps: number[]): number {
   if (interEventGaps.length < 2) return 0;
   const mean = interEventGaps.reduce((a, b) => a + b, 0) / interEventGaps.length;
@@ -24,38 +40,144 @@ function computeTemporalB(interEventGaps: number[]): number {
   return (std - mean) / (std + mean);
 }
 
-function computeSpatialB(points: Array<{ x: number; z: number }>): number {
-  if (points.length < 3) return 0;
-  const { cells, maxIntensity } = computeSliceKde(points);
-  if (maxIntensity <= 0 || cells.length === 0) return 0;
-  const meanIntensity = cells.reduce((sum, c) => sum + c.intensity, 0) / cells.length;
-  return 1 - meanIntensity / maxIntensity;
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function cellIndexFor(x: number, z: number): number {
+  const col = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor((x + 50) / GRID_CELL_SIZE)));
+  const row = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor((z + 50) / GRID_CELL_SIZE)));
+  return row * GRID_SIZE + col;
+}
+
+function buildDistribution(points: Array<{ x: number; z: number }>): Float64Array {
+  const distribution = new Float64Array(GRID_CELL_COUNT);
+  if (points.length === 0) {
+    return distribution;
+  }
+
+  for (const point of points) {
+    const index = cellIndexFor(point.x, point.z);
+    distribution[index] += 1;
+  }
+
+  const total = distribution.reduce((sum, value) => sum + value, 0);
+  if (total <= EPSILON) {
+    return distribution;
+  }
+
+  for (let i = 0; i < distribution.length; i += 1) {
+    distribution[i] /= total;
+  }
+
+  return distribution;
+}
+
+function normalizedEntropy(distribution: Float64Array): number {
+  let entropy = 0;
+  let support = 0;
+
+  for (const probability of distribution) {
+    if (probability <= EPSILON) continue;
+    entropy -= probability * Math.log(probability);
+    support += 1;
+  }
+
+  if (support <= 1) {
+    return 0;
+  }
+
+  return clamp01(entropy / Math.log(support));
+}
+
+function jensenShannonDivergence(left: Float64Array, right: Float64Array): number {
+  let leftKld = 0;
+  let rightKld = 0;
+
+  for (let i = 0; i < left.length; i += 1) {
+    const p = left[i] ?? 0;
+    const q = right[i] ?? 0;
+    const m = (p + q) / 2;
+
+    if (p > EPSILON && m > EPSILON) {
+      leftKld += p * Math.log(p / m);
+    }
+    if (q > EPSILON && m > EPSILON) {
+      rightKld += q * Math.log(q / m);
+    }
+  }
+
+  return clamp01((0.5 * (leftKld + rightKld)) / Math.log(2));
+}
+
+function computeSpatialB(
+  points: Array<{ x: number; z: number }>,
+  baselinePoints: Array<{ x: number; z: number }> = points,
+): number {
+  if (points.length === 0) return 0;
+
+  const concentration = 1 - normalizedEntropy(buildDistribution(points));
+  const baselineDistribution = buildDistribution(baselinePoints);
+  const surprise = baselinePoints.length >= 3
+    ? jensenShannonDivergence(buildDistribution(points), baselineDistribution)
+    : 1;
+  const surpriseLift = 0.25 + 0.75 * surprise;
+
+  return clamp01(concentration * surpriseLift);
 }
 
 export async function fetchBurstBins(params: {
-  startEpoch: number;
-  endEpoch: number;
-  binCount?: number;
-  granularity?: string;
+  partitions: BurstBinRange[];
   crimeTypes?: string[];
+  granularity?: string;
 }): Promise<BurstResponse> {
-  const searchParams = new URLSearchParams({
-    startEpoch: params.startEpoch.toString(),
-    endEpoch: params.endEpoch.toString(),
-    binCount: (params.binCount ?? 10).toString(),
-    granularity: params.granularity ?? 'daily',
-  });
+  const baselineRange = params.partitions.reduce(
+    (acc, partition) => ({
+      startEpoch: Math.min(acc.startEpoch, partition.startEpoch),
+      endEpoch: Math.max(acc.endEpoch, partition.endEpoch),
+    }),
+    { startEpoch: Number.POSITIVE_INFINITY, endEpoch: Number.NEGATIVE_INFINITY },
+  );
 
-  if (params.crimeTypes?.length) {
-    searchParams.set('crimeTypes', params.crimeTypes.join(','));
-  }
+  const bins = await Promise.all(
+    params.partitions.map(async (partition) => {
+      const searchParams = new URLSearchParams({
+        startEpoch: Math.floor(partition.startEpoch).toString(),
+        endEpoch: Math.floor(partition.endEpoch).toString(),
+        baselineStartEpoch: Math.floor(baselineRange.startEpoch).toString(),
+        baselineEndEpoch: Math.floor(baselineRange.endEpoch).toString(),
+      });
 
-  const response = await fetch(`/api/adaptive/bursts?${searchParams.toString()}`);
-  if (!response.ok) {
-    throw new Error(`Burst API error: ${response.status}`);
-  }
+      if (params.crimeTypes?.length) {
+        searchParams.set('crimeTypes', params.crimeTypes.join(','));
+      }
 
-  return response.json() as Promise<BurstResponse>;
+      if (params.granularity) {
+        searchParams.set('granularity', params.granularity);
+      }
+
+      const response = await fetch(`/api/adaptive/bursts?${searchParams.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Burst API error: ${response.status}`);
+      }
+
+      const payload = (await response.json()) as BurstResponse;
+      return payload.bins[0] ?? null;
+    }),
+  );
+
+  const filteredBins = bins.filter((bin): bin is BurstBinResult => bin !== null);
+  const totalB = filteredBins.reduce((sum, bin) => sum + bin.combinedB, 0);
+  const targetSliceCount = filteredBins.reduce((sum, _, index) => {
+    const granularity = params.granularity ?? 'daily';
+    return sum + (GRANULARITY_TARGET_SLICE_COUNTS[granularity] ?? GRANULARITY_TARGET_SLICE_COUNTS.daily);
+  }, 0);
+
+  return {
+    bins: filteredBins,
+    targetSliceCount,
+    totalB: Number(totalB.toFixed(4)),
+  };
 }
 
 export function allocateSlices(
@@ -104,6 +226,7 @@ export function computeTemporalBBinned(
 
 export function computeSpatialBBinned(
   points: Array<{ x: number; z: number }>,
+  baselinePoints?: Array<{ x: number; z: number }>,
 ): number {
-  return computeSpatialB(points);
+  return computeSpatialB(points, baselinePoints);
 }
