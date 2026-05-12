@@ -23,7 +23,6 @@ import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildDemoSliceAuthoredWarpMap } from '@/components/dashboard-demo/lib/demo-warp-map';
-import { buildBurstScoreSeries } from '@/components/timeline/lib/burst-score-series';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { sampleTimelinePoints, selectTimelinePointsInRange } from '@/lib/timeline-series';
 import {
@@ -760,27 +759,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return [...sliceGeometries].sort((a, b) => stackWeight(a) - stackWeight(b));
   }, [sliceGeometries]);
 
-  const burstScoreSeries = useMemo(
-    () =>
-      buildBurstScoreSeries(
-        orderedSliceGeometries.map((geometry) => {
-          const slice = slices.find((item) => item.id === geometry.id);
-          const label = slice?.name?.trim() || 'Applied slice';
-
-          return {
-            id: geometry.id,
-            label,
-            left: geometry.left,
-            width: geometry.width,
-            isActive: geometry.isActive,
-            isBurst: geometry.isBurst,
-            burstScore: slice?.burstScore ?? null,
-          };
-        })
-      ),
-    [orderedSliceGeometries, slices]
-  );
-
   const pendingGeneratedGeometries = useMemo<TimelineSliceGeometry[]>(() => {
     if (!pendingGeneratedBins.length || detailInnerWidth <= 0) {
       return [];
@@ -869,7 +847,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     activeSliceUpdatedAt,
     pendingGeneratedGeometries,
     maxSliceOverlap,
-    burstScoreSeries,
     cursorX,
     selectionX,
     zoomRef,

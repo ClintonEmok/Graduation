@@ -46,7 +46,7 @@ export function DashboardDemoRailTabs() {
         </TabsContent>
 
         <TabsContent value="detect" className="mt-2">
-          <DemoDetectPanel />
+          <DemoDetectPanel onNavigateToSlices={() => setTab('slices')} />
         </TabsContent>
 
         <TabsContent value="slices" className="mt-2">

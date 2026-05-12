@@ -139,14 +139,21 @@ interface Stkde3DSceneProps {
   slices: EvolvingSlice[];
   sliceKdes: KdeCell[][];
   activeIndex: number;
+  viewMode?: 'stack' | 'focus';
 }
 
 function SceneContent({
   slices,
   sliceKdes,
   activeIndex,
+  viewMode = 'stack',
 }: Stkde3DSceneProps) {
   const controlsRef = useRef<CameraControls>(null);
+  const focusedSlice = slices[activeIndex]
+    ? { ...slices[activeIndex], index: 0 }
+    : undefined;
+  const focusedSlices = focusedSlice ? [focusedSlice] : [];
+  const focusedKdes = sliceKdes[activeIndex] ? [sliceKdes[activeIndex]] : [];
 
   useEffect(() => {
     const controls = controlsRef.current;
@@ -176,9 +183,10 @@ function SceneContent({
       </mesh>
 
       <StkdeSliceStack
-        slices={slices}
-        sliceKdes={sliceKdes}
-        activeIndex={activeIndex}
+        slices={viewMode === 'focus' ? focusedSlices : slices}
+        sliceKdes={viewMode === 'focus' ? focusedKdes : sliceKdes}
+        activeIndex={viewMode === 'focus' ? 0 : activeIndex}
+        compact={viewMode === 'focus'}
       />
 
       <CameraControls
@@ -200,6 +208,7 @@ export function Stkde3DScene({
   slices,
   sliceKdes,
   activeIndex,
+  viewMode = 'stack',
 }: Stkde3DSceneProps) {
   const [mapTexture, setMapTexture] = useState<THREE.CanvasTexture | null>(null);
 
@@ -222,6 +231,7 @@ export function Stkde3DScene({
             slices={slices}
             sliceKdes={sliceKdes}
             activeIndex={activeIndex}
+            viewMode={viewMode}
           />
 
           {mapTexture ? (

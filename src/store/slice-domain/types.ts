@@ -17,6 +17,7 @@ export interface TimeSlice {
   burstScore?: number;
   burstConfidence?: number;
   burstProvenance?: string;
+  burstinessCoefficient?: number;
   tieBreakReason?: string;
   thresholdSource?: string;
   neighborhoodSummary?: string;
@@ -49,6 +50,7 @@ export type SliceCoreState = {
   updateSlice: (id: string, updates: Partial<TimeSlice> & { color?: string; notes?: string }) => void;
   toggleLock: (id: string) => void;
   toggleVisibility: (id: string) => void;
+  addSliceFromBin: (bin: TimeBin, domain: [number, number]) => string | null;
   replaceSlicesFromBins: (bins: TimeBin[], domain: [number, number]) => void;
   clearSlices: () => void;
   setActiveSlice: (id: string | null) => void;

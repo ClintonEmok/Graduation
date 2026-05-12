@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,6 @@ import {
 import { toEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
-import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import {
@@ -54,17 +53,16 @@ const coarsenGranularity = (
   return GRANULARITY_ORDER[Math.min(preferredRank, suggestedRank)];
 };
 
-export function DemoDetectPanel() {
+interface DemoDetectPanelProps {
+  onNavigateToSlices?: () => void;
+}
+
+export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
-  const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
-  const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
   const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
-  const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
-  const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
-  const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
   const timelineColumns = useTimelineDataStore((state) => state.columns);
   const crimeTypes = useTimelineDataStore((state) => state.crimeTypes);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -81,6 +79,7 @@ export function DemoDetectPanel() {
   const [isFetchingBurst, setIsFetchingBurst] = useState(false);
   const [burstMetric, setBurstMetric] = useState<BurstMetric>('combined');
   const [spatialFormula, setSpatialFormula] = useState<SpatialFormula>('balanced');
+  const [draftsJustGenerated, setDraftsJustGenerated] = useState(false);
 
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return null;
@@ -179,6 +178,7 @@ export function DemoDetectPanel() {
     const generated = await generateBurstDraftBinsFromWindows();
     const state = useDashboardDemoTimeslicingModeStore.getState();
     if (generated && state.lastGeneratedMetadata) {
+      setDraftsJustGenerated(true);
       toast.success('Burst drafts generated', {
         description: state.lastGeneratedMetadata.warning ?? 'Drafts ready for review.',
       });
@@ -188,40 +188,6 @@ export function DemoDetectPanel() {
       description: state.generationError ?? 'Could not generate drafts.',
     });
   };
-
-  const handleApplyDraftSlices = () => {
-    if (pendingGeneratedBins.length === 0 || minTimestampSec === null || maxTimestampSec === null) return;
-    const domain: [number, number] = [minTimestampSec * 1000, maxTimestampSec * 1000];
-    applyGeneratedBins(domain);
-    toast.success('Draft slices applied');
-  };
-
-  const handleClear = useCallback(() => {
-    clearPendingGeneratedBins();
-    clearSelectedBurstWindows();
-    setBurstBins(null);
-    setBurstTargetSliceCount(null);
-  }, [clearPendingGeneratedBins, clearSelectedBurstWindows]);
-
-  const selectionStateLabel = pendingGeneratedBins.length === 0
-    ? 'idle'
-    : pendingGeneratedBins.every((bin) => bin.isNeutralPartition)
-      ? 'neutral'
-      : 'expanded';
-
-  const selectionBLabel = useMemo(() => {
-    const bestBin = pendingGeneratedBins.reduce<{ burstinessCoefficient?: number; burstScore?: number } | null>(
-      (best, bin) => {
-        if (!best) return bin;
-        const bestScore = Math.abs(best?.burstinessCoefficient ?? best?.burstScore ?? 0);
-        const currentScore = Math.abs(bin.burstinessCoefficient ?? bin.burstScore ?? 0);
-        return currentScore > bestScore ? bin : best;
-      },
-      null,
-    );
-    const coefficient = bestBin?.burstinessCoefficient ?? bestBin?.burstScore;
-    return typeof coefficient === 'number' && Number.isFinite(coefficient) ? coefficient.toFixed(2) : '—';
-  }, [pendingGeneratedBins]);
 
   const allocations = useMemo(() => {
     if (!burstBins || burstBins.length === 0) return null;
@@ -440,78 +406,25 @@ export function DemoDetectPanel() {
               </div>
             </div>
           )}
+
+          {draftsJustGenerated && pendingGeneratedBins.length > 0 && onNavigateToSlices && (
+            <div className="flex items-center gap-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5">
+              <span className="flex-1 text-[11px] text-emerald-100">
+                {pendingGeneratedBins.length} {pendingGeneratedBins.length === 1 ? 'draft' : 'drafts'} ready — review and apply in Slices.
+              </span>
+              <Button
+                type="button"
+                size="xs"
+                onClick={onNavigateToSlices}
+                className="h-7 gap-1.5 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
+              >
+                Go to Slices
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {pendingGeneratedBins.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Pending Drafts</CardTitle>
-              <Button
-                type="button"
-                onClick={handleClear}
-                variant="ghost"
-                size="icon-sm"
-                className="size-6"
-              >
-                <X className="size-3" />
-              </Button>
-            </div>
-            <CardDescription className="text-xs">
-              {pendingGeneratedBins.length} bins ready to apply
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="rounded-md border border-border/70 bg-background px-3 py-2 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Max B</span>
-                <span className="font-medium">{selectionBLabel}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">State</span>
-                <span className="font-medium">{selectionStateLabel}</span>
-              </div>
-              {selectionStateLabel === 'neutral' ? (
-                <p className="mt-1 text-muted-foreground">Muted neutral partition keeps the selection evenly split.</p>
-              ) : (
-                <p className="mt-1 text-muted-foreground">Drafts stay editable before apply.</p>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={handleApplyDraftSlices}
-                size="sm"
-                className="flex-1 gap-2"
-              >
-                Apply drafts
-              </Button>
-              <Button
-                type="button"
-                onClick={handleClear}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                Clear
-              </Button>
-            </div>
-
-            {lastAppliedAt && (
-              <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                Last applied: {new Date(lastAppliedAt).toLocaleTimeString()}
-              </div>
-            )}
-            {generationError && (
-              <div className="rounded border border-destructive/50 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
-                {generationError}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

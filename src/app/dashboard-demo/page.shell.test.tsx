@@ -43,6 +43,10 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/dashboard-demo/DemoSlicePanel.tsx', import.meta.url),
       'utf8'
     );
+    const demoPendingDraftListSource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoPendingDraftList.tsx', import.meta.url),
+      'utf8'
+    );
     const demoBurstGenerationSource = readFileSync(
       new URL('../../components/dashboard-demo/lib/demo-burst-generation.ts', import.meta.url),
       'utf8'
@@ -204,21 +208,18 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoSlicePanelSource).toMatch(/await generateBurstDraftBinsFromWindows/);
-    expect(demoSlicePanelSource).toMatch(/Selection-first drafts/);
     expect(demoSlicePanelSource).toMatch(/Slice Companion/);
-    expect(demoSlicePanelSource).toMatch(/Pending selection-first drafts/);
-    expect(demoSlicePanelSource).toMatch(/editable before apply/);
-    expect(demoSlicePanelSource).toMatch(/Details/);
-    expect(demoSlicePanelSource).toMatch(/Open draft details/);
+    expect(demoSlicePanelSource).toMatch(/DemoPendingDraftList/);
+    expect(demoSlicePanelSource).toMatch(/Draft controls/);
+    expect(demoSlicePanelSource).toMatch(/Generate drafts/);
+    expect(demoSlicePanelSource).toMatch(/Use suggested/);
     expect(demoSlicePanelSource).toMatch(/DialogContent|DialogTitle|DialogDescription/);
     expect(demoSlicePanelSource).toMatch(/selectedSliceId/);
     expect(demoSlicePanelSource).toMatch(/selectedDraftId/);
     expect(demoSlicePanelSource).toMatch(/mergePendingGeneratedBins|splitPendingGeneratedBin|deletePendingGeneratedBin/);
-    expect(demoSlicePanelSource).toMatch(/B \{formatBurstCoefficient\(|State /);
-    expect(demoSlicePanelSource).toMatch(/Generate selection-first drafts/);
+    expect(demoSlicePanelSource).toMatch(/Burst score/);
+    expect(demoSlicePanelSource).not.toMatch(/Pending selection-first drafts|editable before apply|Brushed selection is canonical|State idle/);
     expect(demoSlicePanelSource).toMatch(/toast\.(success|error)/);
-    expect(demoSlicePanelSource).toMatch(/Muted neutral partition keeps the brushed selection evenly split/);
-    expect(demoSlicePanelSource).toMatch(/Brushed selection is canonical/);
     expect(demoSlicePanelSource).not.toMatch(/generateBurstDraftBinsFromWindows\(\[\]\)/);
     expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
@@ -226,6 +227,16 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/Warp x|Warp off/);
     expect(demoSlicePanelSource).toMatch(/epochSecondsToNormalized/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
+    expect(demoPendingDraftListSource).toMatch(/Pending drafts/);
+    expect(demoPendingDraftListSource).toMatch(/Manual draft/);
+    expect(demoPendingDraftListSource).toMatch(/Burst score/);
+    expect(demoPendingDraftListSource).toMatch(/Open draft details/);
+    expect(demoPendingDraftListSource).toMatch(/Calculate/);
+    expect(demoPendingDraftListSource).toMatch(/Merge/);
+    expect(demoPendingDraftListSource).toMatch(/Split/);
+    expect(demoPendingDraftListSource).toMatch(/Delete/);
+    expect(demoPendingDraftListSource).toMatch(/datetime-local/);
+    expect(demoPendingDraftListSource).toMatch(/lg:grid-cols-2/);
     expect(demoBurstGenerationSource).not.toMatch(/preset-bias|fallback to preset-bias/i);
     expect(demoBurstGenerationSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(demoBurstGenerationSource).toMatch(/buildBurstWindowsFromSeries/);

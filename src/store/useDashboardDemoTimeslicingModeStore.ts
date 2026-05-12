@@ -70,6 +70,7 @@ interface DashboardDemoTimeslicingState {
   splitPendingGeneratedBin: (binId: string, splitPoint: number) => void;
   deletePendingGeneratedBin: (binId: string) => void;
   applyGeneratedBins: (domain: [number, number]) => boolean;
+  applySingleGeneratedBin: (binId: string, domain: [number, number]) => boolean;
   addManualDraftRange: (range: { startMs: number; endMs: number }) => string;
   updatePendingBinRange: (binId: string, startMs: number, endMs: number) => void;
   computeManualDraftBin: (binId: string) => Promise<boolean>;
@@ -391,6 +392,23 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           lastAppliedAt: Date.now(),
           generationStatus: 'applied',
           pendingGeneratedBins: [],
+        });
+
+        return true;
+      },
+      applySingleGeneratedBin: (binId, domain) => {
+        const { pendingGeneratedBins } = get();
+        const bin = pendingGeneratedBins.find((b) => b.id === binId);
+        if (!bin) return false;
+
+        const sliceId = useSliceDomainStore.getState().addSliceFromBin(bin, domain);
+        if (sliceId === null) return false;
+
+        useDashboardDemoWarpStore.getState().setWarpSource('density');
+
+        set({
+          lastAppliedAt: Date.now(),
+          pendingGeneratedBins: pendingGeneratedBins.filter((b) => b.id !== binId),
         });
 
         return true;

@@ -308,6 +308,69 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         slice.id === id ? { ...slice, isVisible: !slice.isVisible } : slice
       ),
     })),
+  addSliceFromBin: (bin, domain) => {
+    const [start, end] = toNormalizedBinRange(bin, domain);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      return null;
+    }
+
+    const burstTaxonomyPresent = hasBurstTaxonomy(bin);
+
+    let slice: TimeSlice;
+
+    if (burstTaxonomyPresent) {
+      slice = {
+        id: crypto.randomUUID(),
+        name: `Burst ${get().slices.filter((s) => s.isBurst).length + 1}`,
+        source: 'generated-applied' as const,
+        type: 'range' as const,
+        time: (start + end) / 2,
+        range: [start, end] as [number, number],
+        warpEnabled: true,
+        warpWeight: bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25),
+        notes: `${bin.count} events`,
+        isBurst: true,
+        burstSliceId: buildBurstSliceId(start, end),
+        burstClass: bin.burstClass,
+        burstRuleVersion: bin.burstRuleVersion,
+        burstScore: bin.burstScore,
+        burstConfidence: bin.burstConfidence,
+        burstinessCoefficient: bin.burstinessCoefficient,
+        burstProvenance: bin.burstProvenance,
+        tieBreakReason: bin.tieBreakReason,
+        thresholdSource: bin.thresholdSource,
+        neighborhoodSummary: bin.neighborhoodSummary,
+        isLocked: false,
+        isVisible: true,
+        startDateTimeMs: bin.startTime,
+        endDateTimeMs: bin.endTime,
+      };
+    } else {
+      slice = {
+        id: crypto.randomUUID(),
+        name: `Slice ${get().slices.filter((s) => !s.isBurst).length + 1}`,
+        source: 'generated-applied' as const,
+        type: 'range' as const,
+        time: (start + end) / 2,
+        range: [start, end] as [number, number],
+        warpEnabled: true,
+        warpWeight: 1,
+        notes: `${bin.count} events`,
+        isLocked: false,
+        isVisible: true,
+        startDateTimeMs: bin.startTime,
+        endDateTimeMs: bin.endTime,
+      };
+    }
+
+    set((state) => ({
+      slices: sortSlices([...state.slices, slice]),
+      activeSliceId: slice.id,
+      activeSliceUpdatedAt: Date.now(),
+    }));
+
+    return slice.id;
+  },
   replaceSlicesFromBins: (bins, domain) => {
     const nextSlices = bins
       .map<TimeSlice | null>((bin, index) => {
@@ -335,6 +398,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
             burstRuleVersion: bin.burstRuleVersion,
             burstScore: bin.burstScore,
             burstConfidence: bin.burstConfidence,
+            burstinessCoefficient: bin.burstinessCoefficient,
             burstProvenance: bin.burstProvenance,
             tieBreakReason: bin.tieBreakReason,
             thresholdSource: bin.thresholdSource,

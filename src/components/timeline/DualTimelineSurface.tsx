@@ -3,8 +3,6 @@
 import type { DemoDetailPeriodSelection, DemoBurstWindowSelection } from '@/store/useDashboardDemoCoordinationStore';
 import React from 'react';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-import { BurstScoreRail } from '@/components/timeline/BurstScoreRail';
-import type { BurstScoreSeriesEntry } from '@/components/timeline/lib/burst-score-series';
 
 type BurstTaxonomy = 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
 
@@ -69,7 +67,6 @@ interface DualTimelineSurfaceProps {
   pendingGeneratedGeometries: SurfaceSliceGeometry[];
   pendingManualGeometries?: SurfaceSliceGeometry[];
   maxSliceOverlap: number;
-  burstScoreSeries?: BurstScoreSeriesEntry[];
   cursorX: number | null;
   selectionX: number | null;
   zoomRef: React.RefObject<SVGRectElement | null>;
@@ -160,9 +157,6 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     brushRef,
     overviewTicks,
     overviewTickFormat,
-    burstWindows,
-    activeBurstWindowId,
-    onBurstWindowClick,
     detailDensityMap,
     detailMax,
     resolvedDetailRenderMode,
@@ -175,7 +169,6 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     pendingGeneratedGeometries,
     pendingManualGeometries = [],
     maxSliceOverlap,
-    burstScoreSeries = [],
     cursorX,
     selectionX,
     zoomRef,
@@ -193,32 +186,52 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
 
   return (
     <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center gap-3" style={{ paddingLeft: OVERVIEW_MARGIN.left, paddingRight: OVERVIEW_MARGIN.right }}>
-          <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-            <div className="flex w-full items-center justify-between gap-3">
-              <div className="flex flex-col gap-0.5">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Overview density</div>
-                <div className="text-xs font-medium text-foreground">{brushRangeLabel}</div>
-              </div>
-              <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                <span className="leading-none">Low</span>
-                <span className="h-2 w-20 rounded-sm border border-foreground/15" style={{ background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)` }} aria-hidden="true" />
-                <span className="leading-none">High</span>
-              </div>
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <div
+          className="rounded-2xl border border-border/60 bg-card/30 px-3 py-3 shadow-sm sm:px-4"
+          style={{ marginLeft: OVERVIEW_MARGIN.left, marginRight: OVERVIEW_MARGIN.right }}
+        >
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div className="min-w-0 space-y-1">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Overview density</div>
+              <div className="truncate text-xs font-medium text-foreground">{brushRangeLabel}</div>
             </div>
-            <div className="relative w-full">
-              {width > 0 ? (
-                <DensityHeatStrip densityMap={densityMap} width={overviewInnerWidth} scale={overviewDensityScale} height={12} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} />
-              ) : (
-                <div className="h-3" />
-              )}
-              {stripSelection && (
-                <div className="pointer-events-none absolute inset-0">
-                  <div className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15" style={{ left: stripSelection.left, width: stripSelection.width }} />
-                </div>
-              )}
+            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:justify-end">
+              <span className="leading-none">Low</span>
+              <span
+                className="h-2 min-w-[4rem] flex-1 rounded-sm border border-foreground/15 sm:w-20 sm:flex-none"
+                style={{
+                  background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)`,
+                }}
+                aria-hidden="true"
+              />
+              <span className="leading-none">High</span>
             </div>
+          </div>
+
+          <div className="relative mt-2 w-full">
+            {width > 0 ? (
+              <DensityHeatStrip
+                densityMap={densityMap}
+                width={overviewInnerWidth}
+                scale={overviewDensityScale}
+                height={12}
+                isLoading={isComputing}
+                densityDomain={DENSITY_DOMAIN}
+                colorLow={DENSITY_COLOR_LOW}
+                colorHigh={DENSITY_COLOR_HIGH}
+              />
+            ) : (
+              <div className="h-3" />
+            )}
+            {stripSelection ? (
+              <div className="pointer-events-none absolute inset-0">
+                <div
+                  className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
+                  style={{ left: stripSelection.left, width: stripSelection.width }}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -262,10 +275,6 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
         </svg>
 
         <div className="relative">
-          <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
-            <BurstScoreRail series={burstScoreSeries} width={detailInnerWidth} />
-          </div>
-
           <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
             {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailDensityScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} /> : <div className="h-2" />}
           </div>

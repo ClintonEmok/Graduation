@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { Focus, Pause, Play } from 'lucide-react';
 import { generateStkde3dMockData, generateStkde3dRealData } from './lib/mock-data';
 import { computeSliceKde } from './lib/slice-kde';
 import { Stkde3DScene } from './components/Stkde3DScene';
 import { SliceScrubber } from './components/SliceScrubber';
+import { SliceInspector } from './components/SliceInspector';
 import type { CrimeRecord } from '@/types/crime';
 
 const REAL_DATA_RANGE = {
@@ -24,6 +25,7 @@ export default function Stkde3DPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [isFocusedView, setIsFocusedView] = useState(false);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
 
   useEffect(() => {
@@ -74,15 +76,23 @@ export default function Stkde3DPage() {
   const sliceEvents = useMemo(() => dataset?.sliceEvents ?? [], [dataset]);
   const isRealData = dataset?.source === 'real';
 
-  const sliceKdes = useMemo(
-    () => sliceEvents.map((events) => computeSliceKde(events).cells),
+  const sliceKdeResults = useMemo(
+    () => sliceEvents.map((events) => computeSliceKde(events)),
     [sliceEvents],
+  );
+
+  const sliceKdes = useMemo(
+    () => sliceKdeResults.map((result) => result.cells),
+    [sliceKdeResults],
   );
 
   const totalEvents = useMemo(
     () => slices.reduce((sum, s) => sum + s.crimeCount, 0),
     [slices],
   );
+
+  const activeSlice = slices[activeIndex];
+  const activeSliceKde = sliceKdeResults[activeIndex];
 
   useEffect(() => {
     if (!isPlaying || slices.length === 0) return undefined;
@@ -93,6 +103,12 @@ export default function Stkde3DPage() {
 
     return () => window.clearTimeout(timeout);
   }, [activeIndex, isPlaying, playbackSpeed, slices.length]);
+
+  useEffect(() => {
+    if (isFocusedView && isPlaying) {
+      setIsPlaying(false);
+    }
+  }, [isFocusedView, isPlaying]);
 
   if (!dataset) {
     return (
@@ -126,6 +142,26 @@ export default function Stkde3DPage() {
               {isPlaying ? 'Pause' : 'Play'}
             </button>
 
+            <button
+              type="button"
+              aria-pressed={isFocusedView}
+              onClick={() => {
+                const nextFocusedView = !isFocusedView;
+                setIsFocusedView(nextFocusedView);
+                if (nextFocusedView) {
+                  setIsPlaying(false);
+                }
+              }}
+              className={`flex items-center gap-1 rounded-full border px-3 py-1.5 transition ${
+                isFocusedView
+                  ? 'border-sky-400/60 bg-sky-400/10 text-sky-100'
+                  : 'border-slate-600/70 bg-slate-800 text-slate-100 hover:border-sky-400/60 hover:text-sky-100'
+              }`}
+            >
+              <Focus className="size-3.5" />
+              {isFocusedView ? 'Single slice' : 'Stack view'}
+            </button>
+
             <label className="flex items-center gap-2">
               <span className="uppercase tracking-[0.18em] text-slate-500">Speed</span>
               <select
@@ -153,10 +189,19 @@ export default function Stkde3DPage() {
               slices={slices}
               sliceKdes={sliceKdes}
               activeIndex={activeIndex}
+              viewMode={isFocusedView ? 'focus' : 'stack'}
             />
           </div>
 
           <aside className="w-72 shrink-0 space-y-4 overflow-y-auto rounded-md border border-slate-700/60 bg-slate-900/65 p-4">
+            {isFocusedView && (
+              <SliceInspector
+                slice={activeSlice}
+                sliceKde={activeSliceKde}
+                isFocusedView={isFocusedView}
+              />
+            )}
+
             <SliceScrubber
               slices={slices}
               activeIndex={activeIndex}

@@ -1,13 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Eye,
-  EyeOff,
-  Lock,
+  Check,
   Plus,
   Trash2,
-  Unlock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,68 +18,48 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
-import type { TimeBin } from '@/lib/binning/types';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { epochSecondsToNormalized, normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
-import { recommendGranularityForSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
+import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
 
-const GRANULARITY_OPTIONS = [
-  { value: 'hourly', label: 'Hourly' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-] as const;
-
-const toDateTimeLocalValue = (timestampMs: number | null | undefined) => {
-  if (timestampMs === null || timestampMs === undefined || !Number.isFinite(timestampMs)) {
-    return '';
-  }
-
-  const date = new Date(timestampMs);
-  const pad = (value: number) => String(value).padStart(2, '0');
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
-const parseDateTimeLocalValue = (value: string) => {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const clampWarpWeight = (value: number) => Math.min(3, Math.max(0, value));
-const clampNormalized = (value: number) => Math.min(100, Math.max(0, value));
 const formatDateTime = (value: number | null | undefined) => {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '—';
   }
-
   return new Date(value).toLocaleString();
 };
 
-const formatBurstCoefficient = (value: number | undefined) => {
+const formatCompactDate = (value: number | null | undefined) => {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '—';
+  }
+  return new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatCoefficient = (value: number | undefined) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return null;
   }
-
   return value.toFixed(2);
+};
+
+const formatNormalizedScore = (value: number | undefined) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+  return `${Math.round(value)} / 100`;
 };
 
 export function DemoSlicePanel() {
   const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
-  const computeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { currentTime, timeRange, timeResolution } = useDashboardDemoTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -90,24 +67,16 @@ export function DemoSlicePanel() {
 
   const slices = useSliceDomainStore((state) => state.slices);
   const removeSlice = useSliceDomainStore((state) => state.removeSlice);
-  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
-  const toggleLock = useSliceDomainStore((state) => state.toggleLock);
-  const toggleVisibility = useSliceDomainStore((state) => state.toggleVisibility);
   const clearSlices = useSliceDomainStore((state) => state.clearSlices);
 
-  const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
-  const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
-  const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
-  const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
   const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const mergePendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.mergePendingGeneratedBins);
   const splitPendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.splitPendingGeneratedBin);
   const deletePendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.deletePendingGeneratedBin);
-  const updatePendingBinRange = useDashboardDemoTimeslicingModeStore((state) => state.updatePendingBinRange);
   const computeManualDraftBin = useDashboardDemoTimeslicingModeStore((state) => state.computeManualDraftBin);
-  const applyGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.applyGeneratedBins);
+  const applySingleGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.applySingleGeneratedBin);
   const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
@@ -117,28 +86,6 @@ export function DemoSlicePanel() {
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
   const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
-  const comparisonSliceIds = useDashboardDemoCoordinationStore((state) => state.comparisonSliceIds);
-  const setComparisonSliceId = useDashboardDemoCoordinationStore((state) => state.setComparisonSliceId);
-  const swapComparisonSlices = useDashboardDemoCoordinationStore((state) => state.swapComparisonSlices);
-  const clearComparisonSlices = useDashboardDemoCoordinationStore((state) => state.clearComparisonSlices);
-  const selectedWindowBounds = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      return null;
-    }
-
-    const [windowStart, windowEnd] = timeRange;
-    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
-
-    return { start, end };
-  }, [maxTimestampSec, minTimestampSec, timeRange]);
-  const suggestedGranularity = useMemo(
-    () => recommendGranularityForSelection(selectedWindowBounds),
-    [selectedWindowBounds]
-  );
-  const suggestedGranularityLabel = GRANULARITY_OPTIONS.find((option) => option.value === suggestedGranularity)?.label ?? 'Daily';
-  const activeGranularityLabel = GRANULARITY_OPTIONS.find((option) => option.value === generationInputs.granularity)?.label ?? 'Daily';
-  const canGenerateBurstDrafts = generationStatus !== 'generating' && minTimestampSec !== null && maxTimestampSec !== null;
 
   const selectedSlice = useMemo(
     () => slices.find((slice) => slice.id === selectedSliceId) ?? null,
@@ -149,32 +96,6 @@ export function DemoSlicePanel() {
     () => pendingGeneratedBins.find((bin) => bin.id === selectedDraftId) ?? null,
     [pendingGeneratedBins, selectedDraftId]
   );
-
-  const selectionStateLabel = pendingGeneratedBins.length === 0
-    ? 'idle'
-    : pendingGeneratedBins.every((bin) => bin.isNeutralPartition)
-      ? 'neutral'
-      : 'expanded';
-
-  const selectionBLabel = useMemo(() => {
-    const bestBin = pendingGeneratedBins.reduce<TimeBin | null>((best, bin) => {
-      if (!best) {
-        return bin;
-      }
-
-      const bestScore = Math.abs(best?.burstinessCoefficient ?? best?.burstScore ?? 0);
-      const currentScore = Math.abs(bin.burstinessCoefficient ?? bin.burstScore ?? 0);
-      return currentScore > bestScore ? bin : best;
-    }, null);
-
-    const coefficient = bestBin?.burstinessCoefficient ?? bestBin?.burstScore;
-    return typeof coefficient === 'number' && Number.isFinite(coefficient) ? coefficient.toFixed(2) : '—';
-  }, [pendingGeneratedBins]);
-
-  const selectionDraftSummary = `B ${selectionBLabel} · State ${selectionStateLabel}`;
-  const neutralDraftHint = selectionStateLabel === 'neutral'
-    ? 'Muted neutral partition keeps the brushed selection evenly split.'
-    : 'Selection-first drafts stay editable before apply.';
 
   const selectedSliceLabel = selectedSlice
     ? `${selectedSlice.name?.trim() || 'Applied slice'} · ${selectedSlice.type}`
@@ -190,12 +111,6 @@ export function DemoSlicePanel() {
   );
 
   useEffect(() => {
-    return () => {
-      if (computeDebounceRef.current) clearTimeout(computeDebounceRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     if (visibleWarpSliceCount > 0) {
       if (warpMode !== 'adaptive') {
         setTimeScaleMode('adaptive');
@@ -205,50 +120,10 @@ export function DemoSlicePanel() {
       }
       return;
     }
-
     if (warpMode !== 'linear' || warpFactor !== 0) {
       resetWarp();
     }
   }, [resetWarp, setTimeScaleMode, setWarpFactor, visibleWarpSliceCount, warpFactor, warpMode]);
-
-  const formatNormalizedValue = useCallback(
-    (value: number) => {
-      if (minTimestampSec !== null && maxTimestampSec !== null) {
-        const epochSec = normalizedToEpochSeconds(value, minTimestampSec, maxTimestampSec);
-        return new Date(epochSec * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' });
-      }
-
-      return `${value.toFixed(1)}%`;
-    },
-    [maxTimestampSec, minTimestampSec]
-  );
-
-  const formatSliceLabel = useCallback(
-    (slice: TimeSlice, index: number) => {
-      const fallback = slice.isBurst ? `Burst ${index + 1}` : slice.type === 'point' ? `Slice ${index + 1}` : `Range ${index + 1}`;
-      const title = slice.name?.trim() || fallback;
-
-      if (slice.type === 'range' && slice.range) {
-        return `${title} • ${formatNormalizedValue(slice.range[0])} → ${formatNormalizedValue(slice.range[1])}`;
-      }
-
-      return `${title} • ${formatNormalizedValue(slice.time)}`;
-    },
-    [formatNormalizedValue]
-  );
-
-  const toNormalizedFromTimestampMs = useCallback((timestampMs: number | null) => {
-    if (
-      timestampMs === null ||
-      minTimestampSec === null ||
-      maxTimestampSec === null ||
-      maxTimestampSec <= minTimestampSec
-    ) {
-      return null;
-    }
-
-    return clampNormalized(epochSecondsToNormalized(timestampMs / 1000, minTimestampSec, maxTimestampSec));
-  }, [maxTimestampSec, minTimestampSec]);
 
   const handleAddRangeSlice = useCallback(() => {
     const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
@@ -267,51 +142,15 @@ export function DemoSlicePanel() {
     computeManualDraftBin(binId);
   }, [addManualDraftRange, computeManualDraftBin, currentTime, maxTimestampSec, minTimestampSec, timeRange, timeResolution]);
 
-  const handleGenerateBurstDrafts = useCallback(async () => {
-    if (minTimestampSec === null || maxTimestampSec === null) {
-      toast.error('Selection-first generation failed', {
-        description: 'Choose a valid brushed selection before generating selection-first drafts.',
-      });
-      return;
-    }
-
-    const [windowStart, windowEnd] = timeRange;
-    const start = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-    const end = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
-
-    setGenerationInputs({
-      timeWindow: {
-        start,
-        end,
-      },
-    });
-
-    const generated = await generateBurstDraftBinsFromWindows();
-    const generationState = useDashboardDemoTimeslicingModeStore.getState();
-
-    if (generated && generationState.lastGeneratedMetadata) {
-      toast.success('Burst drafts generated', {
-        description: generationState.lastGeneratedMetadata.warning ?? 'Selection-first drafts are ready for review.',
-      });
-      return;
-    }
-
-    toast.error('Selection-first generation failed', {
-      description: generationState.generationError ?? 'Could not build drafts from the brushed selection.',
-    });
-  }, [generateBurstDraftBinsFromWindows, maxTimestampSec, minTimestampSec, setGenerationInputs, timeRange]);
-
   const handleMergePendingDraft = useCallback((index: number) => {
     const current = pendingGeneratedBins[index];
     if (!current) {
       return;
     }
-
     const adjacent = pendingGeneratedBins[index - 1] ?? pendingGeneratedBins[index + 1];
     if (!adjacent) {
       return;
     }
-
     mergePendingGeneratedBins([adjacent.id, current.id]);
   }, [mergePendingGeneratedBins, pendingGeneratedBins]);
 
@@ -320,7 +159,6 @@ export function DemoSlicePanel() {
     if (!target) {
       return;
     }
-
     const splitPoint = Math.round((target.startTime + target.endTime) / 2);
     splitPendingGeneratedBin(binId, splitPoint);
   }, [pendingGeneratedBins, splitPendingGeneratedBin]);
@@ -329,39 +167,63 @@ export function DemoSlicePanel() {
     if (selectedDraftId === binId) {
       setSelectedDraftId(null);
     }
-
     deletePendingGeneratedBin(binId);
   }, [deletePendingGeneratedBin, selectedDraftId]);
 
-  const handleClearPendingDrafts = useCallback(() => {
-    setSelectedDraftId(null);
-    clearPendingGeneratedBins();
-    clearSelectedBurstWindows();
-  }, [clearPendingGeneratedBins, clearSelectedBurstWindows]);
+  const handleOpenPendingDraftDetails = useCallback((binId: string) => {
+    setSelectedSliceId(null);
+    setSelectedDraftId(binId);
+  }, [setSelectedDraftId, setSelectedSliceId]);
 
-  const handleApplyDrafts = useCallback(() => {
-    if (pendingGeneratedBins.length === 0 || minTimestampSec === null || maxTimestampSec === null) return;
+  const handleOpenSliceDetails = useCallback((sliceId: string) => {
+    setSelectedDraftId(null);
+    setSelectedSliceId(sliceId);
+  }, [setSelectedDraftId, setSelectedSliceId]);
+
+  const handleApplySingleDraft = useCallback((binId: string) => {
+    if (minTimestampSec === null || maxTimestampSec === null) return;
     const [windowStart, windowEnd] = timeRange;
     const domainStartMs = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
     const domainEndMs = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
-    applyGeneratedBins([domainStartMs, domainEndMs]);
-    toast.success('Drafts applied', { description: `${pendingGeneratedBins.length} slices activated.` });
-  }, [applyGeneratedBins, maxTimestampSec, minTimestampSec, pendingGeneratedBins.length, timeRange]);
-
-  const handleRemoveSlice = useCallback((sliceId: string) => {
-    if (selectedSliceId === sliceId) {
-      setSelectedSliceId(null);
+    const applied = applySingleGeneratedBin(binId, [domainStartMs, domainEndMs]);
+    if (applied) {
+      toast.success('Draft applied', { description: 'Slice activated from draft.' });
     }
+  }, [applySingleGeneratedBin, maxTimestampSec, minTimestampSec, timeRange]);
 
-    removeSlice(sliceId);
-  }, [removeSlice, selectedSliceId]);
-
-  const handleClearSlices = useCallback(() => {
+  const handleClearAll = useCallback(() => {
     setSelectedSliceId(null);
+    setSelectedDraftId(null);
     clearSlices();
     clearPendingGeneratedBins();
     clearSelectedBurstWindows();
   }, [clearPendingGeneratedBins, clearSelectedBurstWindows, clearSlices]);
+
+  const combinedItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      type: 'pending' | 'applied';
+      sortMs: number;
+      bin?: (typeof pendingGeneratedBins)[number];
+      slice?: TimeSlice;
+    }> = [
+      ...pendingGeneratedBins.map((bin) => ({
+        id: bin.id,
+        type: 'pending' as const,
+        sortMs: bin.startTime,
+        bin,
+      })),
+      ...slices.map((slice) => ({
+        id: slice.id,
+        type: 'applied' as const,
+        sortMs: slice.startDateTimeMs ?? 0,
+        slice,
+      })),
+    ];
+    return items.sort((a, b) => a.sortMs - b.sortMs);
+  }, [pendingGeneratedBins, slices]);
+
+  const hasItems = combinedItems.length > 0;
 
   return (
     <Card className="h-full min-h-0 overflow-y-auto border-border/70 bg-card/80 text-card-foreground shadow-sm" aria-busy={isComputing}>
@@ -376,125 +238,141 @@ export function DemoSlicePanel() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3 px-4 pb-4">
-        <Card className="p-0 shadow-none">
-          <CardContent className="flex flex-col gap-1 p-3 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">Selection-first drafts</span>
-              <Badge variant="outline">{selectionDraftSummary}</Badge>
-            </div>
-            <div className="text-muted-foreground">{neutralDraftHint}</div>
-          </CardContent>
-        </Card>
+        <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddRangeSlice}
+              className="gap-2"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Range
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClearAll}
+              disabled={!hasItems}
+              className="gap-2"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear all
+            </Button>
+          </div>
+        </div>
 
-        {pendingGeneratedBins.length > 0 ? (
-          <Card className="border-amber-500/30 bg-amber-500/10 p-0 shadow-none">
-            <CardContent className="flex flex-col gap-1 p-3 text-xs text-amber-50">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold uppercase tracking-[0.18em] text-amber-100">Editable before apply</span>
-                <Badge variant="outline" className="border-amber-400/30 bg-amber-500/10 text-amber-100">
-                  {selectionStateLabel}
-                </Badge>
+        <div className="rounded-md border border-slate-700/60 bg-slate-900/20 px-4 py-2.5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-[0.15em] text-slate-500">Adaptive Warp</span>
+            <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px]">
+              {warpMode} · {warpMode === 'adaptive' ? `${warpFactor.toFixed(2)}x` : '—'}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTimeScaleMode('linear')}
+              className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
+                warpMode === 'linear'
+                  ? 'bg-slate-700 text-slate-100'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Linear
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeScaleMode('adaptive')}
+              className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
+                warpMode === 'adaptive'
+                  ? 'bg-violet-700 text-violet-100'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Adaptive
+            </button>
+          </div>
+          {warpMode === 'adaptive' && (
+            <div className="mt-2.5 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] text-slate-500">
+                <span>Warp factor</span>
+                <span className="font-mono text-slate-300">{warpFactor.toFixed(2)}</span>
               </div>
-              <div className="text-amber-100/90">Selection-first drafts are ready for review.</div>
-            </CardContent>
-          </Card>
+              <Slider
+                value={[warpFactor]}
+                onValueChange={([v]) => setWarpFactor(v)}
+                min={0}
+                max={1}
+                step={0.05}
+                className="[&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-range]]:bg-violet-500 [&_[data-slot=slider-thumb]]:size-3.5"
+              />
+            </div>
+          )}
+        </div>
+
+        {generationError ? (
+          <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
+            {generationError}
+          </div>
         ) : null}
 
-        <Card className="border-amber-500/20 bg-muted/20 p-0 shadow-none">
-          <CardContent className="flex flex-col gap-3 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-[0.24em] text-amber-600 dark:text-amber-200">Pending selection-first drafts</div>
-                <div className="text-xs text-muted-foreground">These draft bins stay editable before apply.</div>
-              </div>
-              <Badge variant="outline" className="border-amber-400/30 bg-amber-500/10 text-amber-700 dark:text-amber-100">
-                Review before apply
-              </Badge>
-            </div>
+        {lastGeneratedMetadata?.warning ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100">
+            {lastGeneratedMetadata.warning}
+          </div>
+        ) : null}
 
-          {pendingGeneratedBins.length > 0 ? (
-            <div className="mt-3 space-y-2">
-              {pendingGeneratedBins.map((bin, index) => {
-                const isMergeable = pendingGeneratedBins.length > 1;
+        <div className="space-y-1">
+          {!hasItems ? (
+            <div className="rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
+              No slices active. Generate drafts from a brushed selection to get started.
+            </div>
+          ) : (
+            combinedItems.map((item) => {
+              if (item.type === 'pending' && item.bin) {
+                const bin = item.bin;
+                const isManualDraft = bin.id.startsWith('manual-range-');
+                const burstScore = formatCoefficient(bin.burstinessCoefficient);
+                const label = isManualDraft ? `Manual ${combinedItems.findIndex((i) => i.id === bin.id) + 1}`
+                  : `Draft ${combinedItems.findIndex((i) => i.id === bin.id) + 1}`;
 
                 return (
-                  <div key={bin.id} className="rounded-md border border-amber-500/20 bg-slate-900/70 p-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                          {bin.id.startsWith('manual-range-') ? `Manual draft ${String(index + 1).padStart(2, '0')}` : `Selection-first draft ${String(index + 1).padStart(2, '0')}`}
-                        </div>
-                        {bin.id.startsWith('manual-range-') ? (
-                          <div className="mt-1 space-y-1">
-                            <div className="flex items-center gap-2 text-[11px]">
-                              <span className="text-slate-500 w-8">Start</span>
-                              <Input
-                                type="datetime-local"
-                                value={toDateTimeLocalValue(bin.startTime)}
-                                onChange={(e) => {
-                                  const ms = parseDateTimeLocalValue(e.target.value);
-                                  if (ms !== null) {
-                                    updatePendingBinRange(bin.id, ms, bin.endTime);
-                                    if (computeDebounceRef.current) clearTimeout(computeDebounceRef.current);
-                                    computeDebounceRef.current = setTimeout(() => computeManualDraftBin(bin.id), 800);
-                                  }
-                                }}
-                                className="h-7 flex-1 border-slate-700 bg-slate-950 text-slate-100 text-[11px]"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2 text-[11px]">
-                              <span className="text-slate-500 w-8">End</span>
-                              <Input
-                                type="datetime-local"
-                                value={toDateTimeLocalValue(bin.endTime)}
-                                onChange={(e) => {
-                                  const ms = parseDateTimeLocalValue(e.target.value);
-                                  if (ms !== null) {
-                                    updatePendingBinRange(bin.id, bin.startTime, ms);
-                                    if (computeDebounceRef.current) clearTimeout(computeDebounceRef.current);
-                                    computeDebounceRef.current = setTimeout(() => computeManualDraftBin(bin.id), 800);
-                                  }
-                                }}
-                                className="h-7 flex-1 border-slate-700 bg-slate-950 text-slate-100 text-[11px]"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="mt-1 text-[11px] text-slate-400">B {formatBurstCoefficient(bin.burstinessCoefficient ?? bin.burstScore) ?? '—'}</div>
-                            <div className="mt-1 text-[11px] text-slate-400">State {bin.isNeutralPartition ? 'neutral' : 'expanded'}</div>
-                          </>
-                        )}
-                        <div className="mt-1 text-[11px] text-slate-500">
-                          {bin.count > 0 ? `${bin.count.toLocaleString()} crimes · ${bin.crimeTypes.length} types` : 'No data — click Calculate'}
-                        </div>
-                      </div>
-                    </div>
+                  <div
+                    key={bin.id}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs hover:border-slate-700"
+                  >
+                    <span className="font-medium text-sky-100">{label}</span>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                      {bin.id.startsWith('manual-range-') && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          onClick={() => computeManualDraftBin(bin.id)}
-                          disabled={generationStatus === 'generating'}
-                          className="border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:border-cyan-400 hover:bg-cyan-500/20"
-                        >
-                          {generationStatus === 'generating' ? 'Computing...' : 'Calculate'}
-                        </Button>
-                      )}
+                    {!isManualDraft && burstScore && (
+                      <Badge variant="outline" className="rounded-full border-sky-400/20 bg-sky-500/10 px-2 py-0 text-[10px] text-sky-100">
+                        {burstScore}
+                      </Badge>
+                    )}
+
+                    <span className="text-[11px] text-slate-400">
+                      {formatCompactDate(bin.startTime)} → {formatCompactDate(bin.endTime)}
+                    </span>
+
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="xs"
+                        onClick={() => handleApplySingleDraft(bin.id)}
+                        className="h-6 gap-1 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
+                      >
+                        <Check className="h-3 w-3" />
+                        Apply
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="xs"
-                        onClick={() => {
-                          setSelectedSliceId(null);
-                          setSelectedDraftId(bin.id);
-                        }}
-                        disabled={bin.id.startsWith('manual-range-') && (bin.count === 0 || generationStatus === 'generating')}
-                        className="border-amber-500/40 bg-amber-500/10 text-amber-100 hover:border-amber-400 hover:bg-amber-500/20"
-                        title="Open draft details"
+                        onClick={() => handleOpenPendingDraftDetails(bin.id)}
+                        className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
                       >
                         Details
                       </Button>
@@ -502,9 +380,9 @@ export function DemoSlicePanel() {
                         type="button"
                         variant="outline"
                         size="xs"
-                        onClick={() => handleMergePendingDraft(index)}
-                        disabled={!isMergeable}
-                        className="border-amber-500/40 bg-amber-500/10 text-amber-100 hover:border-amber-400 hover:bg-amber-500/20"
+                        onClick={() => handleMergePendingDraft(pendingGeneratedBins.findIndex((b) => b.id === bin.id))}
+                        disabled={pendingGeneratedBins.length <= 1}
+                        className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
                       >
                         Merge
                       </Button>
@@ -514,7 +392,7 @@ export function DemoSlicePanel() {
                         size="xs"
                         onClick={() => handleSplitPendingDraft(bin.id)}
                         disabled={bin.endTime <= bin.startTime}
-                        className="border-border bg-background text-foreground hover:bg-accent"
+                        className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
                       >
                         Split
                       </Button>
@@ -523,406 +401,69 @@ export function DemoSlicePanel() {
                         variant="outline"
                         size="xs"
                         onClick={() => handleDeletePendingDraft(bin.id)}
-                        className="border-border bg-background text-foreground hover:bg-accent"
+                        className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
                       >
-                        Delete
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-md border border-dashed border-border bg-background px-3 py-3 text-xs text-muted-foreground">
-              Generate selection-first drafts to review and edit them here before apply.
-            </div>
-          )}
-          </CardContent>
-        </Card>
+              }
 
-        <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
-          <details open>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-1 text-xs">
-              <span className="font-semibold uppercase tracking-[0.2em] text-slate-300">Selection-first drafts</span>
-              <span className="truncate text-[11px] text-slate-500">{selectionDraftSummary}</span>
-            </summary>
-            <div className="space-y-2 pt-2">
-              <div className="rounded-md border border-amber-500/20 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
-                Brushed selection is canonical. The workflow suggests hourly, daily, monthly, or quarterly bins based on the brushed window size; crime types stay optional, and the neutral state stays muted.
-              </div>
-              <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Granularity</div>
-                  <div className="text-[10px] text-violet-100/80">Suggested: {suggestedGranularityLabel}</div>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {GRANULARITY_OPTIONS.map((option) => {
-                    const isActive = generationInputs.granularity === option.value;
-                    const isRecommended = option.value === suggestedGranularity;
+              if (item.type === 'applied' && item.slice) {
+                const slice = item.slice;
+                const sliceIndex = slices.findIndex((s) => s.id === slice.id);
+                const label = slice.name?.trim() || `Slice ${sliceIndex + 1}`;
+                const warpLabel = (slice.warpEnabled ?? true)
+                  ? `Warp ${(slice.warpWeight ?? 1).toFixed(2)}x`
+                  : 'Warp disabled';
 
-                    return (
-                      <Button
-                        key={option.value}
-                        type="button"
-                        variant={isActive ? 'secondary' : isRecommended ? 'outline' : 'outline'}
-                        size="xs"
-                        onClick={() => setGenerationInputs({ granularity: option.value })}
-                        className={`rounded-full px-3 py-1.5 ${isRecommended && !isActive ? 'border-amber-300/60 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-100' : ''}`}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          {option.label}
-                          {isRecommended ? <span className="text-[9px] uppercase tracking-[0.18em] text-amber-200">Recommended</span> : null}
-                        </span>
-                      </Button>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500">
-                  <span>Active: {activeGranularityLabel}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setGenerationInputs({ granularity: suggestedGranularity })}
-                    disabled={generationInputs.granularity === suggestedGranularity}
-                    className="rounded-full border-violet-300/40 bg-violet-500/10 text-violet-100 hover:border-violet-200 hover:bg-violet-500/20"
+                return (
+                  <div
+                    key={slice.id}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs hover:border-border"
                   >
-                    Use suggested
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  onClick={handleGenerateBurstDrafts}
-                  disabled={!canGenerateBurstDrafts}
-                  className="gap-2 bg-violet-600 text-violet-50 hover:bg-violet-500"
-                >
-                  {generationStatus === 'generating' ? 'Generating…' : 'Generate selection-first drafts'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearPendingDrafts}
-                  disabled={pendingGeneratedBins.length === 0}
-                  className="gap-2"
-                >
-                  Clear draft
-                </Button>
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  onClick={handleApplyDrafts}
-                  disabled={pendingGeneratedBins.length === 0}
-                  className="gap-2 bg-emerald-600 text-emerald-50 hover:bg-emerald-500"
-                >
-                  Apply {pendingGeneratedBins.length > 0 ? `${pendingGeneratedBins.length} slices` : 'slices'}
-                </Button>
-              </div>
-              <div className="rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-2 text-[11px] text-slate-300">
-                <div>{selectionDraftSummary}</div>
-                <div className="mt-1 text-slate-400">Selection-first draft review stays visible here before apply.</div>
-              </div>
-              {generationError ? (
-                <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
-                  {generationError}
-                </div>
-              ) : null}
-            </div>
-          </details>
+                    <span className="font-medium text-slate-100">{label}</span>
 
-          <details open className="mt-2 border-t border-slate-800 pt-2">
-            <summary className="cursor-pointer list-none py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Slice tools</summary>
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddRangeSlice}
-                className="gap-2"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Range
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleClearSlices}
-                className="gap-2"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Clear
-              </Button>
-            </div>
-            {lastGeneratedMetadata?.warning ? (
-              <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100">
-                {lastGeneratedMetadata.warning}
-              </div>
-            ) : null}
-          </details>
-        </div>
+                    <Badge variant="outline" className="rounded-full border-emerald-400/20 bg-emerald-500/10 px-2 py-0 text-[10px] text-emerald-100">
+                      {warpLabel}
+                    </Badge>
 
-        <div className="space-y-2">
-          {slices.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
-              No slices active. Add a range to inspect the demo timeline companion.
-            </div>
-          ) : (
-            slices.map((slice, index) => {
-              const fallbackName = slice.type === 'point' ? `Slice ${index + 1}` : `Range ${index + 1}`;
+                    <span className="text-[11px] text-slate-400">
+                      {formatCompactDate(slice.startDateTimeMs)} → {formatCompactDate(slice.endDateTimeMs)}
+                    </span>
 
-              return (
-                <Card key={slice.id} className="border-border/70 bg-card/60 p-0 shadow-none">
-                  <CardContent className="grid gap-2 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                    <div className="space-y-2">
-                    {slice.isBurst ? (
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        <Badge variant="outline" className="rounded-full px-2 py-1">
-                          burst
-                        </Badge>
-                        {formatBurstCoefficient(slice.burstScore) ? (
-                          <Badge variant="outline" className="rounded-full px-2 py-1 normal-case tracking-[0.12em]">
-                            Burstiness coefficient {formatBurstCoefficient(slice.burstScore)}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    ) : null}
+                    {slice.isBurst && typeof slice.burstinessCoefficient === 'number' && (
+                      <span className="text-[10px] text-slate-500">
+                        {formatCoefficient(slice.burstinessCoefficient)}
+                      </span>
+                    )}
 
-                    <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      {comparisonSliceIds.left === slice.id ? <Badge variant="secondary" className="rounded-full px-2 py-1">left slot</Badge> : null}
-                      {comparisonSliceIds.right === slice.id ? <Badge variant="secondary" className="rounded-full px-2 py-1">right slot</Badge> : null}
-                    </div>
-
-                    <input
-                      type="text"
-                      value={slice.name ?? ''}
-                      onChange={(event) => {
-                        const nextName = event.target.value.trim();
-                        updateSlice(slice.id, { name: nextName || undefined });
-                      }}
-                      placeholder={fallbackName}
-                      aria-label={`Slice name for ${fallbackName}`}
-                      className="h-8 w-full rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100"
-                    />
-
-                    <div className="text-xs text-slate-400">{formatSliceLabel(slice, index)}</div>
-
-                    <div className="text-[11px] text-slate-500">
-                      {(slice.warpEnabled ?? true)
-                        ? `Warp x${clampWarpWeight(slice.warpWeight ?? 1).toFixed(1)}`
-                        : 'Warp off'}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <button
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                      <Button
                         type="button"
-                        onClick={() => updateSlice(slice.id, { warpEnabled: !(slice.warpEnabled ?? true) })}
-                        className={`rounded border px-2 py-1 font-medium transition ${(slice.warpEnabled ?? true)
-                          ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400'
-                          : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
-                          }`}
-                        title={(slice.warpEnabled ?? true) ? 'Disable warp influence' : 'Enable warp influence'}
+                        variant="outline"
+                        size="xs"
+                        onClick={() => handleOpenSliceDetails(slice.id)}
+                        className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
                       >
-                        {(slice.warpEnabled ?? true) ? 'Warp enabled' : 'Warp disabled'}
-                      </button>
-
-                      <label className="inline-flex items-center gap-2 text-slate-400">
-                        <span>Warp strength</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={3}
-                          step={0.1}
-                          value={(slice.warpWeight ?? 1).toFixed(1)}
-                          onChange={(event) => {
-                            const parsed = Number(event.target.value);
-                            if (!Number.isFinite(parsed)) {
-                              return;
-                            }
-                            updateSlice(slice.id, { warpWeight: clampWarpWeight(parsed) });
-                          }}
-                          className="h-7 w-20 border-slate-700 bg-slate-950 text-right text-slate-100"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="grid gap-2 md:grid-cols-2">
-                      <label className="space-y-1 text-[11px] text-slate-400">
-                        <span>{slice.type === 'range' ? 'Start datetime' : 'Datetime'}</span>
-                        <Input
-                          type="datetime-local"
-                          value={toDateTimeLocalValue(slice.startDateTimeMs ?? null)}
-                          onChange={(event) => {
-                            const nextStartMs = parseDateTimeLocalValue(event.target.value);
-
-                            if (slice.type === 'point') {
-                              const nextTime = toNormalizedFromTimestampMs(nextStartMs);
-                              updateSlice(slice.id, {
-                                startDateTimeMs: nextStartMs,
-                                ...(nextTime !== null ? { time: nextTime } : {}),
-                              });
-                              return;
-                            }
-
-                            const currentStartMs = slice.startDateTimeMs ?? (slice.range && minTimestampSec !== null && maxTimestampSec !== null
-                              ? normalizedToEpochSeconds(slice.range[0], minTimestampSec, maxTimestampSec) * 1000
-                              : null);
-                            const currentEndMs = slice.endDateTimeMs ?? (slice.range && minTimestampSec !== null && maxTimestampSec !== null
-                              ? normalizedToEpochSeconds(slice.range[1], minTimestampSec, maxTimestampSec) * 1000
-                              : null);
-
-                            const resolvedStartMs = nextStartMs ?? currentStartMs;
-                            const resolvedEndMs = currentEndMs;
-                            const nextStartNorm = toNormalizedFromTimestampMs(resolvedStartMs);
-                            const nextEndNorm = toNormalizedFromTimestampMs(resolvedEndMs);
-
-                            if (nextStartNorm !== null && nextEndNorm !== null) {
-                              const start = Math.min(nextStartNorm, nextEndNorm);
-                              const end = Math.max(nextStartNorm, nextEndNorm);
-                              updateSlice(slice.id, {
-                                startDateTimeMs: nextStartMs,
-                                range: [start, end],
-                                time: (start + end) / 2,
-                              });
-                              return;
-                            }
-
-                            updateSlice(slice.id, { startDateTimeMs: nextStartMs });
-                          }}
-                          className="border-slate-700 bg-slate-950 text-slate-100"
-                        />
-                      </label>
-
-                      {slice.type === 'range' ? (
-                        <label className="space-y-1 text-[11px] text-slate-400">
-                          <span>End datetime</span>
-                          <Input
-                            type="datetime-local"
-                            value={toDateTimeLocalValue(slice.endDateTimeMs ?? null)}
-                            onChange={(event) => {
-                              const nextEndMs = parseDateTimeLocalValue(event.target.value);
-                              const currentStartMs = slice.startDateTimeMs ?? (slice.range && minTimestampSec !== null && maxTimestampSec !== null
-                                ? normalizedToEpochSeconds(slice.range[0], minTimestampSec, maxTimestampSec) * 1000
-                                : null);
-                              const resolvedStartMs = currentStartMs;
-                              const resolvedEndMs = nextEndMs;
-                              const nextStartNorm = toNormalizedFromTimestampMs(resolvedStartMs);
-                              const nextEndNorm = toNormalizedFromTimestampMs(resolvedEndMs);
-
-                              if (nextStartNorm !== null && nextEndNorm !== null) {
-                                const start = Math.min(nextStartNorm, nextEndNorm);
-                                const end = Math.max(nextStartNorm, nextEndNorm);
-                                updateSlice(slice.id, {
-                                  endDateTimeMs: nextEndMs,
-                                  range: [start, end],
-                                  time: (start + end) / 2,
-                                });
-                                return;
-                              }
-
-                              updateSlice(slice.id, { endDateTimeMs: nextEndMs });
-                            }}
-                            className="border-slate-700 bg-slate-950 text-slate-100"
-                          />
-                        </label>
-                      ) : null}
+                        Details
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => removeSlice(slice.id)}
+                        className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
+                );
+              }
 
-                    <div className="flex items-center gap-1 md:justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      onClick={() => {
-                        setSelectedDraftId(null);
-                        setSelectedSliceId(slice.id);
-                      }}
-                      className="uppercase tracking-[0.16em]"
-                      title="Open slice details"
-                    >
-                      Details
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-xs"
-                      onClick={() => toggleVisibility(slice.id)}
-                      title={slice.isVisible ? 'Hide slice' : 'Show slice'}
-                    >
-                      {slice.isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-xs"
-                      onClick={() => toggleLock(slice.id)}
-                      title={slice.isLocked ? 'Unlock slice' : 'Lock slice'}
-                    >
-                      {slice.isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-xs"
-                      onClick={() => handleRemoveSlice(slice.id)}
-                      title="Remove slice"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => setComparisonSliceId('left', slice.id)}
-                        className="gap-1"
-                        title="Set this slice as the left comparison slice"
-                      >
-                        Left
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => setComparisonSliceId('right', slice.id)}
-                        className="gap-1"
-                        title="Set this slice as the right comparison slice"
-                      >
-                        Right
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={swapComparisonSlices}
-                        className="gap-1"
-                        title="Swap the comparison slots"
-                        disabled={!comparisonSliceIds.left || !comparisonSliceIds.right}
-                      >
-                        Swap
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={clearComparisonSlices}
-                        className="gap-1"
-                        title="Clear the comparison pair"
-                      >
-                        Clear pair
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
+              return null;
             })
           )}
         </div>
@@ -955,13 +496,13 @@ export function DemoSlicePanel() {
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
                 <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
                 <div className="mt-1 text-xs text-slate-400">
-                  Score {formatBurstCoefficient(selectedSlice.burstScore) ?? '—'} · Confidence {formatBurstCoefficient(selectedSlice.burstConfidence) ?? '—'}
+                  Coefficient {formatCoefficient(selectedSlice.burstinessCoefficient ?? selectedSlice.burstScore) ?? '—'} · Confidence {formatNormalizedScore(selectedSlice.burstConfidence) ?? '—'}
                 </div>
               </div>
 
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst confidence</div>
-                <div className="mt-2 text-sm text-slate-100">{formatBurstCoefficient(selectedSlice.burstConfidence) ?? '—'}</div>
+                <div className="mt-2 text-sm text-slate-100">{formatNormalizedScore(selectedSlice.burstConfidence) ?? '—'}</div>
                 <div className="mt-1 text-xs text-slate-400">
                   Warp {(selectedSlice.warpEnabled ?? true) ? 'enabled' : 'disabled'} · Strength {(selectedSlice.warpWeight ?? 1).toFixed(2)}
                 </div>
@@ -1041,7 +582,7 @@ export function DemoSlicePanel() {
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
                 <div className="mt-2 text-sm text-slate-100">{selectedDraft.burstClass ?? '—'}</div>
                 <div className="mt-1 text-xs text-slate-400">
-                  Burstiness {formatBurstCoefficient(selectedDraft.burstinessCoefficient ?? selectedDraft.burstScore) ?? '—'} · Score {formatBurstCoefficient(selectedDraft.burstScore) ?? '—'}
+                  Coefficient {formatCoefficient(selectedDraft.burstinessCoefficient) ?? '—'}
                 </div>
               </div>
 
@@ -1053,7 +594,7 @@ export function DemoSlicePanel() {
 
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst confidence</div>
-                <div className="mt-2 text-sm text-slate-100">{formatBurstCoefficient(selectedDraft.burstConfidence) ?? '—'}</div>
+                <div className="mt-2 text-sm text-slate-100">{formatNormalizedScore(selectedDraft.burstConfidence) ?? '—'}</div>
                 <div className="mt-1 text-xs text-slate-400">{selectedDraft.count} events</div>
               </div>
 
@@ -1088,7 +629,7 @@ export function DemoSlicePanel() {
               </div>
 
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burstiness formula</div>
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst score formula</div>
                 <div className="mt-2 font-mono text-sm text-slate-100">{selectedDraft.burstinessFormula ?? 'B = (σ - μ) / (σ + μ)'}</div>
                 <div className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-slate-400">
                   {selectedDraft.burstinessCalculation ?? '—'}
@@ -1103,7 +644,7 @@ export function DemoSlicePanel() {
                       <div key={item.type} className="rounded border border-slate-800 bg-slate-950/70 p-2">
                         <div className="text-sm text-slate-100">{item.type}</div>
                         <div className="mt-1 text-xs text-slate-400">
-                          Count {item.count} · B {formatBurstCoefficient(item.coefficient) ?? '—'} · Score {item.normalizedScore}
+                          Count {item.count} · B {item.coefficient?.toFixed(2) ?? '—'}
                         </div>
                         <div className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-slate-500">
                           {item.calculation}

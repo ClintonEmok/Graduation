@@ -25,7 +25,7 @@ interface DashboardDemoWarpState {
 
 export const useDashboardDemoWarpStore = create<DashboardDemoWarpState>((set) => ({
   timeScaleMode: 'linear',
-  warpSource: 'slice-authored',
+  warpSource: 'density',
   warpFactor: 0,
   densityMap: null,
   warpMap: null,
@@ -41,7 +41,7 @@ export const useDashboardDemoWarpStore = create<DashboardDemoWarpState>((set) =>
     set({
       timeScaleMode: 'linear',
       warpFactor: 0,
-      warpSource: 'slice-authored',
+      warpSource: 'density',
       isComputing: false,
     }),
 }));

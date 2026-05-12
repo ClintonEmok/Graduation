@@ -26,10 +26,8 @@ export function DemoTimelineSettingsCard() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
-  const warpSource = useDashboardDemoWarpStore((state) => state.warpSource);
   const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
   const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
-  const setWarpSource = useDashboardDemoWarpStore((state) => state.setWarpSource);
 
   const handleResolutionChange = useCallback(
     (value: number[]) => {
@@ -107,27 +105,10 @@ export function DemoTimelineSettingsCard() {
               {warpMode === 'linear' ? 'Linear' : 'Adaptive'}
             </Button>
           </div>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>Slice source</span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                onClick={() => setWarpSource('slice-authored')}
-                variant={warpSource === 'slice-authored' ? 'secondary' : 'outline'}
-                size="sm"
-                className={`rounded-sm px-2 py-1 ${warpSource === 'slice-authored' ? '' : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'}`}
-              >
-                Slice-authored
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setWarpSource('density')}
-                variant={warpSource === 'density' ? 'secondary' : 'outline'}
-                size="sm"
-                className={`rounded-sm px-2 py-1 ${warpSource === 'density' ? '' : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'}`}
-              >
-                Density
-              </Button>
+            <div className="inline-flex items-center gap-2 self-start rounded-md border border-border/70 bg-background px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-foreground sm:self-auto">
+              Density
             </div>
           </div>
           {warpMode === 'adaptive' ? (

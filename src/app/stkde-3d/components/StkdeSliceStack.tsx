@@ -13,10 +13,51 @@ function yForIndex(index: number): number {
   return START_Y + index * SLICE_SPACING;
 }
 
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function rgba(r: number, g: number, b: number, a: number): string {
+  return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a.toFixed(3)})`;
+}
+
 function kdeColor(t: number): string {
-  const intensity = Math.min(1, Math.max(0, t));
-  const value = Math.round(24 + intensity * 205);
-  return `rgb(${value}, ${value}, ${value})`;
+  const intensity = clamp01(t);
+
+  const stops = [
+    { stop: 0, color: [34, 76, 255] },
+    { stop: 0.28, color: [0, 212, 255] },
+    { stop: 0.55, color: [42, 255, 163] },
+    { stop: 0.75, color: [255, 214, 64] },
+    { stop: 0.9, color: [255, 122, 42] },
+    { stop: 1, color: [255, 64, 96] },
+  ] as const;
+
+  let left = stops[0];
+  let right = stops[stops.length - 1];
+
+  for (let i = 0; i < stops.length - 1; i += 1) {
+    const current = stops[i]!;
+    const next = stops[i + 1]!;
+    if (intensity >= current.stop && intensity <= next.stop) {
+      left = current;
+      right = next;
+      break;
+    }
+  }
+
+  const span = Math.max(0.0001, right.stop - left.stop);
+  const localT = (intensity - left.stop) / span;
+  const r = lerp(left.color[0], right.color[0], localT);
+  const g = lerp(left.color[1], right.color[1], localT);
+  const b = lerp(left.color[2], right.color[2], localT);
+  const alpha = lerp(0.22, 0.98, intensity ** 0.85);
+
+  return rgba(r, g, b, alpha);
 }
 
 function buildHeatmapTexture(cells: KdeCell[]): THREE.CanvasTexture | null {
@@ -34,11 +75,12 @@ function buildHeatmapTexture(cells: KdeCell[]): THREE.CanvasTexture | null {
     const cx = ((cell.x + 50) / 100) * TEXTURE_SIZE;
     const cy = TEXTURE_SIZE - ((cell.z + 50) / 100) * TEXTURE_SIZE;
     const intensity = Math.min(1, Math.max(0, cell.intensity));
-    const radius = Math.max(8, intensity * 40);
+    const radius = Math.max(10, intensity * 44);
 
     const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
     gradient.addColorStop(0, kdeColor(intensity));
-    gradient.addColorStop(0.6, kdeColor(intensity * 0.5));
+    gradient.addColorStop(0.42, kdeColor(intensity * 0.72));
+    gradient.addColorStop(0.78, kdeColor(intensity * 0.24));
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
@@ -58,12 +100,14 @@ interface StkdeSliceStackProps {
   slices: EvolvingSlice[];
   sliceKdes: KdeCell[][];
   activeIndex: number;
+  compact?: boolean;
 }
 
 export function StkdeSliceStack({
   slices,
   sliceKdes,
   activeIndex,
+  compact = false,
 }: StkdeSliceStackProps) {
   const textures = useMemo(() => {
     const newTextures = new Map<number, THREE.CanvasTexture>();
@@ -86,7 +130,7 @@ export function StkdeSliceStack({
     <group>
       {slices.map((slice) => {
         const i = slice.index;
-        const y = yForIndex(i);
+        const y = compact ? 0 : yForIndex(i);
         const diff = Math.abs(i - activeIndex);
         const isActive = diff === 0;
         const isAdjacent = diff === 1;
