@@ -5,11 +5,11 @@ import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import type { KdeCell, EvolvingSlice } from '../lib/types';
 
-const SLICE_SPACING = 7.25;
-const START_Y = -32.625;
+export const SLICE_SPACING = 7.25;
+export const START_Y = -32.625;
 const TEXTURE_SIZE = 256;
 
-function yForIndex(index: number): number {
+export function yForIndex(index: number): number {
   return START_Y + index * SLICE_SPACING;
 }
 
@@ -28,14 +28,16 @@ function rgba(r: number, g: number, b: number, a: number): string {
 function kdeColor(t: number): string {
   const intensity = clamp01(t);
 
-  const stops = [
+  type ColorStop = { stop: number; color: [number, number, number] };
+
+  const stops: ColorStop[] = [
     { stop: 0, color: [34, 76, 255] },
     { stop: 0.28, color: [0, 212, 255] },
     { stop: 0.55, color: [42, 255, 163] },
     { stop: 0.75, color: [255, 214, 64] },
     { stop: 0.9, color: [255, 122, 42] },
     { stop: 1, color: [255, 64, 96] },
-  ] as const;
+  ];
 
   let left = stops[0];
   let right = stops[stops.length - 1];
@@ -148,8 +150,9 @@ export function StkdeSliceStack({
 
         return (
           <group key={slice.index} position={[0, y, 0]}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[100, 100]} />
+            {texture ? (
+              <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[100, 100]} />
                 <meshBasicMaterial
                   map={texture}
                   transparent
@@ -157,7 +160,8 @@ export function StkdeSliceStack({
                   depthWrite={false}
                   side={THREE.DoubleSide}
                 />
-            </mesh>
+              </mesh>
+            ) : null}
 
             <gridHelper
               args={[100, 10]}
@@ -165,9 +169,9 @@ export function StkdeSliceStack({
               rotation={[0, 0, 0]}
             >
               <meshBasicMaterial
-                color="#94a3b8"
+                color="#38bdf8"
                 transparent
-                opacity={gridOpacity}
+                opacity={gridOpacity * 0.5}
               />
             </gridHelper>
 
@@ -179,9 +183,9 @@ export function StkdeSliceStack({
                 >
                   <ringGeometry args={[49.2, 50, 64]} />
                   <meshBasicMaterial
-                    color="#d4d4d8"
+                    color="#38bdf8"
                     transparent
-                    opacity={0.26}
+                    opacity={0.2}
                     depthWrite={false}
                     side={THREE.DoubleSide}
                   />
@@ -192,9 +196,9 @@ export function StkdeSliceStack({
                 >
                   <ringGeometry args={[48.5, 49.8, 64]} />
                   <meshBasicMaterial
-                    color="#f4f4f5"
+                    color="#7dd3fc"
                     transparent
-                    opacity={0.1}
+                    opacity={0.08}
                     depthWrite={false}
                     side={THREE.DoubleSide}
                   />
@@ -209,9 +213,9 @@ export function StkdeSliceStack({
               >
                 <ringGeometry args={[49.4, 50, 64]} />
                 <meshBasicMaterial
-                  color="#a1a1aa"
+                  color="#38bdf8"
                   transparent
-                  opacity={0.06}
+                  opacity={0.05}
                   depthWrite={false}
                   side={THREE.DoubleSide}
                 />
@@ -223,7 +227,7 @@ export function StkdeSliceStack({
                 className={`rounded-md border px-2 py-1 text-[10px] leading-tight shadow-sm ${
                   isActive
                     ? 'border-sky-400/60 bg-slate-950/95 text-sky-100'
-                    : 'border-slate-600/40 bg-slate-950/80 text-slate-400'
+                    : 'border-sky-800/40 bg-slate-950/80 text-sky-300'
                 }`}
               >
                 <div className="font-medium tracking-wide">
@@ -234,12 +238,12 @@ export function StkdeSliceStack({
                     className={
                       slice.burstScore > 0.5
                         ? 'text-amber-300'
-                        : 'text-slate-500'
+                        : 'text-sky-400'
                     }
                   >
                     burst {burstLabel}
                   </span>
-                  <span className="text-slate-500">
+                  <span className="text-sky-500">
                     {slice.crimeCount} ev
                   </span>
                 </div>

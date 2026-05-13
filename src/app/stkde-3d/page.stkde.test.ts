@@ -10,11 +10,17 @@ describe('/stkde-3d route focus mode', () => {
 
     expect(pageSource).toMatch(/Single slice/);
     expect(pageSource).toMatch(/Stack view/);
+    expect(pageSource).toMatch(/Raw points/);
     expect(pageSource).toMatch(/SliceInspector/);
     expect(pageSource).toMatch(/viewMode={isFocusedView \? 'focus' : 'stack'}/);
+    expect(pageSource).toMatch(/sliceEvents={sliceEvents}/);
+    expect(pageSource).toMatch(/showRawEvents={showRawEvents}/);
     expect(pageSource).toMatch(/setIsPlaying\(false\)/);
     expect(sceneSource).toMatch(/viewMode\?: 'stack' \| 'focus'/);
+    expect(sceneSource).toMatch(/showRawEvents\?: boolean/);
+    expect(sceneSource).toMatch(/sliceEvents\?: MockCrimeEvent\[\]\[]/);
     expect(sceneSource).toMatch(/compact={viewMode === 'focus'}/);
+    expect(sceneSource).toMatch(/RawEventPoints/);
     expect(stackSource).toMatch(/compact\?: boolean/);
     expect(inspectorSource).toMatch(/Detail Inspector/);
     expect(inspectorSource).toMatch(/Peak intensity/);

@@ -7,12 +7,27 @@ import { computeSliceKde } from './lib/slice-kde';
 import { Stkde3DScene } from './components/Stkde3DScene';
 import { SliceScrubber } from './components/SliceScrubber';
 import { SliceInspector } from './components/SliceInspector';
+import { KdeTuningPanel } from './components/KdeTuningPanel';
+import type { KdeParams } from '@/lib/kde';
 import type { CrimeRecord } from '@/types/crime';
+
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
 
 const REAL_DATA_RANGE = {
   startEpoch: 978307200,
   endEpoch: 1767225599,
   limit: 1200,
+};
+
+const EXPERIMENTAL_KDE_PARAMS: KdeParams = {
+  gridSize: 48,
+  sigmaCells: 1.35,
+  kernelRadiusCells: 4,
+  threshold: 0.02,
 };
 
 type DatasetState = {
@@ -26,6 +41,8 @@ export default function Stkde3DPage() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isFocusedView, setIsFocusedView] = useState(false);
+  const [showRawEvents, setShowRawEvents] = useState(false);
+  const [kdeParams, setKdeParams] = useState<KdeParams>(EXPERIMENTAL_KDE_PARAMS);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
 
   useEffect(() => {
@@ -77,8 +94,8 @@ export default function Stkde3DPage() {
   const isRealData = dataset?.source === 'real';
 
   const sliceKdeResults = useMemo(
-    () => sliceEvents.map((events) => computeSliceKde(events)),
-    [sliceEvents],
+    () => sliceEvents.map((events) => computeSliceKde(events, kdeParams)),
+    [kdeParams, sliceEvents],
   );
 
   const sliceKdes = useMemo(
@@ -93,6 +110,10 @@ export default function Stkde3DPage() {
 
   const activeSlice = slices[activeIndex];
   const activeSliceKde = sliceKdeResults[activeIndex];
+  const activeSliceTitle = activeSlice?.label ?? 'No slice selected';
+  const activeSliceRange = activeSlice
+    ? `${DATE_FORMATTER.format(new Date(activeSlice.startEpoch * 1000))} - ${DATE_FORMATTER.format(new Date(activeSlice.endEpoch * 1000))}`
+    : 'No active range';
 
   useEffect(() => {
     if (!isPlaying || slices.length === 0) return undefined;
@@ -112,31 +133,59 @@ export default function Stkde3DPage() {
 
   if (!dataset) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-        <div className="text-sm text-slate-400">Loading real crime subset...</div>
+      <main className="flex min-h-dvh items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),_transparent_34%),linear-gradient(180deg,#020617_0%,#020817_60%,#020617_100%)] text-slate-100">
+        <div className="rounded-2xl border border-sky-500/15 bg-slate-950/70 px-4 py-3 text-sm text-slate-300 shadow-[0_24px_80px_-36px_rgba(14,165,233,0.45)] backdrop-blur">
+          Loading real crime subset...
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="flex h-screen flex-col">
-        <header className="flex items-center justify-between border-b border-slate-800 px-6 py-3">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">
-              STKDE 3D Evolution
-            </h1>
-            <p className="text-xs text-slate-400">
-              KDE heatmaps stacked through time &mdash; {slices.length} slices
-              across {totalEvents.toLocaleString()} {isRealData ? 'real' : 'mock'} events
-            </p>
+    <main className="min-h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.08),_transparent_28%),linear-gradient(180deg,#020617_0%,#020817_55%,#020617_100%)] text-slate-100">
+      <div className="mx-auto flex min-h-dvh max-w-[1920px] flex-col px-4 py-4 lg:px-5 lg:py-5">
+        <header className="mb-4 flex flex-col gap-4 rounded-3xl border border-sky-500/15 bg-slate-950/55 px-5 py-4 shadow-[0_30px_100px_-44px_rgba(14,165,233,0.45)] backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-sky-400/15 bg-sky-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-sky-200">
+                stkde 3d
+              </span>
+              <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+                {isRealData ? 'real subset' : 'mock fallback'}
+              </span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-50 lg:text-3xl">
+                STKDE 3D evolution
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                KDE heatmaps stacked through time with live scrubbing, focus mode, and a shared 3D scene.
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs text-slate-300 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+            <div className="rounded-2xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 backdrop-blur">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Slices</div>
+              <div className="mt-1 font-medium text-slate-100 tabular-nums">{slices.length}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 backdrop-blur">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Events</div>
+              <div className="mt-1 font-medium text-slate-100 tabular-nums">{totalEvents.toLocaleString()}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 backdrop-blur">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Active</div>
+              <div className="mt-1 max-w-[14rem] truncate font-medium text-slate-100">
+                {activeSliceTitle}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs text-slate-300 backdrop-blur">
             <button
               type="button"
               onClick={() => setIsPlaying((value) => !value)}
-              className="flex items-center gap-1 rounded-full border border-slate-600/70 bg-slate-800 px-3 py-1.5 text-slate-100 transition hover:border-sky-400/60 hover:text-sky-100"
+              className="flex items-center gap-1.5 rounded-full border border-slate-600/70 bg-slate-800 px-3 py-1.5 text-slate-100 transition hover:border-sky-400/60 hover:text-sky-100"
             >
               {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
               {isPlaying ? 'Pause' : 'Play'}
@@ -152,7 +201,7 @@ export default function Stkde3DPage() {
                   setIsPlaying(false);
                 }
               }}
-              className={`flex items-center gap-1 rounded-full border px-3 py-1.5 transition ${
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition ${
                 isFocusedView
                   ? 'border-sky-400/60 bg-sky-400/10 text-sky-100'
                   : 'border-slate-600/70 bg-slate-800 text-slate-100 hover:border-sky-400/60 hover:text-sky-100'
@@ -160,6 +209,19 @@ export default function Stkde3DPage() {
             >
               <Focus className="size-3.5" />
               {isFocusedView ? 'Single slice' : 'Stack view'}
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={showRawEvents}
+              onClick={() => setShowRawEvents((value) => !value)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition ${
+                showRawEvents
+                  ? 'border-emerald-400/60 bg-emerald-400/10 text-emerald-100'
+                  : 'border-slate-600/70 bg-slate-800 text-slate-100 hover:border-emerald-400/60 hover:text-emerald-100'
+              }`}
+            >
+              Raw points
             </button>
 
             <label className="flex items-center gap-2">
@@ -178,22 +240,35 @@ export default function Stkde3DPage() {
             </label>
 
             <span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200">
-              {isRealData ? 'Real subset' : 'Mock fallback'}
+              {activeSliceRange}
             </span>
           </div>
         </header>
 
-        <div className="flex flex-1 gap-4 overflow-hidden p-4">
-          <div className="flex-1">
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="min-h-0 rounded-3xl border border-sky-500/15 bg-slate-950/40 p-2 shadow-[0_30px_100px_-44px_rgba(14,165,233,0.35)] backdrop-blur-sm">
             <Stkde3DScene
               slices={slices}
               sliceKdes={sliceKdes}
+              sliceEvents={sliceEvents}
               activeIndex={activeIndex}
               viewMode={isFocusedView ? 'focus' : 'stack'}
+              showRawEvents={showRawEvents}
             />
           </div>
 
-          <aside className="w-72 shrink-0 space-y-4 overflow-y-auto rounded-md border border-slate-700/60 bg-slate-900/65 p-4">
+          <aside className="min-h-0 space-y-4 overflow-y-auto rounded-3xl border border-slate-700/60 bg-slate-950/55 p-4 shadow-[0_30px_100px_-44px_rgba(14,165,233,0.35)] backdrop-blur-md">
+            <KdeTuningPanel value={kdeParams} onChange={setKdeParams} />
+
+            <div className="space-y-1 border-b border-slate-700/60 pb-3">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                inspect rail
+              </div>
+              <p className="max-w-[24ch] text-sm leading-6 text-slate-300">
+                Scrub slices, switch focus mode, and inspect burst detail without leaving the route.
+              </p>
+            </div>
+
             {isFocusedView && (
               <SliceInspector
                 slice={activeSlice}

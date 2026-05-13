@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
 import * as THREE from 'three';
 import Map, { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import type { KdeCell, EvolvingSlice } from '../lib/types';
-import { StkdeSliceStack } from './StkdeSliceStack';
+import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
+import { StkdeSliceStack, yForIndex } from './StkdeSliceStack';
 import { CHICAGO_BOUNDS, SCENE_EXTENT } from '../lib/chicago-bounds';
 
 const CAMERA_POSITION: [number, number, number] = [105, 175, 105];
@@ -61,14 +61,14 @@ function formatLatLon(value: number): string {
 function CornerOverlay() {
   return (
     <div className="absolute left-3 top-3 z-20 pointer-events-none">
-      <div className="rounded-lg border border-slate-700/80 bg-slate-950/85 px-3 py-2 shadow-lg backdrop-blur">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+      <div className="rounded-lg border border-sky-700/50 bg-slate-950/85 px-3 py-2 shadow-lg backdrop-blur">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
           Corner Coordinates
         </div>
-        <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-1 text-[10px] leading-tight text-slate-300">
+        <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-1 text-[10px] leading-tight text-sky-200">
           {CORNERS.map((corner) => (
             <div key={corner.label} className="contents">
-              <span className="font-medium text-slate-100">{corner.label}</span>
+              <span className="font-medium text-sky-100">{corner.label}</span>
               <span>
                 {formatLatLon(corner.lat)}, {formatLatLon(corner.lon)} | {corner.x.toFixed(0)}, {corner.z.toFixed(0)}
               </span>
@@ -138,15 +138,80 @@ function MapTileSource({ onTextureReady }: { onTextureReady: (texture: THREE.Can
 interface Stkde3DSceneProps {
   slices: EvolvingSlice[];
   sliceKdes: KdeCell[][];
+  sliceEvents?: MockCrimeEvent[][];
   activeIndex: number;
   viewMode?: 'stack' | 'focus';
+  showRawEvents?: boolean;
+}
+
+function RawEventPoints({
+  slices,
+  sliceEvents = [],
+  activeIndex,
+  viewMode,
+}: Pick<Stkde3DSceneProps, 'slices' | 'sliceEvents' | 'activeIndex' | 'viewMode'>) {
+  const positions = useMemo(() => {
+    if (sliceEvents.length === 0 || slices.length === 0) {
+      return new Float32Array();
+    }
+
+    const activeSlices = viewMode === 'focus'
+      ? slices[activeIndex]
+        ? [slices[activeIndex]]
+        : []
+      : slices;
+
+    let totalPoints = 0;
+    for (const slice of activeSlices) {
+      totalPoints += sliceEvents[slice.index]?.length ?? 0;
+    }
+
+    const flattened = new Float32Array(totalPoints * 3);
+    let cursor = 0;
+
+    for (const slice of activeSlices) {
+      const events = sliceEvents[slice.index] ?? [];
+      const y = viewMode === 'focus' ? 0.15 : yForIndex(slice.index) + 0.15;
+
+      for (const event of events) {
+        flattened[cursor] = event.x;
+        flattened[cursor + 1] = y;
+        flattened[cursor + 2] = event.z;
+        cursor += 3;
+      }
+    }
+
+    return flattened;
+  }, [activeIndex, sliceEvents, slices, viewMode]);
+
+  if (positions.length === 0) {
+    return null;
+  }
+
+  return (
+    <points frustumCulled={false}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.85}
+        color="#f59e0b"
+        transparent
+        opacity={0.82}
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
+  );
 }
 
 function SceneContent({
   slices,
   sliceKdes,
+  sliceEvents = [],
   activeIndex,
   viewMode = 'stack',
+  showRawEvents = false,
 }: Stkde3DSceneProps) {
   const controlsRef = useRef<CameraControls>(null);
   const focusedSlice = slices[activeIndex]
@@ -177,11 +242,6 @@ function SceneContent({
       <directionalLight position={[30, 50, 20]} intensity={0.7} />
       <directionalLight position={[-30, 30, -20]} intensity={0.3} />
 
-      <mesh position={[0, -38, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-20}>
-        <planeGeometry args={[96, 96]} />
-        <meshBasicMaterial color="#111827" transparent opacity={0.35} depthWrite={false} />
-      </mesh>
-
       <StkdeSliceStack
         slices={viewMode === 'focus' ? focusedSlices : slices}
         sliceKdes={viewMode === 'focus' ? focusedKdes : sliceKdes}
@@ -189,16 +249,21 @@ function SceneContent({
         compact={viewMode === 'focus'}
       />
 
+      {showRawEvents ? (
+        <RawEventPoints
+          slices={slices}
+          sliceEvents={sliceEvents}
+          activeIndex={activeIndex}
+          viewMode={viewMode}
+        />
+      ) : null}
+
       <CameraControls
         ref={controlsRef}
         makeDefault
         smoothTime={0.3}
-        minDistance={90}
-        maxDistance={260}
-        minPolarAngle={0.12}
-        maxPolarAngle={0.38}
-        minAzimuthAngle={-0.4}
-        maxAzimuthAngle={0.4}
+        minDistance={30}
+        maxDistance={500}
       />
     </>
   );
@@ -207,8 +272,10 @@ function SceneContent({
 export function Stkde3DScene({
   slices,
   sliceKdes,
+  sliceEvents = [],
   activeIndex,
   viewMode = 'stack',
+  showRawEvents = false,
 }: Stkde3DSceneProps) {
   const [mapTexture, setMapTexture] = useState<THREE.CanvasTexture | null>(null);
 
@@ -219,7 +286,7 @@ export function Stkde3DScene({
   }, [mapTexture]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-md border border-slate-700/70">
+    <div className="relative h-full w-full overflow-hidden rounded-md border border-sky-800/40">
       <CornerOverlay />
       <MapTileSource onTextureReady={setMapTexture} />
       <div className="absolute inset-0 z-10">
@@ -230,8 +297,10 @@ export function Stkde3DScene({
           <SceneContent
             slices={slices}
             sliceKdes={sliceKdes}
+            sliceEvents={sliceEvents}
             activeIndex={activeIndex}
             viewMode={viewMode}
+            showRawEvents={showRawEvents}
           />
 
           {mapTexture ? (
@@ -242,16 +311,6 @@ export function Stkde3DScene({
                   map={mapTexture}
                   transparent
                   opacity={0.92}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
-                <planeGeometry args={[96, 96]} />
-                <meshBasicMaterial
-                  color="#0f172a"
-                  transparent
-                  opacity={0.14}
                   depthWrite={false}
                   side={THREE.DoubleSide}
                 />
