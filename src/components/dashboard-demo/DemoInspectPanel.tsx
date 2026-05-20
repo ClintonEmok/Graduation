@@ -1,109 +1,333 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { Focus, Pause, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { SliceScrubber } from '@/app/stkde-3d/components/SliceScrubber';
+import { SliceInspector } from '@/app/stkde-3d/components/SliceInspector';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
+import type { CrimeRecord } from '@/types/crime';
 
-const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-});
+function resolveSliceEpochRange(
+  slice: TimeSlice,
+  minTimestampSec: number,
+  maxTimestampSec: number,
+): [number, number] {
+  if (slice.startDateTimeMs !== undefined || slice.endDateTimeMs !== undefined) {
+    const startMs = slice.startDateTimeMs ?? slice.endDateTimeMs ?? 0;
+    const endMs = slice.endDateTimeMs ?? slice.startDateTimeMs ?? startMs;
+    const start = startMs / 1000;
+    const end = endMs / 1000;
+    return start <= end ? [start, end] : [end, start];
+  }
 
-function formatMsDate(timestampMs: number): string {
-  return DATE_FORMATTER.format(new Date(timestampMs));
-}
+  if (slice.type === 'range' && slice.range) {
+    const start = normalizedToEpochSeconds(slice.range[0], minTimestampSec, maxTimestampSec);
+    const end = normalizedToEpochSeconds(slice.range[1], minTimestampSec, maxTimestampSec);
+    return start <= end ? [start, end] : [end, start];
+  }
 
-function getSliceLabel(slice: TimeSlice): string {
-  return slice.name || slice.notes || `Slice ${slice.id.slice(0, 6)}`;
-}
-
-function getSliceStartMs(slice: TimeSlice): number | null {
-  if (slice.startDateTimeMs != null) return slice.startDateTimeMs;
-  if (slice.range) return slice.range[0];
-  return null;
-}
-
-function getSliceEndMs(slice: TimeSlice): number | null {
-  if (slice.endDateTimeMs != null) return slice.endDateTimeMs;
-  if (slice.range) return slice.range[1];
-  return null;
+  const time = normalizedToEpochSeconds(slice.time, minTimestampSec, maxTimestampSec);
+  return [time, time];
 }
 
 export function DemoInspectPanel() {
   const slices = useSliceDomainStore((state) => state.slices);
+  const minTimestampSec = useTimelineDataStore((s) => s.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((s) => s.maxTimestampSec);
 
-  const sortedSlices = useMemo(() => {
-    return [...slices].sort((a, b) => {
-      const aMs = getSliceStartMs(a) ?? 0;
-      const bMs = getSliceStartMs(b) ?? 0;
-      return aMs - bMs;
-    });
-  }, [slices]);
+  const activeIndex = useDashboardDemoCoordinationStore((s) => s.activeSliceIndex);
+  const viewMode = useDashboardDemoCoordinationStore((s) => s.viewMode);
+  const isPlaying = useDashboardDemoCoordinationStore((s) => s.inspectIsPlaying);
+  const playbackSpeed = useDashboardDemoCoordinationStore((s) => s.inspectPlaybackSpeed);
+  const setActiveSliceIndex = useDashboardDemoCoordinationStore((s) => s.setActiveSliceIndex);
+  const setViewMode = useDashboardDemoCoordinationStore((s) => s.setViewMode);
+  const setInspectIsPlaying = useDashboardDemoCoordinationStore((s) => s.setInspectIsPlaying);
+  const togglePlayback = useDashboardDemoCoordinationStore((s) => s.toggleInspectPlayback);
+  const setPlaybackSpeed = useDashboardDemoCoordinationStore((s) => s.setInspectPlaybackSpeed);
+  const sliceOpacity = useDashboardDemoCoordinationStore((s) => s.inspectSliceOpacity);
+  const setSliceOpacity = useDashboardDemoCoordinationStore((s) => s.setInspectSliceOpacity);
+  const sliceCrimeCounts = useDashboardDemoCoordinationStore((s) => s.sliceCrimeCounts);
+  const crimeFetchStatus = useDashboardDemoCoordinationStore((s) => s.crimeFetchStatus);
+  const setSliceCrimeCounts = useDashboardDemoCoordinationStore((s) => s.setSliceCrimeCounts);
+  const setCrimeFetchStatus = useDashboardDemoCoordinationStore((s) => s.setCrimeFetchStatus);
+
+  const visibleSlices = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) return [];
+
+    return slices
+      .filter((slice) => slice.isVisible && slice.type === 'range')
+      .map((slice, originalIndex) => {
+        const [startEpoch, endEpoch] = resolveSliceEpochRange(slice, minTimestampSec, maxTimestampSec);
+        return {
+          index: originalIndex,
+          label: slice.name || `Slice ${originalIndex + 1}`,
+          startEpoch,
+          endEpoch,
+          burstScore: slice.burstScore ?? 0,
+          crimeCount: sliceCrimeCounts[slice.id] ?? 0,
+          sourceSliceId: slice.id,
+        };
+      })
+      .sort((left, right) => {
+        const startDelta = left.startEpoch - right.startEpoch;
+        if (startDelta !== 0) return startDelta;
+        const endDelta = left.endEpoch - right.endEpoch;
+        if (endDelta !== 0) return endDelta;
+        return left.label.localeCompare(right.label);
+      })
+      .map((slice, index) => ({
+        ...slice,
+        index,
+        label: slice.label || `Slice ${index + 1}`,
+      }));
+  }, [slices, minTimestampSec, maxTimestampSec, sliceCrimeCounts]);
+
+  const isFocusedView = viewMode === 'focus';
+
+  const hasZeroCountSlices = visibleSlices.some((s) => s.crimeCount === 0);
+
+  const handleRefetchCrimeCounts = useCallback(async () => {
+    if (minTimestampSec === null || maxTimestampSec === null) return;
+
+    const storeSlices = useSliceDomainStore.getState().slices;
+    const currentMin = useTimelineDataStore.getState().minTimestampSec;
+    const currentMax = useTimelineDataStore.getState().maxTimestampSec;
+    if (currentMin === null || currentMax === null) return;
+
+    const sliceRows = storeSlices
+      .filter((sl) => sl.isVisible && sl.type === 'range')
+      .map((sl) => ({
+        sourceSliceId: sl.id,
+        startEpoch: resolveSliceEpochRange(sl, currentMin, currentMax)[0],
+        endEpoch: resolveSliceEpochRange(sl, currentMin, currentMax)[1],
+      }));
+
+    if (sliceRows.length === 0) return;
+
+    setCrimeFetchStatus('loading');
+
+    const counts: Record<string, number> = {};
+    let totalFetched = 0;
+
+    for (const slice of sliceRows) {
+      const params = new URLSearchParams({
+        startEpoch: Math.floor(slice.startEpoch).toString(),
+        endEpoch: Math.ceil(slice.endEpoch).toString(),
+        bufferDays: '0',
+        limit: '50000',
+      });
+
+      try {
+        const res = await fetch(`/api/crimes/range?${params.toString()}`);
+        if (!res.ok) continue;
+        const result = (await res.json()) as { data?: CrimeRecord[] };
+        const crimes = result.data ?? [];
+        counts[slice.sourceSliceId] = crimes.length;
+        totalFetched += crimes.length;
+      } catch {
+        counts[slice.sourceSliceId] = 0;
+      }
+    }
+
+    console.debug('[InspectPanel] Recalc computed counts:', JSON.stringify(counts), 'total:', totalFetched);
+    setSliceCrimeCounts(counts);
+    setCrimeFetchStatus('success');
+  }, [minTimestampSec, maxTimestampSec, setSliceCrimeCounts, setCrimeFetchStatus]);
+
+  useEffect(() => {
+    if (isFocusedView) {
+      setInspectIsPlaying(false);
+    }
+  }, [isFocusedView, setInspectIsPlaying]);
+
+  useEffect(() => {
+    if (!isPlaying || visibleSlices.length === 0) return undefined;
+
+    const timeout = window.setTimeout(() => {
+      setActiveSliceIndex((activeIndex + 1) % visibleSlices.length);
+    }, Math.max(180, 1000 / playbackSpeed));
+
+    return () => window.clearTimeout(timeout);
+  }, [activeIndex, isPlaying, playbackSpeed, visibleSlices, setActiveSliceIndex]);
+
+  useEffect(() => {
+    if (visibleSlices.length > 0 && activeIndex >= visibleSlices.length) {
+      setActiveSliceIndex(0);
+    }
+  }, [visibleSlices.length, activeIndex, setActiveSliceIndex]);
+
+  const activeEvolvingSlice = visibleSlices[activeIndex];
+
+  if (visibleSlices.length === 0) {
+    return (
+      <div className="space-y-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Inspect applied slices</CardTitle>
+            <CardDescription className="text-xs">
+              No applied slices yet
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              Review and apply slices in Slices first, then return here to inspect them.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Inspect Slices</CardTitle>
+          <CardTitle className="text-sm">Inspect applied slices</CardTitle>
           <CardDescription className="text-xs">
-            {sortedSlices.length} active slice{sortedSlices.length !== 1 ? 's' : ''}
+            {visibleSlices.length} applied slice{visibleSlices.length !== 1 ? 's' : ''} · {isFocusedView ? 'Focus' : 'Stack'} view
+            {crimeFetchStatus === 'idle' && (
+              <span className="text-amber-400">
+                {' · '}crime data not loaded
+                <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-amber-300">Load</button>
+              </span>
+            )}
+            {crimeFetchStatus === 'loading' && <span className="text-muted-foreground"> · loading crime data...</span>}
+            {crimeFetchStatus === 'error' && (
+              <span className="text-destructive">
+                {' · '}crime fetch failed
+                <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-red-300">Retry</button>
+              </span>
+            )}
+            {crimeFetchStatus === 'success' && hasZeroCountSlices && (
+              <span className="text-amber-400">
+                {' · '}0-count slice
+                <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-amber-300">Recalc</button>
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {sortedSlices.length === 0 ? (
-            <p className="py-4 text-center text-xs text-muted-foreground">
-              No active slices. Generate and apply drafts in the Detect tab.
-            </p>
-          ) : (
-            sortedSlices.map((slice) => {
-              const startMs = getSliceStartMs(slice);
-              const endMs = getSliceEndMs(slice);
-              return (
-                <div
-                  key={slice.id}
-                  className="rounded-md border border-border/70 bg-background px-3 py-2 text-[11px]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-foreground">
-                      {getSliceLabel(slice)}
-                    </span>
-                    {slice.warpWeight !== undefined && slice.warpWeight !== 1 && (
-                      <span className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">
-                        warp {slice.warpWeight.toFixed(1)}
-                      </span>
-                    )}
+        <CardContent className="space-y-3">
+          {crimeFetchStatus === 'loading' ? (
+            <div className="space-y-3 animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-16 rounded-md bg-muted" />
+                <div className="h-7 w-20 rounded-md bg-muted" />
+                <div className="ml-auto h-7 w-14 rounded-md bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 flex-1 rounded-full bg-muted" />
+                  <div className="h-2 flex-1 rounded-full bg-muted" />
+                  <div className="h-2 flex-1 rounded-full bg-muted" />
+                  <div className="h-2 flex-1 rounded-full bg-muted" />
+                  <div className="h-2 flex-1 rounded-full bg-muted" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="h-7 w-14 rounded-md bg-muted" />
+                  <div className="h-4 w-12 rounded bg-muted" />
+                  <div className="h-7 w-14 rounded-md bg-muted" />
+                </div>
+                <div className="rounded-md border border-border/40 bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="h-4 w-24 rounded bg-muted" />
+                    <div className="h-4 w-16 rounded bg-muted" />
                   </div>
-                  <div className="mt-1 space-y-0.5 text-muted-foreground">
-                    {startMs != null && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <div className="h-3 w-12 rounded bg-muted" />
+                      <div className="h-3 w-8 rounded bg-muted" />
+                    </div>
+                    <div className="flex justify-between">
+                      <div className="h-3 w-16 rounded bg-muted" />
+                      <div className="h-3 w-28 rounded bg-muted" />
+                    </div>
+                    <div className="mt-2 space-y-1">
                       <div className="flex justify-between">
-                        <span>Start</span>
-                        <span>{formatMsDate(startMs)}</span>
+                        <div className="h-3 w-16 rounded bg-muted" />
+                        <div className="h-3 w-8 rounded bg-muted" />
                       </div>
-                    )}
-                    {endMs != null && (
-                      <div className="flex justify-between">
-                        <span>End</span>
-                        <span>{formatMsDate(endMs)}</span>
-                      </div>
-                    )}
-                    {slice.source && (
-                      <div className="flex justify-between">
-                        <span>Source</span>
-                        <span className="capitalize">{slice.source}</span>
-                      </div>
-                    )}
-                    {slice.burstScore != null && (
-                      <div className="flex justify-between">
-                        <span>Burst</span>
-                        <span>{(slice.burstScore * 100).toFixed(0)}%</span>
-                      </div>
-                    )}
+                      <div className="h-1.5 w-full rounded-full bg-muted" />
+                    </div>
                   </div>
                 </div>
-              );
-            })
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={togglePlayback}
+                  className="flex items-center gap-1 rounded-md border border-border bg-muted px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-sky-400/60 hover:text-sky-100"
+                >
+                  {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                  {isPlaying ? 'Pause' : 'Play'}
+                </button>
+
+                <button
+                  type="button"
+                  aria-pressed={isFocusedView}
+                  onClick={() => {
+                    const nextView = isFocusedView ? 'stack' : 'focus';
+                    setViewMode(nextView);
+                  }}
+                  className={`flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs transition ${
+                    isFocusedView
+                      ? 'border-sky-400/60 bg-sky-400/10 text-sky-100'
+                      : 'border-border bg-muted text-muted-foreground hover:border-sky-400/60 hover:text-sky-100'
+                  }`}
+                >
+                  <Focus className="size-3.5" />
+                  {isFocusedView ? 'Single' : 'Stack'}
+                </button>
+
+                <select
+                  value={playbackSpeed}
+                  onChange={(event) => setPlaybackSpeed(Number(event.target.value))}
+                  className="ml-auto rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground outline-none transition focus:border-sky-400/60"
+                >
+                  <option value={0.5}>0.5x</option>
+                  <option value={1}>1.0x</option>
+                  <option value={1.5}>1.5x</option>
+                  <option value={2}>2.0x</option>
+                  <option value={3}>3.0x</option>
+                </select>
+              </div>
+
+              <div className="rounded-md border border-border/70 bg-background/60 p-3">
+                <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span>Slice opacity</span>
+                  <span className="font-mono text-muted-foreground/80">{sliceOpacity.toFixed(2)}</span>
+                </div>
+                <Slider
+                  min={0.2}
+                  max={1.5}
+                  step={0.05}
+                  value={[sliceOpacity]}
+                  onValueChange={([value]) => setSliceOpacity(value ?? 1)}
+                />
+              </div>
+
+              {isFocusedView && (
+                <SliceInspector
+                  slice={activeEvolvingSlice}
+                  sliceKde={undefined}
+                  isFocusedView={isFocusedView}
+                />
+              )}
+
+              <SliceScrubber
+                slices={visibleSlices}
+                activeIndex={activeIndex}
+                onActiveIndexChange={setActiveSliceIndex}
+              />
+            </>
           )}
         </CardContent>
       </Card>
