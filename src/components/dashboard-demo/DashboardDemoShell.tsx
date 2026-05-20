@@ -11,12 +11,12 @@ import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisuali
 import { Demo3dSpatialView } from '@/components/dashboard-demo/Demo3dSpatialView';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
-import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { toast } from 'sonner';
 
 type DemoViewport = 'map' | '3d';
+const DEFAULT_TIME_RANGE: [number, number] = [0, 100];
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
@@ -24,7 +24,8 @@ export function DashboardDemoShell() {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const setViewport = useViewportStore((state) => state.setViewport);
-  const timeRange = useDashboardDemoCoordinationStore((state) => state.brushRange) ?? [0, 100];
+  const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
+  const timeRange = useDashboardDemoCoordinationStore((state) => state.brushRange) ?? DEFAULT_TIME_RANGE;
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
 
   useEffect(() => {
@@ -60,9 +61,10 @@ export function DashboardDemoShell() {
 
     if (lastAppliedAt !== null || autoSwitchKeyRef.current === null) {
       setActiveViewport('3d');
+      setActiveRailTab('inspect');
     }
     autoSwitchKeyRef.current = nextKey;
-  }, [appliedSliceCount, lastAppliedAt]);
+  }, [appliedSliceCount, lastAppliedAt, setActiveRailTab]);
 
   const [showcaseLoading, setShowcaseLoading] = useState(false);
 
@@ -86,30 +88,29 @@ export function DashboardDemoShell() {
 
       const success = await timeslicingStore.generateBurstDraftBinsFromWindows();
       if (!success) {
-        toast.error('Showcase generation failed', { description: 'Could not generate burst drafts.' });
+        toast.error('Showcase generation failed', { description: 'Could not generate burst slices.' });
         setShowcaseLoading(false);
         return;
       }
 
-      timeslicingStore.applyGeneratedBins([windowStartMs, windowEndMs]);
-      setActiveViewport('3d');
-      toast.success('Showcase ready', { description: 'Slice planes, KDE, and evolution flow are active.' });
+      setActiveRailTab('slices');
+      toast.success('Showcase ready', { description: 'Draft slices are ready for review in Slices.' });
     } catch {
       toast.error('Showcase setup failed');
     }
 
     setShowcaseLoading(false);
-  }, [maxTimestampSec, minTimestampSec, timeRange]);
+  }, [maxTimestampSec, minTimestampSec, setActiveRailTab, timeRange]);
 
   return (
     <main
-      className="relative h-screen w-screen overflow-hidden bg-background text-foreground"
+      className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100"
       aria-label="dashboard demo workspace"
     >
       <div className="flex h-full min-w-0 flex-col pr-80">
-        <header className="border-b border-border bg-card/80 px-4 py-3 shadow-sm">
+        <header className="border-b border-slate-800 bg-slate-900/60 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Adaptive Space-Time Cube</span>
+            <span className="text-sm font-medium text-slate-400">Adaptive Space-Time Cube</span>
             <Button
               type="button"
               onClick={handleShowcase}
@@ -123,8 +124,8 @@ export function DashboardDemoShell() {
           </div>
         </header>
 
-        <section className="relative min-h-0 flex-1 overflow-hidden bg-background" aria-label="dashboard demo shared viewport">
-          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-border bg-card/80 p-1 shadow-sm backdrop-blur">
+        <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
+          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-700/70 bg-slate-900/60 p-1 shadow-sm backdrop-blur">
             <Button
               type="button"
               onClick={() => setActiveViewport('map')}
@@ -158,7 +159,7 @@ export function DashboardDemoShell() {
           </div>
         </section>
 
-        <div className="shrink-0 border-t border-border bg-card/70">
+        <div className="shrink-0 border-t border-slate-800 bg-slate-900/65">
           <DemoTimelinePanel />
         </div>
       </div>
