@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,13 +53,8 @@ const coarsenGranularity = (
   return GRANULARITY_ORDER[Math.min(preferredRank, suggestedRank)];
 };
 
-interface DemoDetectPanelProps {
-  onNavigateToSlices?: () => void;
-}
-
-export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
+export function DemoDetectPanel() {
   const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
-  const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
   const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
@@ -79,7 +74,6 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
   const [isFetchingBurst, setIsFetchingBurst] = useState(false);
   const [burstMetric, setBurstMetric] = useState<BurstMetric>('combined');
   const [spatialFormula, setSpatialFormula] = useState<SpatialFormula>('balanced');
-  const [draftsJustGenerated, setDraftsJustGenerated] = useState(false);
 
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return null;
@@ -158,16 +152,21 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
       });
       setBurstBins(result.bins);
       setBurstTargetSliceCount(result.targetSliceCount);
+      toast.success('Scan complete', {
+        description: `${result.bins.length} burst bins ready for generation.`,
+      });
     } catch {
-      toast.error('Failed to fetch burst data');
+      toast.error('Scan failed', {
+        description: 'Could not fetch burst bins for the brushed range.',
+      });
     }
     setIsFetchingBurst(false);
   }, [generationInputs.crimeTypes, maxTimestampSec, minTimestampSec, scanGranularity, selectedTimeRange, spatialFormula]);
 
   const handleGenerateBurstDrafts = async () => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) {
-      toast.error('Selection-first generation failed', {
-        description: 'Choose a valid brushed selection before generating drafts.',
+      toast.error('Generation failed', {
+        description: 'Select or brush a time range before generating slices.',
       });
       return;
     }
@@ -178,14 +177,13 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
     const generated = await generateBurstDraftBinsFromWindows();
     const state = useDashboardDemoTimeslicingModeStore.getState();
     if (generated && state.lastGeneratedMetadata) {
-      setDraftsJustGenerated(true);
-      toast.success('Burst drafts generated', {
-        description: state.lastGeneratedMetadata.warning ?? 'Drafts ready for review.',
+      toast.success('Burst slices generated', {
+        description: state.lastGeneratedMetadata.warning ?? 'Slices ready for review in Slices.',
       });
       return;
     }
     toast.error('Generation failed', {
-      description: state.generationError ?? 'Could not generate drafts.',
+      description: state.generationError ?? 'Could not generate slices.',
     });
   };
 
@@ -198,12 +196,24 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
     <div className="space-y-3">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Burst Detection</CardTitle>
+          <CardTitle className="text-sm">Detect</CardTitle>
           <CardDescription className="text-xs">
-            Analyze burstiness across the selected time range
+            Scan the brushed range first, then generate candidate slices from the burst scores.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="rounded-md border border-dashed border-slate-700/80 bg-slate-900/60 p-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+              <span>Prerequisite</span>
+              <span>{selectedWindowBounds ? 'Ready to scan' : 'Brush a range first'}</span>
+            </div>
+            <p className="mt-1.5 leading-5 text-slate-200">
+              {selectedWindowBounds
+                ? 'You have a brushed time range. Scan it to score burst bins, then generate slices from the result.'
+                : 'Select or brush a time range before Detect can run. The scan step uses that range to build candidate slices.'}
+            </p>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               <span>Granularity</span>
@@ -341,7 +351,7 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
               className="gap-2"
             >
               <Sparkles className="size-3.5" />
-              {isFetchingBurst ? 'Scanning…' : 'Scan burstiness'}
+              {isFetchingBurst ? 'Scanning…' : 'Scan brushed range'}
             </Button>
             <Button
               type="button"
@@ -350,7 +360,7 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
               size="sm"
               className="gap-2"
             >
-              {generationStatus === 'generating' ? 'Generating…' : 'Generate drafts'}
+              {generationStatus === 'generating' ? 'Generating…' : 'Generate slices'}
             </Button>
           </div>
 
@@ -404,23 +414,6 @@ export function DemoDetectPanel({ onNavigateToSlices }: DemoDetectPanelProps) {
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {draftsJustGenerated && pendingGeneratedBins.length > 0 && onNavigateToSlices && (
-            <div className="flex items-center gap-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5">
-              <span className="flex-1 text-[11px] text-emerald-100">
-                {pendingGeneratedBins.length} {pendingGeneratedBins.length === 1 ? 'draft' : 'drafts'} ready — review and apply in Slices.
-              </span>
-              <Button
-                type="button"
-                size="xs"
-                onClick={onNavigateToSlices}
-                className="h-7 gap-1.5 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
-              >
-                Go to Slices
-                <ArrowRight className="h-3 w-3" />
-              </Button>
             </div>
           )}
         </CardContent>
