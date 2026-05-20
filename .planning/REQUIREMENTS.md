@@ -23,13 +23,13 @@ Map, cube, and timeline stay synchronized with the active slice while chrome sta
 
 ## Active Requirements
 
-- FLOW-08
 - FLOW-09
 - FLOW-10
 
 ## Completed Requirements
 
 - FLOW-07
+- FLOW-08
 
 ## v3.0 Requirements (Completed)
 
@@ -66,7 +66,7 @@ Key v2 milestones that remain in effect:
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FLOW-07 | 72 | Complete |
-| FLOW-08 | 72 | Planned |
+| FLOW-08 | 72 | Complete |
 | FLOW-09 | 73 | Planned |
 | FLOW-10 | 74 | Planned |
 
