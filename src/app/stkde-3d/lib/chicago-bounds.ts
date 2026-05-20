@@ -1,6 +1,6 @@
 export const CHICAGO_BOUNDS = {
   west: -87.725,
-  east: -87.57,
+  east: -87.605,
   north: 41.92,
   south: 41.835,
 } as const;

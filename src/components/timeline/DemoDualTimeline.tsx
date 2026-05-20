@@ -33,7 +33,6 @@ import {
 import { useScaleTransforms } from './hooks/useScaleTransforms';
 import { useBrushZoomSync } from './hooks/useBrushZoomSync';
 import { usePointSelection } from './hooks/usePointSelection';
-import { useDemoTimelineSummary } from '@/components/timeline/hooks/useDemoTimelineSummary';
 import { normalizeTimeRange, timeRangeOverlapsDomain } from '@/lib/time-range';
 import {
   clampToRange,
@@ -803,13 +802,8 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 
   const isTimelineLoading = isDataLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
-  const timelineSummary = useDemoTimelineSummary();
-  const brushRangeLabel = timelineSummary.selectedWindowLabel;
-
-
   const surfaceProps = {
     containerRef,
-    brushRangeLabel,
     isTimelineLoading,
     width,
     overviewInnerWidth,

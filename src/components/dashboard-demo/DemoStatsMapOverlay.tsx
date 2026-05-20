@@ -5,6 +5,7 @@ import { Layer, Source } from 'react-map-gl/maplibre';
 import type { FeatureCollection, Point, Polygon } from 'geojson';
 import { useDemoNeighborhoodStats } from '@/components/dashboard-demo/lib/useDemoNeighborhoodStats';
 import { ALL_DEMO_DISTRICTS, useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoMapLayerStore } from '@/store/useDashboardDemoMapLayerStore';
 import type { CrimeRecord } from '@/types/crime';
 
 const MAX_POINTS = 10000;
@@ -38,9 +39,14 @@ const toFeatureCollection = (crimes: CrimeRecord[]): FeatureCollection<Point> =>
   };
 };
 
-export function DemoStatsMapOverlay() {
+interface DemoStatsMapOverlayProps {
+  heatmapVisible?: boolean;
+}
+
+export function DemoStatsMapOverlay({ heatmapVisible = true }: DemoStatsMapOverlayProps) {
   const { crimes, isLoading, isFetching, error } = useDemoNeighborhoodStats();
   const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+  const sharedHeatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
   const [districtBoundaries, setDistrictBoundaries] = useState<FeatureCollection<Polygon, PoliceDistrictProperties> | null>(null);
 
   useEffect(() => {
@@ -135,45 +141,47 @@ export function DemoStatsMapOverlay() {
         </Source>
       ) : null}
 
-      <Source id="demo-stats-hotspots" type="geojson" data={crimePoints}>
-        <Layer
-          id="demo-stats-heatmap"
-          type="heatmap"
-          paint={{
-            'heatmap-weight': 1,
-            'heatmap-intensity': 1,
-            'heatmap-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              8,
-              15,
-              12,
-              25,
-              15,
-              40,
-            ],
-            'heatmap-opacity': 0.75,
-            'heatmap-color': [
-              'interpolate',
-              ['linear'],
-              ['heatmap-density'],
-              0,
-              'rgba(0, 0, 0, 0)',
-              0.2,
-              'rgba(56, 189, 248, 0.35)',
-              0.4,
-              'rgba(34, 197, 94, 0.45)',
-              0.6,
-              'rgba(234, 179, 8, 0.55)',
-              0.8,
-              'rgba(249, 115, 22, 0.65)',
-              1,
-              'rgba(239, 68, 68, 0.75)',
-            ],
-          }}
-        />
-      </Source>
+      {heatmapVisible && sharedHeatmapVisible ? (
+        <Source id="demo-stats-hotspots" type="geojson" data={crimePoints}>
+          <Layer
+            id="demo-stats-heatmap"
+            type="heatmap"
+            paint={{
+              'heatmap-weight': 1,
+              'heatmap-intensity': 1,
+              'heatmap-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                8,
+                15,
+                12,
+                25,
+                15,
+                40,
+              ],
+              'heatmap-opacity': 0.75,
+              'heatmap-color': [
+                'interpolate',
+                ['linear'],
+                ['heatmap-density'],
+                0,
+                'rgba(0, 0, 0, 0)',
+                0.2,
+                'rgba(56, 189, 248, 0.35)',
+                0.4,
+                'rgba(34, 197, 94, 0.45)',
+                0.6,
+                'rgba(234, 179, 8, 0.55)',
+                0.8,
+                'rgba(249, 115, 22, 0.65)',
+                1,
+                'rgba(239, 68, 68, 0.75)',
+              ],
+            }}
+          />
+        </Source>
+      ) : null}
     </>
   );
 }

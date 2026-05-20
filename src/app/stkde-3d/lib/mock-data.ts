@@ -1,6 +1,6 @@
 import type { CrimeRecord } from '@/types/crime';
 import { CHICAGO_BOUNDS, mapChicagoToScene } from './chicago-bounds';
-import { computeSliceKde } from './slice-kde';
+import { computeSliceKde } from '@/lib/kde';
 import type { EvolvingSlice, MockCrimeEvent, Stkde3dHotspot } from './types';
 
 const SLICE_COUNT = 10;

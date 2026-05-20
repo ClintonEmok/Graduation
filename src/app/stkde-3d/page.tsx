@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Focus, Pause, Play } from 'lucide-react';
 import { generateStkde3dMockData, generateStkde3dRealData } from './lib/mock-data';
-import { computeSliceKde } from './lib/slice-kde';
+import { computeSliceKde } from '@/lib/kde';
 import { Stkde3DScene } from './components/Stkde3DScene';
 import { SliceScrubber } from './components/SliceScrubber';
 import { SliceInspector } from './components/SliceInspector';

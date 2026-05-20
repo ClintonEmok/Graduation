@@ -30,11 +30,12 @@ beforeEach(() => {
     selectedBurstWindows: [],
     selectedDetailPeriod: null,
     detailsOpen: false,
-    workflowPhase: 'generate',
     syncStatus: { status: 'synchronized' },
     panelNoMatch: {},
     comparisonSliceIds: { left: null, right: null },
     comparisonSelectionOrder: [],
+    activeRailTab: 'scan',
+    inspectSliceOpacity: 1,
   });
 });
 

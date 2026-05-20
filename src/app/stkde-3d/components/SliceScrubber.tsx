@@ -32,12 +32,12 @@ export function SliceScrubber({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-slate-300">
+        <h3 className="text-sm font-medium uppercase tracking-[0.18em] text-sky-200">
           Time Slices
         </h3>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs tabular-nums text-slate-400">
           {activeIndex + 1} / {slices.length}
         </span>
       </div>
@@ -47,23 +47,23 @@ export function SliceScrubber({
           type="button"
           onClick={() => onActiveIndexChange(Math.max(0, activeIndex - 1))}
           disabled={activeIndex === 0}
-          className="rounded border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-full border border-slate-700/80 bg-slate-900/70 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-sky-400/60 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-30"
         >
           Prev
         </button>
 
-        <div className="flex flex-1 items-center gap-1">
+        <div className="flex flex-1 items-center gap-1.5">
           {slices.map((slice) => (
             <button
               key={slice.index}
               type="button"
               onClick={() => onActiveIndexChange(slice.index)}
-              className={`h-2 flex-1 rounded-full transition-all ${
+              className={`h-2.5 flex-1 rounded-full transition-all ${
                 slice.index === activeIndex
                   ? 'bg-sky-400 scale-y-125'
                   : Math.abs(slice.index - activeIndex) === 1
-                    ? 'bg-sky-600/50'
-                    : 'bg-slate-700'
+                    ? 'bg-sky-500/50'
+                    : 'bg-slate-700/60'
               }`}
               title={`${slice.label}: burst ${(slice.burstScore * 100).toFixed(0)}%`}
             />
@@ -76,20 +76,20 @@ export function SliceScrubber({
             onActiveIndexChange(Math.min(slices.length - 1, activeIndex + 1))
           }
           disabled={activeIndex === slices.length - 1}
-          className="rounded border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-full border border-slate-700/80 bg-slate-900/70 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-sky-400/60 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-30"
         >
           Next
         </button>
       </div>
 
       {activeSlice && (
-        <div className="rounded-md border border-slate-700/60 bg-slate-900/50 p-3 text-xs text-slate-300">
+        <div className="rounded-2xl border border-sky-500/15 bg-slate-950/60 p-4 text-xs text-slate-300 shadow-[0_24px_80px_-48px_rgba(14,165,233,0.45)]">
           <div className="mb-2 flex items-center justify-between">
-            <span className="font-medium text-slate-100">
+            <span className="font-medium text-slate-50">
               {activeSlice.label}
             </span>
             <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-950 ${
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-950 ${
                 burstColor(activeSlice.burstScore)
               }`}
             >
@@ -100,13 +100,13 @@ export function SliceScrubber({
           <div className="space-y-1">
             <div className="flex justify-between">
               <span className="text-slate-400">Events</span>
-              <span className="text-slate-100">
+              <span className="tabular-nums text-slate-100">
                 {activeSlice.crimeCount}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Time range</span>
-              <span className="text-slate-100">
+              <span className="text-right tabular-nums text-slate-100">
                 {formatSliceDate(activeSlice.startEpoch)} -{' '}
                 {formatSliceDate(activeSlice.endEpoch)}
               </span>
@@ -114,11 +114,11 @@ export function SliceScrubber({
             <div className="mt-2">
               <div className="mb-1 flex items-center justify-between text-slate-400">
                 <span>Burst intensity</span>
-                <span className="text-slate-100">
+                <span className="tabular-nums text-slate-100">
                   {(activeSlice.burstScore * 100).toFixed(0)}%
                 </span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-700">
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800/80">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     activeSlice.burstScore > 0.6
@@ -143,15 +143,15 @@ export function SliceScrubber({
             key={slice.index}
             type="button"
             onClick={() => onActiveIndexChange(slice.index)}
-            className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs transition ${
+            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
               slice.index === activeIndex
-                ? 'bg-sky-900/40 text-sky-100'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                ? 'bg-sky-900/35 text-sky-100'
+                : 'text-slate-400 hover:bg-slate-900/70 hover:text-slate-200'
             }`}
           >
             <span>{slice.label}</span>
             <span
-              className={`rounded px-1 text-[9px] font-medium uppercase tracking-wider ${
+              className={`rounded px-1.5 text-[9px] font-medium uppercase tracking-[0.16em] tabular-nums ${
                 slice.burstScore > 0.6
                   ? 'bg-amber-500/20 text-amber-300'
                   : slice.burstScore > 0.3

@@ -22,6 +22,8 @@ export function DemoMapVisualization({
   stkdeSelectedHotspotId = null,
 }: DemoMapVisualizationProps) {
   const [showStkde, setShowStkde] = useState(true);
+  const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
+  const toggleVisibility = useDashboardDemoMapLayerStore((state) => state.toggleVisibility);
   const storeStkdeResponse = useDashboardDemoAnalysisStore((state) => state.stkdeResponse);
   const storeSelectedHotspotId = useDashboardDemoAnalysisStore((state) => state.selectedHotspotId);
 
@@ -31,6 +33,7 @@ export function DemoMapVisualization({
         stkdeResponse={stkdeResponse ?? storeStkdeResponse}
         stkdeSelectedHotspotId={stkdeSelectedHotspotId ?? storeSelectedHotspotId}
         stkdeVisibleOverride={showStkde}
+        disableHeatmapOverlay
         statsOverlay={<DemoStatsMapOverlay />}
         filterStoreOverride={useDashboardDemoFilterStore}
         coordinationStoreOverride={useDashboardDemoCoordinationStore}
@@ -49,6 +52,19 @@ export function DemoMapVisualization({
       >
         <Layers3 className="size-3.5" />
         {showStkde ? 'Hide STKDE' : 'Show STKDE'}
+      </Button>
+
+      <Button
+        type="button"
+        onClick={() => toggleVisibility('heatmap')}
+        aria-label={heatmapVisible ? 'Hide heatmap overlay' : 'Show heatmap overlay'}
+        title={heatmapVisible ? 'Hide heatmap overlay' : 'Show heatmap overlay'}
+        variant={heatmapVisible ? 'destructive' : 'outline'}
+        size="sm"
+        className="absolute right-4 top-24 z-40 gap-2 rounded-full text-[11px]"
+      >
+        <Layers3 className="size-3.5" />
+        {heatmapVisible ? 'Hide Heatmap' : 'Show Heatmap'}
       </Button>
     </div>
   );

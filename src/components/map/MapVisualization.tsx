@@ -32,6 +32,7 @@ interface MapVisualizationProps {
   stkdeResponse?: StkdeResponse | null;
   stkdeSelectedHotspotId?: string | null;
   stkdeVisibleOverride?: boolean;
+  disableHeatmapOverlay?: boolean;
   statsOverlay?: React.ReactNode;
   filterStoreOverride?: unknown;
   coordinationStoreOverride?: unknown;
@@ -43,6 +44,7 @@ export default function MapVisualization({
   stkdeResponse: demoStkdeResponse = null,
   stkdeSelectedHotspotId,
   stkdeVisibleOverride,
+  disableHeatmapOverlay = false,
   statsOverlay,
   filterStoreOverride,
   coordinationStoreOverride,
@@ -51,8 +53,6 @@ export default function MapVisualization({
 }: MapVisualizationProps = {}) {
   const mapRef = useRef<MapRef>(null);
   const { log } = useLogger();
-  const formatCount = (value: number) =>
-    new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
   
   // Get viewport bounds for crime data query
   const viewportStart = useViewportStore((state) => state.startDate);
@@ -60,7 +60,7 @@ export default function MapVisualization({
   const viewportFilters = useViewportStore((state) => state.filters);
   
   // Get crime data using unified hook
-  const { data: crimeRecords, meta: crimeMeta } = useCrimeData({
+  const { data: crimeRecords } = useCrimeData({
     startEpoch: viewportStart,
     endEpoch: viewportEnd,
     crimeTypes: viewportFilters.crimeTypes.length > 0 ? viewportFilters.crimeTypes : undefined,
@@ -70,9 +70,6 @@ export default function MapVisualization({
   });
   
   const data = crimeRecords || [];
-  const dataCount = data.length;
-  const totalMatches = crimeMeta?.totalMatches ?? null;
-  const isSampled = Boolean(crimeMeta?.sampled);
   
   const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
   const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
@@ -188,7 +185,7 @@ export default function MapVisualization({
             mapDomain={mapDomainValue}
           />
         ) : null}
-        {visibility.heatmap ? <MapHeatmapOverlay /> : null}
+        {!disableHeatmapOverlay && visibility.heatmap ? <MapHeatmapOverlay /> : null}
         {visibility.trajectories ? <MapTrajectoryLayer /> : null}
         {visibility.clusters ? <MapClusterHighlights /> : null}
         {statsOverlay ?? null}

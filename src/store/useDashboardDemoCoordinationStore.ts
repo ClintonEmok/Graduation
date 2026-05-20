@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 
 export type DemoSelectionSource = 'cube' | 'timeline' | 'map' | null;
-export type DemoWorkflowPhase = 'generate' | 'review' | 'applied' | 'refine';
 export type DemoSyncStatusToken = 'syncing' | 'synchronized' | 'partial';
 export type DemoPanelName = 'timeline' | 'map' | 'cube';
 export type DemoBurstMetric = 'density' | 'burstiness';
 export type DemoComparisonSlot = 'left' | 'right';
+export type DemoSliceViewMode = 'stack' | 'focus';
+export type DemoCrimeFetchStatus = 'idle' | 'loading' | 'success' | 'error';
+export type DemoRailTab = 'scan' | 'detect' | 'slices' | 'inspect' | 'configure';
 
 export interface DemoBurstWindowSelection {
   id: string;
@@ -63,16 +65,31 @@ interface DashboardDemoCoordinationState {
   selectedBurstWindows: DemoBurstWindowSelection[];
   selectedDetailPeriod: DemoDetailPeriodSelection | null;
   detailsOpen: boolean;
-  workflowPhase: DemoWorkflowPhase;
   syncStatus: DemoSyncStatus;
   panelNoMatch: Partial<Record<DemoPanelName, DemoPanelNoMatchState>>;
   comparisonSliceIds: Record<DemoComparisonSlot, string | null>;
   comparisonSelectionOrder: DemoComparisonSlot[];
+  activeSliceIndex: number;
+  viewMode: DemoSliceViewMode;
+  inspectIsPlaying: boolean;
+  inspectPlaybackSpeed: number;
+  inspectSliceOpacity: number;
+  crimeFetchStatus: DemoCrimeFetchStatus;
+  sliceCrimeCounts: Record<string, number>;
+  activeRailTab: DemoRailTab;
+  setActiveRailTab: (tab: string) => void;
+  setActiveSliceIndex: (index: number) => void;
+  setSliceCrimeCounts: (counts: Record<string, number>) => void;
+  setViewMode: (mode: DemoSliceViewMode) => void;
+  setInspectIsPlaying: (playing: boolean) => void;
+  setInspectSliceOpacity: (opacity: number) => void;
+  setCrimeFetchStatus: (status: DemoCrimeFetchStatus) => void;
+  setInspectPlaybackSpeed: (speed: number) => void;
+  toggleInspectPlayback: () => void;
   setSelectedIndex: (index: number, source: Exclude<DemoSelectionSource, null>) => void;
   commitSelection: (index: number, source: Exclude<DemoSelectionSource, null>) => void;
   clearSelection: (reason?: string) => void;
   reconcileSelection: (input: DemoReconcileSelectionInput) => void;
-  setWorkflowPhase: (phase: DemoWorkflowPhase) => void;
   setSyncStatus: (status: DemoSyncStatusToken, reason?: string, panel?: DemoPanelName) => void;
   setBrushRange: (range: [number, number] | null) => void;
   toggleBurstWindow: (window: DemoBurstWindowSelection) => void;
@@ -95,11 +112,27 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   selectedBurstWindows: [],
   selectedDetailPeriod: null,
   detailsOpen: false,
-  workflowPhase: 'generate',
   syncStatus: { status: 'synchronized' },
   panelNoMatch: {},
   comparisonSliceIds: { left: null, right: null },
   comparisonSelectionOrder: [],
+  activeSliceIndex: 0,
+  viewMode: 'stack',
+  inspectIsPlaying: false,
+  inspectPlaybackSpeed: 1,
+  inspectSliceOpacity: 1,
+  crimeFetchStatus: 'idle',
+  sliceCrimeCounts: {},
+  activeRailTab: 'scan',
+  setActiveRailTab: (tab) => set({ activeRailTab: tab as DemoRailTab }),
+  setActiveSliceIndex: (activeSliceIndex) => set({ activeSliceIndex }),
+  setViewMode: (viewMode) => set({ viewMode }),
+  setInspectIsPlaying: (inspectIsPlaying) => set({ inspectIsPlaying }),
+  setInspectSliceOpacity: (inspectSliceOpacity) => set({ inspectSliceOpacity }),
+  setCrimeFetchStatus: (crimeFetchStatus) => set({ crimeFetchStatus }),
+  setSliceCrimeCounts: (sliceCrimeCounts) => set({ sliceCrimeCounts }),
+  setInspectPlaybackSpeed: (inspectPlaybackSpeed) => set({ inspectPlaybackSpeed }),
+  toggleInspectPlayback: () => set((state) => ({ inspectIsPlaying: !state.inspectIsPlaying })),
   setSelectedIndex: (index, source) =>
     set({
       selectedIndex: index,
@@ -167,7 +200,6 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
         },
       };
     }),
-  setWorkflowPhase: (workflowPhase) => set({ workflowPhase }),
   setSyncStatus: (status, reason, panel) =>
     set({
       syncStatus: {

@@ -88,7 +88,7 @@ export function DemoPendingDraftList({
   if (pendingGeneratedBins.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/30 px-3 py-3 text-xs text-slate-500">
-        No pending drafts. Generate from a brushed selection to create draft bins.
+        No pending slices. Generate from a brushed selection to create slice bins.
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function DemoPendingDraftList({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between px-1">
         <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
-          Pending drafts ({pendingGeneratedBins.length})
+          Pending slices ({pendingGeneratedBins.length})
         </div>
       </div>
 

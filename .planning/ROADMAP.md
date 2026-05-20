@@ -65,7 +65,7 @@ Plans:
 
 **Goal:** Make active-slice inspection immediate and low-friction.
 
-**Depends on:** Phase 5
+**Depends on:** Phase 72
 
 **Requirements:** FLOW-09
 
@@ -84,7 +84,7 @@ Plans:
 
 **Goal:** Keep map, 3D, and timeline synchronized so apply/playback feels coherent.
 
-**Depends on:** Phase 6
+**Depends on:** Phase 73
 
 **Requirements:** FLOW-10
 
@@ -103,7 +103,7 @@ Plans:
 
 **Goal:** Reduce presentation noise so the tool feels intentional and not overdesigned.
 
-**Depends on:** Phase 7
+**Depends on:** Phase 74
 
 **Requirements:** FLOW-07 to FLOW-10
 

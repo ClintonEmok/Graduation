@@ -1,8 +1,4 @@
-import type { KdeCell } from './types';
-
-const GRID_SIZE = 32;
-const SIGMA_CELLS = 2;
-const KERNEL_RADIUS_CELLS = 6;
+import { DEFAULT_KDE_PARAMS, type KdeCell, type KdeParams } from './types';
 
 function kdeColor(t: number): string {
   const intensity = Math.min(1, Math.max(0, t));
@@ -12,9 +8,16 @@ function kdeColor(t: number): string {
 
 export function computeSliceKde(
   points: Array<{ x: number; z: number }>,
+  params: Partial<KdeParams> = {},
 ): { cells: KdeCell[]; maxIntensity: number; meanIntensity: number } {
-  const gridRows = GRID_SIZE;
-  const gridCols = GRID_SIZE;
+  const gridRows = Math.max(4, Math.round(params.gridSize ?? DEFAULT_KDE_PARAMS.gridSize));
+  const gridCols = gridRows;
+  const sigmaCells = Math.max(0.1, params.sigmaCells ?? DEFAULT_KDE_PARAMS.sigmaCells);
+  const kernelRadiusCells = Math.max(
+    1,
+    Math.round(params.kernelRadiusCells ?? DEFAULT_KDE_PARAMS.kernelRadiusCells),
+  );
+  const threshold = Math.max(0, params.threshold ?? DEFAULT_KDE_PARAMS.threshold);
   const cellWidth = 100 / gridCols;
   const cellHeight = 100 / gridRows;
 
@@ -41,10 +44,10 @@ export function computeSliceKde(
       const centerIdx = row * gridCols + col;
       let sum = 0;
 
-      const rowStart = Math.max(0, row - KERNEL_RADIUS_CELLS);
-      const rowEnd = Math.min(gridRows - 1, row + KERNEL_RADIUS_CELLS);
-      const colStart = Math.max(0, col - KERNEL_RADIUS_CELLS);
-      const colEnd = Math.min(gridCols - 1, col + KERNEL_RADIUS_CELLS);
+      const rowStart = Math.max(0, row - kernelRadiusCells);
+      const rowEnd = Math.min(gridRows - 1, row + kernelRadiusCells);
+      const colStart = Math.max(0, col - kernelRadiusCells);
+      const colEnd = Math.min(gridCols - 1, col + kernelRadiusCells);
 
       for (let r = rowStart; r <= rowEnd; r++) {
         for (let c = colStart; c <= colEnd; c++) {
@@ -54,7 +57,7 @@ export function computeSliceKde(
           const dr = r - row;
           const dc = c - col;
           const dist = Math.sqrt(dr * dr + dc * dc);
-          const weight = Math.exp(-0.5 * (dist / SIGMA_CELLS) ** 2);
+          const weight = Math.exp(-0.5 * (dist / sigmaCells) ** 2);
           sum += count * weight;
         }
       }
@@ -75,7 +78,7 @@ export function computeSliceKde(
       const z = -50 + (row + 0.5) * cellHeight;
       const normalized = intensity[idx] / safeMax;
 
-      if (normalized > 0.005) {
+      if (normalized > threshold) {
         cells.push({
           x: Number(x.toFixed(2)),
           z: Number(z.toFixed(2)),

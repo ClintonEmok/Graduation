@@ -7,11 +7,10 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 
 export interface DashboardDemoSelectionStoryInput {
-  activeWindowLabel: string;
+  activeWindowLabel: string | null;
   compareStateLabel: string;
   linkedHighlightLabel: string;
   explanationLabel: string;
-  workflowPhase: string;
   selectedSource: string | null;
   warpMode: 'linear' | 'adaptive';
   warpSource: 'density' | 'slice-authored';
@@ -19,7 +18,7 @@ export interface DashboardDemoSelectionStoryInput {
 }
 
 export interface DashboardDemoSelectionStory {
-  activeWindowLabel: string;
+  activeWindowLabel: string | null;
   compareStateLabel: string;
   linkedHighlightLabel: string;
   explanationLabel: string;
@@ -28,7 +27,7 @@ export interface DashboardDemoSelectionStory {
 
 export function buildDashboardDemoSelectionStory(input: DashboardDemoSelectionStoryInput): DashboardDemoSelectionStory {
   const compareStateLabel = `${input.compareStateLabel} · ${input.warpMode === 'adaptive' ? 'Adaptive' : 'Linear'} · ${input.warpSource} · warp ${input.warpFactor.toFixed(2)}`;
-  const storyLabel = `${input.activeWindowLabel} · ${input.linkedHighlightLabel}`;
+  const storyLabel = input.activeWindowLabel ? `${input.activeWindowLabel} · ${input.linkedHighlightLabel}` : input.linkedHighlightLabel;
 
   return {
     activeWindowLabel: input.activeWindowLabel,
@@ -41,12 +40,12 @@ export function buildDashboardDemoSelectionStory(input: DashboardDemoSelectionSt
 
 const formatWindowLabel = (brushRange: [number, number] | null, minTimestampSec: number | null, maxTimestampSec: number | null) => {
   if (!brushRange) {
-    return 'No active window yet';
+    return null;
   }
 
   const [startNormRaw, endNormRaw] = brushRange;
   if (!Number.isFinite(startNormRaw) || !Number.isFinite(endNormRaw)) {
-    return 'No active window yet';
+    return null;
   }
 
   const startNorm = Math.min(startNormRaw, endNormRaw);
@@ -57,7 +56,7 @@ const formatWindowLabel = (brushRange: [number, number] | null, minTimestampSec:
   const endSec = normalizedToEpochSeconds(endNorm, domainStart, domainEnd);
 
   if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) {
-    return 'No active window yet';
+    return null;
   }
 
   const formatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -67,7 +66,6 @@ const formatWindowLabel = (brushRange: [number, number] | null, minTimestampSec:
 export function useDashboardDemoSelectionStory() {
   const brushRange = useDashboardDemoCoordinationStore((state) => state.brushRange);
   const selectedSource = useDashboardDemoCoordinationStore((state) => state.selectedSource);
-  const workflowPhase = useDashboardDemoCoordinationStore((state) => state.workflowPhase);
   const selectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.selectedBurstWindows);
   const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
   const warpSource = useDashboardDemoWarpStore((state) => state.warpSource);
@@ -89,19 +87,18 @@ export function useDashboardDemoSelectionStory() {
         ? `${activeSlice.name?.trim() || 'Applied slice'} · linked to the active burst`
         : 'No linked highlight yet';
     const explanationLabel = selectedSource
-      ? `Workflow ${workflowPhase} · source ${selectedSource} · current time ${currentTime.toFixed(1)}`
-      : `Workflow ${workflowPhase} · waiting on timeline selection`;
+      ? `source ${selectedSource} · current time ${currentTime.toFixed(1)}`
+      : `waiting on timeline selection`;
 
     return buildDashboardDemoSelectionStory({
       activeWindowLabel,
       compareStateLabel,
       linkedHighlightLabel,
       explanationLabel,
-      workflowPhase,
       selectedSource,
       warpMode,
       warpSource,
       warpFactor,
     });
-  }, [activeSliceId, brushRange, currentTime, maxTimestampSec, minTimestampSec, selectedBurstWindows, selectedSource, slices, warpFactor, warpMode, warpSource, workflowPhase]);
+  }, [activeSliceId, brushRange, currentTime, maxTimestampSec, minTimestampSec, selectedBurstWindows, selectedSource, slices, warpFactor, warpMode, warpSource]);
 }

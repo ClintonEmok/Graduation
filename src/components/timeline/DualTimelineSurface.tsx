@@ -33,7 +33,6 @@ interface SurfaceSliceGeometry {
 
 interface DualTimelineSurfaceProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
-  brushRangeLabel: string;
   isTimelineLoading: boolean;
   width: number;
   overviewInnerWidth: number;
@@ -138,7 +137,6 @@ const resolveDraftPalette = (burstClass: BurstTaxonomy | undefined, isNeutralPar
 export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
   const {
     containerRef,
-    brushRangeLabel,
     isTimelineLoading,
     width,
     overviewInnerWidth,
@@ -187,26 +185,17 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
   return (
     <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
       <div className="flex flex-col gap-4 sm:gap-6">
-        <div
-          className="rounded-2xl border border-border/60 bg-card/30 px-3 py-3 shadow-sm sm:px-4"
-          style={{ marginLeft: OVERVIEW_MARGIN.left, marginRight: OVERVIEW_MARGIN.right }}
-        >
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="min-w-0 space-y-1">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Overview density</div>
-              <div className="truncate text-xs font-medium text-foreground">{brushRangeLabel}</div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:justify-end">
-              <span className="leading-none">Low</span>
-              <span
-                className="h-2 min-w-[4rem] flex-1 rounded-sm border border-foreground/15 sm:w-20 sm:flex-none"
-                style={{
-                  background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)`,
-                }}
-                aria-hidden="true"
-              />
-              <span className="leading-none">High</span>
-            </div>
+        <div className="px-2 py-2" style={{ marginLeft: OVERVIEW_MARGIN.left, marginRight: OVERVIEW_MARGIN.right }}>
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:justify-end">
+            <span className="leading-none">Low</span>
+            <span
+              className="h-2 min-w-[4rem] flex-1 rounded-sm border border-foreground/15 sm:w-20 sm:flex-none"
+              style={{
+                background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)`,
+              }}
+              aria-hidden="true"
+            />
+            <span className="leading-none">High</span>
           </div>
 
           <div className="relative mt-2 w-full">

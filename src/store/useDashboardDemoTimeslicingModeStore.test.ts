@@ -38,25 +38,45 @@ beforeEach(() => {
   useSliceDomainStore.getState().clearSlices();
 });
 
-const makeCrimeRangeResponse = (records: Array<{ timestamp: number; type: string; district: string }>) =>
+const makeCrimeRangeResponse = (
+  records: Array<{ timestamp: number; type: string; district: string }>,
+  sampled = false,
+) =>
   ({
     ok: true,
-    json: async () => ({ data: records }),
+    json: async () => ({ data: records, meta: { sampled } }),
   }) as Response;
 
 describe('useDashboardDemoTimeslicingModeStore', () => {
   test('generates selection-first draft bins from fetched crime records', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const parsed = new URL(url, 'http://localhost');
+      const startEpoch = parsed.searchParams.get('startEpoch');
+      const endEpoch = parsed.searchParams.get('endEpoch');
 
       if (url.startsWith('/api/crimes/range?')) {
-        return makeCrimeRangeResponse([
-          { timestamp: 300, type: 'THEFT', district: '1' },
-          { timestamp: 2_100, type: 'THEFT', district: '1' },
-          { timestamp: 4_200, type: 'BATTERY', district: '1' },
-          { timestamp: 7_500, type: 'ASSAULT', district: '1' },
-          { timestamp: 8_400, type: 'ROBBERY', district: '1' },
-        ]);
+        if (startEpoch === '0' && endEpoch === '3600') {
+          return makeCrimeRangeResponse([
+            { timestamp: 300, type: 'THEFT', district: '1' },
+            { timestamp: 2_100, type: 'THEFT', district: '1' },
+          ]);
+        }
+
+        if (startEpoch === '3600' && endEpoch === '7200') {
+          return makeCrimeRangeResponse([
+            { timestamp: 4_200, type: 'BATTERY', district: '1' },
+            { timestamp: 7_500, type: 'ASSAULT', district: '1' },
+          ]);
+        }
+
+        if (startEpoch === '7200' && endEpoch === '10800') {
+          return makeCrimeRangeResponse([
+            { timestamp: 8_400, type: 'ROBBERY', district: '1' },
+          ]);
+        }
+
+        return makeCrimeRangeResponse([]);
       }
 
       throw new Error(`Unexpected fetch: ${url}`);
@@ -89,20 +109,35 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.crimeTypes).toContain('all-crime-types');
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.burstClass).toBeDefined();
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.every((bin) => typeof bin.burstScore === 'number')).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 
   test('uses the selected granularity bins instead of live burst windows', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const parsed = new URL(url, 'http://localhost');
+      const startEpoch = parsed.searchParams.get('startEpoch');
+      const endEpoch = parsed.searchParams.get('endEpoch');
 
       if (url.startsWith('/api/crimes/range?')) {
-        return makeCrimeRangeResponse([
-          { timestamp: 600, type: 'THEFT', district: '1' },
-          { timestamp: 4_200, type: 'BATTERY', district: '1' },
-          { timestamp: 8_400, type: 'ASSAULT', district: '1' },
-          { timestamp: 12_600, type: 'ROBBERY', district: '1' },
-        ]);
+        if (startEpoch === '0' && endEpoch === '3600') {
+          return makeCrimeRangeResponse([{ timestamp: 600, type: 'THEFT', district: '1' }]);
+        }
+
+        if (startEpoch === '3600' && endEpoch === '7200') {
+          return makeCrimeRangeResponse([{ timestamp: 4_200, type: 'BATTERY', district: '1' }]);
+        }
+
+        if (startEpoch === '7200' && endEpoch === '10800') {
+          return makeCrimeRangeResponse([{ timestamp: 8_400, type: 'ASSAULT', district: '1' }]);
+        }
+
+        if (startEpoch === '10800' && endEpoch === '14400') {
+          return makeCrimeRangeResponse([{ timestamp: 12_600, type: 'ROBBERY', district: '1' }]);
+        }
+
+        return makeCrimeRangeResponse([]);
       }
 
       throw new Error(`Unexpected fetch: ${url}`);
@@ -131,6 +166,7 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
       3 * HOUR_MS,
     ]);
     expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.warning).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 
@@ -165,6 +201,7 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(2);
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins.every((bin) => bin.isNeutralPartition)).toBe(true);
     expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.eventCount).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 
@@ -200,20 +237,44 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('ready');
     expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('monthly');
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.id).toContain('monthly');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 
   test('supports quarterly granularity for longer selection windows', async () => {
+    const quarter1Start = Math.floor(new Date('2025-01-15T00:00:00Z').getTime() / 1000);
+    const quarter1End = Math.floor(new Date('2025-04-01T00:00:00Z').getTime() / 1000);
+    const quarter2Start = quarter1End;
+    const quarter2End = Math.floor(new Date('2025-07-01T00:00:00Z').getTime() / 1000);
+    const quarter3Start = quarter2End;
+    const quarter3End = Math.floor(new Date('2025-10-01T00:00:00Z').getTime() / 1000);
+    const quarter4Start = quarter3End;
+    const quarter4End = Math.floor(new Date('2025-11-10T00:00:00Z').getTime() / 1000);
+
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const parsed = new URL(url, 'http://localhost');
+      const startEpoch = parsed.searchParams.get('startEpoch');
+      const endEpoch = parsed.searchParams.get('endEpoch');
 
       if (url.startsWith('/api/crimes/range?')) {
-        return makeCrimeRangeResponse([
-          { timestamp: new Date('2025-01-20T00:00:00Z').getTime() / 1000, type: 'THEFT', district: '1' },
-          { timestamp: new Date('2025-04-20T00:00:00Z').getTime() / 1000, type: 'BATTERY', district: '1' },
-          { timestamp: new Date('2025-07-20T00:00:00Z').getTime() / 1000, type: 'ASSAULT', district: '1' },
-          { timestamp: new Date('2025-10-20T00:00:00Z').getTime() / 1000, type: 'ROBBERY', district: '1' },
-        ]);
+        if (startEpoch === String(quarter1Start) && endEpoch === String(quarter1End)) {
+          return makeCrimeRangeResponse([{ timestamp: new Date('2025-01-20T00:00:00Z').getTime() / 1000, type: 'THEFT', district: '1' }]);
+        }
+
+        if (startEpoch === String(quarter2Start) && endEpoch === String(quarter2End)) {
+          return makeCrimeRangeResponse([{ timestamp: new Date('2025-04-20T00:00:00Z').getTime() / 1000, type: 'BATTERY', district: '1' }]);
+        }
+
+        if (startEpoch === String(quarter3Start) && endEpoch === String(quarter3End)) {
+          return makeCrimeRangeResponse([{ timestamp: new Date('2025-07-20T00:00:00Z').getTime() / 1000, type: 'ASSAULT', district: '1' }]);
+        }
+
+        if (startEpoch === String(quarter4Start) && endEpoch === String(quarter4End)) {
+          return makeCrimeRangeResponse([{ timestamp: new Date('2025-10-20T00:00:00Z').getTime() / 1000, type: 'ROBBERY', district: '1' }]);
+        }
+
+        return makeCrimeRangeResponse([]);
       }
 
       throw new Error(`Unexpected fetch: ${url}`);
@@ -238,6 +299,7 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().lastGeneratedMetadata?.inputs.granularity).toBe('quarterly');
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(4);
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins[0]?.id).toContain('quarterly');
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/crimes/range?'));
   });
 

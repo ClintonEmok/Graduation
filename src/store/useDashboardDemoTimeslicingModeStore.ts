@@ -1,9 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { buildNonUniformDraftBinsFromSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
+import { buildNonUniformDraftBinsFromSelection, partitionSelectionByGranularity } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import type { TimeBin } from '@/lib/binning/types';
 import type { CrimeRecord } from '@/types/crime';
-import { useTimelineDataStore } from './useTimelineDataStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
 import { useDashboardDemoWarpStore } from './useDashboardDemoWarpStore';
 
@@ -158,20 +156,25 @@ const deleteBin = (bins: TimeBin[], binId: string): TimeBin[] => bins.filter((bi
 
 const hasValidTimeWindow = (value: number | null): value is number => typeof value === 'number' && Number.isFinite(value);
 
-const fetchCrimeRecordsForSelection = async (
-  generationInputs: GenerationInputs,
-  limit: number
-): Promise<CrimeRecord[]> => {
-  const activeStart = generationInputs.timeWindow.start;
-  const activeEnd = generationInputs.timeWindow.end;
+interface CrimeFetchResult {
+  records: CrimeRecord[];
+  sampled: boolean;
+  limit: number;
+}
 
-  if (!hasValidTimeWindow(activeStart) || !hasValidTimeWindow(activeEnd)) {
-    return [];
+const fetchCrimeRecordsForRange = async (
+  generationInputs: GenerationInputs,
+  startMs: number,
+  endMs: number,
+  limit: number,
+): Promise<CrimeFetchResult> => {
+  if (!hasValidTimeWindow(startMs) || !hasValidTimeWindow(endMs)) {
+    return { records: [], sampled: false, limit };
   }
 
   const searchParams = new URLSearchParams({
-    startEpoch: String(Math.floor(Math.min(activeStart, activeEnd) / 1000)),
-    endEpoch: String(Math.floor(Math.max(activeStart, activeEnd) / 1000)),
+    startEpoch: String(Math.floor(Math.min(startMs, endMs) / 1000)),
+    endEpoch: String(Math.floor(Math.max(startMs, endMs) / 1000)),
     bufferDays: '0',
     limit: String(limit),
   });
@@ -190,8 +193,12 @@ const fetchCrimeRecordsForSelection = async (
     throw new Error(`Burst selection crime fetch failed with status ${response.status}`);
   }
 
-  const result = (await response.json()) as { data?: CrimeRecord[] };
-  return Array.isArray(result.data) ? result.data : [];
+  const result = (await response.json()) as { data?: CrimeRecord[]; meta?: { sampled?: boolean } };
+  return {
+    records: Array.isArray(result.data) ? result.data : [],
+    sampled: Boolean(result.meta?.sampled),
+    limit,
+  };
 };
 
 const BURST_METADATA_KEYS = [
@@ -255,296 +262,283 @@ export const stripTransientTimeslicingState = (
 });
 
 export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslicingState>()(
-  persist(
-    (set, get) => ({
-      mode: 'auto',
-      setMode: (mode) => set({ mode }),
-      customIntervals: [],
-      setCustomIntervals: (intervals) => set({ customIntervals: intervals }),
-      autoConfig: {
-        minBurstEvents: 10,
-        burstThreshold: 0.7,
-        maxSlices: 20,
+  (set, get) => ({
+    mode: 'auto',
+    setMode: (mode) => set({ mode }),
+    customIntervals: [],
+    setCustomIntervals: (intervals) => set({ customIntervals: intervals }),
+    autoConfig: {
+      minBurstEvents: 10,
+      burstThreshold: 0.7,
+      maxSlices: 20,
+    },
+    setAutoConfig: (config) => set((state) => ({ autoConfig: { ...state.autoConfig, ...config } })),
+    isCreatingSlice: false,
+    creationStart: null,
+    setIsCreatingSlice: (creating) => set({ isCreatingSlice: creating }),
+    setCreationStart: (start) => set({ creationStart: start }),
+    sliceTemplates: [
+      { id: '1h', name: '1 Hour', duration: 3600000, color: '#3b82f6' },
+      { id: '4h', name: '4 Hours', duration: 4 * 3600000, color: '#10b981' },
+      { id: '8h', name: '8 Hours (Workday)', duration: 8 * 3600000, color: '#f59e0b' },
+      { id: '24h', name: '24 Hours (Day)', duration: 24 * 3600000, color: '#8b5cf6' },
+      { id: '7d', name: '7 Days (Week)', duration: 7 * 24 * 3600000, color: '#ec4899' },
+    ],
+    addSliceTemplate: (template) => set((state) => ({
+      sliceTemplates: [...state.sliceTemplates, { ...template, id: `custom-${Date.now()}` }],
+    })),
+    removeSliceTemplate: (id) => set((state) => ({
+      sliceTemplates: state.sliceTemplates.filter((t) => t.id !== id),
+    })),
+    generationInputs: {
+      crimeTypes: [],
+      neighbourhood: null,
+      timeWindow: {
+        start: null,
+        end: null,
       },
-      setAutoConfig: (config) => set((state) => ({ autoConfig: { ...state.autoConfig, ...config } })),
-      isCreatingSlice: false,
-      creationStart: null,
-      setIsCreatingSlice: (creating) => set({ isCreatingSlice: creating }),
-      setCreationStart: (start) => set({ creationStart: start }),
-      sliceTemplates: [
-        { id: '1h', name: '1 Hour', duration: 3600000, color: '#3b82f6' },
-        { id: '4h', name: '4 Hours', duration: 4 * 3600000, color: '#10b981' },
-        { id: '8h', name: '8 Hours (Workday)', duration: 8 * 3600000, color: '#f59e0b' },
-        { id: '24h', name: '24 Hours (Day)', duration: 24 * 3600000, color: '#8b5cf6' },
-        { id: '7d', name: '7 Days (Week)', duration: 7 * 24 * 3600000, color: '#ec4899' },
-      ],
-      addSliceTemplate: (template) => set((state) => ({
-        sliceTemplates: [...state.sliceTemplates, { ...template, id: `custom-${Date.now()}` }],
-      })),
-      removeSliceTemplate: (id) => set((state) => ({
-        sliceTemplates: state.sliceTemplates.filter((t) => t.id !== id),
-      })),
-      generationInputs: {
-        crimeTypes: [],
-        neighbourhood: null,
-        timeWindow: {
-          start: null,
-          end: null,
+      granularity: 'daily',
+    },
+    generationStatus: 'idle',
+    generationError: null,
+    pendingGeneratedBins: [],
+    lastGeneratedMetadata: null,
+    lastAppliedAt: null,
+    setGenerationInputs: (inputs) =>
+      set((state) => ({
+        generationInputs: {
+          crimeTypes: inputs.crimeTypes ?? state.generationInputs.crimeTypes,
+          neighbourhood: inputs.neighbourhood ?? state.generationInputs.neighbourhood,
+          timeWindow: {
+            start: inputs.timeWindow?.start ?? state.generationInputs.timeWindow.start,
+            end: inputs.timeWindow?.end ?? state.generationInputs.timeWindow.end,
+          },
+          granularity: inputs.granularity ?? state.generationInputs.granularity,
         },
-        granularity: 'daily',
-      },
+      })),
+    setGenerationStatus: (status) => set({ generationStatus: status }),
+    setPendingGeneratedBins: (bins, metadata) =>
+      set({
+        pendingGeneratedBins: bins,
+        lastGeneratedMetadata: { ...metadata, generatedAt: Date.now() },
+        generationStatus: 'ready',
+        generationError: null,
+      }),
+    generateBurstDraftBinsFromWindows: async () => {
+      const { generationInputs } = get();
+
+      const { timeWindow } = generationInputs;
+      if (!hasValidTimeWindow(timeWindow.start) || !hasValidTimeWindow(timeWindow.end)) {
+        set({
+          pendingGeneratedBins: [],
+          generationStatus: 'error',
+            generationError: 'Choose a valid time window before generating burst slices.',
+        });
+        return false;
+      }
+
+      set({ generationStatus: 'generating', generationError: null });
+
+      try {
+        const activeStart = timeWindow.start;
+        const activeEnd = timeWindow.end;
+        const partitions = partitionSelectionByGranularity([activeStart, activeEnd], generationInputs.granularity);
+        const fetchResults = await Promise.all(
+          partitions.map((partition) =>
+            fetchCrimeRecordsForRange(generationInputs, partition.startTime, partition.endTime, 50000)
+          )
+        );
+        const crimeRecords = fetchResults.flatMap((result) => result.records);
+        const sampled = fetchResults.some((result) => result.sampled || result.records.length >= result.limit);
+        const generated = buildNonUniformDraftBinsFromSelection({
+          ...generationInputs,
+          eventTimestamps: crimeRecords.map((crime) => crime.timestamp * 1000),
+          eventTypes: crimeRecords.map((crime) => crime.type),
+        });
+
+        if (generated.bins.length === 0) {
+          set({
+            pendingGeneratedBins: [],
+            generationStatus: 'error',
+            generationError: generated.warning ?? 'Could not generate burst slices from the selected window.',
+          });
+          return false;
+        }
+
+        get().setPendingGeneratedBins(generated.bins, {
+          binCount: generated.bins.length,
+          eventCount: generated.eventCount,
+          warning: sampled
+            ? 'One or more slice fetches hit the API limit; burstiness may be truncated.'
+            : generated.warning,
+          inputs: generationInputs,
+        });
+
+        return true;
+      } catch (error) {
+        set({
+          pendingGeneratedBins: [],
+          generationStatus: 'error',
+          generationError: error instanceof Error ? error.message : 'Failed to fetch crimes for the selected bursts.',
+        });
+        return false;
+      }
+    },
+    setGenerationError: (message) => set({ generationError: message, generationStatus: message ? 'error' : 'idle' }),
+    clearPendingGeneratedBins: () => set({
+      pendingGeneratedBins: [],
       generationStatus: 'idle',
       generationError: null,
-      pendingGeneratedBins: [],
       lastGeneratedMetadata: null,
-      lastAppliedAt: null,
-      setGenerationInputs: (inputs) =>
-        set((state) => ({
-          generationInputs: {
-            crimeTypes: inputs.crimeTypes ?? state.generationInputs.crimeTypes,
-            neighbourhood: inputs.neighbourhood ?? state.generationInputs.neighbourhood,
-            timeWindow: {
-              start: inputs.timeWindow?.start ?? state.generationInputs.timeWindow.start,
-              end: inputs.timeWindow?.end ?? state.generationInputs.timeWindow.end,
-            },
-            granularity: inputs.granularity ?? state.generationInputs.granularity,
-          },
-        })),
-      setGenerationStatus: (status) => set({ generationStatus: status }),
-      setPendingGeneratedBins: (bins, metadata) =>
-        set({
-          pendingGeneratedBins: bins,
-          lastGeneratedMetadata: { ...metadata, generatedAt: Date.now() },
-          generationStatus: 'ready',
-          generationError: null,
-        }),
-      generateBurstDraftBinsFromWindows: async () => {
-        const { generationInputs } = get();
-
-        const { timeWindow } = generationInputs;
-        if (!hasValidTimeWindow(timeWindow.start) || !hasValidTimeWindow(timeWindow.end)) {
-          set({
-            pendingGeneratedBins: [],
-            generationStatus: 'error',
-            generationError: 'Choose a valid time window before generating burst drafts.',
-          });
-          return false;
-        }
-
-        set({ generationStatus: 'generating', generationError: null });
-
-        try {
-          const crimeRecords = await fetchCrimeRecordsForSelection(generationInputs, 100000);
-          const generated = buildNonUniformDraftBinsFromSelection({
-            ...generationInputs,
-            eventTimestamps: crimeRecords.map((crime) => crime.timestamp * 1000),
-            eventTypes: crimeRecords.map((crime) => crime.type),
-          });
-
-          if (generated.bins.length === 0) {
-            set({
-              pendingGeneratedBins: [],
-              generationStatus: 'error',
-              generationError: generated.warning ?? 'Could not generate burst drafts from the selected window.',
-            });
-            return false;
-          }
-
-          get().setPendingGeneratedBins(generated.bins, {
-            binCount: generated.bins.length,
-            eventCount: generated.eventCount,
-            warning: generated.warning,
-            inputs: generationInputs,
-          });
-
-          return true;
-        } catch (error) {
-          set({
-            pendingGeneratedBins: [],
-            generationStatus: 'error',
-            generationError: error instanceof Error ? error.message : 'Failed to fetch crimes for the selected bursts.',
-          });
-          return false;
-        }
-      },
-      setGenerationError: (message) => set({ generationError: message, generationStatus: message ? 'error' : 'idle' }),
-      clearPendingGeneratedBins: () => set({
-        pendingGeneratedBins: [],
-        generationStatus: 'idle',
-        generationError: null,
-        lastGeneratedMetadata: null,
-      }),
-      replacePendingGeneratedBins: (bins) => set({ pendingGeneratedBins: bins }),
-      mergePendingGeneratedBins: (binIds) => set((state) => ({ pendingGeneratedBins: mergeBins(state.pendingGeneratedBins, binIds) })),
-      splitPendingGeneratedBin: (binId, splitPoint) => set((state) => ({ pendingGeneratedBins: splitBin(state.pendingGeneratedBins, binId, splitPoint) })),
-      deletePendingGeneratedBin: (binId) => set((state) => ({ pendingGeneratedBins: deleteBin(state.pendingGeneratedBins, binId) })),
-      applyGeneratedBins: (domain) => {
-        const { pendingGeneratedBins } = get();
-
-        if (!pendingGeneratedBins.length) {
-          return false;
-        }
-
-        useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
-        useDashboardDemoWarpStore.getState().setWarpSource('density');
-
-        set({
-          lastAppliedAt: Date.now(),
-          generationStatus: 'applied',
-          pendingGeneratedBins: [],
-        });
-
-        return true;
-      },
-      applySingleGeneratedBin: (binId, domain) => {
-        const { pendingGeneratedBins } = get();
-        const bin = pendingGeneratedBins.find((b) => b.id === binId);
-        if (!bin) return false;
-
-        const sliceId = useSliceDomainStore.getState().addSliceFromBin(bin, domain);
-        if (sliceId === null) return false;
-
-        useDashboardDemoWarpStore.getState().setWarpSource('density');
-
-        set({
-          lastAppliedAt: Date.now(),
-          pendingGeneratedBins: pendingGeneratedBins.filter((b) => b.id !== binId),
-        });
-
-        return true;
-      },
-      addManualDraftRange: (range) => {
-        const id = `manual-range-${Date.now()}`;
-        set((state) => {
-          const bin: TimeBin = {
-            id,
-            startTime: range.startMs,
-            endTime: range.endMs,
-            count: 0,
-            crimeTypes: ['all-crime-types'],
-            districts: [],
-            avgTimestamp: (range.startMs + range.endMs) / 2,
-            isModified: true,
-          };
-          return {
-            pendingGeneratedBins: [...state.pendingGeneratedBins, bin],
-            generationStatus: 'ready',
-          };
-        });
-        return id;
-      },
-      updatePendingBinRange: (binId, startMs, endMs) =>
-        set((state) => ({
-          pendingGeneratedBins: state.pendingGeneratedBins.map((bin) =>
-            bin.id === binId
-              ? { ...bin, startTime: startMs, endTime: endMs, avgTimestamp: (startMs + endMs) / 2 }
-              : bin
-          ),
-        })),
-      computeManualDraftBin: async (binId) => {
-        const state = get();
-        const bin = state.pendingGeneratedBins.find((b) => b.id === binId);
-        if (!bin) return false;
-
-        set({ generationStatus: 'generating', generationError: null });
-
-        try {
-          const searchParams = new URLSearchParams({
-            startEpoch: String(Math.floor(Math.min(bin.startTime, bin.endTime) / 1000)),
-            endEpoch: String(Math.floor(Math.max(bin.startTime, bin.endTime) / 1000)),
-            bufferDays: '0',
-            limit: '100000',
-          });
-
-          const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
-          if (!response.ok) throw new Error(`Crime data fetch failed with status ${response.status}`);
-
-          const result = (await response.json()) as { data?: CrimeRecord[] };
-          const crimes = Array.isArray(result.data) ? result.data : [];
-
-          const typeSet = new Set<string>();
-          crimes.forEach((c) => typeSet.add(c.type));
-          const crimeTypes = Array.from(typeSet);
-
-          const avgTs = crimes.length > 0
-            ? crimes.reduce((sum, c) => sum + c.timestamp * 1000, 0) / crimes.length
-            : (bin.startTime + bin.endTime) / 2;
-
-          const eventTimes = crimes.map((c) => c.timestamp * 1000).sort((a, b) => a - b);
-          let burstClass: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral' = 'neutral';
-          let burstinessCoefficient = 0;
-          let burstScore = 50;
-          let burstConfidence = 0;
-
-          if (eventTimes.length >= 2) {
-            const intervals = eventTimes.slice(1).map((t, i) => t - eventTimes[i]);
-            const mean = intervals.reduce((s, v) => s + v, 0) / intervals.length;
-            const variance = intervals.reduce((s, v) => s + (v - mean) ** 2, 0) / intervals.length;
-            const stdDev = Math.sqrt(variance);
-            const denom = stdDev + mean;
-            burstinessCoefficient = denom === 0 ? 0 : (stdDev - mean) / denom;
-            burstScore = Math.round(((burstinessCoefficient + 1) / 2) * 100);
-            burstConfidence = Math.round(Math.abs(burstinessCoefficient) * 100);
-
-            if (burstinessCoefficient > 0.3) {
-              burstClass = 'prolonged-peak';
-            } else if (burstinessCoefficient < -0.3) {
-              burstClass = 'valley';
-            }
-          }
-
-          set((s) => ({
-            pendingGeneratedBins: s.pendingGeneratedBins.map((b) =>
-              b.id === binId
-                ? {
-                    ...b,
-                    count: crimes.length,
-                    crimeTypes,
-                    avgTimestamp: avgTs,
-                    isModified: true,
-                    burstClass,
-                    burstScore,
-                    burstinessCoefficient,
-                    burstConfidence,
-                    isNeutralPartition: burstClass === 'neutral',
-                    warpWeight: burstClass === 'neutral' ? 1 : 1 + Math.max(0, burstinessCoefficient),
-                  }
-                : b
-            ),
-            generationStatus: 'ready',
-          }));
-
-          return true;
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Failed to compute manual draft data';
-          set({ generationStatus: 'error', generationError: msg });
-          return false;
-        }
-      },
     }),
-    {
-      name: 'dashboard-demo-timeslicing-mode-v1',
-      version: 2,
-      partialize: (state) => ({
-        mode: state.mode,
-        customIntervals: state.customIntervals,
-        autoConfig: state.autoConfig,
-        sliceTemplates: state.sliceTemplates,
-        generationInputs: state.generationInputs,
-      }),
-      migrate: (persistedState) => stripTransientTimeslicingState(persistedState as Partial<DashboardDemoTimeslicingState> | undefined),
-      merge: (persistedState, currentState) => {
-        if (!persistedState || typeof persistedState !== 'object') {
-          return currentState;
+    replacePendingGeneratedBins: (bins) => set({ pendingGeneratedBins: bins }),
+    mergePendingGeneratedBins: (binIds) => set((state) => ({ pendingGeneratedBins: mergeBins(state.pendingGeneratedBins, binIds) })),
+    splitPendingGeneratedBin: (binId, splitPoint) => set((state) => ({ pendingGeneratedBins: splitBin(state.pendingGeneratedBins, binId, splitPoint) })),
+    deletePendingGeneratedBin: (binId) => set((state) => ({ pendingGeneratedBins: deleteBin(state.pendingGeneratedBins, binId) })),
+    applyGeneratedBins: (domain) => {
+      const { pendingGeneratedBins } = get();
+
+      if (!pendingGeneratedBins.length) {
+        return false;
+      }
+
+      useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
+      useDashboardDemoWarpStore.getState().setWarpSource('density');
+
+      set({
+        lastAppliedAt: Date.now(),
+        generationStatus: 'applied',
+        pendingGeneratedBins: [],
+      });
+
+      return true;
+    },
+    applySingleGeneratedBin: (binId, domain) => {
+      const { pendingGeneratedBins } = get();
+      const bin = pendingGeneratedBins.find((b) => b.id === binId);
+      if (!bin) return false;
+
+      const sliceId = useSliceDomainStore.getState().addSliceFromBin(bin, domain);
+      if (sliceId === null) return false;
+
+      useDashboardDemoWarpStore.getState().setWarpSource('density');
+
+      set({
+        lastAppliedAt: Date.now(),
+        pendingGeneratedBins: pendingGeneratedBins.filter((b) => b.id !== binId),
+      });
+
+      return true;
+    },
+    addManualDraftRange: (range) => {
+      const id = `manual-range-${Date.now()}`;
+      set((state) => {
+        const bin: TimeBin = {
+          id,
+          startTime: range.startMs,
+          endTime: range.endMs,
+          count: 0,
+          crimeTypes: ['all-crime-types'],
+          districts: [],
+          avgTimestamp: (range.startMs + range.endMs) / 2,
+          isModified: true,
+        };
+        return {
+          pendingGeneratedBins: [...state.pendingGeneratedBins, bin],
+          generationStatus: 'ready',
+        };
+      });
+      return id;
+    },
+    updatePendingBinRange: (binId, startMs, endMs) =>
+      set((state) => ({
+        pendingGeneratedBins: state.pendingGeneratedBins.map((bin) =>
+          bin.id === binId
+            ? { ...bin, startTime: startMs, endTime: endMs, avgTimestamp: (startMs + endMs) / 2 }
+            : bin
+        ),
+      })),
+    computeManualDraftBin: async (binId) => {
+      const state = get();
+      const bin = state.pendingGeneratedBins.find((b) => b.id === binId);
+      if (!bin) return false;
+
+      set({ generationStatus: 'generating', generationError: null });
+
+      try {
+        const searchParams = new URLSearchParams({
+          startEpoch: String(Math.floor(Math.min(bin.startTime, bin.endTime) / 1000)),
+          endEpoch: String(Math.floor(Math.max(bin.startTime, bin.endTime) / 1000)),
+          bufferDays: '0',
+          limit: '100000',
+        });
+
+        const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
+        if (!response.ok) throw new Error(`Crime data fetch failed with status ${response.status}`);
+
+        const result = (await response.json()) as { data?: CrimeRecord[] };
+        const crimes = Array.isArray(result.data) ? result.data : [];
+
+        const typeSet = new Set<string>();
+        crimes.forEach((c) => typeSet.add(c.type));
+        const crimeTypes = Array.from(typeSet);
+
+        const avgTs = crimes.length > 0
+          ? crimes.reduce((sum, c) => sum + c.timestamp * 1000, 0) / crimes.length
+          : (bin.startTime + bin.endTime) / 2;
+
+        const eventTimes = crimes.map((c) => c.timestamp * 1000).sort((a, b) => a - b);
+        let burstClass: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral' = 'neutral';
+        let burstinessCoefficient = 0;
+        let burstScore = 50;
+        let burstConfidence = 0;
+
+        if (eventTimes.length >= 2) {
+          const intervals = eventTimes.slice(1).map((t, i) => t - eventTimes[i]);
+          const mean = intervals.reduce((s, v) => s + v, 0) / intervals.length;
+          const variance = intervals.reduce((s, v) => s + (v - mean) ** 2, 0) / intervals.length;
+          const stdDev = Math.sqrt(variance);
+          const denom = stdDev + mean;
+          burstinessCoefficient = denom === 0 ? 0 : (stdDev - mean) / denom;
+          burstScore = Math.round(((burstinessCoefficient + 1) / 2) * 100);
+          burstConfidence = Math.round(Math.abs(burstinessCoefficient) * 100);
+
+          if (burstinessCoefficient > 0.3) {
+            burstClass = 'prolonged-peak';
+          } else if (burstinessCoefficient < -0.3) {
+            burstClass = 'valley';
+          }
         }
 
-        return {
-          ...currentState,
-          ...(persistedState as Partial<DashboardDemoTimeslicingState>),
-        };
-      },
-    }
-  )
+        set((s) => ({
+          pendingGeneratedBins: s.pendingGeneratedBins.map((b) =>
+            b.id === binId
+              ? {
+                  ...b,
+                  count: crimes.length,
+                  crimeTypes,
+                  avgTimestamp: avgTs,
+                  isModified: true,
+                  burstClass,
+                  burstScore,
+                  burstinessCoefficient,
+                  burstConfidence,
+                  isNeutralPartition: burstClass === 'neutral',
+                  warpWeight: burstClass === 'neutral' ? 1 : 1 + Math.max(0, burstinessCoefficient),
+                }
+              : b
+          ),
+          generationStatus: 'ready',
+        }));
+
+        return true;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to compute manual draft data';
+        set({ generationStatus: 'error', generationError: msg });
+        return false;
+      }
+    },
+  })
 );
 
 export type { TimeBin } from '@/lib/binning/types';

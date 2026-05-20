@@ -103,6 +103,7 @@ interface StkdeSliceStackProps {
   sliceKdes: KdeCell[][];
   activeIndex: number;
   compact?: boolean;
+  sliceOpacity?: number;
 }
 
 export function StkdeSliceStack({
@@ -110,6 +111,7 @@ export function StkdeSliceStack({
   sliceKdes,
   activeIndex,
   compact = false,
+  sliceOpacity = 1,
 }: StkdeSliceStackProps) {
   const textures = useMemo(() => {
     const newTextures = new Map<number, THREE.CanvasTexture>();
@@ -143,7 +145,7 @@ export function StkdeSliceStack({
             : 0.1;
 
         const gridOpacity = isActive ? 0.08 : isAdjacent ? 0.03 : 0.01;
-        const planeOpacity = Math.min(0.4, 0.3 * opacityMultiplier);
+        const planeOpacity = Math.min(0.85, 0.3 * opacityMultiplier * sliceOpacity);
         const texture = textures.get(i) ?? undefined;
 
         const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;

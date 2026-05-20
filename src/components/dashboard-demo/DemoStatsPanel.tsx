@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ALL_DEMO_DISTRICTS } from '@/store/useDashboardDemoAnalysisStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
@@ -74,6 +75,42 @@ function PulseChart({ title, readout, points, accentClassName, labelStep = 1 }: 
             <div className="mt-1 min-h-[0.75rem] text-center text-[10px] text-slate-500">
               {index % labelStep === 0 || index === points.length - 1 ? point.label : ''}
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DistributionSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {[...Array(4)].map((_, index) => (
+        <div key={`distribution-skeleton-${index}`} className="space-y-1">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-10" />
+          </div>
+          <Skeleton className="h-2 w-full rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PulseChartSkeleton({ title, readout }: { title: string; readout: string }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 shadow-none">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{title}</h3>
+        <span className="text-[11px] text-muted-foreground">{readout}</span>
+      </div>
+
+      <div className="mt-3 flex h-32 items-end justify-between gap-1">
+        {[...Array(12)].map((_, index) => (
+          <div key={`pulse-skeleton-${index}`} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <Skeleton className="w-full rounded-t" style={{ height: `${48 + (index % 4) * 8}px` }} />
+            <Skeleton className="mt-1 h-3 w-6" />
           </div>
         ))}
       </div>
@@ -448,6 +485,7 @@ export function DemoStatsPanel() {
     summary,
     stats,
     temporalPulses,
+    isLoading,
     selectedDistricts,
     selectedDistrictLabels,
     timeRange,
@@ -458,13 +496,15 @@ export function DemoStatsPanel() {
 
   const topTypes = useMemo(() => stats?.byType.slice(0, 4) ?? [], [stats]);
   const showDistrictSelection = selectedDistricts.length > 0 && selectedDistricts.length < ALL_DEMO_DISTRICTS.length;
+  const showDistributionSkeleton = isLoading && topTypes.length === 0;
+  const showHourlyPulseSkeleton = isLoading && temporalPulses.hourly.length === 0;
 
   return (
     <Card className="rounded-lg border-border/70 bg-card/80 text-card-foreground shadow-sm">
       <CardHeader className="gap-1.5 px-2.5 pb-1.5 pt-2.5">
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           {showDistrictSelection ? <Badge variant="outline">{selectedDistrictLabels.join(', ')}</Badge> : null}
-          <Badge variant="outline">Window: {timelineSummary.selectedWindowLabel}</Badge>
+          {timelineSummary.selectedWindowLabel ? <Badge variant="outline">Window: {timelineSummary.selectedWindowLabel}</Badge> : null}
           <Badge variant="outline">Overview: {timelineSummary.overviewRangeLabel}</Badge>
         </div>
       </CardHeader>
@@ -539,19 +579,23 @@ export function DemoStatsPanel() {
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Distribution</h3>
             </div>
-            <div className="flex flex-col gap-2">
-              {topTypes.map((item) => (
-                <div key={item.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span className="truncate pr-2">{item.name}</span>
-                    <span>{item.count.toLocaleString()}</span>
+            {showDistributionSkeleton ? (
+              <DistributionSkeleton />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {topTypes.map((item) => (
+                  <div key={item.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="truncate pr-2">{item.name}</span>
+                      <span>{item.count.toLocaleString()}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.max(6, Math.min(100, item.percentage))}%` }} />
+                    </div>
                   </div>
-                  <div className="h-2 rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.max(6, Math.min(100, item.percentage))}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -565,7 +609,11 @@ export function DemoStatsPanel() {
           </div>
 
           <TabsContent value="hourly" className="mt-3">
-            <PulseChart title="Hourly pulse" readout="24h read" points={temporalPulses.hourly} accentClassName="bg-violet-500" labelStep={6} />
+            {showHourlyPulseSkeleton ? (
+              <PulseChartSkeleton title="Hourly pulse" readout="24h read" />
+            ) : (
+              <PulseChart title="Hourly pulse" readout="24h read" points={temporalPulses.hourly} accentClassName="bg-violet-500" labelStep={6} />
+            )}
           </TabsContent>
 
           <TabsContent value="daily" className="mt-3">

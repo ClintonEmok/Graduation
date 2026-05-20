@@ -186,7 +186,6 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const selectedIndex = useStore(coordinationStore, (state) => state.selectedIndex);
   const setSelectedIndex = useStore(coordinationStore, (state) => state.setSelectedIndex);
   const clearSelection = useStore(coordinationStore, (state) => state.clearSelection);
-  const brushRange = useStore(coordinationStore, (state) => state.brushRange);
   const setBrushRange = useStore(coordinationStore, (state) => state.setBrushRange);
   const warpFactor = useStore(adaptiveStore, (state) => state.warpFactor);
   const warpMap = useStore(adaptiveStore, (state) => state.warpMap);
@@ -676,42 +675,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   const isTimelineLoading = isViewportLoading;
   const isDetailEmpty = !isTimelineLoading && detailPoints.length === 0;
 
-  const brushDateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-    []
-  );
-
-  const brushRangeLabel = useMemo(() => {
-    if (!brushRange) {
-      return 'No selection';
-    }
-
-    const [startNorm, endNorm] = brushRange;
-    if (!Number.isFinite(startNorm) || !Number.isFinite(endNorm)) {
-      return 'No selection';
-    }
-
-    const clampedStartNorm = clamp(Math.min(startNorm, endNorm), 0, 100);
-    const clampedEndNorm = clamp(Math.max(startNorm, endNorm), 0, 100);
-    const startSec = normalizedToEpochSeconds(clampedStartNorm, domainStart, domainEnd);
-    const endSec = normalizedToEpochSeconds(clampedEndNorm, domainStart, domainEnd);
-    if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) {
-      return 'No selection';
-    }
-
-    const startDate = new Date(startSec * 1000);
-    const endDate = new Date(endSec * 1000);
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return 'No selection';
-    }
-
-    return `${brushDateFormatter.format(startDate)} - ${brushDateFormatter.format(endDate)}`;
-  }, [brushDateFormatter, brushRange, domainEnd, domainStart]);
-
-
   const surfaceProps = {
     containerRef,
-    brushRangeLabel,
     isTimelineLoading,
     width,
     overviewInnerWidth,

@@ -1,7 +1,7 @@
 'use client';
 
 import type { EvolvingSlice } from '../lib/types';
-import type { computeSliceKde } from '../lib/slice-kde';
+import type { computeSliceKde } from '@/lib/kde';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -27,17 +27,17 @@ export function SliceInspector({ slice, sliceKde, isFocusedView }: SliceInspecto
   const peakIntensity = sliceKde?.maxIntensity ?? 0;
 
   return (
-    <section className="rounded-md border border-slate-700/60 bg-slate-900/50 p-4 text-xs text-slate-300">
+    <section className="rounded-2xl border border-sky-500/15 bg-slate-950/60 p-4 text-xs text-slate-300 shadow-[0_24px_80px_-48px_rgba(14,165,233,0.45)]">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-sky-300">
             Detail Inspector
           </div>
-          <h3 className="mt-1 text-sm font-medium text-slate-100">{slice.label}</h3>
+          <h3 className="mt-1 text-sm font-medium text-slate-50">{slice.label}</h3>
         </div>
 
         {isFocusedView && (
-          <span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200">
+          <span className="rounded-full border border-sky-400/15 bg-sky-400/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200">
             Focused
           </span>
         )}
@@ -46,30 +46,30 @@ export function SliceInspector({ slice, sliceKde, isFocusedView }: SliceInspecto
       <div className="space-y-2">
         <div className="flex justify-between gap-3">
           <span className="text-slate-400">Events</span>
-          <span className="text-slate-100">{slice.crimeCount.toLocaleString()}</span>
+          <span className="tabular-nums text-slate-100">{slice.crimeCount.toLocaleString()}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-slate-400">Time range</span>
-          <span className="text-right text-slate-100">
+          <span className="text-right tabular-nums text-slate-100">
             {formatSliceDate(slice.startEpoch)} - {formatSliceDate(slice.endEpoch)}
           </span>
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-slate-400">KDE cells</span>
-          <span className="text-slate-100">{cellCount}</span>
+          <span className="tabular-nums text-slate-100">{cellCount}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-slate-400">Peak intensity</span>
-          <span className="text-slate-100">{peakIntensity.toFixed(1)}</span>
+          <span className="tabular-nums text-slate-100">{peakIntensity.toFixed(1)}</span>
         </div>
       </div>
 
       <div className="mt-4">
         <div className="mb-1 flex items-center justify-between text-slate-400">
           <span>Burst score</span>
-          <span className="text-slate-100">{burstPercent}%</span>
+          <span className="tabular-nums text-slate-100">{burstPercent}%</span>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-700">
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-800/80">
           <div
             className={`h-full rounded-full transition-all duration-300 ${
               slice.burstScore > 0.6

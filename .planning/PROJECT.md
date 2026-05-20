@@ -2,41 +2,35 @@
 
 ## What This Is
 
-This is a Next.js prototype for bursty spatiotemporal crime analysis. It couples a 2D density projection with a 3D Space-Time Cube, plus a staged slice workflow and non-uniform temporal scaling so users can perceive overview patterns, trace trajectories, compare behaviors, detect anomalies, and recover metric duration.
+This is a Next.js prototype for bursty spatiotemporal crime analysis. It combines a 2D density projection, a 3D Space-Time Cube, and a staged slice workflow so users can inspect slices quickly, compare behavior, and keep the map, cube, and timeline aligned around the active slice set.
 
 ## Core Value
 
-Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized hybrid visualization environment.
+Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized exploration tool.
+
+## Current Milestone: v3.1 Workflow Finalization
+
+**Goal:** Make `dashboard-demo` read as one obvious workflow: Detect starts scanning and generation, Slices owns review and apply, Inspect is immediate, and the shell stays quiet enough to support the analysis loop.
+
+**Target features:**
+- Detect is the clear entry point for burst scanning and slice generation
+- Slices is the dedicated review/apply surface for pending and manual slices
+- Inspect shows active slice context and comparison controls immediately
+- Map, cube, and timeline stay synchronized while labels and chrome stay minimal
 
 ## Requirements
 
-### Core Tasks
+### Active
 
-- T1 - Obtain an overview of global trends, high-activity intervals, and spatial clusters.
-- T2 - Trace the temporal evolution of selected incidents/records and aggregated clusters.
-- T3 - Compare timing, duration, or spatial extent across multiple selections.
-- T4 - Detect intersections, pauses, and abrupt changes in activity.
-- T5 - Summarize recurring behaviors and periodic patterns.
-- T6 - Discriminate the temporal order of rapid, concurrent events inside a burst.
-- T7 - Identify burst pacing as a gradual escalation or instantaneous spike.
-- T8 - Recover the true duration of a distorted interval.
+- [ ] FLOW-07 - Detect is the obvious entry point for burst scanning and slice generation
+- [ ] FLOW-08 - Slices is the obvious review/apply surface for pending and manual slices
+- [ ] FLOW-09 - Inspect shows active slice state and comparison controls immediately
+- [ ] FLOW-10 - Map, cube, and timeline stay synchronized with the active slice while chrome stays minimal
 
-### Supporting Visualization
+### Validated
 
-- 2D density projection with opacity modulation for broad pattern reading.
-- 3D Space-Time Cube with time on the vertical axis.
-- Synchronized navigation, selection, and brushing/linking between 2D and 3D views.
-- Timeline slider to define active temporal windows.
-- Non-uniform temporal scaling to expand dense intervals without hiding metric duration.
-- Comparable-bin warp scoring for demo preview surfaces so same-granularity bins stay ordered and visible.
-- Hue for categorical discrimination and transparency for low-confidence events.
-
-### Support Features
-
-- Trust / provenance / loading states that make real, mock, partial, and degraded data explicit.
-- Hotspot / STKDE analysis with confidence or rationale metadata.
-- Suggested slices / proposals with explainable rationale.
-- Large-dataset responsiveness and off-main-thread computation.
+- v3.0 Burstiness-Driven Adaptive Slicing - completed and validated
+- 2D/3D/timeline coordination and non-uniform temporal scaling remain core product behavior
 
 ### Out of Scope
 
@@ -46,12 +40,13 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 - Full case-management / incident workflow - not an operations system
 - Generic BI dashboard features - would dilute the domain-specific exploration model
 - Social sharing / public publishing - adds privacy and permissions complexity without core value
+- Thesis writing and evaluation coordination - important, but background work for this milestone
 
 ## Context
 
 - Existing brownfield Next.js 16 App Router app with feature-based organization
+- The active planning surface is `dashboard-demo`, not `dashboard-v2`
 - Core stack includes TypeScript, Zustand, Three.js, MapLibre, DuckDB, Apache Arrow, and Web Workers
-- The current README frames the product as a hybrid spatiotemporal exploration tool with brushing, playback, adaptive controls, and burst highlighting
 - The current README frames the product as a hybrid spatiotemporal exploration tool with brushing, playback, adaptive controls, burst highlighting, and an isolated slice workflow that hands into a simplified dashboard
 - Codebase analysis already exists in `.planning/codebase/`, and milestone history exists in `.planning/milestones/`
 - Known concerns include large components, excessive console logging, silent mock-data fallbacks, input validation gaps, and heavy data processing on the main thread
@@ -73,7 +68,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 | Use shared comparable-bin warp scoring for demo previews | Keeps same-granularity warp widths visible without reordering or collapsing bins | ✓ Good |
 | Keep hotspot and guidance features as support features | They help analysis without becoming the main task model | ✓ Good |
 | Run adaptive-time computation in Web Workers | Prevents expensive warp calculations from blocking interaction | ✓ Good |
-| Keep generate, review, and apply isolated from the dashboard | Keeps the workflow focused and makes the conceptual tasks easier to test | ✓ Good |
+| Recenter planning on `dashboard-demo` | The demo route is the actual workflow surface for this milestone | ✓ Good |
 
 ## Evolution
 
@@ -93,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-21 after phase 11 warp-scoring validation*
+*Last updated: 2026-05-19 after starting v3.1 workflow finalization*
