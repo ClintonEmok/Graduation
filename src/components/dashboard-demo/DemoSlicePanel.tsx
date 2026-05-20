@@ -21,7 +21,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Slider } from '@/components/ui/slider';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
-import type { TimeSlice } from '@/store/useSliceDomainStore';
 import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -102,8 +101,8 @@ export function DemoSlicePanel() {
     : 'Read-only metadata for the selected slice.';
 
   const selectedDraftLabel = selectedDraft
-    ? `${selectedDraft.isNeutralPartition ? 'Neutral draft' : 'Selection-first draft'} · ${selectedDraft.burstClass ?? 'neutral'} · ${selectedDraft.id}`
-    : 'Read-only metadata for the selected draft.';
+    ? `${selectedDraft.isNeutralPartition ? 'Neutral slice' : 'Selection-first slice'} · ${selectedDraft.burstClass ?? 'neutral'} · ${selectedDraft.id}`
+    : 'Read-only metadata for the selected slice.';
 
   const visibleWarpSliceCount = useMemo(
     () => slices.filter((slice) => slice.isVisible && (slice.warpEnabled ?? true)).length,
@@ -187,7 +186,7 @@ export function DemoSlicePanel() {
     const domainEndMs = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
     const applied = applySingleGeneratedBin(binId, [domainStartMs, domainEndMs]);
     if (applied) {
-      toast.success('Draft applied', { description: 'Slice activated from draft.' });
+      toast.success('Slice applied', { description: 'Slice activated from Detect.' });
     }
   }, [applySingleGeneratedBin, maxTimestampSec, minTimestampSec, timeRange]);
 
@@ -199,38 +198,24 @@ export function DemoSlicePanel() {
     clearSelectedBurstWindows();
   }, [clearPendingGeneratedBins, clearSelectedBurstWindows, clearSlices]);
 
-  const combinedItems = useMemo(() => {
-    const items: Array<{
-      id: string;
-      type: 'pending' | 'applied';
-      sortMs: number;
-      bin?: (typeof pendingGeneratedBins)[number];
-      slice?: TimeSlice;
-    }> = [
-      ...pendingGeneratedBins.map((bin) => ({
-        id: bin.id,
-        type: 'pending' as const,
-        sortMs: bin.startTime,
-        bin,
-      })),
-      ...slices.map((slice) => ({
-        id: slice.id,
-        type: 'applied' as const,
-        sortMs: slice.startDateTimeMs ?? 0,
-        slice,
-      })),
-    ];
-    return items.sort((a, b) => a.sortMs - b.sortMs);
-  }, [pendingGeneratedBins, slices]);
+  const pendingItems = useMemo(
+    () => [...pendingGeneratedBins].sort((a, b) => a.startTime - b.startTime),
+    [pendingGeneratedBins],
+  );
 
-  const hasItems = combinedItems.length > 0;
+  const appliedItems = useMemo(
+    () => [...slices].sort((a, b) => (a.startDateTimeMs ?? 0) - (b.startDateTimeMs ?? 0)),
+    [slices],
+  );
+
+  const hasItems = pendingItems.length > 0 || appliedItems.length > 0;
 
   return (
     <Card className="h-full min-h-0 overflow-y-auto border-border/70 bg-card/80 text-card-foreground shadow-sm" aria-busy={isComputing}>
       <CardHeader className="gap-1 px-4 pb-3 pt-4">
-        <CardTitle className="text-sm font-semibold">Slice Companion</CardTitle>
+        <CardTitle className="text-sm font-semibold">Review & apply slices</CardTitle>
         <CardDescription className="text-xs">
-          A secondary review rail for slice edits, locks, and visibility.
+          Pending slices from Detect land here first, then applied slices stay below for review.
         </CardDescription>
         <div className="text-xs text-muted-foreground">
           {lastAppliedAt ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}` : 'No applied state yet'}
@@ -305,7 +290,7 @@ export function DemoSlicePanel() {
                 value={[warpFactor]}
                 onValueChange={([v]) => setWarpFactor(v)}
                 min={0}
-                max={1}
+                max={3}
                 step={0.05}
                 className="[&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-range]]:bg-violet-500 [&_[data-slot=slider-thumb]]:size-3.5"
               />
@@ -325,146 +310,159 @@ export function DemoSlicePanel() {
           </div>
         ) : null}
 
-        <div className="space-y-1">
+        <div className="space-y-3">
           {!hasItems ? (
             <div className="rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
-              No slices active. Generate drafts from a brushed selection to get started.
+              No slices active. Generate slices from Detect, then review and apply them here.
             </div>
           ) : (
-            combinedItems.map((item) => {
-              if (item.type === 'pending' && item.bin) {
-                const bin = item.bin;
-                const isManualDraft = bin.id.startsWith('manual-range-');
-                const burstScore = formatCoefficient(bin.burstinessCoefficient);
-                const label = isManualDraft ? `Manual ${combinedItems.findIndex((i) => i.id === bin.id) + 1}`
-                  : `Draft ${combinedItems.findIndex((i) => i.id === bin.id) + 1}`;
-
-                return (
-                  <div
-                    key={bin.id}
-                    className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs hover:border-slate-700"
-                  >
-                    <span className="font-medium text-sky-100">{label}</span>
-
-                    {!isManualDraft && burstScore && (
-                      <Badge variant="outline" className="rounded-full border-sky-400/20 bg-sky-500/10 px-2 py-0 text-[10px] text-sky-100">
-                        {burstScore}
-                      </Badge>
-                    )}
-
-                    <span className="text-[11px] text-slate-400">
-                      {formatCompactDate(bin.startTime)} → {formatCompactDate(bin.endTime)}
-                    </span>
-
-                    <div className="ml-auto flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="xs"
-                        onClick={() => handleApplySingleDraft(bin.id)}
-                        className="h-6 gap-1 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
-                      >
-                        <Check className="h-3 w-3" />
-                        Apply
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => handleOpenPendingDraftDetails(bin.id)}
-                        className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
-                      >
-                        Details
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => handleMergePendingDraft(pendingGeneratedBins.findIndex((b) => b.id === bin.id))}
-                        disabled={pendingGeneratedBins.length <= 1}
-                        className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
-                      >
-                        Merge
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => handleSplitPendingDraft(bin.id)}
-                        disabled={bin.endTime <= bin.startTime}
-                        className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
-                      >
-                        Split
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => handleDeletePendingDraft(bin.id)}
-                        className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+            <>
+              <section className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Pending drafts</div>
+                {pendingItems.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border bg-background px-3 py-3 text-sm text-muted-foreground">
+                    No pending drafts. Generate slices from Detect to review them here.
                   </div>
-                );
-              }
+                ) : (
+                  pendingItems.map((bin, index) => {
+                    const isManualDraft = bin.id.startsWith('manual-range-');
+                    const burstScore = formatCoefficient(bin.burstinessCoefficient);
+                    const label = isManualDraft ? `Manual ${index + 1}` : `Draft ${index + 1}`;
 
-              if (item.type === 'applied' && item.slice) {
-                const slice = item.slice;
-                const sliceIndex = slices.findIndex((s) => s.id === slice.id);
-                const label = slice.name?.trim() || `Slice ${sliceIndex + 1}`;
-                const warpLabel = (slice.warpEnabled ?? true)
-                  ? `Warp ${(slice.warpWeight ?? 1).toFixed(2)}x`
-                  : 'Warp disabled';
-
-                return (
-                  <div
-                    key={slice.id}
-                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs hover:border-border"
-                  >
-                    <span className="font-medium text-slate-100">{label}</span>
-
-                    <Badge variant="outline" className="rounded-full border-emerald-400/20 bg-emerald-500/10 px-2 py-0 text-[10px] text-emerald-100">
-                      {warpLabel}
-                    </Badge>
-
-                    <span className="text-[11px] text-slate-400">
-                      {formatCompactDate(slice.startDateTimeMs)} → {formatCompactDate(slice.endDateTimeMs)}
-                    </span>
-
-                    {slice.isBurst && typeof slice.burstinessCoefficient === 'number' && (
-                      <span className="text-[10px] text-slate-500">
-                        {formatCoefficient(slice.burstinessCoefficient)}
-                      </span>
-                    )}
-
-                    <div className="ml-auto flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => handleOpenSliceDetails(slice.id)}
-                        className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
+                    return (
+                      <div
+                        key={bin.id}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs hover:border-slate-700"
                       >
-                        Details
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => removeSlice(slice.id)}
-                        className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                        <span className="font-medium text-sky-100">{label}</span>
+
+                        {!isManualDraft && burstScore && (
+                          <Badge variant="outline" className="rounded-full border-sky-400/20 bg-sky-500/10 px-2 py-0 text-[10px] text-sky-100">
+                            {burstScore}
+                          </Badge>
+                        )}
+
+                        <span className="text-[11px] text-slate-400">
+                          {formatCompactDate(bin.startTime)} → {formatCompactDate(bin.endTime)}
+                        </span>
+
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="xs"
+                            onClick={() => handleApplySingleDraft(bin.id)}
+                            className="h-6 gap-1 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
+                          >
+                            <Check className="h-3 w-3" />
+                            Apply
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => handleOpenPendingDraftDetails(bin.id)}
+                            className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
+                          >
+                            Details
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => handleMergePendingDraft(pendingItems.findIndex((b) => b.id === bin.id))}
+                            disabled={pendingItems.length <= 1}
+                            className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
+                          >
+                            Merge
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => handleSplitPendingDraft(bin.id)}
+                            disabled={bin.endTime <= bin.startTime}
+                            className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
+                          >
+                            Split
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => handleDeletePendingDraft(bin.id)}
+                            className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </section>
+
+              <section className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Applied slices</div>
+                {appliedItems.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border bg-background px-3 py-3 text-sm text-muted-foreground">
+                    Applied slices will appear here after you apply a draft.
                   </div>
-                );
-              }
+                ) : (
+                  appliedItems.map((slice) => {
+                    const sliceIndex = slices.findIndex((s) => s.id === slice.id);
+                    const label = slice.name?.trim() || `Slice ${sliceIndex + 1}`;
+                    const warpLabel = (slice.warpEnabled ?? true)
+                      ? `Warp ${(slice.warpWeight ?? 1).toFixed(2)}x`
+                      : 'Warp disabled';
 
-              return null;
-            })
+                    return (
+                      <div
+                        key={slice.id}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs hover:border-border"
+                      >
+                        <span className="font-medium text-slate-100">{label}</span>
+
+                        <Badge variant="outline" className="rounded-full border-emerald-400/20 bg-emerald-500/10 px-2 py-0 text-[10px] text-emerald-100">
+                          {warpLabel}
+                        </Badge>
+
+                        <span className="text-[11px] text-slate-400">
+                          {formatCompactDate(slice.startDateTimeMs)} → {formatCompactDate(slice.endDateTimeMs)}
+                        </span>
+
+                        {slice.isBurst && typeof slice.burstinessCoefficient === 'number' && (
+                          <span className="text-[10px] text-slate-500">
+                            {formatCoefficient(slice.burstinessCoefficient)}
+                          </span>
+                        )}
+
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => handleOpenSliceDetails(slice.id)}
+                            className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
+                          >
+                            Details
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => removeSlice(slice.id)}
+                            className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </section>
+            </>
           )}
         </div>
 
