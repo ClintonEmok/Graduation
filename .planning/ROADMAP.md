@@ -40,6 +40,8 @@ Inspect should surface the active slice immediately, and the shell should stay q
 
 **Requirements:** FLOW-07, FLOW-08
 
+**Progress:** 1/2 plans complete
+
 | ID | Requirement | Notes |
 |----|-------------|-------|
 | FLOW-07 | Detect is the obvious entry point for burst scanning and slice generation | Keep burst generation in one place |
@@ -53,7 +55,7 @@ Inspect should surface the active slice immediately, and the shell should stay q
 **Plans:** 2 plans
 
 Plans:
-- [ ] 72-01-PLAN.md — Make Detect the obvious entry point for burst scanning and slice generation
+- [x] 72-01-PLAN.md — Make Detect the obvious entry point for burst scanning and slice generation
 - [ ] 72-02-PLAN.md — Make Slices the review/apply surface and route the workflow there
 
 ---

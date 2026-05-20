@@ -1,35 +1,39 @@
-# Requirements: Adaptive Space-Time Cube Prototype — v3.0
+# Requirements: Adaptive Space-Time Cube Prototype — v3.1
 
-**Defined:** 2026-05-10
-**Core Value:** Help users understand dense vs sparse spatiotemporal crime patterns by making the timeline and 3D cube respond to burstiness — dense intervals expand, sparse intervals compress, and both surfaces stay synchronized.
+**Defined:** 2026-05-19
+**Core Value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized exploration tool.
 
-## v3.0 Requirements
+## v3.1 Requirements
 
-### Burstiness Engine (Phase 1)
+### FLOW-07
 
-- [ ] **BURST-01**: Server computes temporal B per time bin using CV of inter-event intervals
-- [ ] **BURST-02**: Server optionally computes spatial B per bin (1 - meanKDE/peakKDE) as cross-reference
-- [ ] **BURST-03**: Combined B = 0.5 × temporalB + 0.5 × spatialB is returned per bin
-- [ ] **BURST-04**: Client allocates N target slices across bins proportional to combined B, with minimum 1 slice per bin
+Detect is the obvious entry point for burst scanning and slice generation.
 
-### UI Redesign (Phase 2)
+### FLOW-08
 
-- [ ] **UI-01**: WorkflowSkeleton removed from dashboard-demo shell
-- [ ] **UI-02**: Viewport toggle switches between 2D map and 3D spatial view (instead of map/cube)
-- [ ] **UI-03**: Right rail has exactly 5 tabs: Scan, Detect, Slices, Inspect, Configure
-- [ ] **UI-04**: Applying slices auto-transitions to 3D view + Inspect tab
+Slices is the obvious review/apply surface for pending and manual slices.
 
-### STKDE-3D Port (Phase 3)
+### FLOW-09
 
-- [ ] **3D-01**: Demo3dSpatialView renders in 3D slot with R3F Canvas, camera, MapTileSource
-- [ ] **3D-02**: Detect tab consolidates stepper generation controls + slice panel burst draft UI
-- [ ] **3D-03**: Inspect tab provides scrubber, playback controls, slice labels, opacity
+Inspect shows active slice state and comparison controls immediately.
 
-### Coordination Flow (Phase 4)
+### FLOW-10
 
-- [ ] **COORD-01**: computeSliceKde extracted to `src/lib/kde/` — shared between API route and 3D view
-- [ ] **COORD-02**: workflowPhase removed from coordination store
-- [ ] **COORD-03**: Apply action triggers viewport switch to 3D and rail switch to Inspect
+Map, cube, and timeline stay synchronized with the active slice while chrome stays minimal.
+
+## Active Requirements
+
+- FLOW-08
+- FLOW-09
+- FLOW-10
+
+## Completed Requirements
+
+- FLOW-07
+
+## v3.0 Requirements (Completed)
+
+The v3.0 milestone is complete. See `.planning/archive/REQUIREMENTS.md` and `.planning/v3.0-MILESTONE-AUDIT.md` for the completed burstiness-driven adaptive slicing scope.
 
 ## v2 Requirements (Previously Completed)
 
@@ -61,26 +65,16 @@ Key v2 milestones that remain in effect:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BURST-01 | Phase 1 | Pending |
-| BURST-02 | Phase 1 | Pending |
-| BURST-03 | Phase 1 | Pending |
-| BURST-04 | Phase 1 | Pending |
-| UI-01 | Phase 2 | Pending |
-| UI-02 | Phase 2 | Pending |
-| UI-03 | Phase 2 | Pending |
-| UI-04 | Phase 2 | Pending |
-| 3D-01 | Phase 3 | Pending |
-| 3D-02 | Phase 3 | Pending |
-| 3D-03 | Phase 3 | Pending |
-| COORD-01 | Phase 4 | Pending |
-| COORD-02 | Phase 4 | Pending |
-| COORD-03 | Phase 4 | Pending |
+| FLOW-07 | 72 | Complete |
+| FLOW-08 | 72 | Planned |
+| FLOW-09 | 73 | Planned |
+| FLOW-10 | 74 | Planned |
 
 **Coverage:**
-- v3.0 requirements: 14 total (4 + 4 + 3 + 3)
-- Mapped to phases: 14
+- Active requirements: 4
+- Mapped to phases: 4
 - Unmapped: 0 ✓
 
 ---
 
-*Requirements defined: 2026-05-10*
+*Requirements defined: 2026-05-19*
