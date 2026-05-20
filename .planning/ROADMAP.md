@@ -78,6 +78,11 @@ Plans:
 2. Comparison controls are reachable without hunting
 3. The Inspect panel feels faster than the draft surfaces
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 73-01-PLAN.md — Make Inspect open with immediate active-slice context and inline comparison controls
+
 ---
 
 ### Phase 74: Coordination Polish
