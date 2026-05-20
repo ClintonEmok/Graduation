@@ -1,14 +1,12 @@
-# Roadmap: Adaptive Space-Time Cube Prototype — v3.0
+# Roadmap: Adaptive Space-Time Cube Prototype — v3.1
 
 ## Overview
 
-Milestone **v3.0 — Burstiness-Driven Adaptive Slicing** delivers the core adaptive time
-mechanism the prototype was designed for. Equal-width temporal bins become non-uniform —
-proportional to burstiness scores — so the timeline expands around dense/spiky intervals
-and compresses quiet periods. The same bins render as 3D slice planes with KDE heatmaps,
-creating a unified burst-aware spatiotemporal view.
+Milestone **v3.1 — Workflow Finalization** turns the demo into an obvious analysis tool.
+The focus is workflow clarity: Detect should start scanning and generation, Slices should review and apply,
+Inspect should surface the active slice immediately, and the shell should stay quiet enough to support the analysis loop.
 
-**Current focus:** v3.0 milestone
+**Current focus:** v3.1 milestone
 
 ## Milestones
 
@@ -29,107 +27,97 @@ creating a unified burst-aware spatiotemporal view.
   - 04: Evolution view with playback
   - 05: DBSCAN clustering
   - 06: Category encoding
-- 📋 **v3.0 Burstiness-Driven Adaptive Slicing** — Current milestone
+- ✅ **v3.0 Burstiness-Driven Adaptive Slicing** — Completed 2026-05-13
+- 📋 **v3.1 Workflow Finalization** — Current milestone
 
-## v3.0 Phases
+## v3.1 Phases
 
-### Phase 1: Burstiness Engine
+### Phase 72: Workflow Clarity
 
-**Goal:** Compute burstiness scores per time bin and allocate slices non-uniformly.
+**Goal:** Make Detect, Slices, and Inspect read as one clear workflow instead of separate draft surfaces.
 
-**Depends on:** Nothing (new API + lib)
+**Depends on:** v3.0 completion
 
-**Requirements:** BURST-01, BURST-02, BURST-03, BURST-04
+**Requirements:** FLOW-07, FLOW-08
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| BURST-01 | Temporal B score per bin computed server-side | CV of inter-event intervals |
-| BURST-02 | Spatial B score as cross-reference | 1 - meanKDE/peakKDE |
-| BURST-03 | Combined B = 0.5 x temporalB + 0.5 x spatialB | Single burstiness metric |
-| BURST-04 | N slices allocated across bins proportional to combined B | Non-uniform slice allocation |
+| FLOW-07 | Detect is the obvious entry point for burst scanning and slice generation | Keep burst generation in one place |
+| FLOW-08 | Slices is the obvious review/apply surface for pending and manual slices | Review, merge, split, and apply stay together |
 
 **Success criteria (what must be TRUE):**
-1. `/api/adaptive/bursts` returns bins with temporalB, spatialB, combinedB
-2. Bursty bins get more slices than quiet bins
-3. Client lib fetches and caches burst data
+1. Detect clearly starts the workflow
+2. Slices clearly owns review and apply actions
+3. The workflow is understandable without extra explanation
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 72-01-PLAN.md — Make Detect the obvious entry point for burst scanning and slice generation
+- [ ] 72-02-PLAN.md — Make Slices the review/apply surface and route the workflow there
 
 ---
 
-### Phase 2: UI Redesign
+### Phase 73: Inspection Speed
 
-**Goal:** Simplify dashboard-demo by removing WorkflowSkeleton and restructuring the rail.
+**Goal:** Make active-slice inspection immediate and low-friction.
 
-**Depends on:** Phase 1 (detect tab needs burst scores)
+**Depends on:** Phase 5
 
-**Requirements:** UI-01, UI-02, UI-03, UI-04
+**Requirements:** FLOW-09
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| UI-01 | Remove WorkflowSkeleton from the shell | ~21rem left panel eliminated |
-| UI-02 | Map/3D toggle replaces Map/Cube toggle | Cleaner binary toggle |
-| UI-03 | 5-tab right rail: Scan, Detect, Slices, Inspect, Configure | Consolidated rail |
-| UI-04 | Auto-transition: apply slices → 3D view + Inspect tab | Implicit workflow flow |
+| FLOW-09 | Inspect shows active slice state and comparison controls immediately | Users can see what they are inspecting without extra clicks |
 
 **Success criteria (what must be TRUE):**
-1. WorkflowSkeleton.tsx deleted, no regressions
-2. Rail has exactly 5 tabs
-3. Toggle switches between Map and 3D views
-4. Applying slices in Detect automatically switches to 3D + Inspect
+1. Active slice context is obvious while inspecting
+2. Comparison controls are reachable without hunting
+3. The Inspect panel feels faster than the draft surfaces
 
 ---
 
-### Phase 3: STKDE-3D Port
+### Phase 74: Coordination Polish
 
-**Goal:** Port standalone `/stkde-3d` scene into dashboard 3D view.
+**Goal:** Keep map, 3D, and timeline synchronized so apply/playback feels coherent.
 
-**Depends on:** Phase 2 (needs new shell)
+**Depends on:** Phase 6
 
-**Requirements:** 3D-01, 3D-02, 3D-03
+**Requirements:** FLOW-10
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| 3D-01 | Demo3dSpatialView renders in 3D toggle slot | R3F Canvas + MapTileSource |
-| 3D-02 | Detect tab has burst controls + results table | Consolidated from stepper + slice panel |
-| 3D-03 | Inspect tab has scrubber, playback, opacity | STKDE-3D sidebar controls |
+| FLOW-10 | Map, cube, and timeline stay synchronized with the active slice while chrome stays minimal | The active slice should read the same across views |
 
 **Success criteria (what must be TRUE):**
-1. 3D view shows KDE heatmaps per applied slice
-2. Scrubber steps through slices in 3D
-3. Detect tab shows burst scores and generation controls
-4. Configure tab has warp, adaptive/linear, threshold controls
+1. Applying a slice lands the user in the correct inspect surface
+2. Map and 3D stay visually aligned to the active slice
+3. Playback and navigation do not desync the views
 
 ---
 
-### Phase 4: Coordination Flow
+### Phase 75: Presentation Cleanup
 
-**Goal:** Extract shared KDE, clean up stores, wire auto-transition logic.
+**Goal:** Reduce presentation noise so the tool feels intentional and not overdesigned.
 
-**Depends on:** Phases 1-3
+**Depends on:** Phase 7
 
-**Requirements:** COORD-01, COORD-02, COORD-03
+**Requirements:** FLOW-07 to FLOW-10
 
 | ID | Requirement | Notes |
 |----|-------------|-------|
-| COORD-01 | computeSliceKde in shared lib | Both API and 3D view import from same place |
-| COORD-02 | Remove workflowPhase from coordination store | No stepper phases |
-| COORD-03 | Auto-transition after apply | Detect → Inspect + 3D |
+| FLOW-07 | Labels and helper copy are slice-first | Remove leftover draft/presentation language |
+| FLOW-08 | Defaults favor clarity over spectacle | Reduce chrome and keep the workflow legible |
+| FLOW-09 | Inspect shows active slice state and comparison controls immediately | Keep the active context readable |
+| FLOW-10 | Map, cube, and timeline stay synchronized with the active slice while chrome stays minimal | Preserve clarity across all three views |
 
 **Success criteria (what must be TRUE):**
-1. `src/lib/kde/compute-slice-kde.ts` exists and is imported by both API and 3D view
-2. workflowPhase removed, no regressions
-3. Apply action in Detect tab triggers viewport + tab switch
-
-## Progress
-
-| Phase | Requirements | Status |
-|-------|-------------|--------|
-| 1. Burstiness Engine | 4 | Not started |
-| 2. UI Redesign | 4 | Not started |
-| 3. STKDE-3D Port | 3 | Not started |
-| 4. Coordination Flow | 3 | Not started |
+1. The dashboard reads as a working tool, not a presentation deck
+2. New users can infer the flow from the labels and layout alone
+3. Excess visual noise is removed without losing functionality
 
 ## Deferred
 
-- **Burst taxonomy labels**: Prolonged peak / isolated spike / valley classification. Temporal B provides the raw score; semantic labels can be a follow-up.
+- **Thesis framing updates**: Any academic copy or thesis-specific language should stay secondary to the tool workflow.
 - **Full-range generation**: Using full population data instead of sampled fetches. Current API sampling is sufficient for interactive use.
 - **Edit history / undo**: Manual slice editing history. Existing store snapshots provide basic undo.
