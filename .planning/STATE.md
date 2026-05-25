@@ -1,14 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.1
-milestone_name: Phases
-status: completed
-last_updated: "2026-05-25T22:14:47.197Z"
+milestone: v3.2
+milestone_name: Visualization Level Up
+status: planning
+stopped_at: Phase 76 context gathered
+last_updated: "2026-05-25T23:04:38.824Z"
+last_activity: 2026-05-26 — v3.2 roadmap drafted
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -18,56 +21,61 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** None — all milestones complete
+**Current focus:** v3.2 Visualization Level Up — Phase 76 Foundation
 
 ## Current Position
 
-Milestone: v3.1
-Status: **Complete**
-Audit: `.planning/v3.1-MILESTONE-AUDIT.md`
+Milestone: v3.2
+Phase: 76 of 79 (Foundation Cleanup + Motion Scaffolding)
+Plan: TBD
+Status: Ready to plan
+Last activity: 2026-05-26 — v3.2 roadmap drafted
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total phases completed: 26 (v1.0 through MVP Finale)
-- Last milestone: v3.0 Burstiness-Driven Adaptive Slicing — all complete
+- Total plans completed: 0 (this milestone)
+- Average duration: —
+- Total execution time: —
 
-## Milestone Status
+**By Phase:**
 
-| Milestone | Status | Completed |
-|-----------|--------|-----------|
-| v1.0 Thesis Prototype | Complete | 2026-02-07 |
-| v1.1 Manual Timeslicing | Complete | 2026-02-22 |
-| v1.2 Semi-Automated Timeslicing | Complete | 2026-03-02 |
-| v1.3 Fully Automated Timeslicing | Complete | 2026-03-04 |
-| v2.0 3D Timeline-Test Parity | Complete | 2026-03-06 |
-| v2.1 Refactoring and Decomposition | Complete | 2026-03-10 |
-| v2.2 Timeslicing Fidelity | Complete | 2026-03-11 |
-| v2.3 Adaptive Algos Hardening | Complete (tech debt) | 2026-03-16 |
-| v2.4 STKDE Exploration | Complete | 2026-03-16 |
-| v2.5 Stats + Neighbourhood | Complete | 2026-03-23 |
-| MVP Finale (01-06) | Complete | 2026-05-07 |
-| **v3.0 Burstiness-Driven Adaptive Slicing** | Complete | 2026-05-13 |
-| **v3.1 Workflow Finalization** | Complete | 2026-05-26 |
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 76 Foundation | TBD | 0 | — |
+| 77 Spatial Orientation | TBD | 0 | — |
+| 78 Burst Visibility | TBD | 0 | — |
+| 79 Temporal Evolution | TBD | 0 | — |
 
-## Decisions
+**Recent Trend:**
 
-- **Spatial B is cross-reference only**: Temporal B drives slice allocation. Spatial B displayed in Detect panel but not used for slice count.
-- **Slices = bins**: One unified concept. Timeline bins AND 3D slice planes are the same thing.
-- **Non-uniform slicing**: Bin width ∝ B score. Bursty bins get more slices (finer temporal resolution), quiet bins get fewer.
-- **STKDE-3D port**: Standalone `/stkde-3d` page becomes the dashboard 3D view, reading applied slices from useSliceDomainStore.
-- **No stepper**: WorkflowSkeleton removed. Auto-transition replaces explicit workflow steps.
+- Last 5 plans: —
+- Trend: N/A — roadmap just created
 
-## v3.1 Roadmap
+## Accumulated Context
 
-| Phase | Goal | Requirements | Status |
-|-------|------|--------------|--------|
-| 72 | Workflow Clarity | FLOW-07 to FLOW-08 | Complete (2026-05-20) |
-| 73 | Inspection Speed | FLOW-09 | Complete (2026-05-25) |
-| 74 | Coordination Polish | FLOW-10 | Complete (2026-05-25) |
-| 75 | Presentation Cleanup | FLOW-07 to FLOW-10 | Complete (2026-05-26) |
+### Decisions
 
-## Milestone Complete
+Recent decisions affecting current work:
 
-v3.1 Workflow Finalization is complete. All 4 phases (72–75) finished. Full audit at `.planning/v3.1-MILESTONE-AUDIT.md`.
+- [Phase 79]: Temporal evolution is limited to the demo 3D STKDE widget path only.
+- [v3.2]: Bloom/SelectiveBloom were removed from scope; interpolation and fluid motion are the emphasis for the 3D widget.
+- [v3.2]: Multi-Scale Temporal, Dense Data Readability, and Evaluation Readiness remain deferred.
+- [v3.2]: Keep the existing Next.js + Three.js + MapLibre stack; add only the visualization packages already scoped.
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+None yet.
+
+## Session Continuity
+
+Last session: 2026-05-25T23:04:38.817Z
+Stopped at: Phase 76 context gathered
+Resume file: .planning/phases/76-foundation-cleanup-motion-scaffolding/76-CONTEXT.md
