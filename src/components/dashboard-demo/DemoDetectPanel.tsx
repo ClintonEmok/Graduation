@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { toEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -180,6 +181,7 @@ export function DemoDetectPanel() {
       toast.success('Burst slices generated', {
         description: state.lastGeneratedMetadata.warning ?? 'Slices ready for review in Slices.',
       });
+      useDashboardDemoCoordinationStore.getState().setActiveRailTab('slices');
       return;
     }
     toast.error('Generation failed', {

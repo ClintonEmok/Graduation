@@ -1,15 +1,14 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.1
-milestone_name: Workflow Finalization
-status: active
-stopped_at: Completed 72-02-PLAN.md
-last_updated: "2026-05-20T09:38:09Z"
+milestone_name: Phases
+status: completed
+last_updated: "2026-05-25T22:14:47.197Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,14 +18,13 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** v3.1 — Workflow Finalization
+**Current focus:** None — all milestones complete
 
 ## Current Position
 
 Milestone: v3.1
-Phase: 72
-Status: Phase complete
-Progress: ██░░░░░░░░░░░░░░░░░░ 2/4 plans complete
+Status: **Complete**
+Audit: `.planning/v3.1-MILESTONE-AUDIT.md`
 
 ## Performance Metrics
 
@@ -51,7 +49,7 @@ Progress: ██░░░░░░░░░░░░░░░░░░ 2/4 plans
 | v2.5 Stats + Neighbourhood | Complete | 2026-03-23 |
 | MVP Finale (01-06) | Complete | 2026-05-07 |
 | **v3.0 Burstiness-Driven Adaptive Slicing** | Complete | 2026-05-13 |
-| **v3.1 Workflow Finalization** | **In progress** | **—** |
+| **v3.1 Workflow Finalization** | Complete | 2026-05-26 |
 
 ## Decisions
 
@@ -61,28 +59,15 @@ Progress: ██░░░░░░░░░░░░░░░░░░ 2/4 plans
 - **STKDE-3D port**: Standalone `/stkde-3d` page becomes the dashboard 3D view, reading applied slices from useSliceDomainStore.
 - **No stepper**: WorkflowSkeleton removed. Auto-transition replaces explicit workflow steps.
 
-## Decisions
-
-- **Workflow framing**: `dashboard-demo` is the active planning surface for v3.1.
-- **Detect first**: Burst scanning and generation belong in Detect, not in Slices.
-- **Slices review/apply**: Review, merge, split, and apply actions belong in Slices.
-- **Inspect immediacy**: Active-slice context and comparison controls should be visible immediately in Inspect.
-- **Minimal chrome**: The shell should stay quiet enough to support the analysis loop.
-
 ## v3.1 Roadmap
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
 | 72 | Workflow Clarity | FLOW-07 to FLOW-08 | Complete (2026-05-20) |
-| 73 | Inspection Speed | FLOW-09 | Planned |
-| 74 | Coordination Polish | FLOW-10 | Planned |
-| 75 | Presentation Cleanup | FLOW-07 to FLOW-10 | Planned |
+| 73 | Inspection Speed | FLOW-09 | Complete (2026-05-25) |
+| 74 | Coordination Polish | FLOW-10 | Complete (2026-05-25) |
+| 75 | Presentation Cleanup | FLOW-07 to FLOW-10 | Complete (2026-05-26) |
 
-## Session Continuity
+## Milestone Complete
 
-Last session: 2026-05-20T09:38:09Z (completed 72-02-PLAN.md)
-Resume file: None
-
-## Phase Completion Summary
-
-Phase 72 is complete; workflow clarity is ready for the next phase when defined.
+v3.1 Workflow Finalization is complete. All 4 phases (72–75) finished. Full audit at `.planning/v3.1-MILESTONE-AUDIT.md`.

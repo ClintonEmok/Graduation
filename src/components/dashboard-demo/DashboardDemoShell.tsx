@@ -9,6 +9,7 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
 import { Demo3dSpatialView } from '@/components/dashboard-demo/Demo3dSpatialView';
+import { useDemoStkde } from '@/components/dashboard-demo/lib/useDemoStkde';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
@@ -17,6 +18,11 @@ import { toast } from 'sonner';
 
 type DemoViewport = 'map' | '3d';
 const DEFAULT_TIME_RANGE: [number, number] = [0, 100];
+
+function DemoStkdeTrigger() {
+  useDemoStkde();
+  return null;
+}
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
@@ -66,14 +72,14 @@ export function DashboardDemoShell() {
     autoSwitchKeyRef.current = nextKey;
   }, [appliedSliceCount, lastAppliedAt, setActiveRailTab]);
 
-  const [showcaseLoading, setShowcaseLoading] = useState(false);
+  const [generateLoading, setGenerateLoading] = useState(false);
 
-  const handleShowcase = useCallback(async () => {
+  const handleGenerate = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null) return;
     const [rangeStart, rangeEnd] = timeRange;
     if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) return;
 
-    setShowcaseLoading(true);
+    setGenerateLoading(true);
     const { useDashboardDemoTimeslicingModeStore } = await import('@/store/useDashboardDemoTimeslicingModeStore');
 
     try {
@@ -83,23 +89,23 @@ export function DashboardDemoShell() {
 
       timeslicingStore.setGenerationInputs({
         timeWindow: { start: windowStartMs, end: windowEndMs },
-        granularity: 'monthly',
+        granularity: timeslicingStore.generationInputs.granularity,
       });
 
       const success = await timeslicingStore.generateBurstDraftBinsFromWindows();
       if (!success) {
-        toast.error('Showcase generation failed', { description: 'Could not generate burst slices.' });
-        setShowcaseLoading(false);
+        toast.error('Generation failed', { description: 'Could not generate burst slices.' });
+        setGenerateLoading(false);
         return;
       }
 
       setActiveRailTab('slices');
-      toast.success('Showcase ready', { description: 'Draft slices are ready for review in Slices.' });
+      toast.success('Slices ready', { description: 'Draft slices are ready for review in Slices.' });
     } catch {
-      toast.error('Showcase setup failed');
+      toast.error('Generation failed');
     }
 
-    setShowcaseLoading(false);
+    setGenerateLoading(false);
   }, [maxTimestampSec, minTimestampSec, setActiveRailTab, timeRange]);
 
   return (
@@ -107,19 +113,20 @@ export function DashboardDemoShell() {
       className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100"
       aria-label="dashboard demo workspace"
     >
+      <DemoStkdeTrigger />
       <div className="flex h-full min-w-0 flex-col pr-80">
         <header className="border-b border-slate-800 bg-slate-900/60 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-slate-400">Adaptive Space-Time Cube</span>
             <Button
               type="button"
-              onClick={handleShowcase}
-              disabled={showcaseLoading || minTimestampSec === null}
+              onClick={handleGenerate}
+              disabled={generateLoading || minTimestampSec === null}
               size="sm"
               className="gap-2"
             >
               <Sparkles className="size-3.5" />
-              {showcaseLoading ? 'Setting up…' : 'Showcase'}
+              {generateLoading ? 'Generating…' : 'Generate'}
             </Button>
           </div>
         </header>
