@@ -15,10 +15,6 @@ describe('/dashboard-demo shell', () => {
       'utf8'
     );
     const demoStkdeHookSource = readFileSync(new URL('../../components/dashboard-demo/lib/useDemoStkde.ts', import.meta.url), 'utf8');
-    const demoExplainPanelSource = readFileSync(
-      new URL('../../components/dashboard-demo/DemoExplainPanel.tsx', import.meta.url),
-      'utf8'
-    );
     const demoTimelinePanelSource = readFileSync(
       new URL('../../components/dashboard-demo/DemoTimelinePanel.tsx', import.meta.url),
       'utf8'
@@ -37,6 +33,10 @@ describe('/dashboard-demo shell', () => {
     );
     const demoStatsMapOverlaySource = readFileSync(
       new URL('../../components/dashboard-demo/DemoStatsMapOverlay.tsx', import.meta.url),
+      'utf8'
+    );
+    const demoInspectPanelSource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoInspectPanel.tsx', import.meta.url),
       'utf8'
     );
     const demoSlicePanelSource = readFileSync(
@@ -77,36 +77,12 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/timeline/DemoDualTimeline.tsx', import.meta.url),
       'utf8'
     );
-    const workflowSkeletonSource = readFileSync(
-      new URL('../../components/dashboard-demo/WorkflowSkeleton.tsx', import.meta.url),
-      'utf8'
-    );
-
     expect(pageSource).toMatch(/DashboardDemoShell/);
     expect(shellSource).not.toMatch(/WorkflowSkeleton/);
     expect(shellSource).not.toMatch(/Phase 13 guided analysis workflow/);
     expect(shellSource).not.toMatch(/Orient → Find → Compare → Inspect → Explain → Apply/);
     expect(shellSource).not.toMatch(/Shared dataset · one workflow · linked views/);
-    expect(shellSource).toMatch(/useDashboardDemoSelectionStory/);
-    expect(workflowSkeletonSource).toMatch(/Selection-first drafts/);
-    expect(workflowSkeletonSource).toMatch(/Generate selection-first drafts/);
-    expect(workflowSkeletonSource).toMatch(/Brushed selection is canonical/);
-    expect(workflowSkeletonSource).toMatch(/Suggested granularity follows the brushed window size/);
-    expect(workflowSkeletonSource).toMatch(/Monthly/);
-    expect(workflowSkeletonSource).toMatch(/Quarterly/);
-    expect(workflowSkeletonSource).toMatch(/Use suggested/);
-    expect(workflowSkeletonSource).toMatch(/All crime types/);
-    expect(workflowSkeletonSource).toMatch(/Muted neutral partition/);
-    expect(workflowSkeletonSource).toMatch(/toast\.(success|error)/);
-    expect(workflowSkeletonSource).toMatch(/generateBurstDraftBinsFromWindows/);
-    expect(workflowSkeletonSource).toMatch(/Apply draft slices/);
-    expect(workflowSkeletonSource).toMatch(/applyGeneratedBins/);
-    expect(workflowSkeletonSource).toMatch(/Clear draft/);
-    expect(workflowSkeletonSource).toMatch(/pendingGeneratedBins/);
-    expect(workflowSkeletonSource).toMatch(/Granularity/);
-    expect(workflowSkeletonSource).toMatch(/Crime types/);
     expect(shellSource).toMatch(/DemoMapVisualization/);
-    expect(shellSource).toMatch(/CubeVisualization/);
     expect(shellSource).toMatch(/DemoTimelinePanel/);
     expect(shellSource).toMatch(/DashboardDemoRailTabs/);
     expect(shellSource).toMatch(/loadSummaryData/);
@@ -114,7 +90,7 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/setViewport/);
     expect(shellSource).toMatch(/z-40/);
     expect(shellSource).toMatch(/Show map viewport/);
-    expect(shellSource).toMatch(/Show cube viewport/);
+    expect(shellSource).toMatch(/Show 3D viewport/);
     expect(demoMapVisualizationSource).toMatch(/Show STKDE overlay|Hide STKDE overlay/);
     expect(demoMapVisualizationSource).toMatch(/DemoStatsMapOverlay/);
     expect(demoMapVisualizationSource).toMatch(/stkdeVisibleOverride/);
@@ -124,11 +100,9 @@ describe('/dashboard-demo shell', () => {
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoAdaptiveStore/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoMapLayerStore/);
     expect(shellSource).not.toMatch(/Map-first shared viewport|2D map|3D cube|generationStatus|lastGeneratedMetadata|\bTimelinePanel\b/);
-    expect(railTabsSource).toMatch(/TabsTrigger value="stats"/);
+    expect(railTabsSource).toMatch(/TabsTrigger value="scan"/);
     expect(railTabsSource).toMatch(/TabsTrigger value="slices"/);
-    expect(railTabsSource).toMatch(/TabsTrigger value="explain"/);
     expect(railTabsSource).toMatch(/DemoStatsPanel/);
-    expect(railTabsSource).toMatch(/DemoExplainPanel/);
     expect(demoAnalysisStoreSource).toMatch(/useDashboardDemoAnalysisStore/);
     expect(demoAnalysisStoreSource).toMatch(/selectedDistricts/);
     expect(demoAnalysisStoreSource).toMatch(/stkdeParams/);
@@ -155,7 +129,7 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsSource).toMatch(/PulseChart/);
     expect(demoStatsSource).toMatch(/Selected period/);
     expect(demoStatsSource).toMatch(/Crime flow/);
-    expect(demoStatsSource).toMatch(/Catalyst cue/);
+    expect(demoStatsSource).toMatch(/peak period/);
     expect(demoStatsSource).toMatch(/Top crimes/);
     expect(demoStatsSource).toMatch(/District context/);
     expect(demoStatsSource).toMatch(/Distribution/);
@@ -176,14 +150,35 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsMapOverlaySource).toMatch(/dist_label/);
     expect(demoStatsMapOverlaySource).toMatch(/selectedDistricts/);
     expect(mapVisualizationSource).toMatch(/statsOverlay/);
+    expect(demoInspectPanelSource).toMatch(/Active slice/);
+    expect(demoInspectPanelSource).toMatch(/Add to compare/);
+    expect(demoInspectPanelSource).toMatch(/Set left/);
+    expect(demoInspectPanelSource).toMatch(/Set right/);
+    expect(demoInspectPanelSource).toMatch(/Swap/);
+    expect(demoInspectPanelSource).toMatch(/Clear/);
+    expect(demoInspectPanelSource).toMatch(/'Left'/);
+    expect(demoInspectPanelSource).toMatch(/'Right'/);
+    expect(demoInspectPanelSource).toMatch(/Comparison overview/);
+    expect(demoInspectPanelSource).toMatch(/Pairwise deltas/);
+    expect(demoInspectPanelSource).toMatch(/Event count/);
+    expect(demoInspectPanelSource).toMatch(/Duration/);
+    expect(demoInspectPanelSource).toMatch(/Burst intensity/);
+    expect(demoInspectPanelSource).toMatch(/Timing/);
+    expect(demoInspectPanelSource).toMatch(/useCrimeData/);
+    expect(demoInspectPanelSource).toMatch(/computeSliceKde/);
+    expect(demoInspectPanelSource).toMatch(/sliceKde=\{activeSliceKde\}/);
+    expect(demoInspectPanelSource).toMatch(/No comparison slices selected/);
+    expect(demoInspectPanelSource).toMatch(/Select both comparison slots to see direct deltas between slices/);
+    expect(demoInspectPanelSource).toMatch(/setViewMode\('focus'\)/);
+    expect(demoInspectPanelSource).toMatch(/hasDefaultedFocusRef/);
+    expect(demoInspectPanelSource).toMatch(/comparisonSelectionOrder/);
     expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
-    expect(demoStkdePanelSource).toMatch(/Presets/);
-    expect(demoStkdePanelSource).toMatch(/Focus|Balanced|Wide/);
+    expect(demoStkdePanelSource).toMatch(/Applied slices/);
+    expect(demoStkdePanelSource).toMatch(/Full viewport/);
     expect(demoStkdePanelSource).toMatch(/Parameters are preset-only in the demo rail/);
     expect(demoStkdePanelSource).toMatch(/Hotspots/);
     expect(demoStkdePanelSource).toMatch(/District context/);
-    expect(demoStkdePanelSource).toMatch(/No hotspots found for the current district context/);
-    expect(demoStkdePanelSource).not.toMatch(/Spatial BW|Temporal BW|Grid cell|Top K|Min support|Time window|type="number"|Intensity/);
+    expect(demoStkdePanelSource).toMatch(/No hotspots found for the current scope/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange !== null/);
     expect(demoDetectPanelSource).toMatch(/disabled=\{isFetchingBurst \|\| !canGenerate\}/);
@@ -192,49 +187,30 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
-    expect(demoExplainPanelSource).toMatch(/Detection reason/);
-    expect(demoExplainPanelSource).toMatch(/burstRationale/);
-    expect(demoExplainPanelSource).toMatch(/Burst windows/);
-    expect(demoExplainPanelSource).toMatch(/Clear burst pin/);
-    expect(demoExplainPanelSource).toMatch(/used as analysis input for draft bins/);
-    expect(demoExplainPanelSource).toMatch(/True duration/);
-    expect(demoExplainPanelSource).toMatch(/Relative cue/);
-    expect(demoExplainPanelSource).toMatch(/No clear burst; balanced activity|Balanced window/);
-    expect(demoExplainPanelSource).toMatch(/selectedBurstWindows\[0\]/);
     expect(demoSlicePanelSource).toMatch(/useSliceDomainStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoWarpStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
-    expect(demoSlicePanelSource).toMatch(/await generateBurstDraftBinsFromWindows/);
-    expect(demoSlicePanelSource).toMatch(/Slice Companion/);
-    expect(demoSlicePanelSource).toMatch(/DemoPendingDraftList/);
-    expect(demoSlicePanelSource).toMatch(/Draft controls/);
-    expect(demoSlicePanelSource).toMatch(/Generate drafts/);
-    expect(demoSlicePanelSource).toMatch(/Use suggested/);
     expect(demoSlicePanelSource).toMatch(/DialogContent|DialogTitle|DialogDescription/);
     expect(demoSlicePanelSource).toMatch(/selectedSliceId/);
     expect(demoSlicePanelSource).toMatch(/selectedDraftId/);
     expect(demoSlicePanelSource).toMatch(/mergePendingGeneratedBins|splitPendingGeneratedBin|deletePendingGeneratedBin/);
-    expect(demoSlicePanelSource).toMatch(/Burst score/);
     expect(demoSlicePanelSource).not.toMatch(/Pending selection-first drafts|editable before apply|Brushed selection is canonical|State idle/);
     expect(demoSlicePanelSource).toMatch(/toast\.(success|error)/);
     expect(demoSlicePanelSource).not.toMatch(/generateBurstDraftBinsFromWindows\(\[\]\)/);
-    expect(demoSlicePanelSource).toMatch(/datetime-local/);
     expect(demoSlicePanelSource).toMatch(/warpEnabled|Warp enabled|Warp disabled/);
     expect(demoSlicePanelSource).toMatch(/warpWeight|Warp strength/);
-    expect(demoSlicePanelSource).toMatch(/Warp x|Warp off/);
-    expect(demoSlicePanelSource).toMatch(/epochSecondsToNormalized/);
+    expect(demoSlicePanelSource).toMatch(/Warp disabled|Warp \d/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
-    expect(demoPendingDraftListSource).toMatch(/Pending drafts/);
-    expect(demoPendingDraftListSource).toMatch(/Manual draft/);
-    expect(demoPendingDraftListSource).toMatch(/Burst score/);
-    expect(demoPendingDraftListSource).toMatch(/Open draft details/);
-    expect(demoPendingDraftListSource).toMatch(/Calculate/);
+    expect(demoPendingDraftListSource).toMatch(/Pending slices/);
+    expect(demoPendingDraftListSource).toMatch(/Draft \$\{/);
+    expect(demoPendingDraftListSource).toMatch(/Manual \$\{/);
+    expect(demoPendingDraftListSource).toMatch(/Details/);
+    expect(demoPendingDraftListSource).toMatch(/Calc/);
     expect(demoPendingDraftListSource).toMatch(/Merge/);
     expect(demoPendingDraftListSource).toMatch(/Split/);
     expect(demoPendingDraftListSource).toMatch(/Delete/);
     expect(demoPendingDraftListSource).toMatch(/datetime-local/);
-    expect(demoPendingDraftListSource).toMatch(/lg:grid-cols-2/);
     expect(demoBurstGenerationSource).not.toMatch(/preset-bias|fallback to preset-bias/i);
     expect(demoBurstGenerationSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(demoBurstGenerationSource).toMatch(/buildBurstWindowsFromSeries/);
@@ -273,14 +249,6 @@ describe('/dashboard-demo shell', () => {
     expect(demoDualTimelineSurfaceSource).not.toMatch(/Overview density/);
     expect(demoDualTimelineSurfaceSource).not.toMatch(/Detail density/);
     expect(demoDualTimelineSurfaceSource).not.toMatch(/Binned detail/);
-    expect(workflowSkeletonSource).toMatch(/Orient/);
-    expect(workflowSkeletonSource).toMatch(/Find/);
-    expect(workflowSkeletonSource).toMatch(/Compare/);
-    expect(workflowSkeletonSource).toMatch(/Inspect/);
-    expect(workflowSkeletonSource).toMatch(/Explain/);
-    expect(workflowSkeletonSource).toMatch(/Apply/);
-    expect(workflowSkeletonSource).toMatch(/await generateBurstDraftBinsFromWindows/);
-    expect(workflowSkeletonSource).not.toMatch(/buildDemoBurstWindowsFromSelection|useDashboardDemoWarpStore|useDashboardDemoAdaptiveStore/);
 
     expect(demoTimelineSummarySource).toMatch(/useDemoBurstWindows/);
     expect(demoBurstWindowsSource).toMatch(/buildDemoBurstWindowsFromSelection/);

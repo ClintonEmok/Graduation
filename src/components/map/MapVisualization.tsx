@@ -38,6 +38,8 @@ interface MapVisualizationProps {
   coordinationStoreOverride?: unknown;
   adaptiveStoreOverride?: unknown;
   mapLayerStoreOverride?: unknown;
+  sliceTimeRange?: [number, number] | null;
+  activeSliceLabel?: string | null;
 }
 
 export default function MapVisualization({
@@ -50,6 +52,8 @@ export default function MapVisualization({
   coordinationStoreOverride,
   adaptiveStoreOverride,
   mapLayerStoreOverride,
+  sliceTimeRange = null,
+  activeSliceLabel = null,
 }: MapVisualizationProps = {}) {
   const mapRef = useRef<MapRef>(null);
   const { log } = useLogger();
@@ -71,6 +75,12 @@ export default function MapVisualization({
   
   const data = crimeRecords || [];
   
+  const filteredData = useMemo(() => {
+    if (!sliceTimeRange) return data;
+    const [start, end] = sliceTimeRange;
+    return data.filter((r) => r.timestamp >= start && r.timestamp <= end);
+  }, [data, sliceTimeRange]);
+
   const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
   const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
   const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
@@ -173,7 +183,7 @@ export default function MapVisualization({
           <MapEventLayer
             colorMode={colorMode}
             hoveredTypeId={hoveredTypeId}
-            records={data}
+            records={filteredData}
             selectedTimeRange={selectedTimeRange}
             selectedTypes={selectedTypes}
             selectedDistricts={selectedDistricts}
@@ -269,9 +279,10 @@ export default function MapVisualization({
                     Click: {lastClick.lat.toFixed(4)}, {lastClick.lon.toFixed(4)}
                   </div>
                 )}
-                {(selectedTypes.length > 0 || selectedDistricts.length > 0 || selectedTimeRange || selectedSpatialBounds) && (
+                {(selectedTypes.length > 0 || selectedDistricts.length > 0 || selectedTimeRange || selectedSpatialBounds || activeSliceLabel) && (
                   <div className="text-[10px] text-muted-foreground">
-                    Filters: {[
+                    {[
+                      activeSliceLabel ? `Slice: ${activeSliceLabel}` : null,
                       selectedTypes.length > 0 ? `Types ${selectedTypes.length}` : null,
                       selectedDistricts.length > 0 ? `Districts ${selectedDistricts.length}` : null,
                       selectedTimeRange ? 'Time' : null,

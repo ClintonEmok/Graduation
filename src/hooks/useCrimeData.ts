@@ -123,6 +123,7 @@ export function useCrimeData(
   const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
 
   const hasValidRange = hasValidEpochRange(startEpoch, endEpoch)
+  const shouldEnableQuery = hasValidRange && (typeof window !== 'undefined' || process.env.NODE_ENV === 'test')
   
   const queryKey = [
     'crimes', 
@@ -147,13 +148,14 @@ export function useCrimeData(
       districts,
       limit
     ),
-    enabled: hasValidRange,
     // Keep old data while fetching new to prevent UI flash
     placeholderData: (previousData) => previousData,
     // Don't refetch on window focus - viewport changes should trigger refetch
     refetchOnWindowFocus: false,
     // Stale time matches QueryProvider default (5 min)
     staleTime: 5 * 60 * 1000,
+    // Avoid firing relative /api fetches during server render.
+    enabled: shouldEnableQuery,
   })
   
   return {

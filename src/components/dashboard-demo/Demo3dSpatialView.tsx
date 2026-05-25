@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -19,6 +19,13 @@ interface SceneSlice {
   endEpoch: number;
   burstScore: number;
   crimeCount: number;
+}
+
+function normalizeBurstScore(score: number): number {
+  if (!Number.isFinite(score)) return 0;
+
+  const clamped = Math.max(0, score);
+  return clamped > 1 ? Math.min(1, clamped / 100) : clamped;
 }
 
 function resolveSliceEpochRange(
@@ -56,6 +63,7 @@ export function Demo3dSpatialView() {
   const setCrimeFetchStatus = useDashboardDemoCoordinationStore((state) => state.setCrimeFetchStatus);
   const [crimesBySlice, setCrimesBySlice] = useState<CrimeRecord[][]>([]);
   const [crimesError, setCrimesError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const orderedSlices = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) return [];
@@ -70,7 +78,7 @@ export function Demo3dSpatialView() {
           label: slice.name ?? '',
           startEpoch,
           endEpoch,
-          burstScore: slice.burstScore ?? 0,
+          burstScore: normalizeBurstScore(slice.burstScore ?? 0),
           crimeCount: 0,
         } satisfies SceneSlice;
       })
@@ -180,8 +188,14 @@ export function Demo3dSpatialView() {
   }, [crimesBySlice, orderedSlices]);
 
   useEffect(() => {
-    setActiveSliceIndex(Math.max(0, countedSlices.length - 1));
-  }, [countedSlices.length, setActiveSliceIndex]);
+    if (countedSlices.length === 0) return;
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      setActiveSliceIndex(Math.max(0, countedSlices.length - 1));
+    } else if (activeIndex >= countedSlices.length) {
+      setActiveSliceIndex(Math.max(0, countedSlices.length - 1));
+    }
+  }, [countedSlices.length, activeIndex, setActiveSliceIndex]);
 
   if (orderedSlices.length === 0) {
     return (

@@ -453,8 +453,8 @@ function DetailDrilldownCard({ selectedDistricts }: { selectedDistricts: string[
 
                 <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
                   {periodCrimes.length > 0
-                    ? `Catalyst cue: ${periodAnalysis.flowSummary} The strongest period and the dominant crime mix are the first places to look for a trigger or nearby event.`
-                    : 'Catalyst cue: No crime records were returned for this window yet.'}
+                    ? `${periodAnalysis.flowSummary} Start with the peak period and dominant crime type.`
+                    : 'No crime records were returned for this window yet.'}
                 </div>
               </div>
             ) : (

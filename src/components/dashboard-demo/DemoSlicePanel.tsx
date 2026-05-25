@@ -187,6 +187,12 @@ export function DemoSlicePanel() {
     const applied = applySingleGeneratedBin(binId, [domainStartMs, domainEndMs]);
     if (applied) {
       toast.success('Slice applied', { description: 'Slice activated from Detect.' });
+      const storeSlices = useSliceDomainStore.getState().slices;
+      const visibleRange = storeSlices
+        .filter((s) => s.isVisible && s.type === 'range')
+        .sort((a, b) => (a.startDateTimeMs ?? 0) - (b.startDateTimeMs ?? 0));
+      const newIndex = Math.max(0, visibleRange.length - 1);
+      useDashboardDemoCoordinationStore.getState().setActiveSliceIndex(newIndex);
     }
   }, [applySingleGeneratedBin, maxTimestampSec, minTimestampSec, timeRange]);
 
