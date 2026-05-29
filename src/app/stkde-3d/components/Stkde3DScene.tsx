@@ -8,6 +8,7 @@ import Map, { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
 import { StkdeSliceStack, yForIndex } from './StkdeSliceStack';
+import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
 
 const CAMERA_POSITION: [number, number, number] = [105, 175, 105];
@@ -86,6 +87,7 @@ function MapTileSource({
 interface Stkde3DSceneProps {
   slices: EvolvingSlice[];
   sliceKdes: KdeCell[][];
+  volumeProfile?: DurationVolumeProfileEntry[];
   sliceEvents?: MockCrimeEvent[][];
   activeIndex: number;
   viewMode?: 'stack' | 'focus';
@@ -124,7 +126,7 @@ function RawEventPoints({
   if (positions.length === 0) return null;
 
   return (
-    <points frustumCulled={false}>
+    <points>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
@@ -143,6 +145,7 @@ function RawEventPoints({
 function SceneContent({
   slices,
   sliceKdes,
+  volumeProfile,
   sliceEvents = [],
   activeIndex,
   viewMode = 'stack',
@@ -155,6 +158,9 @@ function SceneContent({
     : undefined;
   const focusedSlices = focusedSlice ? [focusedSlice] : [];
   const focusedKdes = sliceKdes[activeIndex] ? [sliceKdes[activeIndex]] : [];
+  const focusedVolumeProfile = volumeProfile?.[activeIndex]
+    ? [{ ...volumeProfile[activeIndex]!, index: 0 }]
+    : [];
 
   useEffect(() => {
     const controls = controlsRef.current;
@@ -181,6 +187,7 @@ function SceneContent({
       <StkdeSliceStack
         slices={viewMode === 'focus' ? focusedSlices : slices}
         sliceKdes={viewMode === 'focus' ? focusedKdes : sliceKdes}
+        volumeProfile={viewMode === 'focus' ? focusedVolumeProfile : volumeProfile}
         activeIndex={viewMode === 'focus' ? 0 : activeIndex}
         compact={viewMode === 'focus'}
         sliceOpacity={sliceOpacity}
@@ -208,6 +215,7 @@ function SceneContent({
 export function Stkde3DScene({
   slices,
   sliceKdes,
+  volumeProfile,
   sliceEvents = [],
   activeIndex,
   viewMode = 'stack',
@@ -233,6 +241,7 @@ export function Stkde3DScene({
           <SceneContent
             slices={slices}
             sliceKdes={sliceKdes}
+            volumeProfile={volumeProfile}
             sliceEvents={sliceEvents}
             activeIndex={activeIndex}
             viewMode={viewMode}

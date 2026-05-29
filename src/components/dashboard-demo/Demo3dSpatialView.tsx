@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
-import { computeSliceKde } from '@/lib/kde';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { Stkde3DScene } from '@/app/stkde-3d/components/Stkde3DScene';
+import { buildDurationVolumeProfile } from '@/app/stkde-3d/lib/volume-encoding';
 import type { KdeCell } from '@/lib/kde';
 import type { CrimeRecord } from '@/types/crime';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
@@ -58,12 +58,18 @@ export function Demo3dSpatialView() {
   const activeIndex = useDashboardDemoCoordinationStore((state) => state.activeSliceIndex);
   const viewMode = useDashboardDemoCoordinationStore((state) => state.viewMode);
   const sliceOpacity = useDashboardDemoCoordinationStore((state) => state.inspectSliceOpacity);
+  const volumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.volumeScaleSeconds);
+  const volumeExaggeration = useDashboardDemoCoordinationStore((state) => state.volumeExaggeration);
+  const volumeNormalizationMode = useDashboardDemoCoordinationStore((state) => state.volumeNormalizationMode);
   const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
   const setSliceCrimeCounts = useDashboardDemoCoordinationStore((state) => state.setSliceCrimeCounts);
   const setCrimeFetchStatus = useDashboardDemoCoordinationStore((state) => state.setCrimeFetchStatus);
   const [crimesBySlice, setCrimesBySlice] = useState<CrimeRecord[][]>([]);
   const [crimesError, setCrimesError] = useState<string | null>(null);
+  const [sliceKdes, setSliceKdes] = useState<KdeCell[][]>([]);
   const hasLoadedRef = useRef(false);
+  const kdeWorkerRef = useRef<Worker | null>(null);
+  const kdeRequestIdRef = useRef(0);
 
   const orderedSlices = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) return [];
@@ -158,34 +164,86 @@ export function Demo3dSpatialView() {
     return () => { cancelled = true; };
   }, [orderedSlices, setCrimeFetchStatus, setSliceCrimeCounts]);
 
-  const { sliceKdes, countedSlices } = useMemo(() => {
+  const countedSlices = useMemo(() => {
     if (crimesBySlice.length === 0 || orderedSlices.length === 0) {
-      return { sliceKdes: [] as KdeCell[][], countedSlices: orderedSlices };
+      return orderedSlices;
+    }
+    return orderedSlices.map((slice, i) => ({
+      ...slice,
+      crimeCount: (crimesBySlice[i] ?? []).length,
+    }));
+  }, [crimesBySlice, orderedSlices]);
+
+  const volumeProfile = useMemo(
+    () => buildDurationVolumeProfile(countedSlices, {
+      scaleSeconds: volumeScaleSeconds,
+      exaggeration: volumeExaggeration,
+      normalizationMode: volumeNormalizationMode,
+    }),
+    [countedSlices, volumeScaleSeconds, volumeExaggeration, volumeNormalizationMode],
+  );
+
+  useEffect(() => {
+    if (crimesBySlice.length === 0 || orderedSlices.length === 0) {
+      setSliceKdes([]);
+      return;
     }
 
-    const updated = orderedSlices.map((slice, i) => {
-      const sliceCrimes = crimesBySlice[i] ?? [];
-      return {
-        ...slice,
-        crimeCount: sliceCrimes.length,
-      };
-    });
+    let cancelled = false;
+    const requestId = ++kdeRequestIdRef.current;
 
-    const kdes = crimesBySlice.map((sliceCrimes, i) => {
-      const tag = orderedSlices[i]?.label ?? i;
-      if (sliceCrimes.length === 0) {
-        console.debug(`[KDE] slice ${tag}: 0 events → no KDE`);
-        return [];
+    if (!kdeWorkerRef.current) {
+      kdeWorkerRef.current = new Worker(
+        new URL('../../workers/kdeSlice.worker.ts', import.meta.url),
+      );
+    }
+
+    const worker = kdeWorkerRef.current;
+
+    const handler = (event: MessageEvent) => {
+      const response = event.data as { requestId: number; results: Array<{ cells: Float32Array; maxIntensity: number; meanIntensity: number; cellCount: number }> };
+      if (response.requestId !== requestId) return;
+
+      const kdes: KdeCell[][] = response.results.map((r) => {
+        const cells: KdeCell[] = [];
+        const flat = r.cells;
+        for (let i = 0; i < r.cellCount; i++) {
+          cells.push({
+            x: flat[i * 4],
+            z: flat[i * 4 + 1],
+            intensity: flat[i * 4 + 2],
+            support: flat[i * 4 + 3],
+          });
+        }
+        return cells;
+      });
+
+      if (!cancelled) {
+        setSliceKdes(kdes);
       }
-      const pts = sliceCrimes.map((c) => ({ x: c.x, z: c.z }));
-      console.debug(`[KDE] slice ${tag}: ${pts.length} events, sample xz:`, pts[0]);
-      const result = computeSliceKde(pts);
-      console.debug(`[KDE] slice ${tag}: ${result.cells.length} cells, max=${result.maxIntensity.toFixed(1)}`);
-      return result.cells;
+    };
+
+    worker.addEventListener('message', handler);
+
+    worker.postMessage({
+      requestId,
+      sliceGroups: crimesBySlice.map((sliceCrimes) => ({
+        points: sliceCrimes.map((c) => ({ x: c.x, z: c.z })),
+      })),
     });
 
-    return { sliceKdes: kdes, countedSlices: updated };
+    return () => {
+      cancelled = true;
+      worker.removeEventListener('message', handler);
+    };
   }, [crimesBySlice, orderedSlices]);
+
+  useEffect(() => {
+    return () => {
+      kdeWorkerRef.current?.terminate();
+      kdeWorkerRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (countedSlices.length === 0) return;
@@ -218,6 +276,7 @@ export function Demo3dSpatialView() {
       <Stkde3DScene
         slices={countedSlices}
         sliceKdes={sliceKdes}
+        volumeProfile={volumeProfile}
         activeIndex={activeIndex}
         viewMode={viewMode}
         sliceOpacity={sliceOpacity}
