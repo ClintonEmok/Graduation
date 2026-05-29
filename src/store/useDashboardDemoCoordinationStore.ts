@@ -1,4 +1,11 @@
 import { create } from 'zustand';
+import {
+  STKDE_PARAM_LIMITS,
+  type StkdeParams,
+  type StkdeSpatialFilter,
+  type StkdeTemporalFilter,
+} from '@/store/useStkdeStore';
+import type { StkdeResponse } from '@/lib/stkde/contracts';
 
 export type DemoSelectionSource = 'cube' | 'timeline' | 'map' | null;
 export type DemoSyncStatusToken = 'syncing' | 'synchronized' | 'partial';
@@ -8,6 +15,28 @@ export type DemoComparisonSlot = 'left' | 'right';
 export type DemoSliceViewMode = 'stack' | 'focus';
 export type DemoCrimeFetchStatus = 'idle' | 'loading' | 'success' | 'error';
 export type DemoRailTab = 'scan' | 'detect' | 'slices' | 'inspect' | 'configure';
+export type DemoWarpScaleMode = 'linear' | 'adaptive';
+export type DemoWarpSource = 'density' | 'slice-authored';
+export type DemoStkdeScopeMode = 'applied-slices' | 'full-viewport';
+export type DemoVolumeNormalizationMode = 'window' | 'reference';
+
+const DEFAULT_START_EPOCH = 978307200;
+const DEFAULT_END_EPOCH = 1767571200;
+export const DEFAULT_VOLUME_SCALE_SECONDS = 12 * 60 * 60;
+export const DEFAULT_VOLUME_EXAGGERATION = 1.15;
+export const DEFAULT_VOLUME_NORMALIZATION_MODE: DemoVolumeNormalizationMode = 'window';
+
+export const ALL_DEMO_DISTRICTS = Array.from({ length: 25 }, (_, index) => String(index + 1));
+
+export interface DemoAnalysisTimeRange {
+  startEpoch: number;
+  endEpoch: number;
+}
+
+function clampParam(input: number | undefined, fallback: number, min: number, max: number): number {
+  const candidate = typeof input === 'number' && Number.isFinite(input) ? input : fallback;
+  return Math.floor(Math.min(max, Math.max(min, candidate)));
+}
 
 export interface DemoBurstWindowSelection {
   id: string;
@@ -74,15 +103,39 @@ interface DashboardDemoCoordinationState {
   inspectIsPlaying: boolean;
   inspectPlaybackSpeed: number;
   inspectSliceOpacity: number;
+  volumeScaleSeconds: number;
+  volumeExaggeration: number;
+  volumeNormalizationMode: DemoVolumeNormalizationMode;
   crimeFetchStatus: DemoCrimeFetchStatus;
   sliceCrimeCounts: Record<string, number>;
   activeRailTab: DemoRailTab;
+  burstThreshold: number;
+  timeScaleMode: DemoWarpScaleMode;
+  warpSource: DemoWarpSource;
+  warpFactor: number;
+  densityMap: Float32Array | null;
+  warpMap: Float32Array | null;
+  mapDomain: [number, number];
+  isComputing: boolean;
+  selectedDistricts: string[];
+  timeRange: DemoAnalysisTimeRange;
+  stkdeScopeMode: DemoStkdeScopeMode;
+  stkdeParams: StkdeParams;
+  selectedHotspotId: string | null;
+  hoveredHotspotId: string | null;
+  spatialFilter: StkdeSpatialFilter | null;
+  temporalFilter: StkdeTemporalFilter | null;
+  stkdeResponse: StkdeResponse | null;
   setActiveRailTab: (tab: string) => void;
   setActiveSliceIndex: (index: number) => void;
   setSliceCrimeCounts: (counts: Record<string, number>) => void;
   setViewMode: (mode: DemoSliceViewMode) => void;
   setInspectIsPlaying: (playing: boolean) => void;
   setInspectSliceOpacity: (opacity: number) => void;
+  setVolumeScaleSeconds: (seconds: number) => void;
+  setVolumeExaggeration: (value: number) => void;
+  setVolumeNormalizationMode: (mode: DemoVolumeNormalizationMode) => void;
+  resetVolumeSettings: () => void;
   setCrimeFetchStatus: (status: DemoCrimeFetchStatus) => void;
   setInspectPlaybackSpeed: (speed: number) => void;
   toggleInspectPlayback: () => void;
@@ -101,6 +154,25 @@ interface DashboardDemoCoordinationState {
   pushComparisonSlice: (sliceId: string) => void;
   swapComparisonSlices: () => void;
   clearComparisonSlices: () => void;
+  setBurstThreshold: (value: number) => void;
+  resetBurstThreshold: () => void;
+  setTimeScaleMode: (mode: DemoWarpScaleMode) => void;
+  setWarpSource: (source: DemoWarpSource) => void;
+  setWarpFactor: (value: number) => void;
+  setPrecomputedMaps: (densityMap: Float32Array | null, warpMap: Float32Array | null, domain: [number, number]) => void;
+  setIsComputing: (value: boolean) => void;
+  resetWarp: () => void;
+  setSelectedDistricts: (districts: string[]) => void;
+  toggleDistrict: (district: string) => void;
+  setTimeRange: (startEpoch: number, endEpoch: number) => void;
+  setStkdeScopeMode: (mode: DemoStkdeScopeMode) => void;
+  setStkdeParams: (patch: Partial<StkdeParams>) => void;
+  setSelectedHotspot: (hotspotId: string | null) => void;
+  setHoveredHotspot: (hotspotId: string | null) => void;
+  setSpatialFilter: (filter: StkdeSpatialFilter | null) => void;
+  setTemporalFilter: (filter: StkdeTemporalFilter | null) => void;
+  setStkdeResponse: (response: StkdeResponse | null) => void;
+  resetAnalysis: () => void;
 }
 
 export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinationState>((set) => ({
@@ -121,14 +193,52 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   inspectIsPlaying: false,
   inspectPlaybackSpeed: 1,
   inspectSliceOpacity: 1,
+  volumeScaleSeconds: DEFAULT_VOLUME_SCALE_SECONDS,
+  volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
+  volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
   crimeFetchStatus: 'idle',
   sliceCrimeCounts: {},
   activeRailTab: 'scan',
+  burstThreshold: 0.7,
+  timeScaleMode: 'linear',
+  warpSource: 'density',
+  warpFactor: 0,
+  densityMap: null,
+  warpMap: null,
+  mapDomain: [0, 100],
+  isComputing: false,
+  selectedDistricts: [] as string[],
+  timeRange: { startEpoch: DEFAULT_START_EPOCH, endEpoch: DEFAULT_END_EPOCH },
+  stkdeScopeMode: 'applied-slices' as DemoStkdeScopeMode,
+  stkdeParams: {
+    spatialBandwidthMeters: 750,
+    temporalBandwidthHours: 24,
+    gridCellMeters: 500,
+    topK: 12,
+    minSupport: 5,
+    timeWindowHours: 24,
+  },
+  selectedHotspotId: null,
+  hoveredHotspotId: null,
+  spatialFilter: null,
+  temporalFilter: null,
+  stkdeResponse: null,
   setActiveRailTab: (tab) => set({ activeRailTab: tab as DemoRailTab }),
   setActiveSliceIndex: (activeSliceIndex) => set({ activeSliceIndex }),
   setViewMode: (viewMode) => set({ viewMode }),
   setInspectIsPlaying: (inspectIsPlaying) => set({ inspectIsPlaying }),
   setInspectSliceOpacity: (inspectSliceOpacity) => set({ inspectSliceOpacity }),
+  setVolumeScaleSeconds: (volumeScaleSeconds) =>
+    set({ volumeScaleSeconds: Math.max(1, Math.floor(volumeScaleSeconds)) }),
+  setVolumeExaggeration: (volumeExaggeration) =>
+    set({ volumeExaggeration: Math.max(0.1, Math.min(4, volumeExaggeration)) }),
+  setVolumeNormalizationMode: (volumeNormalizationMode) => set({ volumeNormalizationMode }),
+  resetVolumeSettings: () =>
+    set({
+      volumeScaleSeconds: DEFAULT_VOLUME_SCALE_SECONDS,
+      volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
+      volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
+    }),
   setCrimeFetchStatus: (crimeFetchStatus) => set({ crimeFetchStatus }),
   setSliceCrimeCounts: (sliceCrimeCounts) => set({ sliceCrimeCounts }),
   setInspectPlaybackSpeed: (inspectPlaybackSpeed) => set({ inspectPlaybackSpeed }),
@@ -164,7 +274,6 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
         const nextNoMatch = { ...state.panelNoMatch };
         delete nextNoMatch[panel];
         const remaining = Object.values(nextNoMatch);
-
         if (remaining.length > 0) {
           return {
             panelNoMatch: nextNoMatch,
@@ -175,52 +284,20 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
             },
           };
         }
-
-        return {
-          panelNoMatch: nextNoMatch,
-          syncStatus: { status: 'synchronized' },
-        };
+        return { panelNoMatch: nextNoMatch, syncStatus: { status: 'synchronized' } };
       }
-
-      const nextNoMatch = {
-        ...state.panelNoMatch,
-        [panel]: {
-          panel,
-          reason,
-          at: Date.now(),
-        },
-      };
-
-      return {
-        panelNoMatch: nextNoMatch,
-        syncStatus: {
-          status: 'partial',
-          reason,
-          panel,
-        },
-      };
+      const nextNoMatch = { ...state.panelNoMatch, [panel]: { panel, reason, at: Date.now() } };
+      return { panelNoMatch: nextNoMatch, syncStatus: { status: 'partial', reason, panel } };
     }),
   setSyncStatus: (status, reason, panel) =>
-    set({
-      syncStatus: {
-        status,
-        ...(reason ? { reason } : {}),
-        ...(panel ? { panel } : {}),
-      },
-    }),
+    set({ syncStatus: { status, ...(reason ? { reason } : {}), ...(panel ? { panel } : {}) } }),
   setBrushRange: (range) => set({ brushRange: range }),
   toggleBurstWindow: (window) =>
     set((state) => {
       const active = state.selectedBurstWindows[0];
       const isSameWindow =
-        active?.id === window.id &&
-        active.start === window.start &&
-        active.end === window.end &&
-        active.metric === window.metric;
-
-      return {
-        selectedBurstWindows: isSameWindow ? [active] : [window],
-      };
+        active?.id === window.id && active.start === window.start && active.end === window.end && active.metric === window.metric;
+      return { selectedBurstWindows: isSameWindow ? [active] : [window] };
     }),
   clearSelectedBurstWindows: () => set({ selectedBurstWindows: [] }),
   setSelectedDetailPeriod: (selectedDetailPeriod) => set({ selectedDetailPeriod }),
@@ -230,51 +307,25 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
     set((state) => {
       const nextIds = { ...state.comparisonSliceIds, [slot]: sliceId };
       const nextOrder = state.comparisonSelectionOrder.filter((item) => item !== slot);
-      if (sliceId !== null) {
-        nextOrder.push(slot);
-      }
-
-      return {
-        comparisonSliceIds: nextIds,
-        comparisonSelectionOrder: nextOrder,
-      };
+      if (sliceId !== null) nextOrder.push(slot);
+      return { comparisonSliceIds: nextIds, comparisonSelectionOrder: nextOrder };
     }),
   pushComparisonSlice: (sliceId) =>
     set((state) => {
       const { left, right } = state.comparisonSliceIds;
-
       if (left === null) {
-        return {
-          comparisonSliceIds: { left: sliceId, right },
-          comparisonSelectionOrder: ['left', ...(right === null ? [] : ['right'])] as DemoComparisonSlot[],
-        };
+        return { comparisonSliceIds: { left: sliceId, right }, comparisonSelectionOrder: ['left', ...(right === null ? [] : ['right'])] as DemoComparisonSlot[] };
       }
-
       if (right === null) {
-        return {
-          comparisonSliceIds: { left, right: sliceId },
-          comparisonSelectionOrder: ['left', 'right'] as DemoComparisonSlot[],
-        };
+        return { comparisonSliceIds: { left, right: sliceId }, comparisonSelectionOrder: ['left', 'right'] as DemoComparisonSlot[] };
       }
-
       const oldestSlot = state.comparisonSelectionOrder[0] ?? 'left';
       const newestOrder = (oldestSlot === 'left' ? ['right', 'left'] : ['left', 'right']) as DemoComparisonSlot[];
-
-      return {
-        comparisonSliceIds: {
-          left: oldestSlot === 'left' ? sliceId : left,
-          right: oldestSlot === 'right' ? sliceId : right,
-        },
-        comparisonSelectionOrder: newestOrder,
-      };
+      return { comparisonSliceIds: { left: oldestSlot === 'left' ? sliceId : left, right: oldestSlot === 'right' ? sliceId : right }, comparisonSelectionOrder: newestOrder };
     }),
   swapComparisonSlices: () =>
     set((state) => {
-      const nextIds = {
-        left: state.comparisonSliceIds.right,
-        right: state.comparisonSliceIds.left,
-      };
-
+      const nextIds = { left: state.comparisonSliceIds.right, right: state.comparisonSliceIds.left };
       return {
         comparisonSliceIds: nextIds,
         comparisonSelectionOrder: state.comparisonSelectionOrder.length === 2
@@ -283,8 +334,57 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       };
     }),
   clearComparisonSlices: () =>
+    set({ comparisonSliceIds: { left: null, right: null }, comparisonSelectionOrder: [] }),
+  setBurstThreshold: (value) => set({ burstThreshold: Math.max(0, Math.min(1, value)) }),
+  resetBurstThreshold: () => set({ burstThreshold: 0.7 }),
+  setTimeScaleMode: (mode) => set({ timeScaleMode: mode }),
+  setWarpSource: (source) => set({ warpSource: source }),
+  setWarpFactor: (value) => set({ warpFactor: Math.min(1, Math.max(0, value)) }),
+  setPrecomputedMaps: (densityMap, warpMap, domain) =>
+    set({ densityMap, warpMap, mapDomain: domain, isComputing: false }),
+  setIsComputing: (value) => set({ isComputing: value }),
+  resetWarp: () =>
+    set({ timeScaleMode: 'linear', warpFactor: 0, warpSource: 'density', isComputing: false }),
+  setSelectedDistricts: (districts) => set({ selectedDistricts: districts }),
+  toggleDistrict: (district) =>
+    set((state) => {
+      const next = state.selectedDistricts.includes(district)
+        ? state.selectedDistricts.filter((entry) => entry !== district)
+        : [...state.selectedDistricts, district];
+      return { selectedDistricts: next };
+    }),
+  setTimeRange: (startEpoch, endEpoch) =>
+    set({ timeRange: { startEpoch: Math.min(startEpoch, endEpoch), endEpoch: Math.max(endEpoch, startEpoch + 1) } }),
+  setStkdeScopeMode: (stkdeScopeMode) => set({ stkdeScopeMode }),
+  setStkdeParams: (patch) =>
+    set((state) => ({
+      stkdeParams: {
+        spatialBandwidthMeters: clampParam(patch.spatialBandwidthMeters, state.stkdeParams.spatialBandwidthMeters, STKDE_PARAM_LIMITS.spatialBandwidthMeters.min, STKDE_PARAM_LIMITS.spatialBandwidthMeters.max),
+        temporalBandwidthHours: clampParam(patch.temporalBandwidthHours, state.stkdeParams.temporalBandwidthHours, STKDE_PARAM_LIMITS.temporalBandwidthHours.min, STKDE_PARAM_LIMITS.temporalBandwidthHours.max),
+        gridCellMeters: clampParam(patch.gridCellMeters, state.stkdeParams.gridCellMeters, STKDE_PARAM_LIMITS.gridCellMeters.min, STKDE_PARAM_LIMITS.gridCellMeters.max),
+        topK: clampParam(patch.topK, state.stkdeParams.topK, STKDE_PARAM_LIMITS.topK.min, STKDE_PARAM_LIMITS.topK.max),
+        minSupport: clampParam(patch.minSupport, state.stkdeParams.minSupport, STKDE_PARAM_LIMITS.minSupport.min, STKDE_PARAM_LIMITS.minSupport.max),
+        timeWindowHours: clampParam(patch.timeWindowHours, state.stkdeParams.timeWindowHours, STKDE_PARAM_LIMITS.timeWindowHours.min, STKDE_PARAM_LIMITS.timeWindowHours.max),
+      },
+    })),
+  setSelectedHotspot: (selectedHotspotId) => set({ selectedHotspotId }),
+  setHoveredHotspot: (hoveredHotspotId) => set({ hoveredHotspotId }),
+  setSpatialFilter: (spatialFilter) => set({ spatialFilter }),
+  setTemporalFilter: (temporalFilter) => set({ temporalFilter }),
+  setStkdeResponse: (stkdeResponse) => set({ stkdeResponse }),
+  resetAnalysis: () =>
     set({
-      comparisonSliceIds: { left: null, right: null },
-      comparisonSelectionOrder: [],
+      selectedDistricts: [],
+      timeRange: { startEpoch: DEFAULT_START_EPOCH, endEpoch: DEFAULT_END_EPOCH },
+      stkdeScopeMode: 'applied-slices',
+      stkdeParams: { spatialBandwidthMeters: 750, temporalBandwidthHours: 24, gridCellMeters: 500, topK: 12, minSupport: 5, timeWindowHours: 24 },
+      volumeScaleSeconds: DEFAULT_VOLUME_SCALE_SECONDS,
+      volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
+      volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
+      selectedHotspotId: null,
+      hoveredHotspotId: null,
+      spatialFilter: null,
+      temporalFilter: null,
+      stkdeResponse: null,
     }),
 }));

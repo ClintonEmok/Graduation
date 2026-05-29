@@ -36,6 +36,9 @@ beforeEach(() => {
     comparisonSelectionOrder: [],
     activeRailTab: 'scan',
     inspectSliceOpacity: 1,
+    volumeScaleSeconds: 43_200,
+    volumeExaggeration: 1.15,
+    volumeNormalizationMode: 'window',
   });
 });
 
@@ -115,5 +118,23 @@ describe('useDashboardDemoCoordinationStore', () => {
       left: null,
       right: null,
     });
+  });
+
+  test('stores and resets volume settings', () => {
+    const store = useDashboardDemoCoordinationStore.getState();
+
+    store.setVolumeScaleSeconds(21_600);
+    store.setVolumeExaggeration(1.6);
+    store.setVolumeNormalizationMode('reference');
+
+    expect(useDashboardDemoCoordinationStore.getState().volumeScaleSeconds).toBe(21_600);
+    expect(useDashboardDemoCoordinationStore.getState().volumeExaggeration).toBe(1.6);
+    expect(useDashboardDemoCoordinationStore.getState().volumeNormalizationMode).toBe('reference');
+
+    store.resetVolumeSettings();
+
+    expect(useDashboardDemoCoordinationStore.getState().volumeScaleSeconds).toBe(43_200);
+    expect(useDashboardDemoCoordinationStore.getState().volumeExaggeration).toBe(1.15);
+    expect(useDashboardDemoCoordinationStore.getState().volumeNormalizationMode).toBe('window');
   });
 });
