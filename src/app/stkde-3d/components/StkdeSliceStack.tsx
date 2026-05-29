@@ -4,6 +4,7 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import type { KdeCell, EvolvingSlice } from '../lib/types';
+import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 
 export const SLICE_SPACING = 7.25;
 export const START_Y = -32.625;
@@ -101,6 +102,7 @@ function buildHeatmapTexture(cells: KdeCell[]): THREE.CanvasTexture | null {
 interface StkdeSliceStackProps {
   slices: EvolvingSlice[];
   sliceKdes: KdeCell[][];
+  volumeProfile?: DurationVolumeProfileEntry[];
   activeIndex: number;
   compact?: boolean;
   sliceOpacity?: number;
@@ -109,6 +111,7 @@ interface StkdeSliceStackProps {
 export function StkdeSliceStack({
   slices,
   sliceKdes,
+  volumeProfile,
   activeIndex,
   compact = false,
   sliceOpacity = 1,
@@ -145,29 +148,79 @@ export function StkdeSliceStack({
             : 0.1;
 
         const gridOpacity = isActive ? 0.08 : isAdjacent ? 0.03 : 0.01;
-        const planeOpacity = Math.min(0.85, 0.3 * opacityMultiplier * sliceOpacity);
+        const volume = volumeProfile?.[i];
+        const hasVolume = Boolean(volume);
+        const thickness = volume?.thickness ?? 0.3;
+        const surfaceY = hasVolume ? thickness / 2 + 0.05 : 0;
+        const slabOpacity = hasVolume ? Math.min(0.26, Math.max(0.08, (volume?.opacity ?? 0.18) * opacityMultiplier * sliceOpacity)) : 0;
+        const surfaceOpacity = hasVolume
+          ? Math.min(0.82, Math.max(0.16, ((volume?.opacity ?? 0.18) + 0.18) * opacityMultiplier * sliceOpacity))
+          : Math.min(0.85, 0.3 * opacityMultiplier * sliceOpacity);
+        const underlayOpacity = hasVolume ? Math.max(0.04, surfaceOpacity * (0.22 + (volume?.falloff ?? 0.1))) : 0;
         const texture = textures.get(i) ?? undefined;
 
         const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;
 
         return (
           <group key={slice.index} position={[0, y, 0]}>
-            {texture ? (
-              <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[100, 100]} />
-                <meshBasicMaterial
-                  map={texture}
-                  transparent
-                  opacity={planeOpacity}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
-            ) : null}
+            {hasVolume ? (
+              <>
+                <mesh position={[0, thickness / 2, 0]}>
+                  <boxGeometry args={[100, thickness, 100]} />
+                  <meshStandardMaterial
+                    color={isActive ? '#132238' : '#0f172a'}
+                    transparent
+                    opacity={slabOpacity}
+                    roughness={0.96}
+                    metalness={0.02}
+                    depthWrite={false}
+                  />
+                </mesh>
+
+                {texture ? (
+                  <>
+                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, surfaceY + 0.01, 0]}>
+                      <planeGeometry args={[100 - (volume?.falloff ?? 0.1) * 6, 100 - (volume?.falloff ?? 0.1) * 6]} />
+                      <meshBasicMaterial
+                        map={texture}
+                        transparent
+                        opacity={surfaceOpacity}
+                        depthWrite={false}
+                        side={THREE.DoubleSide}
+                      />
+                    </mesh>
+
+                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, surfaceY - 0.03, 0]}>
+                      <planeGeometry args={[96 - (volume?.falloff ?? 0.1) * 8, 96 - (volume?.falloff ?? 0.1) * 8]} />
+                      <meshBasicMaterial
+                        map={texture}
+                        transparent
+                        opacity={underlayOpacity}
+                        depthWrite={false}
+                        side={THREE.DoubleSide}
+                      />
+                    </mesh>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              texture ? (
+                <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                  <planeGeometry args={[100, 100]} />
+                  <meshBasicMaterial
+                    map={texture}
+                    transparent
+                    opacity={surfaceOpacity}
+                    depthWrite={false}
+                    side={THREE.DoubleSide}
+                  />
+                </mesh>
+              ) : null
+            )}
 
             <gridHelper
               args={[100, 10]}
-              position={[0, 0.05, 0]}
+              position={[0, hasVolume ? surfaceY + 0.04 : 0.05, 0]}
               rotation={[0, 0, 0]}
             >
               <meshBasicMaterial
@@ -181,7 +234,7 @@ export function StkdeSliceStack({
               <>
                 <mesh
                   rotation={[-Math.PI / 2, 0, 0]}
-                  position={[0, 0.08, 0]}
+                  position={[0, hasVolume ? surfaceY + 0.1 : 0.08, 0]}
                 >
                   <ringGeometry args={[49.2, 50, 64]} />
                   <meshBasicMaterial
@@ -194,7 +247,7 @@ export function StkdeSliceStack({
                 </mesh>
                 <mesh
                   rotation={[-Math.PI / 2, 0, 0]}
-                  position={[0, 0.1, 0]}
+                  position={[0, hasVolume ? surfaceY + 0.12 : 0.1, 0]}
                 >
                   <ringGeometry args={[48.5, 49.8, 64]} />
                   <meshBasicMaterial
@@ -211,7 +264,7 @@ export function StkdeSliceStack({
             {isAdjacent && (
               <mesh
                 rotation={[-Math.PI / 2, 0, 0]}
-                position={[0, 0.06, 0]}
+                position={[0, hasVolume ? surfaceY + 0.08 : 0.06, 0]}
               >
                 <ringGeometry args={[49.4, 50, 64]} />
                 <meshBasicMaterial
