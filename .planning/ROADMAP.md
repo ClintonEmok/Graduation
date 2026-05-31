@@ -2,12 +2,12 @@
 
 ## Overview
 
-v3.2 levels up the visualization quality of the `dashboard-demo` experience by tightening the rendering foundation, restoring spatial legibility, making bursts immediately readable, and adding interpolation- and aging-driven temporal motion only inside the demo 3D STKDE widget. This milestone deliberately stops short of the deferred work on Multi-Scale Temporal, Dense Data Readability, and Evaluation Readiness.
+v3.2 levels up the visualization quality of the `dashboard-demo` experience by tightening the rendering foundation, restoring spatial legibility, and adding interpolation- and aging-driven temporal motion only inside the demo 3D STKDE widget. This milestone deliberately stops short of the deferred work on Multi-Scale Temporal, Dense Data Readability, and Evaluation Readiness.
 
 ## Milestones
 
 - ✅ **v3.1 Workflow Finalization** — Phases 72-75, complete
-- 🚧 **v3.2 Visualization Level Up** — Phases 76-79, current milestone
+- 🚧 **v3.2 Visualization Level Up** — Phases 76-78, current milestone
 - 📋 **Future milestones** — Multi-Scale Temporal, Dense Data Readability, Evaluation Readiness
 
 ## Phase Details
@@ -45,26 +45,20 @@ Plans:
   4. Duration scaling remains normalized and consistent across different windows so the same duration means the same visual magnitude.
   5. The volume encoding stays aligned with the active slice and other 3D widget interactions without flattening the scene.
 
-### Phase 78: Burst Visibility + Visual Consistency
-**Goal**: Bursts are the clearest signal in the system, and that signal reads the same across cube and timeline while the map remains density-only spatial context.
-**Depends on**: Phases 76-77
-**Requirements**: BVS-01, BVS-02, BVS-03, BVS-04, BVS-05, BVS-06, BVS-07, BVS-08
-**Success Criteria**:
-  1. Bursts render with GPU-backed visual encoding instead of looking like flat CPU textures.
-  2. Burstier slices are visibly more prominent through opacity and intensity differences in the cube and timeline.
-  3. The same burst intensity means the same thing in the cube and timeline because the color scale and legend are shared.
-  4. Users can switch between raw density and burst-emphasized modes in the cube/timeline pair, and the chosen mode persists across views.
-  5. Active burst slices stand out through opacity, intensity, and fluid emphasis without changing the underlying data.
-
-### Phase 79: Temporal Evolution (Demo 3D STKDE Widget Only)
+### Phase 78: Temporal Evolution (Demo 3D STKDE Widget Only)
 **Goal**: Slice changes feel continuous and interpretable inside the demo 3D STKDE widget, while the map and timeline remain non-animated readers.
-**Depends on**: Phases 76-78; scope is limited to `src/components/dashboard-demo/Demo3dSpatialView.tsx`, `src/app/stkde-3d/components/Stkde3DScene.tsx`, `src/app/stkde-3d/components/StkdeSliceStack.tsx`, and `src/app/stkde-3d/components/SliceScrubber.tsx`
+**Depends on**: Phases 76-77; scope is limited to `src/store/useDashboardDemoCoordinationStore.ts`, `src/components/dashboard-demo/Demo3dSpatialView.tsx`, `src/app/stkde-3d/components/Stkde3DScene.tsx`, `src/app/stkde-3d/components/StkdeSliceStack.tsx`, and `src/app/stkde-3d/components/SliceScrubber.tsx`
 **Requirements**: TME-01, TME-02, TME-03, TME-04
+**Plans**: 2 plans
 **Success Criteria**:
   1. Changing slices in the demo 3D widget feels sequenced and continuous instead of like a hard reset.
   2. Analysts can see aging trails or temporal persistence across adjacent slices inside the 3D widget.
   3. Smooth interpolation between consecutive slices is available only as an opt-in mode and is clearly labeled as estimated or interpolated.
   4. Playback, trail decay, and interpolation controls are exposed in the demo Inspect/3D widget pair and only affect the demo 3D STKDE path.
+
+Plans:
+- [ ] 78-01-PLAN.md — Playback, scrubbing, and compact temporal controls for the demo 3D widget (TME-01, TME-04)
+- [ ] 78-02-PLAN.md — Ghosted aging trails and interpolated slice blending in the 3D stack (TME-02, TME-03)
 
 ## Progress
 
@@ -72,5 +66,4 @@ Plans:
 |-------|-----------|--------|--------------|------------------|
 | 76. Foundation Cleanup + Motion Scaffolding | v3.2 | Complete | 7 | 4 |
 | 77. Volumetric Duration + Depth Encoding | v3.2 | Complete | 6 | 5 |
-| 78. Burst Visibility + Visual Consistency | v3.2 | Not started | 8 | 5 |
-| 79. Temporal Evolution (Demo 3D STKDE Widget Only) | v3.2 | Not started | 4 | 4 |
+| 78. Temporal Evolution (Demo 3D STKDE Widget Only) | v3.2 | Not started | 4 | 4 |

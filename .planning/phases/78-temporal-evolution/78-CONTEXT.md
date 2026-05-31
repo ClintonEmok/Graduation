@@ -1,12 +1,12 @@
 # Phase 78: Temporal Evolution (Demo 3D STKDE Widget Only) - Context
 
-**Gathered:** 2026-05-31
+**Gathered:** 2026-06-01
 **Status:** Ready for planning
 
 <domain>
 ## Phase Boundary
 
-This phase is exclusively about temporal evolution inside the demo 3D STKDE widget path: slice sequencing, interpolation, aging trails, and playback feedback.
+This phase is exclusively about temporal evolution inside the demo 3D STKDE widget path: slice sequencing, playback, interpolation, and aging trails.
 
 It does **not** expand map animation, timeline animation, camera-orientation policy, or any non-demo route. The only intended work surface is the demo 3D widget chain.
 
@@ -20,23 +20,30 @@ It does **not** expand map animation, timeline animation, camera-orientation pol
 - **D-02:** Playback should continue to step `activeSliceIndex` through the demo’s ordered slice list; the 3D widget remains the source of temporal motion, not the map or timeline.
 
 ### Playback behavior
-- **D-03:** Playback is continuous and loops through the ordered slice set while enabled.
-- **D-04:** The temporal clock stays discrete at the slice level; do not introduce frame-level route animation or timeline playheads.
+- **D-03:** Playback speed is adjustable with a slider rather than fixed.
+- **D-04:** Scrubbing pauses playback while the user is dragging.
+- **D-05:** Loop restarts use a brief pause at the end of the ordered slice list rather than an instant wrap.
+- **D-06:** Playback feedback stays minimal: active slice only, no extra progress bar chrome.
 
-### Interpolation policy
-- **D-05:** Smooth interpolation is opt-in and must be clearly labeled as estimated/interpolated.
-- **D-06:** Discrete slice changes remain the default analytical mode.
+### Interpolation presentation
+- **D-07:** Smooth interpolation is opt-in and only available during playback.
+- **D-08:** The interpolation mode label must read `Interpolated`.
+- **D-09:** Interpolation uses morph + crossfade between neighboring slices.
+- **D-10:** The active slice remains the anchor while neighbors blend around it during interpolation.
 
 ### Aging trails
-- **D-07:** Aging trails should be implemented as slice-distance decay / persistence inside the 3D widget, not as a separate map effect or post-processing pass.
-- **D-08:** Trail visibility should preserve the active slice as the dominant reference and keep older slices readable but subdued.
+- **D-11:** Aging trails should be implemented as ghosted layers with short-lived persistence, not as a separate map effect or post-processing pass.
+- **D-12:** Trail controls live in the Inspect panel with the other temporal controls.
+- **D-13:** The control surface should stay compact and quiet rather than becoming a prominent tool strip.
+- **D-14:** Exact decay curve, trail length, and slider range are left to planning discretion as long as the result stays readable and subdued.
 
 ### Scene boundary
-- **D-09:** `Stkde3DScene` owns scene wiring only; do not add another camera controller or alter the established camera policy.
-- **D-10:** `StkdeSliceStack` owns the visual temporal effects for the slices; `SliceScrubber` owns slice-step feedback and controls.
+- **D-15:** `Stkde3DScene` owns scene wiring only; do not add another camera controller or alter the established camera policy.
+- **D-16:** `StkdeSliceStack` owns the visual temporal effects for the slices; `SliceScrubber` owns slice-step feedback and controls.
 
-### Phase split
-- **D-11:** Keep the temporal controls and visuals tied to the same ordered slice list produced by `Demo3dSpatialView` so playback and interpolation do not drift out of sync.
+### Planning split
+- **D-17:** Keep the temporal controls and visuals tied to the same ordered slice list produced by `Demo3dSpatialView` so playback and interpolation do not drift out of sync.
+- **D-18:** Grouping differs slightly from the raw requirement order: TME-01 and TME-04 are the control/state plan, while TME-02 and TME-03 are the rendering plan. Requirement numbers stay unchanged.
 
 </decisions>
 
@@ -44,8 +51,8 @@ It does **not** expand map animation, timeline animation, camera-orientation pol
 ## Canonical References
 
 ### Roadmap and requirements
-- `.planning/ROADMAP.md` — phase 78 goal, scope boundary, and success criteria.
-- `.planning/REQUIREMENTS.md` — TME-01 through TME-04.
+- `.planning/ROADMAP.md` — canonical phase 78 goal, plan list, and success criteria.
+- `.planning/REQUIREMENTS.md` — TME-01 through TME-04 are the source-of-truth requirements.
 - `.planning/STATE.md` — milestone state and phase completion history.
 
 ### Scope boundary
@@ -57,9 +64,10 @@ It does **not** expand map animation, timeline animation, camera-orientation pol
 - `src/app/stkde-3d/components/StkdeSliceStack.tsx` — slice rendering, opacity, and temporal visuals.
 - `src/app/stkde-3d/components/SliceScrubber.tsx` — slice stepping and playback UI.
 
-### Preceding foundation
-- `.planning/phases/77-volumetric-duration-depth-encoding/77-CONTEXT.md` — duration-to-volume encoding already established.
-- `.planning/phases/76-foundation-cleanup-motion-scaffolding/76-CONTEXT.md` — motion scaffolding and animation boundary decisions.
+### Motion helpers and duration encoding
+- `src/lib/motion/aging.ts` — aging opacity / trail intensity helpers for temporal decay.
+- `src/lib/motion/easing.ts` — easing and interpolation helpers used by motion and crossfade behavior.
+- `src/app/stkde-3d/lib/volume-encoding.ts` — duration-volume profile already established in Phase 77.
 
 </canonical_refs>
 
@@ -68,6 +76,7 @@ It does **not** expand map animation, timeline animation, camera-orientation pol
 
 - `Demo3dSpatialView` already produces the ordered slice list; temporal motion should reuse that order rather than recompute a second sequence.
 - The current demo 3D widget should feel sequenced and continuous, but still preserve the analytical jump-cut as the default mental model.
+- The trail style was checked against literature and should read as ghosted layers with bounded persistence, not shadow-like effects.
 - Aging and interpolation are visual layers on top of the existing slice system; they should not change the underlying slice data model.
 
 </specifics>
@@ -75,22 +84,13 @@ It does **not** expand map animation, timeline animation, camera-orientation pol
 <assumptions>
 ## Assumptions
 
-- Slice playback advances one rendered slice at a time.
-- Interpolation blends only between neighboring slices.
-- Trail decay is driven by slice distance / recent history, not by map or timeline frames.
+- Slice duration means `endEpoch - startEpoch` in seconds.
+- Normalization should only consider slices currently being rendered in the demo widget.
+- The active slice should stay visually dominant through depth cues and opacity/falloff, not through camera overrides.
 
 </assumptions>
-
-<deferred>
-## Deferred Ideas
-
-- Any map or timeline animation remains out of scope.
-- Multi-scale temporal aggregation belongs to a later milestone.
-- Evaluation logging / playback analytics are out of scope for this phase.
-
-</deferred>
 
 ---
 
 *Phase: 78-temporal-evolution*
-*Context gathered: 2026-05-31*
+*Context gathered: 2026-06-01*
