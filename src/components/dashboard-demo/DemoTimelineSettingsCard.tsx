@@ -5,7 +5,7 @@ import { ChevronRight, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { resolutionToNormalizedStep, type TimeResolution } from '@/lib/time-domain';
@@ -24,10 +24,10 @@ export function DemoTimelineSettingsCard() {
   const { currentTime, timeResolution, setTime, setTimeResolution } = useDashboardDemoTimeStore();
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
-  const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
-  const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
-  const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
-  const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const warpMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
+  const setWarpFactor = useDashboardDemoCoordinationStore((state) => state.setWarpFactor);
+  const setTimeScaleMode = useDashboardDemoCoordinationStore((state) => state.setTimeScaleMode);
 
   const handleResolutionChange = useCallback(
     (value: number[]) => {

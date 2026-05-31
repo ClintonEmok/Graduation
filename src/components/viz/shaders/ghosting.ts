@@ -145,8 +145,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uShowContext;
     uniform float uContextOpacity;
     uniform float uLodFactor;
-    uniform float uTypeMap[${typeMapSize}];
-    uniform float uDistrictMap[${districtMapSize}];
+    uniform float uTypeMap[36];
+    uniform float uDistrictMap[36];
     uniform vec2 uBoundsMin;
     uniform vec2 uBoundsMax;
     uniform float uHasBounds;
@@ -201,8 +201,8 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     }
 
     // 2. Filter Check (Type & District)
-    float typeIndex = clamp(floor(vFilterType + 0.5), 0.0, ${typeMapSize - 1}.0);
-    float districtIndex = clamp(floor(vFilterDistrict + 0.5), 0.0, ${districtMapSize - 1}.0);
+    float typeIndex = clamp(floor(vFilterType + 0.5), 0.0, 35.0);
+    float districtIndex = clamp(floor(vFilterDistrict + 0.5), 0.0, 35.0);
     float typeSelected = uTypeMap[int(typeIndex)];
     float districtSelected = uDistrictMap[int(districtIndex)];
 

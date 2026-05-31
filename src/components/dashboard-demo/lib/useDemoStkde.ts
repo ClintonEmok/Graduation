@@ -5,7 +5,7 @@ import type { StkdeResponse } from '@/lib/stkde/contracts';
 import { padDistrict } from '@/lib/stats/aggregation';
 import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
 import type { StkdeParams } from '@/store/useStkdeStore';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useSliceStore } from '@/store/useSliceStore';
 import type { TimeSlice } from '@/store/useSliceStore';
 
@@ -95,10 +95,10 @@ export function useDemoStkde(): DemoStkdeResult {
   const [refreshTick, setRefreshTick] = useState(0);
 
   const slices = useSliceStore((state) => state.slices);
-  const timeRange = useDashboardDemoAnalysisStore((state) => state.timeRange);
-  const stkdeScopeMode = useDashboardDemoAnalysisStore((state) => state.stkdeScopeMode);
-  const stkdeParams = useDashboardDemoAnalysisStore((state) => state.stkdeParams);
-  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+  const timeRange = useDashboardDemoCoordinationStore((state) => state.timeRange);
+  const stkdeScopeMode = useDashboardDemoCoordinationStore((state) => state.stkdeScopeMode);
+  const stkdeParams = useDashboardDemoCoordinationStore((state) => state.stkdeParams);
+  const selectedDistricts = useDashboardDemoCoordinationStore((state) => state.selectedDistricts);
   const selectedDistrictLabels = useMemo(
     () => (selectedDistricts.length > 0 ? selectedDistricts.map((district) => getDistrictDisplayName(district)) : ['all districts']),
     [selectedDistricts]
@@ -107,11 +107,11 @@ export function useDemoStkde(): DemoStkdeResult {
     () => (selectedDistricts.length > 0 ? selectedDistricts.map(padDistrict) : undefined),
     [selectedDistricts]
   );
-  const setSelectedHotspot = useDashboardDemoAnalysisStore((state) => state.setSelectedHotspot);
-  const setHoveredHotspot = useDashboardDemoAnalysisStore((state) => state.setHoveredHotspot);
-  const setStkdeParams = useDashboardDemoAnalysisStore((state) => state.setStkdeParams);
-  const setScopeMode = useDashboardDemoAnalysisStore((state) => state.setStkdeScopeMode);
-  const setStkdeResponse = useDashboardDemoAnalysisStore((state) => state.setStkdeResponse);
+  const setSelectedHotspot = useDashboardDemoCoordinationStore((state) => state.setSelectedHotspot);
+  const setHoveredHotspot = useDashboardDemoCoordinationStore((state) => state.setHoveredHotspot);
+  const setStkdeParams = useDashboardDemoCoordinationStore((state) => state.setStkdeParams);
+  const setScopeMode = useDashboardDemoCoordinationStore((state) => state.setStkdeScopeMode);
+  const setStkdeResponse = useDashboardDemoCoordinationStore((state) => state.setStkdeResponse);
   const visibleSlices = useMemo(() => slices.filter((slice) => slice.isVisible), [slices]);
   const sliceSignature = useMemo(() => buildSliceSignature(visibleSlices), [visibleSlices]);
   const sliceDescriptors = useMemo(

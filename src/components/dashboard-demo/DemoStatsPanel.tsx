@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ALL_DEMO_DISTRICTS } from '@/store/useDashboardDemoAnalysisStore';
+import { ALL_DEMO_DISTRICTS } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';

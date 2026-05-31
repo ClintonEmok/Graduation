@@ -10,7 +10,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 
 ## Current Status
 
-**v3.1 Workflow Finalization** is complete. The `dashboard-demo` route now reads as one obvious workflow: Detect scans and generates, Slices owns review and apply, Inspect provides immediate active-slice context with inline comparison, and all views stay synchronized.
+**v3.2 Visualization Level Up** is being defined. The `dashboard-demo` route is now being scoped for better burst visibility, explicit spatial orientation, and controlled temporal evolution inside the 3D STKDE widget.
 
 ## Requirements
 
@@ -25,7 +25,11 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 
 ### Active
 
-None — all current requirements are validated.
+- **v3.2 Visualization Level Up** — foundation cleanup, spatial orientation, burst visibility, and temporal evolution inside the demo 3D STKDE widget.
+- Install the remaining visualization stack additions (`@react-three/postprocessing`, `deck.gl`, `GSAP`) and wire them only where they improve the 3D widget.
+- Constrain the 3D camera, add orientation cues, and keep the map substrate aligned without turning the map or timeline into animation targets.
+- Upgrade burst rendering to use GPU-friendly encodings and selective bloom so bursts stand out in dense data.
+- Add playback transitions, aging trails, and opt-in interpolation only within the demo 3D STKDE widget.
 
 ### Out of Scope
 
@@ -41,7 +45,8 @@ None — all current requirements are validated.
 - Existing brownfield Next.js 16 App Router app with feature-based organization
 - The active planning surface is `dashboard-demo`
 - Core stack includes TypeScript, Zustand, Three.js, MapLibre, DuckDB, Apache Arrow, and Web Workers
-- All v3.1 phases (72-75) complete: Workflow Clarity, Inspection Speed, Coordination Polish, Presentation Cleanup
+- v3.1 phases (72-75) complete: Workflow Clarity, Inspection Speed, Coordination Polish, Presentation Cleanup
+- v3.2 is now focused on visualization quality within the demo 3D STKDE widget, not broad map/timeline animation
 - Known concerns include large components, excessive console logging, silent mock-data fallbacks, input validation gaps, and heavy data processing on the main thread
 - Codebase analysis exists in `.planning/codebase/`, milestone history in `.planning/milestones/`
 
@@ -86,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-26 after v3.1 Workflow Finalization*
+*Last updated: 2026-05-26 for v3.2 Visualization Level Up*

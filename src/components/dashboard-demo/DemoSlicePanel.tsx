@@ -21,9 +21,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Slider } from '@/components/ui/slider';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
-import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
-import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
@@ -79,11 +78,11 @@ export function DemoSlicePanel() {
   const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
-  const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
-  const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
-  const setTimeScaleMode = useDashboardDemoWarpStore((state) => state.setTimeScaleMode);
-  const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
-  const resetWarp = useDashboardDemoWarpStore((state) => state.resetWarp);
+  const warpMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const setTimeScaleMode = useDashboardDemoCoordinationStore((state) => state.setTimeScaleMode);
+  const setWarpFactor = useDashboardDemoCoordinationStore((state) => state.setWarpFactor);
+  const resetWarp = useDashboardDemoCoordinationStore((state) => state.resetWarp);
   const clearSelectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.clearSelectedBurstWindows);
 
   const selectedSlice = useMemo(

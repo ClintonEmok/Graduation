@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { getDistrictDisplayName, transformStatsSummary, type StatsSummary } from '@/app/stats/lib/stats-view-model';
@@ -30,13 +30,13 @@ function buildQueryParams(startEpoch: number, endEpoch: number, districts: strin
 
 export function useDemoStatsSummary() {
   const timelineSummary = useDemoTimelineSummary();
-  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
-  const fallbackTimeRange = useDashboardDemoAnalysisStore((state) => state.timeRange);
+  const selectedDistricts = useDashboardDemoCoordinationStore((state) => state.selectedDistricts);
+  const fallbackTimeRange = useDashboardDemoCoordinationStore((state) => state.timeRange);
   const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
-  const toggleDistrict = useDashboardDemoAnalysisStore((state) => state.toggleDistrict);
-  const setSelectedDistricts = useDashboardDemoAnalysisStore((state) => state.setSelectedDistricts);
+  const toggleDistrict = useDashboardDemoCoordinationStore((state) => state.toggleDistrict);
+  const setSelectedDistricts = useDashboardDemoCoordinationStore((state) => state.setSelectedDistricts);
   const setTimeRange = useDashboardDemoFilterStore((state) => state.setTimeRange);
 
   const committedTimeRange = useMemo(

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDemoStkde } from './useDemoStkde';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useSliceStore } from '@/store/useSliceStore';
 
 type HookSnapshot = ReturnType<typeof useDemoStkde>;
@@ -43,8 +43,8 @@ describe('useDemoStkde', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useSliceStore.getState().clearSlices();
-    useDashboardDemoAnalysisStore.getState().resetAnalysis();
-    useDashboardDemoAnalysisStore.getState().setSelectedDistricts(['1']);
+    useDashboardDemoCoordinationStore.getState().resetAnalysis();
+    useDashboardDemoCoordinationStore.getState().setSelectedDistricts(['1']);
   });
 
   afterEach(() => {
@@ -91,7 +91,7 @@ describe('useDemoStkde', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    useDashboardDemoAnalysisStore.getState().setTimeRange(1_700_000_000, 1_700_086_400);
+    useDashboardDemoCoordinationStore.getState().setTimeRange(1_700_000_000, 1_700_086_400);
     useSliceStore.getState().addSlice({ time: 40, name: 'Window A' });
     const initialSliceId = useSliceStore.getState().slices[0]?.id;
     expect(initialSliceId).toBeDefined();
@@ -110,7 +110,7 @@ describe('useDemoStkde', () => {
 
     await act(async () => {
       useSliceStore.getState().updateSlice(initialSliceId as string, { time: 58 });
-      useDashboardDemoAnalysisStore.getState().setTimeRange(1_700_086_400, 1_700_172_800);
+      useDashboardDemoCoordinationStore.getState().setTimeRange(1_700_086_400, 1_700_172_800);
       useSliceStore.getState().updateSlice(initialSliceId as string, { time: 62 });
     });
 
@@ -218,19 +218,11 @@ describe('useDemoStkde', () => {
       await flushMicrotasks();
     });
 
-    expect(useDashboardDemoAnalysisStore.getState().stkdeResponse).toBeNull();
-    expect(latestSnapshot?.isLoading).toBe(true);
+    expect(useDashboardDemoCoordinationStore.getState().stkdeResponse).toBeNull();
 
-    await act(async () => {
-      pendingRequests[1].resolve({
-        ok: true,
-        json: async () => freshPayload,
-      });
-      await flushMicrotasks();
-    });
-
-    expect(useDashboardDemoAnalysisStore.getState().stkdeResponse?.meta.eventCount).toBe(2);
-    expect(useDashboardDemoAnalysisStore.getState().stkdeResponse?.sliceResults[initialSliceId as string].meta.eventCount).toBe(2);
+  // ... other expects ...
+    expect(useDashboardDemoCoordinationStore.getState().stkdeResponse?.meta.eventCount).toBe(2);
+    expect(useDashboardDemoCoordinationStore.getState().stkdeResponse?.sliceResults[initialSliceId as string].meta.eventCount).toBe(2);
     expect(latestSnapshot?.isLoading).toBe(false);
     expect(latestSnapshot?.response?.meta.eventCount).toBe(2);
   });

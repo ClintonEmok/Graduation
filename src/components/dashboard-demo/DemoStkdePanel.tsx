@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useDemoStkde } from '@/components/dashboard-demo/lib/useDemoStkde';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
 
 const STKDE_SCOPE_LABELS = {
@@ -40,12 +40,12 @@ export function DemoStkdePanel() {
     setScopeMode,
   } = useDemoStkde();
 
-  const scopeMode = useDashboardDemoAnalysisStore((state) => state.stkdeScopeMode);
-  const selectedHotspotId = useDashboardDemoAnalysisStore((state) => state.selectedHotspotId);
-  const hoveredHotspotId = useDashboardDemoAnalysisStore((state) => state.hoveredHotspotId);
-  const setSpatialFilter = useDashboardDemoAnalysisStore((state) => state.setSpatialFilter);
-  const setTemporalFilter = useDashboardDemoAnalysisStore((state) => state.setTemporalFilter);
-  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+  const scopeMode = useDashboardDemoCoordinationStore((state) => state.stkdeScopeMode);
+  const selectedHotspotId = useDashboardDemoCoordinationStore((state) => state.selectedHotspotId);
+  const hoveredHotspotId = useDashboardDemoCoordinationStore((state) => state.hoveredHotspotId);
+  const setSpatialFilter = useDashboardDemoCoordinationStore((state) => state.setSpatialFilter);
+  const setTemporalFilter = useDashboardDemoCoordinationStore((state) => state.setTemporalFilter);
+  const selectedDistricts = useDashboardDemoCoordinationStore((state) => state.selectedDistricts);
 
   const selectedDistrictLabels = useMemo(
     () => (selectedDistricts.length > 0 ? selectedDistricts.map((district) => getDistrictDisplayName(district)) : ['All districts']),

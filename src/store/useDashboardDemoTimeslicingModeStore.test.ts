@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { useDashboardDemoTimeslicingModeStore } from './useDashboardDemoTimeslicingModeStore';
-import { useDashboardDemoWarpStore } from './useDashboardDemoWarpStore';
+import { useDashboardDemoCoordinationStore } from './useDashboardDemoCoordinationStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
 import { useTimelineDataStore } from './useTimelineDataStore';
 
@@ -360,7 +360,7 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
     expect(useDashboardDemoTimeslicingModeStore.getState().generationStatus).toBe('applied');
     expect(useDashboardDemoTimeslicingModeStore.getState().pendingGeneratedBins).toHaveLength(0);
     expect(useDashboardDemoTimeslicingModeStore.getState().lastAppliedAt).not.toBeNull();
-    expect(useDashboardDemoWarpStore.getState().warpSource).toBe('density');
+    expect(useDashboardDemoCoordinationStore.getState().warpSource).toBe('density');
 
     const slices = useSliceDomainStore.getState().slices;
     expect(slices).toHaveLength(2);

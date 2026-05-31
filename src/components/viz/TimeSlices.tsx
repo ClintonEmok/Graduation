@@ -4,7 +4,6 @@ import { useStore } from 'zustand';
 import { useSliceStore } from '@/store/useSliceStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useTimeStore } from '@/store/useTimeStore';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDemoEvolutionSequence } from '@/components/dashboard-demo/lib/useDemoEvolutionSequence';
 import { SlicePlane } from './SlicePlane';
@@ -38,7 +37,7 @@ export function TimeSlices({ sliceStoreOverride, timeStoreOverride }: TimeSlices
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeScaleMode = useStore(timeStore, (state) => state.timeScaleMode);
-  const stkdeResponse = useDashboardDemoAnalysisStore((state) => state.stkdeResponse);
+  const stkdeResponse = useDashboardDemoCoordinationStore((state) => state.stkdeResponse);
   const selectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.selectedBurstWindows);
   const evolutionSequence = useDemoEvolutionSequence();
   const selectedTypes = useFilterStore((state) => state.selectedTypes);

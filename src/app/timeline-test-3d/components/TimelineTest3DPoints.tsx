@@ -181,7 +181,6 @@ export function TimelineTest3DPoints() {
 
   return (
     <points
-      frustumCulled={false}
       onPointerMove={(event) => {
         event.stopPropagation();
         if (typeof event.index === "number") {

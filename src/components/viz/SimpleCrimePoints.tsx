@@ -140,7 +140,6 @@ function CrimeShapeLayer({
       ref={meshRef}
       args={[undefined, undefined, count]}
       raycast={() => {}}
-      frustumCulled={false}
       renderOrder={-1}
     >
       {shape === 'sphere' ? (
@@ -445,7 +444,6 @@ export function SimpleCrimePoints({
   return (
     <>
       <points
-        frustumCulled={false}
         onPointerMove={(event) => {
           event.stopPropagation();
           if (typeof event.index === 'number') {

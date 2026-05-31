@@ -5,6 +5,7 @@ import { Map, Box, Sparkles } from 'lucide-react';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { Button } from '@/components/ui/button';
+import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
@@ -31,7 +32,7 @@ export function DashboardDemoShell() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const setViewport = useViewportStore((state) => state.setViewport);
   const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
-  const timeRange = useDashboardDemoCoordinationStore((state) => state.brushRange) ?? DEFAULT_TIME_RANGE;
+  const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export function DashboardDemoShell() {
 
   const handleGenerate = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null) return;
-    const [rangeStart, rangeEnd] = timeRange;
+    const [rangeStart, rangeEnd] = selectedTimeRange ?? useDashboardDemoCoordinationStore.getState().brushRange ?? DEFAULT_TIME_RANGE;
     if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) return;
 
     setGenerateLoading(true);
@@ -106,7 +107,7 @@ export function DashboardDemoShell() {
     }
 
     setGenerateLoading(false);
-  }, [maxTimestampSec, minTimestampSec, setActiveRailTab, timeRange]);
+  }, [maxTimestampSec, minTimestampSec, selectedTimeRange, setActiveRailTab]);
 
   return (
     <main

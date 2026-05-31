@@ -12,6 +12,8 @@
     "postinstall": "patch-package && mkdir -p node_modules/duckdb/lib/binding/3 && ln -sf ../duckdb.node node_modules/duckdb/lib/binding/3/duckdb.node"
   },
   "dependencies": {
+    "@deck.gl/aggregation-layers": "^9.3.2",
+    "@deck.gl/mapbox": "^9.3.2",
     "@loaders.gl/arrow": "^4.3.4",
     "@loaders.gl/core": "^4.3.4",
     "@math.gl/web-mercator": "^4.1.0",
@@ -51,9 +53,11 @@
     "d3-time": "^3.1.0",
     "d3-zoom": "^3.0.0",
     "date-fns": "^4.1.0",
+    "deck.gl": "^9.3.2",
     "density-clustering": "^1.3.0",
     "driver.js": "^1.4.0",
     "duckdb": "^1.4.4",
+    "gsap": "^3.15.0",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.563.0",
     "maplibre-gl": "^5.17.0",

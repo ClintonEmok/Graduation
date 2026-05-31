@@ -30,26 +30,30 @@ Plans:
 - [ ] 76-04-PLAN.md — Offload KDE computation to Web Worker (FND-05)
 - [ ] 76-05-PLAN.md — Build motion scaffolding primitives (FND-01)
 
-### Phase 77: Spatial Orientation + Camera Constraints
-**Goal**: Users can immediately understand cube orientation and keep their bearings while exploring the 3D view.
+### Phase 77: Volumetric Duration + Depth Encoding
+**Goal**: Variable slice durations read as volume and depth in the 3D view so temporal extent is visible at a glance.
 **Depends on**: Phase 76
-**Requirements**: SPO-01, SPO-02, SPO-03, SPO-04, SPO-05, SPO-06
+**Requirements**: VOL-01, VOL-02, VOL-03, VOL-04, VOL-05, VOL-06
+**Plans**: 2 plans
+Plans:
+- [x] 77-01-PLAN.md — Establish duration-volume state and normalization helpers (VOL-02, VOL-06)
+- [x] 77-02-PLAN.md — Render duration as depth and preserve active-slice readability in the demo 3D widget (VOL-01, VOL-03, VOL-04, VOL-05)
 **Success Criteria**:
-  1. The 3D cube opens from a clear analytical default view instead of an arbitrary camera angle.
-  2. Users cannot accidentally fly the camera into disorienting positions or distances.
-  3. Persistent orientation cues make up/down and world direction obvious at a glance.
-  4. The 3D view keeps the map substrate aligned, and map-driven camera sync updates the scene without breaking orientation.
-  5. Active-slice focus mode makes the current slice stand out while non-active slices recede.
+  1. Slice duration is visible through volumetric thickness, height, or extrusion rather than only flat surface color.
+  2. Longer and shorter durations remain distinguishable immediately, even before the user inspects labels.
+  3. The volumetric encoding stays readable when slices overlap or cluster densely.
+  4. Duration scaling remains normalized and consistent across different windows so the same duration means the same visual magnitude.
+  5. The volume encoding stays aligned with the active slice and other 3D widget interactions without flattening the scene.
 
 ### Phase 78: Burst Visibility + Visual Consistency
-**Goal**: Bursts are the clearest signal in the system, and that signal reads the same across map, cube, and timeline.
+**Goal**: Bursts are the clearest signal in the system, and that signal reads the same across cube and timeline while the map remains density-only spatial context.
 **Depends on**: Phases 76-77
 **Requirements**: BVS-01, BVS-02, BVS-03, BVS-04, BVS-05, BVS-06, BVS-07, BVS-08
 **Success Criteria**:
   1. Bursts render with GPU-backed visual encoding instead of looking like flat CPU textures.
-  2. Burstier slices are visibly more prominent through opacity and intensity differences in both the cube and map.
-  3. The same burst intensity means the same thing everywhere because the color scale and legend are shared.
-  4. Users can switch between raw density and burst-emphasized modes, and the chosen mode persists across views.
+  2. Burstier slices are visibly more prominent through opacity and intensity differences in the cube and timeline.
+  3. The same burst intensity means the same thing in the cube and timeline because the color scale and legend are shared.
+  4. Users can switch between raw density and burst-emphasized modes in the cube/timeline pair, and the chosen mode persists across views.
   5. Active burst slices stand out through opacity, intensity, and fluid emphasis without changing the underlying data.
 
 ### Phase 79: Temporal Evolution (Demo 3D STKDE Widget Only)
@@ -66,7 +70,7 @@ Plans:
 
 | Phase | Milestone | Status | Requirements | Success Criteria |
 |-------|-----------|--------|--------------|------------------|
-| 76. Foundation Cleanup + Motion Scaffolding | v3.2 | Planned | 7 | 4 |
-| 77. Spatial Orientation + Camera Constraints | v3.2 | Not started | 6 | 5 |
+| 76. Foundation Cleanup + Motion Scaffolding | v3.2 | Complete | 7 | 4 |
+| 77. Volumetric Duration + Depth Encoding | v3.2 | Complete | 6 | 5 |
 | 78. Burst Visibility + Visual Consistency | v3.2 | Not started | 8 | 5 |
 | 79. Temporal Evolution (Demo 3D STKDE Widget Only) | v3.2 | Not started | 4 | 4 |

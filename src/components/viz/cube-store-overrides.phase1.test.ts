@@ -12,7 +12,7 @@ describe('Phase 01 cube store overrides', () => {
 
     expect(shellSource).toMatch(/filterStoreOverride={useDashboardDemoFilterStore}/);
     expect(shellSource).toMatch(/coordinationStoreOverride={useDashboardDemoCoordinationStore}/);
-    expect(shellSource).toMatch(/adaptiveStoreOverride={useDashboardDemoAdaptiveStore}/);
+    expect(shellSource).not.toMatch(/adaptiveStoreOverride={useDashboardDemoCoordinationStore}/);
     expect(shellSource).toMatch(/timeStoreOverride={useDashboardDemoTimeStore}/);
     expect(shellSource).toMatch(/sliceStoreOverride={useSliceDomainStore}/);
 

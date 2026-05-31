@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
-import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
 import { useSliceDomainStore, selectActiveSliceId, selectSlices } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
@@ -67,9 +66,9 @@ export function useDashboardDemoSelectionStory() {
   const brushRange = useDashboardDemoCoordinationStore((state) => state.brushRange);
   const selectedSource = useDashboardDemoCoordinationStore((state) => state.selectedSource);
   const selectedBurstWindows = useDashboardDemoCoordinationStore((state) => state.selectedBurstWindows);
-  const warpMode = useDashboardDemoWarpStore((state) => state.timeScaleMode);
-  const warpSource = useDashboardDemoWarpStore((state) => state.warpSource);
-  const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
+  const warpMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
+  const warpSource = useDashboardDemoCoordinationStore((state) => state.warpSource);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
   const activeSliceId = useSliceDomainStore(selectActiveSliceId);
   const slices = useSliceDomainStore(selectSlices);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);

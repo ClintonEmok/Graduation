@@ -14,13 +14,13 @@ import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
 import { MapTypeLegend } from './MapTypeLegend';
 import { MapStkdeHeatmapLayer } from './MapStkdeHeatmapLayer';
+import DeckGlHeatmapOverlay from './DeckGlHeatmapOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { project } from '@/lib/projection';
 import { findNearestIndexByScenePosition, resolvePointByIndex } from '@/lib/selection';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useFilterStore } from '@/store/useFilterStore';
-import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useMapLayerStore } from '@/store/useMapLayerStore';
 import { useStkdeStore } from '@/store/useStkdeStore';
 import { useLogger } from '@/hooks/useLogger';
@@ -36,7 +36,6 @@ interface MapVisualizationProps {
   statsOverlay?: React.ReactNode;
   filterStoreOverride?: unknown;
   coordinationStoreOverride?: unknown;
-  adaptiveStoreOverride?: unknown;
   mapLayerStoreOverride?: unknown;
   sliceTimeRange?: [number, number] | null;
   activeSliceLabel?: string | null;
@@ -50,7 +49,6 @@ export default function MapVisualization({
   statsOverlay,
   filterStoreOverride,
   coordinationStoreOverride,
-  adaptiveStoreOverride,
   mapLayerStoreOverride,
   sliceTimeRange = null,
   activeSliceLabel = null,
@@ -83,7 +81,6 @@ export default function MapVisualization({
 
   const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
   const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
-  const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
   const mapLayerStore = (mapLayerStoreOverride ?? useMapLayerStore) as typeof useMapLayerStore;
 
   const selectedSpatialBounds = useStore(filterStore, (state) => state.selectedSpatialBounds);
@@ -95,12 +92,6 @@ export default function MapVisualization({
   const selectedIndex = useStore(coordinationStore, (state) => state.selectedIndex);
   const setSelectedIndex = useStore(coordinationStore, (state) => state.setSelectedIndex);
   const clearSelection = useStore(coordinationStore, (state) => state.clearSelection);
-  const densityMapValue = useStore(adaptiveStore, (state) => state.densityMap);
-  const burstinessMapValue = useStore(adaptiveStore, (state) => state.burstinessMap);
-  const burstMetricValue = useStore(adaptiveStore, (state) => state.burstMetric);
-  const burstCutoffValue = useStore(adaptiveStore, (state) => state.burstCutoff);
-  const mapDomainValue = useStore(adaptiveStore, (state) => state.mapDomain);
-  const burstThreshold = useStore(adaptiveStore, (state) => state.burstThreshold);
   const visibility = useStore(mapLayerStore, (state) => state.visibility);
   const opacity = useStore(mapLayerStore, (state) => state.opacity);
 
@@ -115,7 +106,6 @@ export default function MapVisualization({
     return hotspot ? ([hotspot.centroidLng, hotspot.centroidLat] as [number, number]) : null;
   }, [selectedHotspotId, stkdeResponse]);
 
-  const [colorMode, setColorMode] = useState<'burst' | 'type'>('burst');
   const [hoveredTypeId, setHoveredTypeId] = useState<number | null>(null);
   const [lastClick, setLastClick] = useState<{lat: number, lon: number} | null>(null);
   const [isControlsOpen, setIsControlsOpen] = useState(true);
@@ -181,21 +171,18 @@ export default function MapVisualization({
       >
         {visibility.events ? (
           <MapEventLayer
-            colorMode={colorMode}
             hoveredTypeId={hoveredTypeId}
             records={filteredData}
             selectedTimeRange={selectedTimeRange}
             selectedTypes={selectedTypes}
             selectedDistricts={selectedDistricts}
             selectedSpatialBounds={selectedSpatialBounds}
-            densityMap={densityMapValue}
-            burstinessMap={burstinessMapValue}
-            burstMetric={burstMetricValue}
-            burstCutoff={burstCutoffValue}
-            mapDomain={mapDomainValue}
           />
         ) : null}
         {!disableHeatmapOverlay && visibility.heatmap ? <MapHeatmapOverlay /> : null}
+        {visibility.heatmap && data.length > 0 ? (
+          <DeckGlHeatmapOverlay data={filteredData} visible={visibility.heatmap} />
+        ) : null}
         {visibility.trajectories ? <MapTrajectoryLayer /> : null}
         {visibility.clusters ? <MapClusterHighlights /> : null}
         {statsOverlay ?? null}
@@ -221,31 +208,7 @@ export default function MapVisualization({
           <CardContent className="p-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setColorMode('burst')}
-                    className={`rounded px-2 py-0.5 transition-colors ${
-                      colorMode === 'burst'
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Density
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setColorMode('type')}
-                    className={`rounded px-2 py-0.5 transition-colors ${
-                      colorMode === 'type'
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Type
-                  </button>
-                </div>
-                <Button
+                  <Button
                   type="button"
                   onClick={handleClearBounds}
                   variant="outline"
@@ -292,19 +255,12 @@ export default function MapVisualization({
                       .join(' · ')}
                   </div>
                 )}
-                {colorMode === 'burst' ? (
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span className="h-2 w-2 rounded-full bg-orange-500" />
-                    <span>Density ≥ {Math.round(burstThreshold * 100)}%</span>
-                  </div>
-                ) : (
-                  <MapTypeLegend
+                {<MapTypeLegend
                     selectedTypes={selectedTypes}
                     hoveredTypeId={hoveredTypeId}
                     onHoverType={setHoveredTypeId}
                     onToggleType={toggleType}
-                  />
-                )}
+                  />}
               </div>
             ) : null}
           </CardContent>

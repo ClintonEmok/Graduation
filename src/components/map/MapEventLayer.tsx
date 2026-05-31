@@ -23,7 +23,6 @@ type ScenePoint = {
 };
 
 interface MapEventLayerProps {
-  colorMode: 'burst' | 'type';
   hoveredTypeId?: number | null;
   records?: CrimeRecord[];
   selectedTimeRange?: TimeRangeLike;
@@ -35,26 +34,15 @@ interface MapEventLayerProps {
     minLon: number;
     maxLon: number;
   } | null;
-  densityMap?: Float32Array | null;
-  burstinessMap?: Float32Array | null;
-  burstMetric?: 'density' | 'burstiness';
-  burstCutoff?: number;
-  mapDomain?: [number, number];
 }
 
 export default function MapEventLayer({
-  colorMode,
   hoveredTypeId,
   records = [],
   selectedTimeRange,
   selectedTypes = [],
   selectedDistricts = [],
   selectedSpatialBounds,
-  densityMap,
-  burstinessMap,
-  burstMetric = 'density',
-  burstCutoff = 1,
-  mapDomain = [0, 100],
 }: MapEventLayerProps) {
   const columns = useTimelineDataStore((state) => state.columns);
   const data = useTimelineDataStore((state) => state.data);
@@ -225,23 +213,12 @@ export default function MapEventLayer({
 
   const geoJson = useMemo(() => {
     if (filteredPoints.length === 0) return null;
-    const densitySpan = Math.max(0.0001, mapDomain[1] - mapDomain[0]);
-    const selectedMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
-    const densitySize = selectedMap?.length ?? 0;
     return {
       type: 'FeatureCollection' as const,
       features: filteredPoints
         .map((point) => {
           const lat = point.lat;
           const lon = point.lon;
-          const linearY = point.linearY;
-
-          let burstIntensity = 0;
-          if (selectedMap && densitySize > 0 && Number.isFinite(linearY)) {
-            const normalized = Math.max(0, Math.min(1, (linearY - mapDomain[0]) / densitySpan));
-            const idx = Math.min(Math.floor(normalized * densitySize), densitySize - 1);
-            burstIntensity = selectedMap[idx] ?? 0;
-          }
 
           const [resolvedLat, resolvedLon] =
             Number.isFinite(lat) && Number.isFinite(lon)
@@ -255,7 +232,6 @@ export default function MapEventLayer({
             },
             properties: {
               index: point.index,
-              burstIntensity,
               typeId: point.typeId
             }
           };
@@ -265,7 +241,7 @@ export default function MapEventLayer({
           return Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
         })
     };
-  }, [burstMetric, burstinessMap, densityMap, filteredPoints, mapDomain]);
+  }, [filteredPoints]);
 
   const typeColorExpression = useMemo(() => {
     const entries: (string | number)[] = [];
@@ -283,28 +259,7 @@ export default function MapEventLayer({
     return ['match', ['get', 'typeId'], ...entries, fallback] as unknown as ExpressionSpecification;
   }, [palette]);
 
-  const paint: CircleLayerSpecification['paint'] = colorMode === 'burst'
-    ? {
-        'circle-radius': [
-          'case',
-          ['>=', ['get', 'burstIntensity'], burstCutoff],
-          4,
-          3
-        ],
-        'circle-color': [
-          'case',
-          ['>=', ['get', 'burstIntensity'], burstCutoff],
-          '#f97316',
-          '#94a3b8'
-        ],
-        'circle-opacity': [
-          'case',
-          ['>=', ['get', 'burstIntensity'], burstCutoff],
-          0.75,
-          0.35
-        ]
-      }
-    : hoveredTypeId
+  const paint: CircleLayerSpecification['paint'] = hoveredTypeId
     ? {
         'circle-radius': [
           'case',

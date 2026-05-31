@@ -3,7 +3,7 @@ import { buildNonUniformDraftBinsFromSelection, partitionSelectionByGranularity 
 import type { TimeBin } from '@/lib/binning/types';
 import type { CrimeRecord } from '@/types/crime';
 import { useSliceDomainStore } from './useSliceDomainStore';
-import { useDashboardDemoWarpStore } from './useDashboardDemoWarpStore';
+import { useDashboardDemoCoordinationStore } from './useDashboardDemoCoordinationStore';
 
 export type TimeslicingMode = 'auto' | 'manual';
 
@@ -403,7 +403,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       }
 
       useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
-      useDashboardDemoWarpStore.getState().setWarpSource('density');
+      useDashboardDemoCoordinationStore.getState().setWarpSource('density');
 
       set({
         lastAppliedAt: Date.now(),
@@ -421,7 +421,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       const sliceId = useSliceDomainStore.getState().addSliceFromBin(bin, domain);
       if (sliceId === null) return false;
 
-      useDashboardDemoWarpStore.getState().setWarpSource('density');
+      useDashboardDemoCoordinationStore.getState().setWarpSource('density');
 
       set({
         lastAppliedAt: Date.now(),

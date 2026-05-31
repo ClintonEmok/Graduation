@@ -9,7 +9,7 @@ describe('/dashboard-demo shell', () => {
     const demoStatsSource = readFileSync(new URL('../../components/dashboard-demo/DemoStatsPanel.tsx', import.meta.url), 'utf8');
     const demoStkdePanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoStkdePanel.tsx', import.meta.url), 'utf8');
     const demoDetectPanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoDetectPanel.tsx', import.meta.url), 'utf8');
-    const demoAnalysisStoreSource = readFileSync(new URL('../../store/useDashboardDemoAnalysisStore.ts', import.meta.url), 'utf8');
+    const demoAnalysisStoreSource = readFileSync(new URL('../../store/useDashboardDemoCoordinationStore.ts', import.meta.url), 'utf8');
     const demoNeighborhoodStatsSource = readFileSync(
       new URL('../../components/dashboard-demo/lib/useDemoNeighborhoodStats.ts', import.meta.url),
       'utf8'
@@ -94,19 +94,19 @@ describe('/dashboard-demo shell', () => {
     expect(demoMapVisualizationSource).toMatch(/Show STKDE overlay|Hide STKDE overlay/);
     expect(demoMapVisualizationSource).toMatch(/DemoStatsMapOverlay/);
     expect(demoMapVisualizationSource).toMatch(/stkdeVisibleOverride/);
-    expect(demoMapVisualizationSource).toMatch(/useDashboardDemoAnalysisStore/);
+    expect(demoMapVisualizationSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoFilterStore/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoCoordinationStore/);
-    expect(demoMapVisualizationSource).toMatch(/useDashboardDemoAdaptiveStore/);
+    expect(demoMapVisualizationSource).not.toMatch(/useDashboardDemoAdaptiveStore/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoMapLayerStore/);
     expect(shellSource).not.toMatch(/Map-first shared viewport|2D map|3D cube|generationStatus|lastGeneratedMetadata|\bTimelinePanel\b/);
     expect(railTabsSource).toMatch(/TabsTrigger value="scan"/);
     expect(railTabsSource).toMatch(/TabsTrigger value="slices"/);
     expect(railTabsSource).toMatch(/DemoStatsPanel/);
-    expect(demoAnalysisStoreSource).toMatch(/useDashboardDemoAnalysisStore/);
+    expect(demoAnalysisStoreSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoAnalysisStoreSource).toMatch(/selectedDistricts/);
     expect(demoAnalysisStoreSource).toMatch(/stkdeParams/);
-    expect(demoNeighborhoodStatsSource).toMatch(/useDashboardDemoAnalysisStore/);
+    expect(demoNeighborhoodStatsSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoNeighborhoodStatsSource).toMatch(/aggregateStats/);
     expect(demoNeighborhoodStatsSource).toMatch(/transformStatsSummary/);
     expect(demoStkdeHookSource).toMatch(/callerIntent: 'dashboard-demo'/);
@@ -188,7 +188,7 @@ describe('/dashboard-demo shell', () => {
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
     expect(demoSlicePanelSource).toMatch(/useSliceDomainStore/);
-    expect(demoSlicePanelSource).toMatch(/useDashboardDemoWarpStore/);
+    expect(demoSlicePanelSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeslicingModeStore/);
     expect(demoSlicePanelSource).toMatch(/DialogContent|DialogTitle|DialogDescription/);
@@ -229,7 +229,7 @@ describe('/dashboard-demo shell', () => {
     expect(timesliceToolbarSource).not.toMatch(/Bias|Active|Reset preset|Reset all/);
     expect(demoDualTimelineSource).toMatch(/DemoDualTimeline/);
     expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);
-    expect(demoDualTimelineSource).toMatch(/useDashboardDemoWarpStore/);
+    expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoDualTimelineSource).toMatch(/warpSource/);
     expect(demoDualTimelineSource).toMatch(/computeDensityMap/);
     expect(demoDualTimelineSource).toMatch(/setPrecomputedMaps/);
@@ -252,8 +252,8 @@ describe('/dashboard-demo shell', () => {
 
     expect(demoTimelineSummarySource).toMatch(/useDemoBurstWindows/);
     expect(demoBurstWindowsSource).toMatch(/buildDemoBurstWindowsFromSelection/);
-    expect(demoBurstWindowsSource).toMatch(/useDashboardDemoWarpStore/);
-    expect(demoBurstWindowsSource).toMatch(/useDashboardDemoAdaptiveStore/);
+    expect(demoBurstWindowsSource).toMatch(/useDashboardDemoCoordinationStore/);
+    expect(demoBurstWindowsSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoTimeslicingModeStoreSource).not.toMatch(/buildTimelineEvents|useTimelineDataStore\.getState|getCrimeTypeName/);
   });
 
@@ -268,10 +268,10 @@ describe('/dashboard-demo shell', () => {
     expect(dashboardPageSource).toMatch(/CubeVisualization/);
     expect(dashboardPageSource).toMatch(/TimelinePanel/);
     expect(dashboardPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|Map-first shared viewport|WorkflowSkeleton/);
-    expect(dashboardPageSource).not.toMatch(/useDashboardDemoWarpStore|buildDemoSliceAuthoredWarpMap/);
-    expect(statsRouteSource).not.toMatch(/useDashboardDemoAnalysisStore/);
-    expect(stkdeRouteSource).not.toMatch(/useDashboardDemoAnalysisStore/);
-    expect(timeslicingPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|useDashboardDemoWarpStore|buildDemoSliceAuthoredWarpMap/);
+    expect(dashboardPageSource).not.toMatch(/useDashboardDemoCoordinationStore|buildDemoSliceAuthoredWarpMap/);
+    expect(statsRouteSource).not.toMatch(/useDashboardDemoCoordinationStore/);
+    expect(stkdeRouteSource).not.toMatch(/useDashboardDemoCoordinationStore/);
+    expect(timeslicingPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|useDashboardDemoCoordinationStore|buildDemoSliceAuthoredWarpMap/);
   });
 
   test('keeps applied-state text inside the STKDE panel instead of the viewport shell', () => {

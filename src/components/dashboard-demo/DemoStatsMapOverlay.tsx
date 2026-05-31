@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Layer, Source } from 'react-map-gl/maplibre';
 import type { FeatureCollection, Point, Polygon } from 'geojson';
 import { useDemoNeighborhoodStats } from '@/components/dashboard-demo/lib/useDemoNeighborhoodStats';
-import { ALL_DEMO_DISTRICTS, useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { ALL_DEMO_DISTRICTS, useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoMapLayerStore } from '@/store/useDashboardDemoMapLayerStore';
 import type { CrimeRecord } from '@/types/crime';
 
@@ -45,7 +45,7 @@ interface DemoStatsMapOverlayProps {
 
 export function DemoStatsMapOverlay({ heatmapVisible = true }: DemoStatsMapOverlayProps) {
   const { crimes, isLoading, isFetching, error } = useDemoNeighborhoodStats();
-  const selectedDistricts = useDashboardDemoAnalysisStore((state) => state.selectedDistricts);
+  const selectedDistricts = useDashboardDemoCoordinationStore((state) => state.selectedDistricts);
   const sharedHeatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
   const [districtBoundaries, setDistrictBoundaries] = useState<FeatureCollection<Polygon, PoliceDistrictProperties> | null>(null);
 

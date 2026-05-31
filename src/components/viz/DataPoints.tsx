@@ -645,7 +645,6 @@ const count = columns ? columns.length : data.length;
         onPointerUp={handlePointerUp}
         onPointerMove={handlePointerMove}
         onPointerMissed={handlePointerMissed}
-        frustumCulled={false}
       >
 
       <sphereGeometry args={[0.5, 8, 8]}>
@@ -667,7 +666,13 @@ const count = columns ? columns.length : data.length;
         )}
         {colors && <instancedBufferAttribute attach="instanceColor" args={[colors, 3]} />}
       </sphereGeometry>
-      <meshStandardMaterial vertexColors onBeforeCompile={onBeforeCompile} />
+      <meshStandardMaterial
+        vertexColors
+        onBeforeCompile={onBeforeCompile}
+        ref={(material: THREE.ShaderMaterial | null) => {
+          if (material) material.customProgramCacheKey = () => 'ghosting-stable-v1';
+        }}
+      />
     </instancedMesh>
     
     {/* Raycast line visualization - shows briefly when clicking a point */}

@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
 import { buildDemoBurstWindowsFromSelection } from './demo-burst-generation';
-import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
-import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 
 export function useDemoBurstWindows(selectionRange?: [number, number] | null) {
-  const densityMap = useDashboardDemoWarpStore((state) => state.densityMap);
-  const mapDomain = useDashboardDemoWarpStore((state) => state.mapDomain);
-  const burstThreshold = useDashboardDemoAdaptiveStore((state) => state.burstThreshold);
+  const densityMap = useDashboardDemoCoordinationStore((state) => state.densityMap);
+  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
+  const burstThreshold = useDashboardDemoCoordinationStore((state) => state.burstThreshold);
 
   return useMemo(
     () =>

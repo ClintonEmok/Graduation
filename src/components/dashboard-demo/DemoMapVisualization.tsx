@@ -7,10 +7,8 @@ import MapVisualization from '@/components/map/MapVisualization';
 import { DemoStatsMapOverlay } from '@/components/dashboard-demo/DemoStatsMapOverlay';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
-import { useDashboardDemoAdaptiveStore } from '@/store/useDashboardDemoAdaptiveStore';
 import { useDashboardDemoMapLayerStore } from '@/store/useDashboardDemoMapLayerStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
@@ -51,8 +49,8 @@ export function DemoMapVisualization({
   const [showStkde, setShowStkde] = useState(true);
   const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
   const toggleVisibility = useDashboardDemoMapLayerStore((state) => state.toggleVisibility);
-  const storeStkdeResponse = useDashboardDemoAnalysisStore((state) => state.stkdeResponse);
-  const storeSelectedHotspotId = useDashboardDemoAnalysisStore((state) => state.selectedHotspotId);
+  const storeStkdeResponse = useDashboardDemoCoordinationStore((state) => state.stkdeResponse);
+  const storeSelectedHotspotId = useDashboardDemoCoordinationStore((state) => state.selectedHotspotId);
 
   const activeSliceIndex = useDashboardDemoCoordinationStore((s) => s.activeSliceIndex);
   const slices = useSliceDomainStore((s) => s.slices);
@@ -84,7 +82,6 @@ export function DemoMapVisualization({
         statsOverlay={<DemoStatsMapOverlay />}
         filterStoreOverride={useDashboardDemoFilterStore}
         coordinationStoreOverride={useDashboardDemoCoordinationStore}
-        adaptiveStoreOverride={useDashboardDemoAdaptiveStore}
         mapLayerStoreOverride={useDashboardDemoMapLayerStore}
         sliceTimeRange={sliceTimeRange}
         activeSliceLabel={activeSliceLabel}

@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useDashboardDemoWarpStore } from '@/store/useDashboardDemoWarpStore';
-import { useDashboardDemoAnalysisStore } from '@/store/useDashboardDemoAnalysisStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { DemoStkdePanel } from '@/components/dashboard-demo/DemoStkdePanel';
 import type { TimeslicingMode } from '@/store/useDashboardDemoTimeslicingModeStore';
@@ -78,16 +77,16 @@ const STKDE_PRESETS: DemoStkdePreset[] = [
 ];
 
 export function DemoConfigurePanel() {
-  const warpFactor = useDashboardDemoWarpStore((state) => state.warpFactor);
-  const setWarpFactor = useDashboardDemoWarpStore((state) => state.setWarpFactor);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const setWarpFactor = useDashboardDemoCoordinationStore((state) => state.setWarpFactor);
   const mode = useDashboardDemoTimeslicingModeStore((state) => state.mode);
   const setMode = useDashboardDemoTimeslicingModeStore((state) => state.setMode);
   const autoConfig = useDashboardDemoTimeslicingModeStore((state) => state.autoConfig);
   const setAutoConfig = useDashboardDemoTimeslicingModeStore((state) => state.setAutoConfig);
-  const scopeMode = useDashboardDemoAnalysisStore((state) => state.stkdeScopeMode);
-  const stkdeParams = useDashboardDemoAnalysisStore((state) => state.stkdeParams);
-  const setStkdeScopeMode = useDashboardDemoAnalysisStore((state) => state.setStkdeScopeMode);
-  const setStkdeParams = useDashboardDemoAnalysisStore((state) => state.setStkdeParams);
+  const scopeMode = useDashboardDemoCoordinationStore((state) => state.stkdeScopeMode);
+  const stkdeParams = useDashboardDemoCoordinationStore((state) => state.stkdeParams);
+  const setStkdeScopeMode = useDashboardDemoCoordinationStore((state) => state.setStkdeScopeMode);
+  const setStkdeParams = useDashboardDemoCoordinationStore((state) => state.setStkdeParams);
 
   const activePreset = useMemo(
     () =>
