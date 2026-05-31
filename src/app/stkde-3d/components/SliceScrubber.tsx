@@ -1,5 +1,6 @@
 'use client';
 
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import type { EvolvingSlice } from '../lib/types';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
@@ -24,6 +25,18 @@ export function SliceScrubber({
   onActiveIndexChange,
 }: SliceScrubberProps) {
   const activeSlice = slices[activeIndex];
+  const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
+  const playbackSpeed = useDashboardDemoCoordinationStore((state) => state.inspectPlaybackSpeed);
+  const isInterpolated = useDashboardDemoCoordinationStore((state) => state.inspectInterpolation);
+  const trailEnabled = useDashboardDemoCoordinationStore((state) => state.inspectTrailEnabled);
+  const trailDecay = useDashboardDemoCoordinationStore((state) => state.inspectTrailDecay);
+  const setInspectIsPlaying = useDashboardDemoCoordinationStore((state) => state.setInspectIsPlaying);
+  const toggleInspectPlayback = useDashboardDemoCoordinationStore((state) => state.toggleInspectPlayback);
+  const setInspectPlaybackSpeed = useDashboardDemoCoordinationStore((state) => state.setInspectPlaybackSpeed);
+  const setInspectInterpolation = useDashboardDemoCoordinationStore((state) => state.setInspectInterpolation);
+  const setInspectTrailEnabled = useDashboardDemoCoordinationStore((state) => state.setInspectTrailEnabled);
+  const setInspectTrailDecay = useDashboardDemoCoordinationStore((state) => state.setInspectTrailDecay);
+  const setInspectIsScrubbing = useDashboardDemoCoordinationStore((state) => state.setInspectIsScrubbing);
 
   const burstColor = (score: number) => {
     if (score > 0.6) return 'bg-amber-500';
@@ -31,139 +44,160 @@ export function SliceScrubber({
     return 'bg-slate-600';
   };
 
+  const clampIndex = (index: number) => Math.max(0, Math.min(slices.length - 1, index));
+
+  const stepTo = (index: number) => {
+    setInspectIsPlaying(false);
+    setInspectIsScrubbing(false);
+    onActiveIndexChange(clampIndex(index));
+  };
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium uppercase tracking-[0.18em] text-sky-200">
-          Time Slices
-        </h3>
-        <span className="text-xs tabular-nums text-slate-400">
-          {activeIndex + 1} / {slices.length}
-        </span>
+    <div className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/55 p-3 text-xs text-slate-300">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            time slices
+          </div>
+          <div className="mt-0.5 text-[11px] text-slate-400">
+            {activeIndex + 1} / {slices.length}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => toggleInspectPlayback()}
+          className={`rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] transition ${
+            isPlaying
+              ? 'border-sky-400/40 bg-sky-400/10 text-sky-100'
+              : 'border-slate-700 bg-slate-900/70 text-slate-300'
+          }`}
+        >
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => onActiveIndexChange(Math.max(0, activeIndex - 1))}
+          onClick={() => stepTo(activeIndex - 1)}
           disabled={activeIndex === 0}
-          className="rounded-full border border-slate-700/80 bg-slate-900/70 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-sky-400/60 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-full border border-slate-700 bg-slate-900/70 px-2.5 py-1 text-[11px] text-slate-300 transition disabled:cursor-not-allowed disabled:opacity-30"
         >
           Prev
         </button>
 
-        <div className="flex flex-1 items-center gap-1.5">
-          {slices.map((slice) => (
-            <button
-              key={slice.index}
-              type="button"
-              onClick={() => onActiveIndexChange(slice.index)}
-              className={`h-2.5 flex-1 rounded-full transition-all ${
-                slice.index === activeIndex
-                  ? 'bg-sky-400 scale-y-125'
-                  : Math.abs(slice.index - activeIndex) === 1
-                    ? 'bg-sky-500/50'
-                    : 'bg-slate-700/60'
-              }`}
-              title={`${slice.label}: burst ${(slice.burstScore * 100).toFixed(0)}%`}
-            />
-          ))}
+        <div className="flex-1">
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, slices.length - 1)}
+            step={1}
+            value={activeIndex}
+            onPointerDown={() => {
+              setInspectIsPlaying(false);
+              setInspectIsScrubbing(true);
+            }}
+            onPointerUp={() => setInspectIsScrubbing(false)}
+            onPointerCancel={() => setInspectIsScrubbing(false)}
+            onChange={(event) => stepTo(Number(event.target.value))}
+            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-800 accent-sky-400"
+            aria-label="Slice scrubber"
+          />
         </div>
 
         <button
           type="button"
-          onClick={() =>
-            onActiveIndexChange(Math.min(slices.length - 1, activeIndex + 1))
-          }
+          onClick={() => stepTo(activeIndex + 1)}
           disabled={activeIndex === slices.length - 1}
-          className="rounded-full border border-slate-700/80 bg-slate-900/70 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-sky-400/60 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-full border border-slate-700 bg-slate-900/70 px-2.5 py-1 text-[11px] text-slate-300 transition disabled:cursor-not-allowed disabled:opacity-30"
         >
           Next
         </button>
       </div>
 
-      {activeSlice && (
-        <div className="rounded-2xl border border-sky-500/15 bg-slate-950/60 p-4 text-xs text-slate-300 shadow-[0_24px_80px_-48px_rgba(14,165,233,0.45)]">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-medium text-slate-50">
-              {activeSlice.label}
-            </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-950 ${
-                burstColor(activeSlice.burstScore)
+      <div className="grid gap-2 sm:grid-cols-[1.2fr_0.9fr]">
+        <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-slate-100">Speed</span>
+            <span className="tabular-nums text-slate-400">{playbackSpeed.toFixed(1)}x</span>
+          </div>
+          <input
+            type="range"
+            min={0.5}
+            max={3}
+            step={0.1}
+            value={playbackSpeed}
+            onChange={(event) => setInspectPlaybackSpeed(Number(event.target.value))}
+            className="mt-2 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-800 accent-sky-400"
+            aria-label="Playback speed"
+          />
+        </div>
+
+        <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-slate-100">Interpolated</span>
+            <button
+              type="button"
+              onClick={() => setInspectInterpolation(!isInterpolated)}
+              disabled={!isPlaying}
+              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] transition ${
+                isInterpolated && isPlaying
+                  ? 'border-sky-400/40 bg-sky-400/10 text-sky-100'
+                  : 'border-slate-700 text-slate-400 disabled:opacity-40'
               }`}
             >
-              burst{' '}
-              {(activeSlice.burstScore * 100).toFixed(0)}%
-            </span>
+              {isInterpolated ? 'On' : 'Off'}
+            </button>
           </div>
-          <div className="space-y-1">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Events</span>
-              <span className="tabular-nums text-slate-100">
-                {activeSlice.crimeCount}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Time range</span>
-              <span className="text-right tabular-nums text-slate-100">
-                {formatSliceDate(activeSlice.startEpoch)} -{' '}
-                {formatSliceDate(activeSlice.endEpoch)}
-              </span>
-            </div>
-            <div className="mt-2">
-              <div className="mb-1 flex items-center justify-between text-slate-400">
-                <span>Burst intensity</span>
-                <span className="tabular-nums text-slate-100">
-                  {(activeSlice.burstScore * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800/80">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    activeSlice.burstScore > 0.6
-                      ? 'bg-amber-500'
-                      : activeSlice.burstScore > 0.3
-                        ? 'bg-amber-400/70'
-                        : 'bg-slate-500'
-                  }`}
-                  style={{
-                    width: `${activeSlice.burstScore * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+          <p className="mt-1 text-[11px] leading-5 text-slate-500">
+            Playback only.
+          </p>
         </div>
-      )}
+      </div>
 
-      <div className="space-y-1">
-        {slices.map((slice) => (
+      <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 p-2.5">
+        <div className="flex items-center justify-between gap-2">
           <button
-            key={slice.index}
             type="button"
-            onClick={() => onActiveIndexChange(slice.index)}
-            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
-              slice.index === activeIndex
-                ? 'bg-sky-900/35 text-sky-100'
-                : 'text-slate-400 hover:bg-slate-900/70 hover:text-slate-200'
+            onClick={() => setInspectTrailEnabled(!trailEnabled)}
+            className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] transition ${
+              trailEnabled
+                ? 'border-sky-400/40 bg-sky-400/10 text-sky-100'
+                : 'border-slate-700 bg-slate-950/40 text-slate-400'
             }`}
           >
-            <span>{slice.label}</span>
-            <span
-              className={`rounded px-1.5 text-[9px] font-medium uppercase tracking-[0.16em] tabular-nums ${
-                slice.burstScore > 0.6
-                  ? 'bg-amber-500/20 text-amber-300'
-                  : slice.burstScore > 0.3
-                    ? 'bg-amber-400/10 text-amber-400/70'
-                    : 'text-slate-500'
-              }`}
-            >
-              {(slice.burstScore * 100).toFixed(0)}%
-            </span>
+            Trails
           </button>
-        ))}
+          <span className="tabular-nums text-slate-400">{trailDecay.toFixed(2)}</span>
+        </div>
+        <input
+          type="range"
+          min={0.12}
+          max={0.9}
+          step={0.02}
+          value={trailDecay}
+          onChange={(event) => setInspectTrailDecay(Number(event.target.value))}
+          className="mt-2 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-800 accent-sky-400"
+          aria-label="Trail decay"
+        />
       </div>
+
+      {activeSlice && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/70 bg-slate-900/40 p-2.5">
+          <div className="min-w-0">
+            <div className="truncate text-[11px] font-medium text-slate-100">
+              {activeSlice.label}
+            </div>
+            <div className="mt-0.5 text-[10px] tabular-nums text-slate-500">
+              {formatSliceDate(activeSlice.startEpoch)} - {formatSliceDate(activeSlice.endEpoch)}
+            </div>
+          </div>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-950 ${burstColor(activeSlice.burstScore)}`}>
+            {(activeSlice.burstScore * 100).toFixed(0)}%
+          </span>
+        </div>
+      )}
     </div>
   );
 }
