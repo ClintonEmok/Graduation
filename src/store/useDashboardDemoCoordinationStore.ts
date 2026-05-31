@@ -102,6 +102,10 @@ interface DashboardDemoCoordinationState {
   viewMode: DemoSliceViewMode;
   inspectIsPlaying: boolean;
   inspectPlaybackSpeed: number;
+  inspectInterpolation: boolean;
+  inspectTrailEnabled: boolean;
+  inspectTrailDecay: number;
+  inspectIsScrubbing: boolean;
   inspectSliceOpacity: number;
   volumeScaleSeconds: number;
   volumeExaggeration: number;
@@ -132,6 +136,12 @@ interface DashboardDemoCoordinationState {
   setViewMode: (mode: DemoSliceViewMode) => void;
   setInspectIsPlaying: (playing: boolean) => void;
   setInspectSliceOpacity: (opacity: number) => void;
+  setInspectInterpolation: (enabled: boolean) => void;
+  toggleInspectInterpolation: () => void;
+  setInspectTrailEnabled: (enabled: boolean) => void;
+  setInspectTrailDecay: (value: number) => void;
+  setInspectIsScrubbing: (scrubbing: boolean) => void;
+  resetTemporalSettings: () => void;
   setVolumeScaleSeconds: (seconds: number) => void;
   setVolumeExaggeration: (value: number) => void;
   setVolumeNormalizationMode: (mode: DemoVolumeNormalizationMode) => void;
@@ -192,6 +202,10 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   viewMode: 'stack',
   inspectIsPlaying: false,
   inspectPlaybackSpeed: 1,
+  inspectInterpolation: false,
+  inspectTrailEnabled: false,
+  inspectTrailDecay: 0.32,
+  inspectIsScrubbing: false,
   inspectSliceOpacity: 1,
   volumeScaleSeconds: DEFAULT_VOLUME_SCALE_SECONDS,
   volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
@@ -228,6 +242,11 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   setViewMode: (viewMode) => set({ viewMode }),
   setInspectIsPlaying: (inspectIsPlaying) => set({ inspectIsPlaying }),
   setInspectSliceOpacity: (inspectSliceOpacity) => set({ inspectSliceOpacity }),
+  setInspectInterpolation: (inspectInterpolation) => set({ inspectInterpolation }),
+  toggleInspectInterpolation: () => set((state) => ({ inspectInterpolation: !state.inspectInterpolation })),
+  setInspectTrailEnabled: (inspectTrailEnabled) => set({ inspectTrailEnabled }),
+  setInspectTrailDecay: (inspectTrailDecay) => set({ inspectTrailDecay: Math.max(0.12, Math.min(0.9, inspectTrailDecay)) }),
+  setInspectIsScrubbing: (inspectIsScrubbing) => set({ inspectIsScrubbing }),
   setVolumeScaleSeconds: (volumeScaleSeconds) =>
     set({ volumeScaleSeconds: Math.max(1, Math.floor(volumeScaleSeconds)) }),
   setVolumeExaggeration: (volumeExaggeration) =>
@@ -239,9 +258,19 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
       volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
     }),
+  resetTemporalSettings: () =>
+    set({
+      inspectIsPlaying: false,
+      inspectPlaybackSpeed: 1,
+      inspectInterpolation: false,
+      inspectTrailEnabled: false,
+      inspectTrailDecay: 0.32,
+      inspectIsScrubbing: false,
+    }),
   setCrimeFetchStatus: (crimeFetchStatus) => set({ crimeFetchStatus }),
   setSliceCrimeCounts: (sliceCrimeCounts) => set({ sliceCrimeCounts }),
-  setInspectPlaybackSpeed: (inspectPlaybackSpeed) => set({ inspectPlaybackSpeed }),
+  setInspectPlaybackSpeed: (inspectPlaybackSpeed) =>
+    set({ inspectPlaybackSpeed: Math.max(0.25, Math.min(4, inspectPlaybackSpeed)) }),
   toggleInspectPlayback: () => set((state) => ({ inspectIsPlaying: !state.inspectIsPlaying })),
   setSelectedIndex: (index, source) =>
     set({
@@ -381,6 +410,12 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       volumeScaleSeconds: DEFAULT_VOLUME_SCALE_SECONDS,
       volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
       volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
+      inspectIsPlaying: false,
+      inspectPlaybackSpeed: 1,
+      inspectInterpolation: false,
+      inspectTrailEnabled: false,
+      inspectTrailDecay: 0.32,
+      inspectIsScrubbing: false,
       selectedHotspotId: null,
       hoveredHotspotId: null,
       spatialFilter: null,

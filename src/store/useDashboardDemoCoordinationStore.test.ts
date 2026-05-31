@@ -26,6 +26,7 @@ beforeEach(() => {
     selectedSource: null,
     lastInteractionAt: null,
     lastInteractionSource: null,
+    activeSliceIndex: 0,
     brushRange: null,
     selectedBurstWindows: [],
     selectedDetailPeriod: null,
@@ -35,6 +36,12 @@ beforeEach(() => {
     comparisonSliceIds: { left: null, right: null },
     comparisonSelectionOrder: [],
     activeRailTab: 'scan',
+    inspectIsPlaying: false,
+    inspectPlaybackSpeed: 1,
+    inspectInterpolation: false,
+    inspectTrailEnabled: false,
+    inspectTrailDecay: 0.32,
+    inspectIsScrubbing: false,
     inspectSliceOpacity: 1,
     volumeScaleSeconds: 43_200,
     volumeExaggeration: 1.15,
@@ -136,5 +143,60 @@ describe('useDashboardDemoCoordinationStore', () => {
     expect(useDashboardDemoCoordinationStore.getState().volumeScaleSeconds).toBe(43_200);
     expect(useDashboardDemoCoordinationStore.getState().volumeExaggeration).toBe(1.15);
     expect(useDashboardDemoCoordinationStore.getState().volumeNormalizationMode).toBe('window');
+  });
+
+  test('stores and resets temporal playback controls', () => {
+    const store = useDashboardDemoCoordinationStore.getState();
+
+    expect(store.inspectIsPlaying).toBe(false);
+    expect(store.inspectPlaybackSpeed).toBe(1);
+    expect(store.inspectInterpolation).toBe(false);
+    expect(store.inspectTrailEnabled).toBe(false);
+    expect(store.inspectTrailDecay).toBe(0.32);
+    expect(store.inspectIsScrubbing).toBe(false);
+
+    store.setInspectIsPlaying(true);
+    store.setInspectPlaybackSpeed(2.5);
+    store.setInspectInterpolation(true);
+    store.setInspectTrailEnabled(true);
+    store.setInspectTrailDecay(0.48);
+    store.setInspectIsScrubbing(true);
+
+    expect(useDashboardDemoCoordinationStore.getState()).toMatchObject({
+      inspectIsPlaying: true,
+      inspectPlaybackSpeed: 2.5,
+      inspectInterpolation: true,
+      inspectTrailEnabled: true,
+      inspectTrailDecay: 0.48,
+      inspectIsScrubbing: true,
+    });
+
+    store.resetTemporalSettings();
+
+    expect(useDashboardDemoCoordinationStore.getState()).toMatchObject({
+      inspectIsPlaying: false,
+      inspectPlaybackSpeed: 1,
+      inspectInterpolation: false,
+      inspectTrailEnabled: false,
+      inspectTrailDecay: 0.32,
+      inspectIsScrubbing: false,
+    });
+
+    store.setInspectIsPlaying(true);
+    store.setInspectPlaybackSpeed(3);
+    store.setInspectInterpolation(true);
+    store.setInspectTrailEnabled(true);
+    store.setInspectTrailDecay(0.9);
+    store.setInspectIsScrubbing(true);
+    store.resetAnalysis();
+
+    expect(useDashboardDemoCoordinationStore.getState()).toMatchObject({
+      inspectIsPlaying: false,
+      inspectPlaybackSpeed: 1,
+      inspectInterpolation: false,
+      inspectTrailEnabled: false,
+      inspectTrailDecay: 0.32,
+      inspectIsScrubbing: false,
+    });
   });
 });
