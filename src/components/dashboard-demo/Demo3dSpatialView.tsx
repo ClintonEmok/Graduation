@@ -57,6 +57,9 @@ export function Demo3dSpatialView() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const activeIndex = useDashboardDemoCoordinationStore((state) => state.activeSliceIndex);
   const viewMode = useDashboardDemoCoordinationStore((state) => state.viewMode);
+  const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
+  const playbackSpeed = useDashboardDemoCoordinationStore((state) => state.inspectPlaybackSpeed);
+  const isScrubbing = useDashboardDemoCoordinationStore((state) => state.inspectIsScrubbing);
   const sliceOpacity = useDashboardDemoCoordinationStore((state) => state.inspectSliceOpacity);
   const volumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.volumeScaleSeconds);
   const volumeExaggeration = useDashboardDemoCoordinationStore((state) => state.volumeExaggeration);
@@ -70,6 +73,7 @@ export function Demo3dSpatialView() {
   const hasLoadedRef = useRef(false);
   const kdeWorkerRef = useRef<Worker | null>(null);
   const kdeRequestIdRef = useRef(0);
+  const playbackTimeoutRef = useRef<number | null>(null);
 
   const orderedSlices = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) return [];
@@ -254,6 +258,39 @@ export function Demo3dSpatialView() {
       setActiveSliceIndex(Math.max(0, countedSlices.length - 1));
     }
   }, [countedSlices.length, activeIndex, setActiveSliceIndex]);
+
+  useEffect(() => {
+    if (playbackTimeoutRef.current !== null) {
+      window.clearTimeout(playbackTimeoutRef.current);
+      playbackTimeoutRef.current = null;
+    }
+
+    if (!isPlaying || isScrubbing || countedSlices.length === 0) return undefined;
+
+    const lastIndex = countedSlices.length - 1;
+    const stepDelay = Math.max(180, Math.round(1000 / Math.max(0.25, playbackSpeed)));
+    const loopPauseMs = 260;
+    const delay = activeIndex >= lastIndex ? loopPauseMs : stepDelay;
+
+    playbackTimeoutRef.current = window.setTimeout(() => {
+      playbackTimeoutRef.current = null;
+
+      if (countedSlices.length === 0) return;
+      if (activeIndex >= countedSlices.length - 1) {
+        setActiveSliceIndex(0);
+        return;
+      }
+
+      setActiveSliceIndex(activeIndex + 1);
+    }, delay);
+
+    return () => {
+      if (playbackTimeoutRef.current !== null) {
+        window.clearTimeout(playbackTimeoutRef.current);
+        playbackTimeoutRef.current = null;
+      }
+    };
+  }, [activeIndex, countedSlices.length, isPlaying, isScrubbing, playbackSpeed, setActiveSliceIndex]);
 
   if (orderedSlices.length === 0) {
     return (
