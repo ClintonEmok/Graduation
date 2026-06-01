@@ -1,297 +1,276 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-05-22
+**Analysis Date:** 2026-06-01
 
-## Top 5 Problematic UI Files
+## Tech Debt
 
-### 1. `src/app/timeslicing/components/SuggestionPanel.tsx` + `src/app/timeline-test-3d/components/SuggestionPanel.tsx` (765 + 641 lines) — Duplicated Monolithic Panel
+### SQL Injection Risk in DuckDB Aggregator
 
-- **Issue**: Two near-identical 600-700 line panel components that handle suggestion display, acceptance workflow, comparison mode, confidence display, diagnostics panels, and undo logic. These are duplicated across two route directories with minor variation (the timeline-test-3d version adds diagnostics section rendering, a few extra state variables). Seven total component files are forked identically across these two routes.
-- **Files**:
-  - `src/app/timeslicing/components/SuggestionPanel.tsx` (765 lines)
-  - `src/app/timeline-test-3d/components/SuggestionPanel.tsx` (641 lines)
-  - Plus 6 duplicated child components (see stale patterns below)
-- **Impact**: ~4,259 lines of duplicated code across 7 component pairs. Bug fixes must be applied twice. Features diverge silently. The SuggestionPanel alone has 31+ imports and handles 10+ concerns (display, CRUD, comparison, diagnostics, confidence, history, undo, selection, filtering, keyboard shortcuts).
-- **Fix approach**: Extract to `src/components/suggestions/` shared location. Parameterize the 3-5 differences (diagnostics section rendering, initial panel state, comparison mode variant). This is the highest-value refactor in the codebase.
+- **Issue:** `src/lib/duckdb-aggregator.ts` constructs SQL queries using raw string interpolation for user-supplied filter values (`types`, `districts`), while the newer `src/lib/queries/` system (builders, filters) correctly uses parameterized `?` placeholders. This creates an inconsistent and dangerous pattern.
+- **Files:** `src/lib/duckdb-aggregator.ts` (lines 50-57, 66)
+- **Impact:** Any API route or component that calls `getAggregatedBins()` can be exploited via SQL injection if untrusted input reaches the `types[]` or `districts[]` parameters.
+- **Fix approach:** Rebuild `duckdb-aggregator.ts` to use the parameterized query patterns from `src/lib/queries/filters.ts` (which uses `?` placeholders and `buildInListFilter`). Remove the string-interpolation pattern entirely.
 
-### 2. `src/components/timeline/DemoDualTimeline.tsx` (858 lines) — Monolithic Timeline with 31 Imports
+### Inconsistent SQL Query Patterns Across the Codebase
 
-- **Issue**: Single file containing overview timeline rendering, detail timeline rendering, brush synchronization, density strip rendering, axis rendering, point rendering, adaptive scale transforms, zoom handling, and interaction guards. Directly imports from 31 modules including 5 stores, 3 hooks, 4 lib modules, and 5 visx/d3 libraries. Contains inline SVG rendering, D3 scale manipulation, and event handling all in one component.
-- **Files**: `src/components/timeline/DemoDualTimeline.tsx`
-- **Impact**: Nearly impossible to unit test. Every state/store subscription triggers re-renders of the entire 858-line tree. The `useEffect` for brush synchronization contains complex logic for clamping, debouncing, and cross-store coordination that is not independently testable.
-- **Fix approach**: Split into sub-components mirroring the existing `DualTimeline.tsx` structure (overview track, detail track, axis, density strip, brush manager). Extract brush sync logic into a dedicated hook.
+- **Issue:** Two different SQL construction patterns coexist:
+  1. `src/lib/queries/builders.ts`, `src/lib/queries/filters.ts` — parameterized queries with `?` placeholders and `params: unknown[]` arrays (safe)
+  2. `src/lib/duckdb-aggregator.ts` — raw string interpolation with template literals (dangerous)
+- **Files:** Compare `src/lib/queries/filters.ts` vs `src/lib/duckdb-aggregator.ts`
+- **Impact:** New developers are likely to copy the wrong pattern, introducing injection vulnerabilities.
+- **Fix approach:** Deprecate `duckdb-aggregator.ts` and migrate all callers to the `queries/` module. Consider adding a lint rule that bans string interpolation in SQL-building contexts.
 
-### 3. `src/components/dashboard-demo/` (15 files, ~5,500+ lines) — Parallel Dashboard Ecosystem
+### 65 Dependency Vulnerabilities (38 High, 23 Moderate)
 
-- **Issue**: A complete parallel implementation of the dashboard UI with its own shell (`DashboardDemoShell.tsx`), map (`DemoMapVisualization.tsx`), 3D view (`Demo3dSpatialView.tsx`), timeline (`DemoTimelinePanel.tsx` → `DemoDualTimeline.tsx`), stats panel (`DemoStatsPanel.tsx`), STKDE panel (`DemoStkdePanel.tsx`), slice panel (`DemoSlicePanel.tsx`), inspect panel (`DemoInspectPanel.tsx`), detect panel (`DemoDetectPanel.tsx`), configure panel (`DemoConfigurePanel.tsx`), and a separate 11-store ecosystem (`useDashboardDemo*` stores, ~2,030 lines). This runs alongside the main `dashboard-v2/` route (also 471 lines large).
-- **Files**: 15 files in `src/components/dashboard-demo/`, 11 files in `src/store/useDashboardDemo*`, 3 dashboard routes in `src/app/dashboard*/`
-- **Impact**: Three dashboard implementations competing for truth (original `dashboard/`, `dashboard-v2/`, `dashboard-demo/`). The demo stores are forks of the main stores with added complexity (e.g., `useDashboardDemoCoordinationStore.ts` has 290 lines vs `useCoordinationStore.ts` at 154 lines). CSS/layout decisions are duplicated. New features must be built 2-3 times.
-- **Fix approach**: Identify which dashboard variant is canonical (likely `dashboard-v2` based on page size and test coverage). Archive `dashboard/` and `dashboard-demo/` after migrating any unique behavior. Delete the `useDashboardDemo*` stores that have no unique functionality.
+- **Issue:** `pnpm audit` reports 65 vulnerabilities. The highest-risk items:
+  - Next.js 16.1.6 has a **high** severity Middleware/Proxy bypass vulnerability (GHSA-36qx-fr4f-26g5). Patch is 16.2.5.
+  - `patch-package` transitively depends on `tmp` with a **high** severity path traversal vulnerability (GHSA-ph9p-34f9-6g65).
+- **Files:** `package.json`, `pnpm-lock.yaml`
+- **Impact:** Running `next dev` or `next start` with an unpatched Next.js exposes the app to request bypass attacks in i18n-aware routes. The `tmp` vulnerability in `patch-package` is a supply-chain risk.
+- **Fix approach:** Upgrade `next` to `^16.2.5`. Evaluate whether `patch-package` is still needed (see DuckDB patch below). Run `pnpm audit --fix` where possible.
 
-### 4. `src/app/demo/non-uniform-time-slicing/showcase.tsx` (891 lines) — Largest Single Component in the Codebase
+### DuckDB Native Module Workaround via patch-package
 
-- **Issue**: An 891-line showcase/demo page that is the single largest file in the entire project. Combines data loading, visualization rendering, interaction handling, state management, and presentation layout into one monolithic export. Contains inline CSS, direct DOM manipulation patterns, and tight coupling to the `non-uniform-time-slicing` demo route.
-- **Files**: `src/app/demo/non-uniform-time-slicing/showcase.tsx`
-- **Impact**: Extreme maintenance burden. The file is longer than many entire route directories. Cannot be tested or reasoned about as a unit. Likely contains dead code from multiple iterations of the demo.
-- **Fix approach**: Break into sub-components for each visualization section. Extract data loading into a dedicated hook. If this is a one-off demo page, consider whether it can be deleted entirely.
+- **Issue:** `patches/duckdb+1.4.4.patch` adds `napi_versions: [3]` and changes the `module_path` template to include `{napi_build_version}`, allowing the DuckDB native binding to load. The `postinstall` script (`package.json`) further creates a symlink from `node_modules/duckdb/lib/binding/3/duckdb.node` pointing to `../duckdb.node`. This is a fragile workaround for a DuckDB npm packaging issue.
+- **Files:** `patches/duckdb+1.4.4.patch`, `package.json` (postinstall script), `next.config.ts` (`serverExternalPackages: ["duckdb"]`)
+- **Impact:** The symlink approach breaks if the DuckDB npm package fixes its binary path or if the Node.js NAPI version changes. The postinstall script is not idempotent and may fail in CI environments with restrictive file permissions.
+- **Fix approach:** Pin to a DuckDB version that ships correct NAPI bindings. Test the postinstall script in CI. Consider a `prepare` script wrapper for robustness.
 
-### 5. `src/components/viz/DataPoints.tsx` (687 lines) + `src/components/viz/SimpleCrimePoints.tsx` (487 lines) — Competing Point Rendering Implementations
+### TypeScript Compilation Errors in Test Files
 
-- **Issue**: Two separate point rendering components in the same directory with overlapping responsibilities. `DataPoints.tsx` handles instanced mesh rendering for the 3D cube scene (with LOD, color mapping, size scaling, world-space positioning). `SimpleCrimePoints.tsx` handles a simpler point cloud variant with category coloring, size variation, and selection highlighting. Neither is the canonical implementation — they use different spatial indexing approaches, different store subscriptions, and different optimization strategies.
-- **Files**: `src/components/viz/DataPoints.tsx`, `src/components/viz/SimpleCrimePoints.tsx`
-- **Impact**: ~1,174 lines of duplicated rendering logic that must stay in sync. Performance fixes applied to one (e.g., LOD in DataPoints) are missing from the other. Category color mapping is duplicated.
-- **Fix approach**: Extract shared logic (color mapping, size calculation, LOD strategy) into shared utilities. Make one component a wrapper around the other with parameter-driven configuration.
+- **Issue:** `npx tsc --noEmit` reveals 4 errors in 3 test files:
+  - `src/app/cube-sandbox/lib/resetSandboxState.test.ts` (line 52): `WarpSlice` type is missing `source` and `warpProfileId` properties.
+  - `src/lib/clustering/cluster-analysis.test.ts` (lines 9-10): Duplicate spread overrides `typeId` and `districtId`.
+  - `src/store/useStkdeStore.test.ts` (lines 51, 81): `StkdeResponse` type is missing required `sliceResults` property.
+- **Impact:** Tests that do not compile will fail in CI pipelines, eroding confidence in the test suite. These errors indicate type definitions have drifted from test data factories.
+- **Fix approach:** Update test data builders to match their respective type definitions. Run `tsc --noEmit` as a pre-commit hook so test type errors are caught early.
 
-## Stale or Redundant UI Patterns
+### Store Bloat and Duplication (Dashboard Demo / Production Fork)
 
-### 1. Deleted / Orphaned Components
-- **`src/components/ui/Overlay.tsx`** — NOT imported anywhere in the codebase. Uses `useUIStore` from `src/store/ui.ts`, which is also NOT imported anywhere. Both are dead code from an earlier UI iteration.
-- **`src/lib/adaptive-utils.ts`** — Contains only 2 lines (`ADAPTIVE_BIN_COUNT = 1024`, `ADAPTIVE_KERNEL_WIDTH = 3`), essentially a stub. These constants may exist elsewhere or the module was abandoned mid-extraction.
+- **Issue:** The store directory contains 29 files (7,704 total lines) with significant duplication between "Demo" and "production" versions:
+  - `useDashboardDemoTimeslicingModeStore.ts` (20,267 lines) vs `useTimeslicingModeStore.ts` (14,411 lines) — same domain, forked
+  - `useDashboardDemoCoordinationStore.ts` (18,591 lines) vs `useCoordinationStore.ts` (4,847 lines)
+  - `useDashboardDemoFilterStore.ts` (7,032 lines) vs `useFilterStore.ts` (8,409 lines)
+- **Impact:** The Demo stores have grown larger than the originals they forked from, indicating scope creep. Any fix applied to one must be manually ported to the other. Reviewers and new developers must navigate duplicated logic.
+- **Fix approach:** Consolidate the Dashboard Demo stores into the production stores with feature flags or a shared base. Remove dead code paths that only exist in one fork. The test files for Demo stores (which total ~2,364 lines across 4 files) should also be consolidated.
 
-### 2. Seven-Components Duplicated Across Two Routes
-These 7 component files exist as near-identical copies in both `src/app/timeslicing/components/` and `src/app/timeline-test-3d/components/`:
+### Extremely Large Single-File Components
 
-| Component | timeslicing | timeline-test-3d | Diff |
-|-----------|-------------|------------------|------|
-| `SuggestionCard.tsx` | 723 lines | 720 lines | 3 lines different (ContextBadge props) |
-| `SuggestionPanel.tsx` | 765 lines | 641 lines | ~120 lines diff (diagnostics panel in 3d version) |
-| `ConfidenceBadge.tsx` | 27 lines | 27 lines | **Identical** |
-| `ContextBadge.tsx` | 73 lines | 49 lines | ~24 lines diff (signal state props) |
-| `AutoProposalSetCard.tsx` | 178 lines | 178 lines | **Identical** |
-| `ComparisonView.tsx` | 260 lines | 260 lines | **Identical** (import order only) |
-| `ProfileManager.tsx` | 179 lines | 179 lines | **Identical** |
-| **Total** | **2,205 lines** | **2,054 lines** | **4,259 lines duplicated** |
+- **Issue:** Several components exceed 700 lines, indicating poor separation of concerns:
+  - `src/app/demo/non-uniform-time-slicing/showcase.tsx` — 891 lines (single page component combining data, presentation, and business logic)
+  - `src/components/timeline/DemoDualTimeline.tsx` — 857 lines (mixes D3 binning, store selectors, warp map building, and rendering)
+  - `src/app/timeslicing/components/SuggestionPanel.tsx` — 765 lines
+  - `src/components/viz/DataPoints.tsx` — 692 lines
+- **Impact:** These components are difficult to test, review, and refactor. The non-uniform-time-slicing showcase embeds multiple dialogs, data calculation logic, and rendering in a single file.
+- **Fix approach:** Extract data hooks, sub-components, and utility functions into separate files. Aim for <400 lines per component file.
 
-### 3. Three Dashboard Routes Competing
-- `src/app/dashboard/page.tsx` (32 lines) — Old thin shell, likely superseded
-- `src/app/dashboard-v2/page.tsx` (471 lines) — Current main dashboard with 47 store references
-- `src/app/dashboard-demo/page.tsx` (5 lines) → `DashboardDemoShell.tsx` (170 lines) → 15 demo-specific components + 11 demo-specific stores
+### 81 `as any` Type Assertions Weakening Type Safety
 
-### 4. Route-Sibling Duplication (Paired Routes)
-Multiple feature areas have two route implementations with overlapping but diverged components:
-- `timeline-test/` ↔ `timeline-test-3d/` (half the components duplicated)
-- `timeslicing/` ↔ `timeslicing-algos/` (different lib organization)
-- `stkde/` ↔ `stkde-3d/` (2D vs 3D STKDE views — legitimate but no shared base)
-- `dashboard/` ↔ `dashboard-v2/` ↔ `dashboard-demo/` (three-way fork)
+- **Issue:** Despite `tsconfig.json` having `"strict": true`, the codebase uses `as any` 81+ times across 30+ files. Key offenders:
+  - `src/lib/db.ts` — entire DuckDB instance typed as `any` (line 4, 58)
+  - `src/components/viz/Trajectory.tsx` — Three.js objects, events typed as `any` (lines 19, 80, 144, 153)
+  - `src/components/viz/TrajectoryLayer.tsx` — controls, points typed as `any` (lines 24, 38, 70)
+  - `src/hooks/useCrimeStream.ts` — batch data typed as `any` (line 8)
+- **Impact:** Loss of type-checking coverage in critical rendering and data pipeline paths. Refactoring becomes riskier since the compiler can't verify these paths.
+- **Fix approach:** Replace `as any` with proper types. Where types are complex (e.g., Three.js events), use the library's exported types or create narrow interfaces. DuckDB should use a properly typed wrapper/repository pattern.
 
-### 5. Store Split Across Two Directories
-- `src/store/` — 58 store files (8,620 total lines)
-- `src/lib/stores/viewportStore.ts` — Orphaned outside the store directory
-This inconsistency will cause confusion when adding new stores.
+### Unused Dependencies Bloating Bundle
 
-### 6. Duplicate Filtering Code in Viz Components
-`FilterOverlay.tsx` (477 lines), `MapLayerManager.tsx`, `PresetManager.tsx`, and `DashboardHeader.tsx` all independently implement filter UI logic (type selection, district selection, time range) with different layouts and slightly different UX. Filter state management is shared (in `useFilterStore`) but the UI rendering is not.
-
-## Recommended Cleanup Sequence for UI/Components
-
-### Priority 1 (Immediate, Safe):
-1. **Delete dead code**: Remove `src/components/ui/Overlay.tsx` and `src/store/ui.ts` — zero imports, guaranteed safe.
-2. **Delete `src/lib/adaptive-utils.ts`** — 2-line stub, inline constants where used.
-3. **Archive `src/app/dashboard/page.tsx`** — Superseded by `dashboard-v2/`, 32-line wrapper can be removed.
-
-### Priority 2 (High value, moderate effort):
-4. **Extract shared suggestion components**: Move `SuggestionCard`, `SuggestionPanel`, `ConfidenceBadge`, `ContextBadge`, `AutoProposalSetCard`, `ComparisonView`, `ProfileManager` to `src/components/suggestions/`. Parameterize the 3-5 known differences. This eliminates ~4,259 lines of duplication.
-5. **Consolidate `src/lib/stores/viewportStore.ts`** into `src/store/useViewportStore.ts` for consistency.
-
-### Priority 3 (Medium effort, architectural):
-6. **Reconcile dashboard-demo**: Determine if `dashboard-demo` is a prototype that can be archived, or if it contains features not in `dashboard-v2`. If the latter, merge unique features into `dashboard-v2` and remove demo-specific stores. Delete `useDashboardDemo*` stores that have no unique behavior.
-7. **Extract DataPoints/SimpleCrimePoints shared logic**: Create `src/components/viz/point-utils.ts` for shared color mapping, size calculation, and LOD strategy. This is safe because it's pure extraction.
-8. **Break down `DemoDualTimeline.tsx`** (858 lines): Extract brush synchronization into `useBrushSync` hook. Extract axis rendering, density strip, and point rendering into sub-components following the pattern already established in `layers/`.
-
-### Priority 4 (Long-term, route consolidation):
-9. **Unify route-sibling pairs**: Merge `timeline-test` / `timeline-test-3d` into parameterized routes or shared components. Same for `stkde` / `stkde-3d`.
-10. **Reduce per-page store surface**: `dashboard-v2/page.tsx` imports from 47 stores. Extract coordinated data-access hooks to reduce page-level coupling.
-
-## Low-Risk Extraction / Refactor Ideas
-
-1. **Extract `demo-burst-generation.ts` burst types**: The burst generation types/interfaces in `src/components/dashboard-demo/lib/demo-burst-generation.ts` overlap with `src/lib/burst-detection.ts`. Aligning the type interfaces is a pure type-level refactor with zero runtime impact.
-
-2. **Move `layers/` up to shared components**: `src/components/timeline/layers/AxisLayer.tsx`, `HistogramLayer.tsx`, `MarkerLayer.tsx` are only consumed by the old `Timeline.tsx` which is itself mostly unused (the main timeline is now `DualTimeline` in `TimelinePanel.tsx`). If `Timeline.tsx` can be deprecated, these layers can be removed.
-
-3. **Inline `src/lib/adaptive/route-binning-mode.ts`** (24 lines): Single module with one exported function `applyRouteBinningMode`. If used in only one place, inline it; if not used, delete it.
-
-4. **Consolidate 5 slice-related stores**: `useSliceStore.ts`, `useSliceDomainStore.ts`, `useSliceSelectionStore.ts`, `useSliceCreationStore.ts`, `useSliceAdjustmentStore.ts` all manage aspects of time slices. Consider whether these can be merged into ~2 stores (data vs UI) once the dashboard reconciliation is done.
-
-5. **Reunite `src/lib/queries.ts` with `src/lib/queries/` barrel**: `queries.ts` (530 lines) is already a client of the `queries/` barrel but also contains inline logic. Extract the inline functions into the appropriate `queries/` sub-modules so `queries.ts` becomes a pure barrel re-export.
+- **Issue:** `@deck.gl/aggregation-layers` and `@deck.gl/mapbox` are declared in `package.json` but have zero imports in the source code. These add ~900KB+ of unused JavaScript.
+- **Files:** `package.json` (dependencies), `node_modules/` (installed but unused)
+- **Impact:** Unnecessarily large `node_modules`, longer CI install times, potential confusion for new developers.
+- **Fix approach:** Remove `@deck.gl/aggregation-layers` and `@deck.gl/mapbox` from `package.json`. If deck.gl integration is planned, add it when actually wired.
 
 ---
 
-## Top 5 Problematic Files (Backend / Library)
+## Known Bugs
 
-### 1. `src/lib/queries.ts` (530 lines) — God File with Mixed Concerns
+### DuckDB Table Creation Error on Cold Start
 
-- **Issue**: Serves as both a barrel re-export for queries modules AND contains ~200 lines of inline mock data generation (`generateMockCrimeRecords`, `mockCrimeCount`, `MOCK_CRIME_TYPES`, `MOCK_HOTSPOTS`, `MOCK_DISTRICTS`), plus adaptive map computation logic (`getOrCreateGlobalAdaptiveMaps` ~185 lines), plus helper utilities (`normalizeRange`, `clamp`, `ensureStrictlyMonotonicBoundaries`, `findBoundaryBin`, `createSeededRandom`, `weightedPick`, `gaussianish`), plus duplicated DB wrapper functions (`executeAll`, `executeRun`).
-- **Files**: `src/lib/queries.ts`
-- **Impact**: Hard to reason about which code is production vs test scaffolding. The mock generation uses seeded randomness to produce realistic-looking crime patterns that could mask real query bugs during development. The helper functions cannot be reused without importing the entire file.
-- **Fix approach**: 
-  1. Extract `executeAll`/`executeRun` to a shared `src/lib/db-helpers.ts`
-  2. Move mock data logic to `src/lib/mockData.ts` or remove if no longer needed
-  3. Split `getOrCreateGlobalAdaptiveMaps` into `src/lib/adaptive/` with a dedicated compute module
+- **Symptoms:** On first launch with `USE_MOCK_DATA=false`, `ensureSortedCrimesTable()` at `src/lib/db.ts:101-108` runs `CREATE TABLE crimes_sorted AS SELECT * FROM read_csv_auto(...)`. If the CSV path is wrong or the 2.2GB file is still downloading, this fails silently and subsequent queries return no data or an error.
+- **Files:** `src/lib/db.ts`, `src/app/api/crime/*/route.ts`
+- **Trigger:** Cold start with a missing or partial CSV file at `data/sources/Crimes_-_2001_to_Present_20260114.csv`.
+- **Workaround:** Set `USE_MOCK_DATA=true` in `.env` to bypass DuckDB entirely.
 
-### 2. `src/lib/binning/engine.ts` (513 lines) + `src/lib/binning/rules.ts` (328 lines) — Orphaned Binning System
+### TypeScript Errors in Test Files Prevent Reliable CI
 
-- **Issue**: A sophisticated 14-strategy binning engine with `daytime-heavy`, `nighttime-heavy`, `burstiness`, `crime-type-specific`, `weekday-weekend`, `quarter-hourly`, `hourly`, `daily`, `weekly`, `monthly`, `auto-adaptive`, etc. — plus a full constraint validation system, preset configs, and bin merging. Yet only `src/store/useBinningStore.ts` imports it as a consumer. The phase-annotated tests (`monthly-contract.phase1.test.ts`) suggest this was built incrementally but never integrated with the main adaptive time-scaling pipeline.
-- **Files**: `src/lib/binning/engine.ts`, `src/lib/binning/rules.ts`, `src/lib/binning/types.ts`, `src/lib/binning/warp-scaling.ts`
-- **Impact**: 841 lines of dead-or-nearly-dead code that must be maintained. Creates confusion about which binning system is canonical (this one vs the adaptive binning in `src/app/timeslicing-algos/lib/` vs the DuckDB-based binning in `src/lib/queries/aggregations.ts`).
-- **Fix approach**: Audit all consumers. If unused, deprecate and remove in a cleanup phase. If needed, reconcile with the adaptive binning path and remove duplication.
+- **Symptoms:** `npx tsc --noEmit` reports 4 errors (see Tech Debt section). These errors prevent the test suite from being a reliable safety net.
+- **Files:** `src/store/useStkdeStore.test.ts`, `src/lib/clustering/cluster-analysis.test.ts`, `src/app/cube-sandbox/lib/resetSandboxState.test.ts`
+- **Trigger:** Running type checking before tests, or running tests in an environment that respects `tsconfig.json` strict mode.
 
-### 3. `src/lib/stkde/compute.ts` (500 lines) — Monolithic STKDE Pipeline
+### Study Log Endpoint Accepts Unlimited Data
 
-- **Issue**: A single file containing grid config building, intensity computation with O(n×m×k²) Gaussian kernel convolution, peak window detection, hotspot candidate generation, response payload size guarding, and recursive slice processing. The two entry points (`computeStkdeFromCrimes` and `computeStkdeFromAggregates`) share ~70% of cell creation and hotspot sorting code via duplication rather than extraction.
-- **Files**: `src/lib/stkde/compute.ts`, `src/lib/stkde/full-population-pipeline.ts`
-- **Impact**: Performance-critical O(n×m×k²) kernel runs on the main thread. The `cellTimestamps` array-of-arrays (`Array.from({ length: cellCount }, () => [] as number[])`) is memory-intensive for large grids. Slice processing is recursive and creates a new request for each slice.
-- **Fix approach**: 
-  1. Extract `buildIntensityFromSupport` to a separate module that can be imported by both the main-thread code and the worker
-  2. Move kernel convolution to `stkdeHotspot.worker.ts`
-  3. Extract shared cell/hotspot creation into pure functions
+- **Symptoms:** `POST /api/study/log` at `src/app/api/study/log/route.ts` accepts any JSON array, writes it to disk without size limits, and returns `{ success: true }`. A large or malicious payload could fill the disk or cause a denial of service.
+- **Files:** `src/app/api/study/log/route.ts`
+- **Trigger:** Posting a large payload to the endpoint.
+- **Workaround:** Only accessible to client-side code; not exposed externally without deployment configuration.
 
-### 4. `src/store/useSuggestionStore.ts` (539 lines) — Overloaded Store
-
-- **Issue**: Manages individual suggestion CRUD (add/accept/reject/modify/undo), bulk selection (selectAll/deselectAll/acceptSelected/rejectSelected), filtering state (warpCount, intervalCount, snapToUnit, boundaryMethod, minConfidence), panel UI state (isPanelOpen, activeSuggestionId, hoveredSuggestionId), full-auto proposal package state (proposalSets, selectedSetId, recommendedSetId, lowConfidence), history delegation, and context mode. Imports from 5+ other stores creating an implicit dependency graph.
-- **Files**: `src/store/useSuggestionStore.ts`, `src/hooks/useSuggestionGenerator.ts` (537 lines)
-- **Impact**: Components subscribing to any selection of this state re-render when unrelated state changes. The 20+ action methods make testing and reasoning difficult. The store delegates to `useSuggestionHistoryStore`, `useSuggestionComparisonStore`, and `usePresetStore`, making the data flow hard to trace.
-- **Fix approach**: Split into focused stores: `useSuggestionPanelStore` (UI state), `useSuggestionDataStore` (CRUD + selection), `useSuggestionConfigStore` (filters, warp/interval config).
-
-### 5. `src/hooks/useSuggestionGenerator.ts` (537 lines) — Orchestration God Hook
-
-- **Issue**: Orchestrates the entire suggestion lifecycle including auto-run timer, debounced context signature detection, stale-request cancellation, warp profile generation, boundary detection, full-auto proposal generation, context diagnostics, and a 4-state auto-run state machine. Imports directly from 8+ modules including `useCrimeData`, `useViewportStore`, `useFilterStore`, `useContextExtractor`, `useSmartProfiles`, `warp-generation`, `interval-detection`, `full-auto-orchestrator`, `context-diagnostics`.
-- **Files**: `src/hooks/useSuggestionGenerator.ts`
-- **Impact**: Nearly impossible to unit-test (requires mocking 10+ dependencies). The `generateSuggestions` callback is wrapped in `useCallback` with 10 dependencies. The `autoRunSignature` uses `JSON.stringify` on a composite object for change detection — fragile and slow.
-- **Fix approach**: 
-  1. Extract auto-run lifecycle management (debounce, stale detection) into a reusable `useAutoRun` hook
-  2. Split generation logic into smaller composable functions
-  3. Move diagnostics orchestration into the context-diagnostics module
-
-## Duplicated & Stale Logic
-
-### Triple Warp Scaling Implementation
-
-The `weight = 1 + normalizedDensity * 5` formula (with minor variations) appears independently in 4 places:
-
-| File | Function | Variation |
-|------|----------|-----------|
-| `src/lib/queries/aggregations.ts:50` | `computeWarpMap` | `1 + normalizedDensity[i] * 5` |
-| `src/workers/adaptiveTime.worker.ts:175` | `computeAdaptiveMaps` | `1 + finiteNormalized * 5` |
-| `src/lib/adaptive-scale.ts:64,127,221` | 3 functions | `1 + (density / maxDensity) * 5` (redundantly computed 3x in same file) |
-| `src/app/timeslicing-algos/lib/adaptive-bin-diagnostics.ts:368` | inline | `1 + normalizeDensity(resolvedDensityMap[index]) * 5` |
-
-Each implementation computes the same density-to-weight mapping with slightly different type handling and edge cases.
-
-### Duplicate DB Wrappers
-
-`executeAll` and `executeRun` are identically re-implemented in:
-
-- `src/lib/queries.ts:233-257`
-- `src/lib/stkde/full-population-pipeline.ts:9-18`
-
-Both use the same callback-based DuckDB `db.all()` / `db.run()` pattern wrapped in Promise.
-
-### Duplicate `toNumber`
-
-Three separate bigint-to-number coercions:
-- `src/lib/queries/aggregations.ts:19` (exported)
-- `src/lib/stkde/full-population-pipeline.ts:56` (module-private)
-- Multiple inline `typeof === 'bigint'` checks throughout `src/lib/queries.ts`
-
-### Duplicate Entropy Calculations
-
-- `src/lib/burst-detection.ts:95` — `normalizedEntropy()` full implementation with KL-divergence support
-- `src/lib/confidence-scoring.ts:207` — inline `entropy` and `normalizedEntropy` calculation (simpler, different formula)
-
-### Ad-Hoc Binning Duplicated Across 5 Modules
-
-Each of these files independently re-implements time-based crime counting into bins:
-
-- `src/lib/interval-detection.ts:250-260` (detectBoundaries)
-- `src/lib/warp-generation.ts:100-122` (analyzeDensity)
-- `src/lib/confidence-scoring.ts:60-73` (calculateDataClarity), `:136-148` (calculateCoverage), `:250-263` (inline in calculateConfidence)
-- `src/lib/adaptive-scale.ts:47-55` (getAdaptiveScaleConfig), `:111-118` (getAdaptiveScaleConfigColumnar), `:205-212` (computeAdaptiveYColumnar)
-- `src/lib/stats/temporal-pulses.ts`
-
-All do: iterate through crimes, compute `(timestamp - rangeStart) / rangeSpan`, floor to bin index, increment counter.
-
-### Duplicate Filtering Pathways
-
-`src/lib/selection.ts` and `src/lib/data/selectors.ts` both filter crime data by type/district/time. One uses epoch timestamps, the other uses normalized coordinates. The same filtering logic exists in multiple query builders. There is no single canonical filter function.
-
-### Duplicate Mock Data Systems
-
-- `src/lib/queries.ts:148-221` — 74-line `generateMockCrimeRecords` with temporal peaks, spatial hotspots, and seeded randomness
-- `src/lib/mockData.ts` — Separate mock data file (size unknown but exists as a distinct module)
-
-## Performance-Risk Hotspots
-
-### 1. Main-Thread Gaussian Kernel in STKDE
-
-`src/lib/stkde/compute.ts:117-154` — `buildIntensityFromSupport` runs an O(rows×cols×kernelRadius²) nested loop on the main thread. For a 100×100 grid with bandwidth of 500m (≈3-5 cell radius), this is ~10000×81 ≈ 810K iterations, each doing sqrt, exp, and floating-point math. The nearby `stkdeHotspot.worker.ts` only does 67 lines of light work and could absorb this.
-
-### 2. Float32Array ↔ JSON Round-Trip in Adaptive Cache
-
-`src/lib/queries.ts:359-364` and `:472-475` deserialize/serialize Float32Array through `JSON.parse(JSON.stringify(Array.from(...)))` on every cache read/write. For 1000-bin maps, this creates 3-5 intermediate array allocations per operation.
-
-### 3. LIMIT/OFFSET Degradation in Full-Population Pipeline
-
-`src/lib/stkde/full-population-pipeline.ts:154` uses `LIMIT ? OFFSET ?` pagination. DuckDB must scan and skip rows on each page, so performance degrades as offset grows. For large datasets this will produce increasingly slow pages toward the end.
-
-### 4. Array Method Spreading in Binning Engine
-
-`src/lib/binning/engine.ts:37` uses `Math.min(...data.map(d => d.timestamp))` which creates two intermediate arrays per call and risks stack overflow for large datasets.
-
-### 5. No Caching in Adaptive Scale Computation
-
-`src/lib/adaptive-scale.ts` — `getAdaptiveScaleConfig`, `getAdaptiveScaleConfigColumnar`, and `computeAdaptiveYColumnar` all recompute the full binning + weighting + mapping on every call. If multiple components call these with the same domain/binCount within a frame, the work is repeated.
-
-### 6. Redundant Re-binning in Confidence Scoring
-
-`src/lib/confidence-scoring.ts` — `calculateConfidence` calls `calculateDataClarity` and `calculateCoverage` sequentially. Each independently bins the crime data into arrays, then calculates statistics. If `densityBins` is not provided, `calculateConfidence` bins a third time. This is 2-3x the necessary work.
-
-## Fragile Areas
-
-### `src/lib/queries.ts` — Adaptive Cache Key Construction
-
-Line 329: ``const cacheKey = `global:${safeBinCount}:${safeKernelWidth}:${safeBinningMode}` `` — The cache key does not include the dataset or filter parameters. If the underlying data changes (e.g., different DuckDB file), stale cached results are returned.
-
-### `src/hooks/useSuggestionGenerator.ts` — Stale Request Cancellation
-
-Lines 391-401 use an `isStaleRequest()` closure comparing `requestIdRef.current` with the closure's captured `requestId`. This pattern is fragile and does not handle async race conditions where an earlier request resolves after a later one.
-
-### Phase-Annotated Test Files
-
-9 test files use the pattern `*.phase{N}.test.ts` (e.g., `monthly-contract.phase1.test.ts`, `slice-stkde.phase2.test.ts`). This convention suggests incremental delivery that may not reflect final integration state. These tests may pass in isolation but fail when run together, or may test behaviors that have been superseded.
+---
 
 ## Security Considerations
 
-| Area | Risk | Files | Mitigation |
-|------|------|-------|------------|
-| DuckDB SQL Injection | Table names sanitized via `sanitizeTableName`, but column names in query builders are hardcoded | `src/lib/queries/`, `src/lib/stkde/full-population-pipeline.ts` | Current approach is adequate since DuckDB is local and filters are parameterized |
-| Large Payload | No size limits on adaptive cache JSON columns — could grow unbounded | `src/lib/queries/aggregations.ts:86-99` | STKDE has a response guard; adaptive cache does not |
+### SQL Injection in `duckdb-aggregator.ts`
 
-## Recommended Cleanup Sequence
+- **Risk:** `src/lib/duckdb-aggregator.ts:51` constructs `WHERE "Primary Type" IN ('THEFT','BATTERY')` via string interpolation. If `types` array values originate from user-controlled input (URL params, filter controls, store state populated from API responses), an attacker can inject arbitrary SQL.
+- **Files:** `src/lib/duckdb-aggregator.ts` (lines 48-57, 66)
+- **Current mitigation:** The filters are populated from Zustand store state, which is client-side. However, if an API route wraps this function, the injection surface expands to HTTP parameters.
+- **Recommendations:** Replace with parameterized queries using `src/lib/queries/filters.ts`. Add a lint rule enforcing parameterized queries for all DuckDB interactions.
 
-### Phase 1: Shared Utilities (Low risk, high value)
-1. Create `src/lib/db-helpers.ts` — extract `executeAll`, `executeRun`, `toNumber`
-2. Consolidate `normalizeRange`, `clamp`, `EPSILON` into a math utility
+### Unauthenticated Study Log Endpoint
 
-### Phase 2: Consolidate Warp Scaling (Medium risk, removes duplication)
-1. Extract the core `weight = 1 + normalizedDensity * 5` logic into a single `computeWarpWeights` function
-2. Make `src/workers/adaptiveTime.worker.ts` import shared modules (not possible directly — use a shared lib that both worker and main thread can import)
-3. Replace the 3 copies in `src/lib/adaptive-scale.ts` with calls to the shared function
+- **Risk:** `POST /api/study/log` writes arbitrary JSON to disk with no authentication, rate limiting, or payload size validation. This could be used to fill disk space, log spam, or (with crafted JSON) potentially exploit `JSON.stringify` or `appendFile` edge cases.
+- **Files:** `src/app/api/study/log/route.ts`
+- **Current mitigation:** The endpoint is only reachable by client-side study session code, which sends structured data.
+- **Recommendations:** Add a maximum payload size check (e.g., reject payloads >1MB). Add rate limiting if the app is publicly deployed. Consider rotating the log file to prevent unbounded growth (currently ~312KB).
 
-### Phase 3: Split God Files (Medium risk, improves maintainability)
-1. Move mock data from `queries.ts` to `mockData.ts`
-2. Split `getOrCreateGlobalAdaptiveMaps` into `src/lib/adaptive/global-cache.ts`
-3. Extract intensity convolution from `stkde/compute.ts` into a separate module callable from the worker
+### Single DuckDB Instance with Global Mutable State
 
-### Phase 4: Resolve Binning Duality (Higher risk, requires domain knowledge)
-1. Audit whether `src/lib/binning/engine.ts` is actively consumed beyond `useBinningStore`
-2. If alive, reconcile strategy names and behavior with the adaptive binning path
-3. Deprecate orphaned strategies
-
-### Phase 5: Performance (Medium risk, targeted)
-1. Cache adaptive scale results by `domain+binCount` key
-2. Avoid redundant re-binning in confidence scoring by passing shared bin arrays
-3. Replace `LIMIT/OFFSET` window function in `full-population-pipeline.ts`
+- **Risk:** `src/lib/db.ts:4` stores a global `let db: any = null` reference. This means all concurrent requests share a single DuckDB connection, which is not thread-safe. If two API routes query simultaneously, one may close or error the connection mid-query.
+- **Files:** `src/lib/db.ts`
+- **Current mitigation:** DuckDB's Node binding handles concurrent queries with internal queuing, but the global mutable pattern is fragile if connection management needs to change (e.g., for serverless deployment).
+- **Recommendations:** Wrap in a lazy singleton that creates new connections for concurrent access if DuckDB's Node API supports it. At minimum, add a connection pool or document the single-connection constraint.
 
 ---
 
-*Concerns audit: 2026-05-22*
+## Performance Bottlenecks
+
+### 2.2GB CSV Queried via `read_csv_auto` on Every API Call
+
+- **Problem:** Multiple API routes (`src/app/api/adaptive/bursts/route.ts`, `src/app/api/stkde/hotspots/route.ts`, etc.) and the aggregator (`src/lib/duckdb-aggregator.ts`) read directly from the source CSV file using `read_csv_auto`. The `crimes_sorted` table mitigates this for some queries (`src/lib/db.ts:101-121`), but `duckdb-aggregator.ts` calls `read_csv_auto` on every invocation.
+- **Files:** `src/lib/duckdb-aggregator.ts` (line 75), `src/lib/db.ts` (lines 103-108)
+- **Cause:** The aggregator reads from `read_csv_auto('${dataPath}')` on every call rather than querying the DuckDB-native table.
+- **Improvement path:** Have `duckdb-aggregator.ts` use the `crimes_sorted` table (or the persisted DuckDB database) instead of re-parsing the CSV. Also add materialized aggregations for common time ranges.
+
+### Sequential Burst Bin Processing
+
+- **Problem:** `src/app/api/adaptive/bursts/route.ts:206-221` processes burst bins in "batches of 4" but the individual bin computations are sequential within each batch (`for...of` with `await`). Each bin triggers 2-4 separate DuckDB queries.
+- **Files:** `src/app/api/adaptive/bursts/route.ts` (lines 206-222)
+- **Cause:** The loop uses sequential `await` per partition, converting a potential parallel operation into a serial bottleneck.
+- **Improvement path:** Run partition queries in parallel using `Promise.all()` within each batch. Add a DuckDB CPU budget check to prevent oversubscription.
+
+### 29 Zustand Stores with Cross-Store Subscriptions
+
+- **Problem:** The codebase has 29 store files (7,704 lines). Components that subscribe to multiple stores via `useStore` or direct hook calls re-render when any slice changes. The Dashboard Demo components (`DemoDualTimeline.tsx` at line 4-20) import from 6+ stores.
+- **Files:** All files under `src/store/`
+- **Cause:** Fine-grained state separation without a coordination layer. Each store is independently created with Zustand's `create()`, so there is no built-in batch update mechanism.
+- **Improvement path:** Use Zustand's `subscribeWithSelector` to minimize re-renders or consolidate related state into fewer stores. Consider using a single store with multiple slices/subsets.
+
+### No `strictNullChecks` or `noUncheckedIndexedAccess` in tsconfig
+
+- **Problem:** `tsconfig.json` sets `"strict": true` but does not enable `strictNullChecks`, `noUncheckedIndexedAccess`, or `exactOptionalPropertyTypes`. This means array access (`arr[i]`) returns `T` instead of `T | undefined`, and optional properties can be accessed without checking.
+- **Files:** `tsconfig.json`
+- **Cause:** Next.js default strict does not enable these sub-flags.
+- **Improvement path:** Enable `noUncheckedIndexedAccess` to catch out-of-bounds array access. Enable `exactOptionalPropertyTypes` to catch undefined property access.
+
+---
+
+## Fragile Areas
+
+### DuckDB Postinstall Symlink + patch-package
+
+- **Files:** `patches/duckdb+1.4.4.patch`, `package.json` (postinstall script)
+- **Why fragile:** The symlink `ln -sf ../duckdb.node node_modules/duckdb/lib/binding/3/duckdb.node` is highly dependant on the DuckDB internal directory structure. Any DuckDB version bump that changes the binary layout or removes the `lib/binding/` directory will break the build. The error message would be cryptic (module not found).
+- **Safe modification:** When upgrading `duckdb`, verify the patch still applies and the symlink target exists. Before removing `patch-package`, confirm DuckDB's npm package has fixed its NAPI binding path.
+- **Test coverage:** None. No test validates that the DuckDB binary loads correctly.
+
+### Demo Store Fork Divergence
+
+- **Files:** `src/store/useDashboardDemoTimeslicingModeStore.ts` vs `src/store/useTimeslicingModeStore.ts` (and similar pairs)
+- **Why fragile:** Logic fixes applied to the production store must be manually copied to the Demo variant. The Demo stores have grown larger than their counterparts, meaning extra functionality exists only in Demo and may be lost if Demo is deprecated.
+- **Safe modification:** Before modifying any shared logic, check both the Demo and production versions. Consider creating a shared base store with features toggled via props/context.
+- **Test coverage:** Demo stores have tests (e.g., `useDashboardDemoTimeslicingModeStore.test.ts` at 420 lines), but they test different behavior than the production store tests. Consolidation would reduce overall test maintenance.
+
+### Large Rendering Components with Three.js
+
+- **Files:** `src/components/viz/DataPoints.tsx` (692 lines), `src/components/viz/AggregatedBars.tsx`, `src/app/timeline-test-3d/components/TimeSlices3D.tsx` (595 lines)
+- **Why fragile:** Three.js rendering code is tightly coupled with React lifecycle (useFrame, useMemo, useEffect). A small change to data structures (e.g., `CrimeRecord` format change) can break 3D rendering silently (no compile error for Three.js types used as `any`).
+- **Safe modification:** Change data transforms in a separate function and unit-test the output. Use the Three.js devtools to verify rendering output after changes.
+- **Test coverage:** Minimal. `DataPoints.tsx` has no unit test file; rendering is only validated via visual inspection.
+
+---
+
+## Scaling Limits
+
+### DuckDB Connection Capacity
+
+- **Current capacity:** Single global DuckDB connection (`src/lib/db.ts:4`, `let db: any = null`).
+- **Limit:** If two API requests attempt queries simultaneously, they queue on the same connection. Under load (e.g., 5+ concurrent users), response times will degrade linearly.
+- **Scaling path:** Implement a connection pool. For serverless deployment, consider using DuckDB WASM (which supports multiple instances) instead of the Node binary binding.
+
+### Hotspot Computation Memory Usage
+
+- **Current capacity:** `src/app/api/adaptive/bursts/route.ts` samples up to 50,000 points per query and processes 4 batches sequentially.
+- **Limit:** The STKDE pipeline (`src/lib/stkde/compute.ts`, `src/lib/stkde/full-population-pipeline.ts`) loads all crime records matching the date range into memory. For a full-year query with 8.5M total records, memory could exceed 2GB.
+- **Scaling path:** Implement progressive loading with DuckDB window functions. Pre-aggregate by day/week and compute STKDE on aggregates, then refine on full data for hotspot regions only.
+
+---
+
+## Dependencies at Risk
+
+| Package | Risk | Impact | Migration |
+|---------|------|--------|-----------|
+| `duckdb` 1.4.4 | Native binary requires platform-specific build. Patch file needed for NAPI binding. | App cannot start without DuckDB binary. No serverless support. | Evaluate DuckDB WASM (`@duckdb/duckdb-wasm`) for browser-based queries, or use a DuckDB server connector. |
+| `next` 16.1.6 | High-severity security advisory (GHSA-36qx-fr4f-26g5). Middleware bypass in Pages Router with i18n. | Request bypass in middleware-protected routes. | Upgrade to `>=16.2.5`. |
+| `patch-package` 8.0.1 | Transitively depends on `tmp` with path traversal vulnerability (GHSA-ph9p-34f9-6g65). | Supply-chain risk. | Remove once DuckDB patch is no longer needed. |
+| `@deck.gl/*` ^9.3.2 | Zero imports in source code. Unused dependency bloat. | Wasted install time and bundle analysis time. | Remove from dependencies. |
+
+---
+
+## Configuration / Complexity Risks
+
+### Environment Variable Ambiguity
+
+- **Issue:** `src/lib/db.ts:9` checks `process.env.USE_MOCK_DATA ?? process.env.DISABLE_DUCKDB` — two different env vars that control the same behavior. `USE_MOCK_DATA=true` and `DISABLE_DUCKDB=true` mean the same thing, but `DISABLE_DUCKDB=false` with `USE_MOCK_DATA` unset would disable DuckDB (because `''.trim()` is falsy, `if (!raw) return true`).
+- **Files:** `src/lib/db.ts` (line 8-14), `.env`
+- **Impact:** Confusing behavior — setting `DISABLE_DUCKDB=false` actually disables DuckDB. The `isMockDataEnabled()` function defaults to `true` (mock mode) when no env var is set, which may surprise developers expecting live data.
+- **Fix approach:** Consolidate to a single env var (`USE_MOCK_DATA`), remove `DISABLE_DUCKDB`. Use a boolean parser that treats `false`, `0`, `no` as explicit opt-out.
+
+### Test Environment Misconfiguration
+
+- **Issue:** `vitest.config.mts` sets `environment: 'node'` but some components use `jsdom` APIs (browser globals). When tests import R3F (`@react-three/fiber`) or MapLibre components, they may fail silently or produce false passes because the DOM environment is missing.
+- **Files:** `vitest.config.mts`, `src/components/viz/*.test.tsx`
+- **Impact:** Tests for 3D and map components may not accurately test rendering behavior. The test suite passes but gives false confidence.
+- **Fix approach:** Configure component tests with `environment: 'jsdom'` or `@testing-library/react` where DOM interaction is needed. Add environment annotations per test file.
+
+### Study Sessions Log Files Lack Rotation
+
+- **Issue:** `src/app/api/study/log/route.ts` appends to `logs/study-sessions.jsonl` indefinitely. The file is currently 312KB but will grow unboundedly with usage.
+- **Files:** `src/app/api/study/log/route.ts`, `logs/study-sessions.jsonl`
+- **Impact:** Disk space exhaustion over extended use. No mechanism to archive or truncate old sessions.
+- **Fix approach:** Add log rotation (e.g., split by date). Consider using the study_log table in DuckDB instead of flat files.
+
+---
+
+## Test Coverage Gaps
+
+### Web Workers Barely Tested
+
+- **What's not tested:** `src/workers/kdeSlice.worker.ts` has no test file. `src/workers/adaptiveTime.worker.ts` and `stkdeHotspot.worker.ts` each have one test file, but coverage focuses on basic message passing, not edge cases (empty data, malformed messages, termination during computation).
+- **Files:** `src/workers/`
+- **Risk:** Worker crashes or incorrect computation on edge-case data go undetected. The main thread has no fallback if a worker returns unexpected results.
+- **Priority:** Medium
+
+### Store Integration Tests Missing
+
+- **What's not tested:** Cross-store interaction (e.g., how `useSliceDomainStore` state changes affect `useSuggestionStore` subscriptions). Tests exist for individual stores but not for the coordination flow.
+- **Files:** `src/store/`
+- **Risk:** Changes to one store that break another store's behavior are caught only by manual testing.
+- **Priority:** Medium
+
+### Three.js Component Rendering Untested
+
+- **What's not tested:** `src/components/viz/DataPoints.tsx`, `src/components/viz/AggregatedBars.tsx`, `src/components/viz/SlicePlane.tsx`, `src/components/viz/ClusterLabels.tsx` — no rendering tests exist. These rely on visual inspection.
+- **Files:** `src/components/viz/`
+- **Risk:** Refactoring the data pipeline or Three.js version upgrade can silently break rendering. The 3D scene may render incorrectly but tests still pass.
+- **Priority:** Medium
+
+### Mock Data Drift from Real Schema
+
+- **What's not tested:** The mock data generators (`src/lib/queries.ts:31-57`, `src/lib/duckdb-aggregator.ts:15-34`, `src/lib/mockData.ts`) produce simplified data that may not match the structure of real DuckDB query results. No test verifies mock vs real data equivalence.
+- **Files:** `src/lib/queries.ts`, `src/lib/mockData.ts`, `src/lib/duckdb-aggregator.ts`
+- **Risk:** Components that work perfectly with mock data may break when connected to real DuckDB, because the mock omits nulls, edge values, or unexpected types present in the CSV.
+- **Priority:** Low
+
+---
+
+*Concerns audit: 2026-06-01*
