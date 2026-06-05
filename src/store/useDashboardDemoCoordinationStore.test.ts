@@ -199,4 +199,17 @@ describe('useDashboardDemoCoordinationStore', () => {
       inspectIsScrubbing: false,
     });
   });
+
+  test('clamps demo warp factor to the 0 to 3 range', () => {
+    const store = useDashboardDemoCoordinationStore.getState();
+
+    store.setWarpFactor(2.4);
+    expect(useDashboardDemoCoordinationStore.getState().warpFactor).toBe(2.4);
+
+    store.setWarpFactor(4.2);
+    expect(useDashboardDemoCoordinationStore.getState().warpFactor).toBe(3);
+
+    store.setWarpFactor(-1);
+    expect(useDashboardDemoCoordinationStore.getState().warpFactor).toBe(0);
+  });
 });

@@ -368,7 +368,7 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   resetBurstThreshold: () => set({ burstThreshold: 0.7 }),
   setTimeScaleMode: (mode) => set({ timeScaleMode: mode }),
   setWarpSource: (source) => set({ warpSource: source }),
-  setWarpFactor: (value) => set({ warpFactor: Math.min(1, Math.max(0, value)) }),
+  setWarpFactor: (value) => set({ warpFactor: Math.min(3, Math.max(0, value)) }),
   setPrecomputedMaps: (densityMap, warpMap, domain) =>
     set({ densityMap, warpMap, mapDomain: domain, isComputing: false }),
   setIsComputing: (value) => set({ isComputing: value }),

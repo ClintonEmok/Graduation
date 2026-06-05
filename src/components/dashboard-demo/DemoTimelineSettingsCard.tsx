@@ -117,7 +117,7 @@ export function DemoTimelineSettingsCard() {
               <div className="min-w-0 flex-1">
                 <Slider
                   min={0}
-                  max={1}
+                  max={3}
                   step={0.01}
                   value={[warpFactor]}
                   onValueChange={(value) => setWarpFactor(value[0] ?? warpFactor)}

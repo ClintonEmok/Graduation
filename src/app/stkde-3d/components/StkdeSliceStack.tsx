@@ -394,9 +394,9 @@ export function StkdeSliceStack({
                 >
                   <ringGeometry args={[49.2, 50, 64]} />
                   <meshBasicMaterial
-                    color="#38bdf8"
+                    color="#ffffff"
                     transparent
-                    opacity={0.2}
+                    opacity={0.4}
                     depthWrite={false}
                     side={THREE.DoubleSide}
                   />
@@ -407,9 +407,9 @@ export function StkdeSliceStack({
                 >
                   <ringGeometry args={[48.5, 49.8, 64]} />
                   <meshBasicMaterial
-                    color="#7dd3fc"
+                    color="#ffffff"
                     transparent
-                    opacity={0.08}
+                    opacity={0.2}
                     depthWrite={false}
                     side={THREE.DoubleSide}
                   />
