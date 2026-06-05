@@ -65,7 +65,7 @@ completed: 2026-05-29
 ## Phase Readiness
 
 - Phase 77 is complete.
-- Next logical phase: Phase 78, Burst Visibility + Visual Consistency.
+- Next logical phase: Phase 78, Temporal Evolution (Demo 3D STKDE Widget Only).
 
 ---
 *Phase: 77-volumetric-duration-depth-encoding*

@@ -1,6 +1,6 @@
 # Time Manipulation & Binning Algorithms — Complete Analysis
 
-**Analysis Date:** 2026-05-29  
+**Analysis Date:** 2026-06-01  
 **Scope:** All time normalization, binning, date formatting, timeline series, and time store algorithms
 
 ---
@@ -165,7 +165,7 @@
 
 ### 5.2 `generateIntervalBins` — `src/lib/binning/engine.ts:339-375`
 - **What:** Fixed-interval binning: assigns events to bins of duration `intervalMs`.
-- **Approach:** 
+- **Approach:**
   1. For each event, compute `binStart = Math.floor(timestamp / intervalMs) * intervalMs`
   2. Group by `binStart` using `Map<number, CrimeEventData[]>`
   3. For each group, compute average timestamp, deduplicate crime types/districts
@@ -177,7 +177,7 @@
 
 ### 5.3 `generateMonthlyBins` — `src/lib/binning/engine.ts:380-426`
 - **What:** Calendar month binning using `new Date()` to extract year/month.
-- **Approach:** 
+- **Approach:**
   1. For each event, create key `"YYYY-MM"` from `new Date(timestamp)`
   2. Group using `Map<string, CrimeEventData[]>`
   3. Compute calendar boundaries via `new Date(year, month, 1)` / `new Date(year, month+1, 1)`
@@ -188,7 +188,7 @@
 
 ### 5.4 `generateUniformDistributionBins` — `src/lib/binning/engine.ts:265-284`
 - **What:** Equal-event-count bins: each bin gets exactly `eventsPerBin` events.
-- **Approach:** 
+- **Approach:**
   1. Sort all events by timestamp: O(n log n)
   2. Slice into chunks of size `Math.ceil(n / maxBins)`: O(n)
 - **Time:** O(n log n) due to full sort.
@@ -228,7 +228,7 @@
 
 ### 5.8 `generateCrimeTypeBins` — `src/lib/binning/engine.ts:187-223`
 - **What:** Groups events by crime type, creates one bin per type.
-- **Approach:** 
+- **Approach:**
   1. `Map<string, CrimeEventData[]>` grouping: O(n)
   2. For each type, sort events and compute range: O(k * m log m)
 - **Time:** O(n) for grouping + O(k m log m) for per-type sorting.
@@ -250,7 +250,7 @@
 
 ### 5.9 `generateWeekdayWeekendBins` — `src/lib/binning/engine.ts:304-334`
 - **What:** Separates weekday from weekend events, then applies uniform distribution binning to each group.
-- **Approach:** 
+- **Approach:**
   1. Linear scan, classify by `new Date(event.timestamp).getDay()`: O(n)
   2. `generateUniformDistributionBins` on each partition (O(n log n) each)
 - **Time:** O(n) + O(n log n) = O(n log n) due to sorts.
@@ -387,7 +387,7 @@
   ```typescript
   // Build prefix sums
   const prefix = new Float32Array(values.length + 1);
-  for (let i = 0; i < values.length; i++) 
+  for (let i = 0; i < values.length; i++)
     prefix[i + 1] = prefix[i] + values[i];
   // Query each window in O(1)
   for (let i = 0; i < values.length; i++) {
@@ -501,7 +501,7 @@
 5. Same smoothing, warp, burstiness steps as uniform-time.
 
 - **Time:** O(n log n) for sort + O(n) for counting + O(k * w) for smoothing + O(n) for burstiness. In uniform-events mode, adds O(n log k) for binary search assignment.
-- **Space:** O(n) for filtered+ sorted timestamps + O(k) for each output map (4 maps × k).
+- **Space:** O(n) for filtered + sorted timestamps + O(k) for each output map (4 maps × k).
 - **Data Structures:** Four Float32Arrays of length binCount: `densityMap`, `burstinessMap`, `warpMap`, `countMap`.
 
 #### Key Mathematical Details:
@@ -697,4 +697,4 @@ Where: n = event count, k = bin count, v = visible slice count, w = kernel width
 
 ---
 
-*Analysis: 30+ algorithms cataloged across 25+ source files. Generated 2026-05-29.*
+*Analysis: 30+ algorithms cataloged across 25+ source files. Generated 2026-06-01.*

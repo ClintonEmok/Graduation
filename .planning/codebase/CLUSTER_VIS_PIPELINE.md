@@ -1,6 +1,6 @@
 # Cluster Visualization Pipeline
 
-**Analysis Date:** 2026-05-07
+**Analysis Date:** 2026-06-01
 
 ## Overview
 
@@ -45,11 +45,13 @@ The cluster visualization pipeline transforms crime data into interactive 3D clu
 │ │ 4. setClusters(clusters)  ← Writes to useClusterStore   │                           │
 │ │                                                          │                           │
 │ │ Debounced: 400ms via lodash.debounce                    │                           │
+│ │                                                          │                           │
+│ │ No `enabled` check — only checks filteredPoints.length  │                           │
 │ └──────────────────────────────────────────────────────────┘                           │
 │                                                                                         │
 │ PATH 2: Slice Clusters (TimeSlices.tsx - inline)                                       │
 │ ┌──────────────────────────────────────────────────────────┐                           │
-│ │ TimeSlices.tsx useMemo ~line 79-101                      │                           │
+│ │ TimeSlices.tsx useMemo ~lines 77-99                      │                           │
 │ │                                                          │                           │
 │ │ For each VISIBLE slice:                                  │                           │
 │ │ 1. Extract time range from slice (point ±2 or range)    │                           │
@@ -59,6 +61,8 @@ The cluster visualization pipeline transforms crime data into interactive 3D clu
 │ │ 4. groupClusterAnalysesBySlice(sliceAnalyses)           │                           │
 │ │                                                          │                           │
 │ │ Writes via useEffect → setSliceClustersById(...)        │                           │
+│ │                                                          │                           │
+│ │ No feature flag or enabled gate                          │                           │
 │ └──────────────────────────────────────────────────────────┘                           │
 └──────────────────────────┬────────────────────────────────────────────────────────────┘
                            │
@@ -68,14 +72,15 @@ The cluster visualization pipeline transforms crime data into interactive 3D clu
 │                                                                                         │
 │ clusters: ClusterAnalysisCluster[]          - Global clusters                            │
 │ sliceClustersById: Record<string, ClusterAnalysisCluster[]> - Per-slice clusters       │
-│ enabled: boolean                            - Feature toggle                            │
 │ sensitivity: number (0.0-1.0)              - DBSCAN epsilon control                   │
 │ selectedClusterId: string | null           - Click selection                           │
 │ hoveredClusterId: string | null            - Hover state                               │
 │                                                                                         │
-│ Actions:                                                                  │             │
-│ setClusters, setSliceClustersById, setEnabled, setSensitivity         │             │
-│ setSelectedClusterId, setHoveredClusterId, clearClusterSelection      │             │
+│ No `enabled` field (was removed)                                                        │
+│                                                                                         │
+│ Actions:                                                                                │
+│ setClusters, setSliceClustersById, setSensitivity                                      │
+│ setSelectedClusterId, setHoveredClusterId, clearClusterSelection                       │
 └──────────────────────────┬────────────────────────────────────────────────────────────┘
                            │
             ┌──────────────┼──────────────┐
@@ -94,7 +99,6 @@ The cluster visualization pipeline transforms crime data into interactive 3D clu
 interface ClusterState {
   clusters: ClusterAnalysisCluster[];           // Global clustering results
   sliceClustersById: Record<string, ClusterAnalysisCluster[]>;  // Per-slice
-  enabled: boolean;                             // Feature toggle
   sensitivity: number;                          // DBSCAN sensitivity (0.5 default)
   selectedClusterId: string | null;            // Click-selected cluster
   hoveredClusterId: string | null;             // Hover-highlighted cluster
@@ -102,7 +106,6 @@ interface ClusterState {
   // Actions
   setClusters: (clusters: ClusterAnalysisCluster[]) => void;
   setSliceClustersById: (sliceClustersById: Record<string, ClusterAnalysisCluster[]>) => void;
-  setEnabled: (enabled: boolean) => void;
   setSensitivity: (sensitivity: number) => void;
   setSelectedClusterId: (id: string | null) => void;
   setHoveredClusterId: (id: string | null) => void;
@@ -115,7 +118,6 @@ interface ClusterState {
 {
   clusters: [],
   sliceClustersById: {},
-  enabled: true,
   sensitivity: 0.5,
   selectedClusterId: null,
   hoveredClusterId: null,
@@ -176,8 +178,6 @@ Renders 3D box representations of global clusters in the scene.
 const resolveClusterColor = (dominantType: string) =>
   palette[dominantType.toUpperCase()] || palette[dominantType] || '#a855f7';
 ```
-- Lookup in theme palette (dark/light/colorblind) by uppercase type name
-- Fallback to `#a855f7` (violet) if not found
 
 **Opacity States:**
 | State | Volume Opacity | Wire Opacity |
@@ -186,14 +186,11 @@ const resolveClusterColor = (dominantType: string) =>
 | Hovered | 0.12 | 0.60 |
 | Selected | 0.18 | 0.80 |
 
-**Interaction:**
-- Reads `selectedClusterId` and `hoveredClusterId` from store
-- No click/hover handlers (interaction handled by ClusterLabels)
-
 **Conditional Rendering:**
 ```typescript
-if (!enabled || !clusters || clusters.length === 0) return null;
+if (!clusters || clusters.length === 0) return null;
 ```
+No `enabled` check.
 
 ---
 
@@ -202,12 +199,6 @@ if (!enabled || !clusters || clusters.length === 0) return null;
 **File:** `src/components/viz/ClusterLabels.tsx`
 
 Renders HTML labels for top 5 clusters (by count) using `@react-three/drei` `Html`.
-
-**Label Position:**
-```typescript
-position={[0, cluster.size[1] / 2, 0]}  // Top edge of cluster box
-```
-Uses `distanceFactor={20}` and `zIndexRange={[100, 0]}` for consistent screen sizing.
 
 **Interaction Handlers:**
 ```typescript
@@ -219,59 +210,15 @@ onClick={() => {
     clearSpatialBounds();
   } else {
     setSelectedClusterId(cluster.id);
-    setSpatialBounds({
-      minX: cluster.bounds.minX,
-      maxX: cluster.bounds.maxX,
-      minZ: cluster.bounds.minZ,
-      maxZ: cluster.bounds.maxZ,
-      minLat: cluster.bounds.minLat,
-      maxLat: cluster.bounds.maxLat,
-      minLon: cluster.bounds.minLon,
-      maxLon: cluster.bounds.maxLon,
-    });
+    setSpatialBounds({...});
     // Camera fitToBox if available
-    if (controls && controls.fitToBox) {
-      const box = new THREE.Box3(
-        center.clone().sub(size.clone().multiplyScalar(0.5)),
-        center.clone().add(size.clone().multiplyScalar(0.5))
-      );
-      controls.fitToBox(box, true, { paddingLeft: 1, paddingRight: 1, paddingTop: 1, paddingBottom: 1 });
-    }
   }
 }}
 ```
 
-**Label UI:**
-- Two-part label:
-  1. Main badge: Type name + count, border-top colored by dominant type
-  2. Time range tooltip: Formatted date range or percentage range
-- Leader line: CSS gradient line from label to cluster top
+**Spatial Bounds Filtering:** On cluster click, `setSpatialBounds()` is called on `useFilterStore`, which filters the displayed data to within the cluster's geographic bounds.
 
-**Visual States:**
-| State | Badge Background | Border |
-|-------|-----------------|--------|
-| Default | `bg-black/90` | `border-white/20` |
-| Hovered | `bg-slate-950/95` | `border-sky-300/50` |
-| Selected | `bg-violet-950/95` | `border-violet-300/60` |
-
-**Time Range Formatting:**
-```typescript
-const formatClusterTimeRange = (range: [number, number]) => {
-  const [start, end] = range;
-  if (Math.max(start, end) > 10000) {
-    return `${new Date(start * 1000).toLocaleDateString()} → ${new Date(end * 1000).toLocaleDateString()}`;
-  }
-  return `${start.toFixed(1)}% → ${end.toFixed(1)}%`;
-};
-```
-- If values > 10000, treat as Unix timestamps and format as dates
-- Otherwise, treat as normalized percentages (0-100)
-
-**Spatial Bounds Filtering:**
-On cluster click, `setSpatialBounds()` is called on `useFilterStore`, which filters the displayed data to within the cluster's geographic bounds.
-
-**Camera Fit:**
-Uses `useThree()` to get OrbitControls instance, calls `controls.fitToBox()` with padding to frame the selected cluster.
+**Camera Fit:** Uses `useThree()` to get OrbitControls instance, calls `controls.fitToBox()` with padding.
 
 ---
 
@@ -284,7 +231,7 @@ Renders 2D cluster projections on individual slice planes (time slices).
 **Props:**
 ```typescript
 interface SliceClusterOverlayProps {
-  slice: TimeSlice;   // The time slice this overlay belongs to
+  slice: TimeSlice;
   y: number;          // Y position of the slice plane
 }
 ```
@@ -292,28 +239,9 @@ interface SliceClusterOverlayProps {
 **Rendering:**
 - Positioned at `y + SLICE_CLUSTER_OVERLAY_ELEVATION` (elevation = 0.16 from `SlicePlane.tsx`)
 - For each visible cluster in `sliceClustersById[slice.id]`:
-  1. Calculate width/depth from bounds: `width = max(0.5, maxX - minX)`
+  1. Calculate width/depth from bounds
   2. Center position: `[(minX + maxX) / 2, 0, (minZ + maxZ) / 2]`
   3. Render horizontal plane + outline line
-
-**Plane Geometry:**
-```typescript
-<mesh rotation={[-Math.PI / 2, 0, 0]}>  // Flat on XZ plane
-  <planeGeometry args={[width, depth]} />
-  <meshBasicMaterial color={clusterColor} transparent opacity={fillOpacity} depthWrite={false} />
-</mesh>
-```
-
-**Outline Line:**
-```typescript
-<Line points={[
-  [minX, 0.02, minZ],
-  [maxX, 0.02, minZ],
-  [maxX, 0.02, maxZ],
-  [minX, 0.02, maxZ],
-  [minX, 0.02, minZ],  // Closed loop
-]} color={clusterColor} lineWidth={1.5} />
-```
 
 **Opacity States:**
 | State | Fill Opacity | Line Opacity |
@@ -321,14 +249,6 @@ interface SliceClusterOverlayProps {
 | Default | 0.06 | 0.45 |
 | Hovered | 0.10 | 0.70 |
 | Selected | 0.16 | 0.90 |
-
-**Visibility Filtering:**
-```typescript
-const visibleClusters = useMemo(() => {
-  if (slice.isVisible === false) return [];
-  return sliceClusters;  // Already slice-specific from store
-}, [slice.isVisible, sliceClusters]);
-```
 
 ---
 
@@ -338,75 +258,27 @@ const visibleClusters = useMemo(() => {
 
 Logic-only component (renders `null`). Manages global cluster computation.
 
-**Data Inputs:**
+**No `enabled` check** — the removed `enabled` field previously controlled activation.
+
+**Filtered points check:**
 ```typescript
-// From useTimelineDataStore
-columns, data, minTimestampSec, maxTimestampSec
-
-// From useFilterStore
-selectedTypes, selectedDistricts, selectedTimeRange
-
-// From useClusterStore
-enabled, sensitivity
-
-// From useTimeStore
-timeScaleMode
-```
-
-**Clustering Flow:**
-
-1. **Exit early if disabled:**
-```typescript
-if (!enabled) {
+if (filteredPoints.length === 0) {
   setClusters([]);
   setSliceClustersById({});
   return;
 }
 ```
 
-2. **Filter data:**
-```typescript
-const filteredDataState: FilteredDataState = { columns, data, minTimestampSec, maxTimestampSec };
-const filteredPoints = selectFilteredData(filteredDataState, {
-  selectedTypes,
-  selectedDistricts,
-  selectedTimeRange,
-});
-```
-
-3. **Adaptive Y remapping (if adaptive mode):**
+**Adaptive Y remapping (if adaptive mode):**
 ```typescript
 if (timeScaleMode === 'adaptive') {
   const timestamps = new Float32Array(filteredPoints.map(p => p.y));
   const adaptiveY = computeAdaptiveYColumnar(timestamps, [0, 100], [0, 100]);
-  pointsToCluster = filteredPoints.map((p, i) => ({
-    ...p,
-    y: adaptiveY[i]
-  }));
+  pointsToCluster = filteredPoints.map((p, i) => ({ ...p, y: adaptiveY[i] }));
 }
 ```
 
-4. **Run DBSCAN:**
-```typescript
-const analysis = analyzeClusters(pointsToCluster, sensitivity);
-const clusters = analysis.clusters;
-setClusters(clusters);
-```
-
-**Note:** `ClusterManager` does NOT write to `sliceClustersById`. That is handled separately in `TimeSlices.tsx`.
-
-**Debouncing:**
-```typescript
-const debouncedClustering = useMemo(
-  () => debounce(performClustering, 400),
-  [performClustering]
-);
-
-useEffect(() => {
-  debouncedClustering();
-  return () => debouncedClustering.cancel();
-}, [debouncedClustering]);
-```
+**Debouncing:** 400ms via `lodash.debounce`.
 
 ---
 
@@ -428,7 +300,7 @@ export function analyzeClusters(
 ```typescript
 const dataset = points.map((point) => [point.x, point.y * 0.5, point.z]);
 ```
-- Y is scaled by 0.5 to reduce temporal clustering bias (points closer in time are less likely to be considered neighbors)
+Y is scaled by 0.5 to reduce temporal clustering bias.
 
 2. **Epsilon resolution:**
 ```typescript
@@ -448,48 +320,6 @@ const clusterIndexes = dbscan.run(dataset, epsilon, minPoints) as number[][];
 ```
 - Uses `density-clustering` library
 - `minPoints` fixed at 5
-
-4. **Cluster metrics computation:**
-For each cluster:
-- **Bounds:** Min/max of x, y, z, lat, lon across all members
-- **Center:** (min + max) / 2 for each dimension
-- **Size:** (max - min) for each dimension
-- **TimeRange:** [minY, maxY]
-- **DominantType:** Most frequent `typeId` → `getCrimeTypeName(dominantTypeId)`
-- **TypeCounts:** Distribution of crime types in cluster
-
----
-
-## SliceClusterOverlay vs Global Clusters
-
-| Aspect | Global (ClusterHighlights) | Slice (SliceClusterOverlay) |
-|--------|---------------------------|------------------------------|
-| **Data source** | `useClusterStore.clusters` | `useClusterStore.sliceClustersById[slice.id]` |
-| **Rendering** | 3D box (volume + wireframe) | 2D plane (filled + outline) |
-| **Position** | At cluster center | At cluster center on XZ plane |
-| **Y offset** | Full height | `y + SLICE_CLUSTER_OVERLAY_ELEVATION` |
-| **Purpose** | Show cluster extent in 3D cube | Show cluster footprint on timeline slice |
-
----
-
-## Color Resolution Pattern
-
-All cluster components use the same color resolution:
-
-```typescript
-const resolveClusterColor = (dominantType: string) =>
-  palette[dominantType.toUpperCase()] || palette[dominantType] || '#a855f7';
-```
-
-1. Try uppercase key in theme palette (e.g., `'THEFT'` → `'#FFD700'`)
-2. Try original case key
-3. Fallback to violet `#a855f7`
-
-**Palette selection:**
-```typescript
-const theme = useThemeStore((state) => state.theme);
-const palette = PALETTES[theme].categoryColors;
-```
 
 ---
 
@@ -515,9 +345,9 @@ const palette = PALETTES[theme].categoryColors;
 
 | File | Purpose |
 |------|---------|
-| `src/store/useClusterStore.ts` | Central state for cluster visualization |
+| `src/store/useClusterStore.ts` | Central state for cluster visualization (no `enabled` field) |
 | `src/lib/clustering/cluster-analysis.ts` | DBSCAN clustering algorithm + type definitions |
-| `src/components/viz/ClusterManager.tsx` | Global cluster computation (debounced) |
+| `src/components/viz/ClusterManager.tsx` | Global cluster computation (debounced, no `enabled` check) |
 | `src/components/viz/ClusterHighlights.tsx` | 3D box rendering for global clusters |
 | `src/components/viz/ClusterLabels.tsx` | HTML labels with interaction |
 | `src/components/viz/SliceClusterOverlay.tsx` | 2D overlays on time slice planes |
@@ -528,4 +358,4 @@ const palette = PALETTES[theme].categoryColors;
 
 ---
 
-*Cluster visualization pipeline analysis: 2026-05-07*
+*Cluster visualization pipeline analysis: 2026-06-01*

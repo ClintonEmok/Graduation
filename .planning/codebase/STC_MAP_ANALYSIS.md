@@ -1,13 +1,13 @@
 # STC/Map Visualization Analysis
 
-**Analysis Date:** 2026-05-06
+**Analysis Date:** 2026-06-01
 
 ## 1. Cube Components (`src/components/viz/`)
 
 | File | Purpose |
 |------|---------|
 | `CubeVisualization.tsx` | Main wrapper component - loads data, shows debug overlay, renders `MainScene` |
-| `MainScene.tsx` | R3F scene container - hosts `Scene`, `SimpleCrimePoints`, map background, and `useSelectionSync` |
+| `MainScene.tsx` | R3F scene container - hosts `Scene`, `TimeSlices`, map background, and `useSelectionSync` |
 | `Scene.tsx` | R3F `<Canvas>` wrapper with theme background/fog |
 | `SimpleCrimePoints.tsx` | **Primary cube rendering** - renders crime points with adaptive warp, filtering, hover/click |
 | `DataPoints.tsx` | Alternative/legacy instanced mesh rendering with custom shaders for ghosting/slices |
@@ -16,11 +16,17 @@
 | `SliceManagerUI.tsx` | Sheet/panel for managing slices (add, remove, lock, visibility) |
 | `SliceStats.tsx` | Stats for a given slice |
 | `ContextualSlicePanel.tsx` | Side panel showing Point/Burst/Slice details |
-| `FloatingToolbar.tsx` | Contains `SliceManagerUI` trigger |
-| `Controls.tsx` | Camera reset button |
+| `FloatingToolbar.tsx` | Re-exported as `Controls`; contains `SliceManagerUI` trigger |
+| `Controls.tsx` | Re-exports `FloatingToolbar` for backwards compatibility (4 lines) |
 | `TimeGrid.tsx`, `Grid.tsx`, `TimePlane.tsx` | Grid/plane helpers |
+| `BurstList.tsx` | Burst window selection with threshold slider + metric select |
+| `BurstEvolutionOverlay.tsx` | Burst window indicators in 3D cube |
+| `EvolutionFlowOverlay.tsx` | Flow connections between slices |
+| `ClusterManager.tsx` | Logic-only; debounced DBSCAN clustering at 400ms |
+| `ClusterHighlights.tsx` | Wireframe + transparent box per cluster |
+| `ClusterLabels.tsx` | HTML labels atop cluster boxes |
 
-**Key finding:** `TimeSlices.tsx` and `SlicePlane.tsx` DO exist and render horizontal slice planes in the cube at specific Y positions.
+**Key finding:** `TimeSlices.tsx` IS rendered in `MainScene.tsx` (line 185). Earlier analysis incorrectly stated it was not included.
 
 ## 2. Map Components (`src/components/map/`)
 
@@ -39,6 +45,8 @@
 | `MapSelectionMarker.tsx` | Selected point marker |
 | `MapDebugOverlay.tsx` | Debug info overlay |
 | `MapTypeLegend.tsx` | Crime type legend |
+| `MapLayerManager.tsx` | Layer visibility toggles |
+| `DeckGlHeatmapOverlay.tsx` | Deck.gl-based heatmap overlay |
 
 **Map renders crime data as GeoJSON circles** (not heatmap by default) with up to 20,000 points sampled.
 
@@ -65,11 +73,11 @@ interface CoordinationState {
 }
 ```
 
-**Dashboard-demo has its own parallel store:** `useDashboardDemoCoordinationStore.ts` with similar structure but enhanced with `DemoBurstWindowSelection`, `DemoDetailPeriodSelection`.
+**Dashboard-demo has its own parallel store:** `useDashboardDemoCoordinationStore.ts` with similar structure but enhanced with playback controls (inspectIsPlaying, inspectInterpolation, inspectTrailEnabled), volume encoding settings, comparison slices, and district/time filtering. This store absorbed `useDashboardDemoAdaptiveStore`, `useDashboardDemoWarpStore`, and `useDashboardDemoAnalysisStore` in Phase 76.
 
 ## 4. Slice Plane Rendering
 
-**Yes, slice planes exist in the cube.**
+**Yes, slice planes exist in the cube and ARE rendered in MainScene.**
 
 - `src/components/viz/TimeSlices.tsx` - Manages slices, renders `SlicePlane` components
 - `src/components/viz/SlicePlane.tsx` - Renders horizontal planes in 3D:
@@ -78,7 +86,10 @@ interface CoordinationState {
   - Colors: `#00ffff` (cyan) for point, `#ff00ff` (magenta) for range
   - Draggable via pointer events on the handle sphere
 
-**NOT currently rendered in MainScene:** `TimeSlices` component is NOT included in `MainScene.tsx`. The slice planes exist but may not be actively rendered in the main dashboard view.
+**TimeSlices IS rendered in MainScene (line 185):**
+```tsx
+<TimeSlices sliceStoreOverride={sliceStoreOverride} timeStoreOverride={timeStoreOverride} />
+```
 
 ## 5. Map ↔ Cube Interaction Mechanism
 
@@ -97,7 +108,7 @@ The `useSelectionSync` hook is the "conductor" that ties views together:
 ### Point Selection Flow
 
 ```
-Cube click → setSelectedIndex(sourceIndex, 'cube') 
+Cube click → setSelectedIndex(sourceIndex, 'cube')
    ↓
 CoordinationStore.selectedIndex updated
    ↓
@@ -131,10 +142,12 @@ Map click → handleClick() in MapVisualization
 />
 ```
 
-**DashboardDemo alternative** (`src/app/dashboard-demo/`):
-- Uses `DashboardDemoShell` with tab switching between map/cube (only one visible at a time)
-- Separate `DemoMapVisualization` and `CubeVisualization`
-- Has `selectedDetailPeriod` for temporal "bins" approach
+**DashboardDemo alternative** (`src/components/dashboard-demo/DashboardDemoShell.tsx`):
+- Uses tab switching between map/3d (only one visible at a time)
+- No longer uses `CubeVisualization` with store overrides
+- Directly renders `DemoMapVisualization` or `Demo3dSpatialView`
+- Has per-slice crime fetching, KDE computation via `kdeSlice.worker.ts`
+- Has playback controls: `inspectIsPlaying`, `inspectInterpolation`, `inspectTrailEnabled`
 
 ## 7. What's Missing for "STC Slice Planes" + "Linked 2D + 3D Interaction"
 
@@ -142,8 +155,7 @@ Map click → handleClick() in MapVisualization
 
 | Gap | Description |
 |-----|-------------|
-| **TimeSlices not in MainScene** | `TimeSlices.tsx` component exists but is NOT rendered in `MainScene.tsx` - slice planes won't show up |
-| **No slice visualization in dashboard** | Main dashboard (`page.tsx`) doesn't include any slice management/visualization |
+| **No slice visualization in dashboard** | Main dashboard (`page.tsx`) uses `DashboardLayout` with `DashboardHeader` from `@/components/dashboard/DashboardHeader` — includes `ContextualSlicePanel` but no dedicated slice management UI |
 | **Limited slice interaction** | Slices are created via double-click hitbox, but no UI for time-based slice creation from timeline |
 
 ### Linked 2D + 3D Interaction
@@ -159,7 +171,7 @@ Map click → handleClick() in MapVisualization
 
 ### Key Files for Implementation
 
-- `src/components/viz/MainScene.tsx` - Need to add `<TimeSlices />` here
+- `src/components/viz/MainScene.tsx` - TimeSlices already included here
 - `src/components/map/MapVisualization.tsx` - Need slice-aware filtering
 - `src/store/useCoordinationStore.ts` - `brushRange` already exists but not wired
 - `src/hooks/useSelectionSync.ts` - Could extend for slice-based map highlighting
@@ -167,4 +179,4 @@ Map click → handleClick() in MapVisualization
 
 ---
 
-*Analysis for STC visualization gap: 2026-05-06*
+*Analysis for STC visualization gap: 2026-06-01*

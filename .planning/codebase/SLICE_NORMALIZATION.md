@@ -1,6 +1,6 @@
 # Slice Normalization Trace
 
-**Analysis Date:** 2026-05-07
+**Analysis Date:** 2026-06-01
 
 ---
 
@@ -127,6 +127,7 @@ export interface TimeSlice {
   isBurst?: boolean;
   warpEnabled?: boolean;
   warpWeight?: number;
+  burstinessCoefficient?: number;
   // ... burst metadata fields
   isLocked: boolean;
   isVisible: boolean;
@@ -201,6 +202,17 @@ export interface TimeBin {
   districts?: string[];
   warpWeight?: number;        // Hint weight passed through to slice
   isNeutralPartition?: boolean;
+  burstinessCoefficient?: number;
+  burstinessFormula?: string;
+  burstinessCalculation?: string;
+  burstinessByType?: Array<{
+    type: string;
+    count: number;
+    coefficient: number;
+    normalizedScore: number;
+    formula: string;
+    calculation: string;
+  }>;
   // ... burst taxonomy fields
 }
 ```
@@ -407,9 +419,10 @@ endDateTimeMs: bin.endTime,     // epoch ms from TimeBin
 | `TimeBin.startTime`/`endTime` unit | Epoch milliseconds |
 | `TimeBin.warpWeight` | Unitless ratio (peerRelativeScore * hintWeight), clamped [0.25, 4] |
 | `TimeSlice.warpWeight` | Passed through from `TimeBin.warpWeight` or default 1/1.25 |
+| `TimeSlice.burstinessCoefficient` | Inter-event burstiness coefficient (unitless) |
 | `startDateTimeMs` hydration | `normalizedToEpochSeconds(normalized, domain...) * 1000` or null if domain missing |
 | `formatTimeRange` input | Normalized 0-100, outputs human-readable |
 
 ---
 
-*Slice normalization audit: 2026-05-07*
+*Slice normalization audit: 2026-06-01*

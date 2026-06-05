@@ -64,7 +64,7 @@ Each task was committed atomically:
 2. **Task 2: Drive active-slice playback from the ordered demo slice list** - `00db363` (feat)
 3. **Task 3: Rework SliceScrubber into a compact temporal control strip** - `df0d604` (feat)
 
-**Plan metadata:** pending docs commit
+**Plan metadata:** docs synced
 
 ## Files Created/Modified
 - `src/store/useDashboardDemoCoordinationStore.ts` - shared temporal state and reset paths

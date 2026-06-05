@@ -6,24 +6,91 @@ status: ready-for-planning
 # Phase 78: Temporal Evolution - Discussion Log
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
-> Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
+> Decisions are captured in CONTEXT.md - this log preserves the alternatives considered.
 
 **Date:** 2026-05-31
 **Phase:** 78-temporal-evolution
-**Areas discussed:** playback sequencing, aging trails, interpolation mode, control surface, scope boundary
+**Areas discussed:** playback behavior, interpolation presentation, aging trails, control placement
 
 ---
 
-## Playback Sequencing
+## Playback Behavior
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Loop the ordered slice set | Playback advances through the ordered demo slice list and wraps at the end. | ✓ |
-| Stop at the last slice | Playback halts on the final slice until the user restarts it. | |
-| Free-running frame clock | Use a separate clock independent of slice order. | |
+| Slider speed | Playback speed is adjustable with a slider. | ✓ |
+| Fixed speed | Playback runs at one steady speed. | |
+| Preset speeds | Playback switches between a few discrete speeds. | |
 
-**Decision:** Loop the ordered slice set.
-**Notes:** This keeps playback continuous and matches the existing demo pattern without introducing a second temporal axis.
+**Decision:** Slider speed.
+**Notes:** The user wanted speed control without adding a dense control surface.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Pause while scrubbing | Dragging the scrubber pauses playback. | ✓ |
+| Keep playing | Playback continues underneath manual scrubbing. | |
+| Manual override | Scrubbing takes control until playback is restarted. | |
+
+**Decision:** Pause while scrubbing.
+**Notes:** This keeps the focused slice stable while the user chooses a new position.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Brief pause | Loop restarts use a short pause at the end. | ✓ |
+| Instant loop | Jump immediately back to the first slice. | |
+| Ping-pong | Reverse direction instead of wrapping. | |
+
+**Decision:** Brief pause.
+**Notes:** The loop should feel deliberate rather than mechanical.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Active slice only | Show only the current slice as playback feedback. | ✓ |
+| Playhead + progress | Show a progress indicator as well. | |
+| Both | Show the active slice and a progress indicator together. | |
+
+**Decision:** Active slice only.
+**Notes:** Keep the widget compact and quiet.
+
+---
+
+## Interpolation Presentation
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Morph + crossfade | Blend neighboring slices with geometry/effect changes. | ✓ |
+| Crossfade only | Blend visuals without changing the shape much. | |
+| Subtle shift | Keep the geometry mostly discrete with only slight easing. | |
+
+**Decision:** Morph + crossfade.
+**Notes:** The user wanted a visibly continuous feel without losing the slice structure.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Interpolated | Short, clear label for the mode. | ✓ |
+| Estimated | Emphasizes that the state is not raw observed data. | |
+| Estimated interpolation | Most explicit label. | |
+
+**Decision:** Interpolated.
+**Notes:** Simple label, still clearly distinct from the raw slice mode.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Playback only | Interpolation is available only during playback. | ✓ |
+| Manual toggle | Users can enable it even when paused. | |
+| Both | Available during playback and manual stepping. | |
+
+**Decision:** Playback only.
+**Notes:** Keeps the mode tied to motion, not static inspection.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Active slice anchors the blend | Active slice stays dominant while neighbors morph around it. | ✓ |
+| Blend the active slice equally | Active slice participates equally in the interpolation. | |
+| Highlight then blend | Emphasize the active slice first, then spread the blend outward. | |
+
+**Decision:** Active slice anchors the blend.
+**Notes:** Kept as an implementation decision in CONTEXT.md.
 
 ---
 
@@ -31,63 +98,41 @@ status: ready-for-planning
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Slice-distance decay | Older slices fade by distance from the active slice and remain as subdued persistence. | ✓ |
-| Frame accumulation | Keep a running visual history buffer across frames. | |
-| Post-processing trails | Use a full-screen trail effect. | |
+| Ghosted layers | Older slices stay as faint, readable layers. | ✓ |
+| Persistent depth strata | Older slices read as strong volumetric depth behind the active slice. | |
+| Soft shadows | Older slices recede as a subtle echo. | |
 
-**Decision:** Use slice-distance decay.
-**Notes:** The widget stays readable, the active slice remains dominant, and the effect stays local to the 3D stack.
-
----
-
-## Interpolation Mode
+**Decision:** Ghosted layers.
+**Notes:** Literature review favored bounded ghosting over shadow-like history; it keeps the active slice dominant.
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Opt-in estimated mode | Smooth blending is off by default and labeled as estimated/interpolated when enabled. | ✓ |
-| Always-on smoothing | Every slice transition is blended automatically. | |
-| Hidden blending | Smooth the visuals without surfacing the mode to the user. | |
+| Controls in Inspect panel | Trail controls live with the other temporal controls. | ✓ |
+| 3D widget only | Keep trail controls only in the 3D view. | |
+| Hidden advanced setting | Tuck trail controls into a secondary menu. | |
 
-**Decision:** Opt-in estimated mode.
-**Notes:** The analytical jump-cut stays the default, and the demo must not blur the line between observed slices and estimated in-betweens.
-
----
-
-## Control Surface
+**Decision:** Controls in Inspect panel.
+**Notes:** Keeps the temporal controls together and discoverable without widening the shell.
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Keep controls in the 3D widget pair | Playback, decay, and interpolation stay in the demo 3D widget path and the inspect-side controls that already govern it. | ✓ |
-| Move controls into a new global toolbar | Centralize the temporal controls above the whole dashboard. | |
-| Split controls across map/timeline/3D | Surface separate controls in every view. | |
+| Compact and quiet | Minimal chrome that stays out of the way. | ✓ |
+| Visible but restrained | Always visible, but not dominant. | |
+| Prominent tool strip | A more explicit control bar. | |
 
-**Decision:** Keep controls in the 3D widget path.
-**Notes:** This avoids reintroducing map/timeline animation and keeps the phase boundary tight.
-
----
-
-## Scope Boundary
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| 3D widget only | Temporal evolution affects only `Demo3dSpatialView`, `Stkde3DScene`, `StkdeSliceStack`, and `SliceScrubber`. | ✓ |
-| Broader dashboard sync | Map and timeline also animate in step with the 3D widget. | |
-
-**Decision:** 3D widget only.
-**Notes:** The map and timeline stay synchronized readers, not animation owners.
+**Decision:** Compact and quiet.
+**Notes:** Matches the existing minimal chrome pattern in the demo shell.
 
 ---
 
-## Gray Areas
+## the agent's Discretion
 
-1. **Exact decay curve and trail length**
-   - Settled: trails should fade by temporal distance.
-   - Unclear: whether the decay should be linear, exponential, or preset-driven.
+- Exact trail decay curve
+- Exact trail length / number of visible historical slices
+- Exact slider range and whether the speed slider uses ticks or a smooth range
 
-2. **Interpolation trigger**
-   - Settled: interpolation is opt-in and labeled.
-   - Unclear: whether it should engage only during playback or also during manual scrubbing.
+## Deferred Ideas
 
-3. **Control placement details**
-   - Settled: controls stay inside the demo 3D widget path.
-   - Unclear: whether trail decay gets its own slider or is bundled into a compact temporal mode control.
+- Any map or timeline animation
+- Multi-scale temporal aggregation
+- Evaluation logging / playback analytics

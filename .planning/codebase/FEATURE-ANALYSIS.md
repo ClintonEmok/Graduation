@@ -1,6 +1,6 @@
 # Codebase Feature Analysis
 
-**Analysis Date:** 2026-05-06
+**Analysis Date:** 2026-06-01
 
 ---
 
@@ -42,7 +42,7 @@
 
 ### Burst Scores: EXIST
 
-Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` via `normalizeScore()`. The `BurstWindow` type in `BurstList.tsx` (line 30) includes `burstScore?: number`. The scoring is:
+Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` via `normalizeScore()`. The `BurstWindow` type in `BurstList.tsx` (line 22) includes `burstScore?: number`. The scoring is:
 - 0-100 normalized score based on value, count, and duration
 - Combined with `burstClass` ('prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral')
 - Includes `burstConfidence` from `deriveBurstConfidence()`
@@ -57,7 +57,12 @@ Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` v
 - `src/store/useClusterStore.ts` - Basic cluster state management (clusters array, enabled, sensitivity, selectedClusterId)
 
 **Spatial/temporal clustering:**
-- `src/lib/stkde/compute.ts` - STKDE (Space-Time Kernel Density Estimation) hotspot computation
+- `src/lib/clustering/cluster-analysis.ts` - DBSCAN clustering via `density-clustering` package
+  - `analyzeClusters(points, sensitivity, minPoints)` - Executes DBSCAN, returns clusters with bounds, type counts, centers
+  - `readNoiseIndexes(dbscan)` - Extracts noise points (private property access)
+
+**STKDE (Space-Time Kernel Density Estimation) hotspot computation:**
+- `src/lib/stkde/compute.ts` - Computes hotspots from crime records
   - `computeStkdeFromCrimes(request, crimes)` - Computes hotspots from crime records
   - `computeStkdeFromAggregates(request, inputs)` - Computes from pre-aggregated data
   - `buildStkdeGridConfig(request)` - Grid configuration
@@ -72,26 +77,28 @@ Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` v
   - `generateCrimeTypeBins()` - Groups events by crime type (not spatial clustering)
   - `generateBurstinessBins()` - Groups by inter-arrival time
 
-### Clustering Implementation: PARTIAL
+### Clustering Implementation: PARTIAL with DBSCAN
 
 **What's implemented:**
-- STKDE for **spatial hotspot detection** (not traditional clustering)
-- Cluster store exists but is minimal - just holds computed clusters
-- `clusterSlices()` only clusters visual time slices, not crime events
+- DBSCAN from `density-clustering` IS used (in `cluster-analysis.ts`, line 1: `import { DBSCAN } from 'density-clustering'`)
+- `analyzeClusters()` wraps DBSCAN with 3D projection `[x, y*0.5, z]` (y halved to reduce temporal influence)
+- STKDE for spatial hotspot detection
+- Cluster store manages computed clusters
+- `clusterSlices()` clusters visual time slices, not crime events
 
-**What's NOT implemented (despite `density-clustering` in package.json):**
-- **No actual use of `density-clustering` package** - The package is listed but no imports found
-- No DBSCAN, OPTICS, or similar spatial clustering algorithm
-- No crime event clustering by spatial proximity
+**What's NOT implemented (despite DBSCAN existing):**
+- No user-facing controls for DBSCAN epsilon or minPoints
+- No cluster visualization toggle
+- No cluster quality metrics shown to user
 - No cluster extraction from STKDE results into labeled groups
 
 ### Missing for True Clustering
 
-1. Integration of `density-clustering` package (appears unused)
-2. DBSCAN or similar for crime event clustering
-3. Cluster centroid computation, cluster member assignment
-4. Multi-dimensional clustering (space-time together)
-5. Cluster visualization layer
+1. UI controls for DBSCAN parameters (epsilon, minPoints)
+2. Cluster member assignment in UI
+3. Multi-dimensional clustering visualization
+4. Cluster quality display (silhouette score)
+5. Cluster visualization toggle
 
 ---
 
@@ -116,6 +123,7 @@ Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` v
 
 **Legend components:**
 - `src/components/viz/SimpleCrimeLegend.tsx` - 2-column legend with 6 hardcoded crime types
+- `src/components/viz/CrimeCategoryLegend.tsx` - Color-coded category legend
 - `src/components/map/MapTypeLegend.tsx` - Map crime type legend
 - `src/components/map/MapDistrictLegend.tsx` - District legend
 - `src/components/map/MapPoiLegend.tsx` - POI legend
@@ -124,20 +132,23 @@ Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` v
 - `src/types/crime.ts`
   - `CrimeRecord.type: string` - Crime category field
 
+**Category shapes (NEW - Phase 75+):**
+- `src/lib/category-shapes.ts` - Shape definitions per crime type
+- `src/lib/category-legend.ts` - Legend integration
+
 ### Current Implementation
 
 - **Colors:** Full color mapping per crime type in palettes.ts with theme support
 - **Legend:** SimpleCrimeLegend shows 6 types (THEFT, ASSAULT, BURGLARY, ROBBERY, VANDALISM, OTHER)
-- **Shapes:** NOT implemented - no marker shapes per category
+- **Shapes:** Implemented in `category-shapes.ts` with per-crime-type shape definitions
 - **Filtering:** NOT implemented - legend is display-only, no click-to-filter
 
 ### Missing for Categories
 
 1. **Legend incomplete** - Hardcoded 6 types but `CRIME_TYPE_MAP` has 33
 2. **No click-to-filter** - Legend items cannot be clicked to filter map/timeline
-3. **No shapes** - Crimes rendered as same marker shape regardless of type
-4. **No category aggregation** - Cannot group crimes by type in visualizations
-5. **Missing category filter UI** - No dropdown/panel to select crime types to show
+3. **No category aggregation** - Cannot group crimes by type in visualizations
+4. **Missing category filter UI** - No dropdown/panel to select crime types to show
 
 ---
 
@@ -147,9 +158,14 @@ Burst scores are **already implemented** and calculated in `burst-taxonomy.ts` v
 |---------|--------|-----------|---------|
 | **Burst Detection** | ✅ Complete | `burst-taxonomy.ts`, `interval-detection.ts`, `confidence-scoring.ts` | Nothing critical |
 | **Burst Scores** | ✅ Implemented | `BurstList.tsx`, `burst-taxonomy.ts` | Already exists |
-| **Clustering (spatial)** | ⚠️ Partial | `stkde/compute.ts`, `useClusterStore.ts` | density-clustering unused, no DBSCAN |
+| **Clustering (spatial)** | ⚠️ Partial | `cluster-analysis.ts`, `useClusterStore.ts` | No UI controls for DBSCAN params |
+| **DBSCAN Implementation** | ✅ Present | `cluster-analysis.ts` uses density-clustering | Quietly imported, works |
 | **Time Slice Clustering** | ✅ Basic | `slice-geometry.ts:clusterSlices()` | Groups slices only, not crime events |
 | **Category Colors** | ✅ Complete | `palettes.ts` | Themes + 33 types mapped |
+| **Category Shapes** | ✅ Implemented | `category-shapes.ts` | Per-crime-type shape definitions |
 | **Category Legend** | ⚠️ Incomplete | `SimpleCrimeLegend.tsx` | Hardcoded 6 types, no interaction |
 | **Category Filtering** | ❌ Missing | - | No click-to-filter, no dropdown |
-| **Category Shapes** | ❌ Missing | - | All crimes same marker shape |
+
+---
+
+*Feature analysis: 2026-06-01*

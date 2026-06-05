@@ -1,6 +1,6 @@
 # Slice Store Architecture
 
-**Analysis Date:** 2026-05-07
+**Analysis Date:** 2026-06-01
 
 ---
 
@@ -54,6 +54,7 @@ export interface TimeSlice {
   burstScore?: number;
   burstConfidence?: number;
   burstProvenance?: string;
+  burstinessCoefficient?: number;
   tieBreakReason?: string;
   thresholdSource?: string;
   neighborhoodSummary?: string;
@@ -159,6 +160,7 @@ No namespacing — all slice fields are flat at the top level of `SliceDomainSta
 | `burstScore` | (unset) | For burst taxonomy |
 | `burstConfidence` | (unset) | For burst taxonomy |
 | `burstProvenance` | (unset) | For burst taxonomy |
+| `burstinessCoefficient` | (unset) | Inter-event burstiness coefficient |
 | `tieBreakReason` | (unset) | For burst taxonomy |
 | `thresholdSource` | (unset) | For burst taxonomy |
 | `neighborhoodSummary` | (unset) | For burst taxonomy |
@@ -352,7 +354,7 @@ datetimeMs = epochSeconds * 1000
 
 ---
 
-## 10. Legacy / Unused Field Observations
+## 10. Field Usage Observations
 
 | Field | Status |
 |-------|--------|
@@ -360,6 +362,7 @@ datetimeMs = epochSeconds * 1000
 | `notes` | Only set in `replaceSlicesFromBins` (from bin count string) and `updateSlice` caller — not in `addSlice` defaults |
 | `source` | Only set in `replaceSlicesFromBins`; `addSlice`/`addBurstSlice` leave it undefined |
 | `warpEnabled`, `warpWeight` | Set with defaults in `addSlice`, `addBurstSlice`, `mergeSlices`, `replaceSlicesFromBins` — actively used |
+| `burstinessCoefficient` | Set when burst taxonomy includes coefficient data |
 | `thresholdSource`, `neighborhoodSummary`, `tieBreakReason` | Only set in `replaceSlicesFromBins` when burst taxonomy is present |
 | `burstRuleVersion` | Only set in `replaceSlicesFromBins` when burst taxonomy present |
 | `burstProvenance` | Only set in `replaceSlicesFromBins` when burst taxonomy present |
@@ -381,9 +384,7 @@ datetimeMs = epochSeconds * 1000
 
 ### 11.2 Datetime Field Double-Computing in `commitCreation`
 
-`commitCreation` computes `startDateTimeMs`/`endDateTimeMs` directly before calling `addSlice`, but `addSlice` calls `withDateTimeFields()` which uses `slice.startDateTimeMs ?? toDateTimeMs()` — since the value is already set, it is preserved. The computation is wasted work and creates a confusing pattern. Either:
-- Remove datetime computation from `commitCreation` (rely entirely on `addSlice`)
-- Or call `addSlice` with raw values and let `addSlice` handle all hydration
+`commitCreation` computes `startDateTimeMs`/`endDateTimeMs` directly before calling `addSlice`, but `addSlice` calls `withDateTimeFields()` which uses `slice.startDateTimeMs ?? toDateTimeMs()` — since the value is already set, it is preserved. The computation is wasted work and creates a confusing pattern.
 
 ### 11.3 `updateSlice` Does Not Renormalize
 
@@ -395,7 +396,7 @@ If a caller passes `updates.range` with raw epoch values to `updateSlice`, they 
 
 ### 11.5 `selectSlice` Replaces Selection (Not Extends)
 
-`slectSlice` sets the selection to a single ID (radio-style), while `toggleSlice` multi-selects. There is no `addToSelection` function. Callers must use `toggleSlice` to add without clearing existing selection.
+`selectSlice` sets the selection to a single ID (radio-style), while `toggleSlice` multi-selects. There is no `addToSelection` function. Callers must use `toggleSlice` to add without clearing existing selection.
 
 ### 11.6 Sort is Stable but Implicit
 
@@ -420,4 +421,4 @@ If a caller passes `updates.range` with raw epoch values to `updateSlice`, they 
 
 ---
 
-*Slice store architecture analysis: 2026-05-07*
+*Slice store architecture analysis: 2026-06-01*

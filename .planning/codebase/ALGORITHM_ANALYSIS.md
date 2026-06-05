@@ -1,6 +1,6 @@
 # Algorithm Analysis: Adaptive Time Scaling, Burst Detection & Interval Proposal
 
-**Analysis Date:** 2026-05-29
+**Analysis Date:** 2026-06-01
 
 **Scope:** 18 source files across `src/lib/`, `src/workers/`, `src/store/`, `src/app/api/`, `src/app/cube-sandbox/lib/`, `src/app/timeslicing-algos/lib/`, `src/types/`
 
@@ -11,7 +11,7 @@
 ### A1. `computeAdaptiveMaps` (Worker — Core Algorithm)
 **File:** `src/workers/adaptiveTime.worker.ts`, line 62  
 **Algorithm:** Histogram binning with optional smoothing → density-normalization → weight-proportional warp map  
-**Inputs:** `Float32Array timestamps`, `[number,number] domain`, `WorkerConfig { binCount, kernelWidth, binningMode }`  
+**Inputs:** `Float32Array timestamps`, `[number,number] domain`, `WorkerConfig { binCount, kernelWidth, binningMode }`
 
 **Behavior:**
 1. **Filter + sort** timestamps to domain (line 91-95)
@@ -36,7 +36,7 @@
 ### A2. `computeBurstinessPerBin` (Worker — Burstiness computation)
 **File:** `src/workers/adaptiveTime.worker.ts`, lines 200-230  
 **Algorithm:** Online Welford-like variance per bin of inter-event gaps  
-**Data structures:** `burstCounts[]`, `burstSum[]`, `burstSumSq[]`  
+**Data structures:** `burstCounts[]`, `burstSum[]`, `burstSumSq[]`
 
 ```
 For each consecutive pair (sorted[i-1], sorted[i]):
@@ -99,7 +99,7 @@ For each bin:
 
 ### C1. `computeTemporalB` — Coefficient of Variation
 **File:** `src/lib/burst-detection.ts`, line 53  
-**Algorithm:** 
+**Algorithm:**
 ```
 mean = avg(interEventGaps)
 std = sqrt(variance of gaps)
@@ -135,7 +135,7 @@ burstiness = (std - mean) / (std + mean)
 
 ### C6. `averageNearestNeighborDistance` — O(N²)
 **File:** `src/lib/burst-detection.ts`, line 132  
-**Algorithm:** Brute-force O(N²) nearest neighbor search  
+**Algorithm:** Brute-force O(N²) nearest neighbor search
 ```
 for each point i:
   for each point j != i:
@@ -151,7 +151,7 @@ return average of minima
 
 ### C7. `computeAnnScore`
 **File:** `src/lib/burst-detection.ts`, line 158  
-**Algorithm:** 
+**Algorithm:**
 ```
 observed = avgNearestNeighborDistance(points)
 expected = 0.5 * sqrt(100² / N)  (Clark-Evans expectation for a square of side 100)
@@ -162,7 +162,7 @@ score = 1 - observed/expected
 
 ### C8. `computeSpatialB`
 **File:** `src/lib/burst-detection.ts`, line 168  
-**Algorithm:** Formula selector — computes concentration and surprise, optionally ANN  
+**Algorithm:** Formula selector — computes concentration and surprise, optionally ANN
 ```
 concentration = 1 - normalizedEntropy(distribution)
 surprise = JS-divergence(distribution, baselineDistribution)
@@ -183,7 +183,7 @@ switch formula:
 
 ### C10. `allocateSlices` — Greedy Proportional Allocation
 **File:** `src/lib/burst-detection.ts`, line 305  
-**Algorithm:** 
+**Algorithm:**
 1. Compute proportional allocation: `raw = (binScore / totalScore) * targetCount`, `atLeast = max(1, round(raw))`
 2. Compute remainder: `remaining = targetCount - sum(allocations)`
 3. While `remaining > 0`: find bin with largest `raw - allocated` deficit, increment by 1 (greedy largest-remainder)
@@ -203,7 +203,7 @@ switch formula:
 
 ### D1. `calculateDataClarity`
 **File:** `src/lib/confidence-scoring.ts`, line 46  
-**Algorithm:** Coefficient of variation of bin counts  
+**Algorithm:** Coefficient of variation of bin counts
 ```
 binCount = clamp(len/100, 10, 100)
 mean = total/bins
@@ -221,7 +221,7 @@ score = min(100, cv * 50)
 2. **Density score:** `log10(N+1) * 20` → weight 35%
 3. **Uniformity:** Gini coefficient inverted → `(1 - |gini|) * 100` → weight 35%
 
-The Gini calculation (line 151-157) uses a O(B log B) sort of bins.  
+The Gini calculation (line 151-157) uses an O(B log B) sort of bins.  
 **Complexity:** O(N + B log B) — the sort for Gini is unnecessary since bin indices can be mapped to rank without sorting.
 
 ### D3. `calculateStatisticalConfidence`
@@ -392,7 +392,7 @@ for each constraint:
   range = [focusTime - width/2, focusTime + width/2] clamped to domain
 ```
 Sort by score (descending), return all.  
-**Complexity:** O(M log M)  
+**Complexity:** O(M log M)
 
 ### G5. `buildProposalMaps` — Gaussian Synthetic Maps
 **File:** `src/app/cube-sandbox/lib/applyWarpProposal.ts`, line 19  
@@ -443,7 +443,7 @@ Warp map built from cumulative weights.
 
 ### I1. `buildUniformTimeBoundaries` / `buildUniformEventsBoundaries`
 **File:** `src/app/timeslicing-algos/lib/adaptive-bin-diagnostics.ts`, lines 128 / 143  
-**Algorithm:** Same as worker but with Float64Array and domain fallback safety  
+**Algorithm:** Same as worker but with Float64Array and domain fallback safety
 
 ### I2. `resolveBinTimestampTraits` — Temporal Trait Classification
 **File:** `src/app/timeslicing-algos/lib/adaptive-bin-diagnostics.ts`, line 191  
@@ -487,7 +487,7 @@ Warp map built from cumulative weights.
 ### J2. `computeTemporalBFromTimestamps`
 **File:** `src/app/api/adaptive/bursts/route.ts`, line 45  
 **Algorithm:** Identical to `computeTemporalB` in `burst-detection.ts` (duplicated code)  
-**Complexity:** O(K log K) due to sort — but sort already done in `buildBurstBin` via `computeSpatialBBinned` which sorts too? No, `computeTemporalBFromTimestamps` sorts its own copy.  
+**Complexity:** O(K log K) due to sort — but sort already done in `buildBurstBin` via `computeSpatialBBinned` which sorts too? No, `computeTemporalBFromTimestamps` sorts its own copy.
 
 ---
 

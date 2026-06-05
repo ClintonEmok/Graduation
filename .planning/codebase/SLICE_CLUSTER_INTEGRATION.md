@@ -1,6 +1,6 @@
 # Slice-Cluster Integration in the 3D Cube
 
-**Analysis Date:** 2026-05-07
+**Analysis Date:** 2026-06-01
 
 ## Overview
 
@@ -15,23 +15,19 @@ Clustering is **slice-scoped**, not global. Clusters are computed **per-slice** 
 ### Cluster Store Reading
 
 ```typescript
-// Line 47-49
-const clusteringEnabled = useFeatureFlagsStore((state) => state.isEnabled('clustering'));
-const clusterStoreEnabled = useClusterStore((state) => state.enabled);
+// Lines 46-47
 const clusterSensitivity = useClusterStore((state) => state.sensitivity);
 const setSliceClustersById = useClusterStore((state) => state.setSliceClustersById);
 ```
 
-Two gates must be open for clustering to activate:
-1. `clusteringEnabled` — feature flag `clustering` from `useFeatureFlagsStore`
-2. `clusterStoreEnabled` — the `enabled` boolean in `useClusterStore` itself (default `true`)
+No feature flag or enabled gate exists. The only condition for clustering is that slices and filtered points exist.
 
 ### Per-Slice Cluster Computation
 
-**Lines 79-101:**
+**Lines 77-99:**
 ```typescript
 const sliceClustersById = useMemo(() => {
-  if (!clusteringEnabled || !clusterStoreEnabled || slices.length === 0 || filteredPoints.length === 0) {
+  if (slices.length === 0 || filteredPoints.length === 0) {
     return {};
   }
 
@@ -54,17 +50,17 @@ const sliceClustersById = useMemo(() => {
     });
 
   return groupClusterAnalysesBySlice(sliceAnalyses);
-}, [clusterSensitivity, clusterStoreEnabled, clusteringEnabled, filteredPoints, slices]);
+}, [clusterSensitivity, filteredPoints, slices]);
 ```
 
 Key behavior:
-- **No slices → empty object `{}`** — even if clustering is enabled, no cluster computation happens without slices
+- **No slices → empty object `{}`** — no cluster computation happens without slices
 - **Clustering is computed for every visible slice** — each slice independently runs `analyzeClusters` on its time-windowed subset of filtered crime data
-- **Results written to `useClusterStore`** via `setSliceClustersById` in a `useEffect` (lines 103-106)
+- **Results written to `useClusterStore`** via `setSliceClustersById` in a `useEffect` (lines 101-104)
 
 ### Rendering
 
-**Lines 132-152:**
+**Lines 145-167:**
 ```typescript
 {slices.map((slice) => (
   <group key={slice.id}>
@@ -78,11 +74,15 @@ Key behavior:
       evolutionState={...}
     />
     <SliceClusterOverlay slice={slice} y={scale(slice.time)} />
+    <SliceCrimePoints points={slicePointsById[slice.id] ?? []} />
   </group>
 ))}
+
+<BurstEvolutionOverlay slices={slices} burstWindows={selectedBurstWindows} timeToY={scale} />
+<EvolutionFlowOverlay slices={slices} activeSliceId={evolutionSequence.activeSliceId} timeToY={scale} />
 ```
 
-`SliceClusterOverlay` is rendered **unconditionally** alongside `SlicePlane` for every slice. The overlay itself reads from `useClusterStore` to get cluster data for that slice.
+`SliceClusterOverlay` and `SliceCrimePoints` are rendered **unconditionally** alongside `SlicePlane` for every slice. The overlays read from `useClusterStore` to get cluster data for that slice.
 
 ---
 
@@ -97,10 +97,7 @@ Key behavior:
 export const SLICE_CLUSTER_OVERLAY_ELEVATION = 0.16;
 ```
 
-This constant specifies the vertical offset (in world units) above the slice plane at which `SliceClusterOverlay` is positioned. `SliceClusterOverlay` reads it via:
-```typescript
-import { SLICE_CLUSTER_OVERLAY_ELEVATION } from './SlicePlane';
-```
+This constant specifies the vertical offset (in world units) above the slice plane at which `SliceClusterOverlay` is positioned.
 
 ### SlicePlane Rendering
 
@@ -112,7 +109,7 @@ import { SLICE_CLUSTER_OVERLAY_ELEVATION } from './SlicePlane';
 1. **Base plane/box** — `meshBasicMaterial` with color based on slice type (cyan for point `#22d3ee`, purple for range `#a855f7`, gray for locked `#94a3b8`)
 2. **Grid helper** — appears only on point slices, at `position={[0, 0.01, 0]}`
 3. **Heatmap texture** — `mesh` at `position={[0, 0.08, 0]}` (z-offset 0.08 above plane base), rendered when `stkdeSurface` prop is provided and has cells
-4. **Active stroke plane** — rendered only when `evolutionState === 'active'`, at `position={[0, SLICE_CLUSTER_OVERLAY_ELEVATION, 0]}` — this is the only case where the overlay elevation constant is used inside `SlicePlane` itself
+4. **Active stroke plane** — rendered only when `evolutionState === 'active'`, at `position={[0, SLICE_CLUSTER_OVERLAY_ELEVATION, 0]}`
 
 ### stkdeSurface Prop
 
@@ -130,7 +127,7 @@ stkdeSurface?: StkdeSurfaceResponse | null;
 
 ### Double-Click in TimeSlices (3D Cube)
 
-**Lines 108-118:**
+**Lines 121-131:**
 ```typescript
 const handleDoubleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
   e.stopPropagation();
@@ -143,44 +140,19 @@ const handleDoubleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
 
 A **100×100×100 invisible hit box** centered at `[0, 50, 0]` catches double-click events. The Y coordinate is converted to normalized time via `yToTime` and clamped to `[0, 100]`. Creates a **point slice** at that time.
 
-### DemoSlicePanel — UI Panel
+### DemoSlicePanel — Slice Management UI
 
 **File:** `src/components/dashboard-demo/DemoSlicePanel.tsx`
 
-**Point slice creation (line 243-258):**
-```typescript
-const handleAddPointSlice = useCallback(() => {
-  addSlice({
-    type: 'point',
-    time: currentTime,
-    source: 'manual',
-    warpEnabled: true,
-    warpWeight: 1,
-    isLocked: false,
-    isVisible: true,
-    startDateTimeMs,
-  });
-}, [...]);
-```
+The `DemoSlicePanel` is a slice review-and-apply panel (pending drafts + applied slices). It uses `useSliceDomainStore` directly.
 
-**Range slice creation (line 260-284):**
-```typescript
-const handleAddRangeSlice = useCallback(() => {
-  const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
-  const start = Math.max(timeRange[0], currentTime - stepSize * 2);
-  const end = Math.min(timeRange[1], currentTime + stepSize * 2);
-  const normalizedRange: [number, number] = start <= end ? [start, end] : [end, start];
-  addSlice({
-    type: 'range',
-    time: (normalizedRange[0] + normalizedRange[1]) / 2,
-    range: normalizedRange,
-    source: 'manual',
-    ...
-  });
-}, [...]);
-```
+**Draft bin creation vs direct slice creation:**
+The panel does NOT create slices directly via `addSlice`. Instead, it:
+1. Creates draft bins via `addManualDraftRange` → `computeManualDraftBin` (generates burst metadata)
+2. Displays pending drafts with merge/split/delete controls
+3. Applies drafts via `applySingleGeneratedBin` which calls `useSliceDomainStore.getState().replaceSlicesFromBins()`
 
-**Burst draft creation** — via `generateBurstDraftBinsFromWindows` which produces `TimeBin` drafts that can be merged into slices (not directly creating slices, but generating burst-aware bin proposals).
+**Warp controls** are pulled from `useDashboardDemoCoordinationStore` — the panel includes linear/adaptive toggle and warp factor slider (0-3).
 
 ---
 
@@ -188,10 +160,10 @@ const handleAddRangeSlice = useCallback(() => {
 
 ### Clusters Only Make Sense After Slices Exist
 
-This is the core design principle. The `sliceClustersById` useMemo in `TimeSlices.tsx` (line 80) short-circuits immediately when `slices.length === 0`:
+This is the core design principle. The `sliceClustersById` useMemo in `TimeSlices.tsx` (line 78) short-circuits immediately when `slices.length === 0`:
 
 ```typescript
-if (!clusteringEnabled || !clusterStoreEnabled || slices.length === 0 || filteredPoints.length === 0) {
+if (slices.length === 0 || filteredPoints.length === 0) {
   return {};
 }
 ```
@@ -199,7 +171,7 @@ if (!clusteringEnabled || !clusterStoreEnabled || slices.length === 0 || filtere
 **Before creating any slice:**
 - No cluster computation occurs
 - `useClusterStore.sliceClustersById` remains `{}`
-- `SliceClusterOverlay` renders `null` for every slice (its `visibleClusters` is empty)
+- `SliceClusterOverlay` renders `null` for every slice
 - **User sees: empty 3D cube, no overlays**
 
 **After creating a slice:**
@@ -209,32 +181,25 @@ if (!clusteringEnabled || !clusterStoreEnabled || slices.length === 0 || filtere
 4. Renders cluster polygons as colored semi-transparent planes + outline lines at `y + SLICE_CLUSTER_OVERLAY_ELEVATION`
 
 **Effect of removing slices:**
-- Removing a slice causes `sliceClustersById` to shrink (that slice's ID disappears from the object)
+- Removing a slice causes `sliceClustersById` to shrink
 - `setSliceClustersById({})` is called on cleanup in the `useEffect` return
 - Cluster overlays for removed slices disappear immediately
 
-### Dual-Gate Requirement
+### Single Condition — No Feature Flag
 
-Both gates must be open:
-- `clusteringEnabled` — feature flag (can be toggled off globally)
-- `clusterStoreEnabled` — local store boolean (default `true`)
+No feature flag or runtime toggle gates clustering. The `enabled` field was removed from `useClusterStore`. The only condition is `slices.length === 0 || filteredPoints.length === 0`.
 
-If either is false, clustering short-circuits to `{}` even if slices exist.
+If either is falsy, clustering short-circuits to `{}`.
 
 ---
 
 ## 5. DemoSlicePanel — Clustering UI Presence
 
-**Does clustering UI appear in DemoSlicePanel?**
-
-**No.** The `DemoSlicePanel` is a slice management panel (add, remove, lock, visibility, warp settings, burst draft generation, comparison slot assignment). It does **not** contain:
-- Clustering enable/disable controls
-- Cluster sensitivity sliders
+The `DemoSlicePanel` is purely a slice management panel (review pending drafts, see applied slices, warp controls). It does **not** contain:
+- Cluster sensitivity sliders (those exist in the now-removed `SliceManagerUI`)
 - Cluster selection/hover state
-- Any references to `useClusterStore` or clustering functions
 
 The clustering pipeline is entirely contained within `TimeSlices.tsx`:
-- `TimeSlices` reads `clusteringEnabled` from feature flags and `clusterStoreEnabled` from the store
 - `TimeSlices` computes and writes `sliceClustersById`
 - `SliceClusterOverlay` reads and renders clusters
 
@@ -250,7 +215,7 @@ The clustering pipeline is entirely contained within `TimeSlices.tsx`:
 - `useClusterStore.sliceClustersById = {}`
 
 ### User Creates a Slice (double-click or DemoSlicePanel)
-1. `addSlice()` called → slice added to slice store
+1. Slice created and added to slice store
 2. `TimeSlices` re-renders, `sliceClustersById` useMemo recomputes
 3. For each visible slice, `analyzeClusters()` runs on filtered points within slice time window
 4. Results passed through `groupClusterAnalysesBySlice` → `Record<sliceId, ClusterAnalysisCluster[]>`
@@ -258,15 +223,8 @@ The clustering pipeline is entirely contained within `TimeSlices.tsx`:
 6. `SliceClusterOverlay` reads store, finds clusters for this slice ID, renders colored polygon overlays
 7. **User sees cluster polygons floating above the slice plane at 0.16 elevation**
 
-### User Toggles `clustering` Feature Flag Off
-- `clusteringEnabled` becomes `false`
-- `sliceClustersById` useMemo returns `{}` immediately (short-circuit at line 80)
-- `useEffect` calls `setSliceClustersById({})` → store cleared
-- All `SliceClusterOverlay` components render `null`
-- **User sees: slice planes remain but no cluster overlays**
-
 ### User Removes All Slices
-- Same as toggling clustering off — `{}` returned, store cleared
+- `{}` returned, store cleared
 - **User sees: empty cube again**
 
 ---
@@ -275,13 +233,14 @@ The clustering pipeline is entirely contained within `TimeSlices.tsx`:
 
 | File | Purpose |
 |------|---------|
-| `src/components/viz/TimeSlices.tsx` | Orchestrator: reads cluster store, computes per-slice clusters, renders both `SlicePlane` and `SliceClusterOverlay` |
+| `src/components/viz/TimeSlices.tsx` | Orchestrator: reads cluster store, computes per-slice clusters, renders `SlicePlane`, `SliceClusterOverlay`, `SliceCrimePoints`, `BurstEvolutionOverlay`, `EvolutionFlowOverlay` |
 | `src/components/viz/SlicePlane.tsx` | Renders individual slice plane at `centerY`. `SLICE_CLUSTER_OVERLAY_ELEVATION = 0.16`. Accepts `stkdeSurface` for heatmap rendering |
-| `src/components/viz/SliceClusterOverlay.tsx` | Reads `useClusterStore.sliceClustersById[slice.id]`, renders cluster polygons above the slice plane |
-| `src/components/dashboard-demo/DemoSlicePanel.tsx` | Slice management UI (add/remove/lock/visibility/warp). No clustering controls or awareness |
-| `src/store/useClusterStore.ts` | Zustand store holding `sliceClustersById`, `enabled`, `sensitivity`, selection/hover state |
+| `src/components/viz/SliceClusterOverlay.tsx` | Reads `useClusterStore.sliceClustersById[slice.id]`, renders cluster polygon overlays above the slice plane |
+| `src/components/viz/SliceCrimePoints.tsx` | Renders crime data points within each slice's time bounds |
+| `src/components/dashboard-demo/DemoSlicePanel.tsx` | Slice review-and-apply UI (pending drafts, applied slices, warp controls). No clustering controls |
+| `src/store/useClusterStore.ts` | Zustand store holding `sliceClustersById`, `sensitivity`, selection/hover state (no `enabled` field) |
 | `src/lib/clustering/cluster-analysis.ts` | `analyzeClusters()` and `groupClusterAnalysesBySlice()` — the core clustering algorithms |
 
 ---
 
-*Slice-cluster integration analysis: 2026-05-07*
+*Slice-cluster integration analysis: 2026-06-01*

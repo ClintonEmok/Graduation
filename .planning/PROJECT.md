@@ -10,7 +10,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 
 ## Current Status
 
-**v3.2 Visualization Level Up** is being defined. The `dashboard-demo` route is now being scoped for better burst visibility, explicit spatial orientation, and controlled temporal evolution inside the 3D STKDE widget.
+**v3.2 Visualization Level Up** is complete. The `dashboard-demo` route now ships with a stronger rendering foundation, volumetric slice depth, and controlled temporal evolution inside the 3D STKDE widget.
 
 ## Requirements
 
@@ -25,11 +25,10 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 
 ### Active
 
-- **v3.2 Visualization Level Up** — foundation cleanup, spatial orientation, burst visibility, and temporal evolution inside the demo 3D STKDE widget.
-- Install the remaining visualization stack additions (`@react-three/postprocessing`, `deck.gl`, `GSAP`) and wire them only where they improve the 3D widget.
-- Constrain the 3D camera, add orientation cues, and keep the map substrate aligned without turning the map or timeline into animation targets.
-- Upgrade burst rendering to use GPU-friendly encodings and selective bloom so bursts stand out in dense data.
-- Add playback transitions, aging trails, and opt-in interpolation only within the demo 3D STKDE widget.
+- **v3.2 Visualization Level Up** — foundation cleanup, volumetric duration, and temporal evolution inside the demo 3D STKDE widget.
+- The remaining visualization stack additions (`@react-three/postprocessing`, `deck.gl`, `GSAP`) stay scoped to the 3D widget and map density path.
+- Slice duration is encoded as depth/volume so longer durations read clearly in the 3D stack.
+- Playback transitions, aging trails, and opt-in interpolation are contained within the demo 3D STKDE widget.
 
 ### Out of Scope
 
@@ -46,7 +45,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 - The active planning surface is `dashboard-demo`
 - Core stack includes TypeScript, Zustand, Three.js, MapLibre, DuckDB, Apache Arrow, and Web Workers
 - v3.1 phases (72-75) complete: Workflow Clarity, Inspection Speed, Coordination Polish, Presentation Cleanup
-- v3.2 is now focused on visualization quality within the demo 3D STKDE widget, not broad map/timeline animation
+- v3.2 completed with visualization quality improvements inside the demo 3D STKDE widget rather than broad map/timeline animation
 - Known concerns include large components, excessive console logging, silent mock-data fallbacks, input validation gaps, and heavy data processing on the main thread
 - Codebase analysis exists in `.planning/codebase/`, milestone history in `.planning/milestones/`
 
@@ -91,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-26 for v3.2 Visualization Level Up*
+*Last updated: 2026-05-31 for v3.2 Visualization Level Up*

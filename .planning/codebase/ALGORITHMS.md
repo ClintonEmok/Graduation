@@ -1,6 +1,6 @@
 # Algorithm Catalog & Analysis
 
-**Analysis Date:** 2026-05-29
+**Analysis Date:** 2026-06-01
 
 ## Scope
 
@@ -482,4 +482,4 @@ Complete audit of STKDE, KDE, clustering, hotspot detection, density estimation,
 
 ---
 
-*Algorithm audit: 2026-05-29*
+*Algorithm audit: 2026-06-01*

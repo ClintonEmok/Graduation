@@ -1,6 +1,6 @@
 # UI Control Surfaces & UX Patterns for Burstiness/Clustering
 
-**Analysis Date:** 2026-05-07
+**Analysis Date:** 2026-06-01
 
 ---
 
@@ -17,22 +17,23 @@
 **Pattern observed:** The BurstList combines a slider for threshold with a select dropdown for metric selection. Both controls are co-located in a `space-y-3 pb-3 border-b` section.
 
 ```tsx
-// Line 323-330 (slider pattern)
+// Lines 323-330 (slider pattern)
 <Slider
-  min={0}
-  max={1}
-  step={0.01}
+  min={0} max={1} step={0.01}
   value={[burstThreshold]}
   onValueChange={(vals) => setBurstThreshold(vals[0])}
   className="w-full"
 />
 
-// Line 338-345 (native select - NOT shadcn Select)
+// Lines 338-345 (native select - NOT shadcn Select)
 <select
   value={burstMetric}
   onChange={(e) => setBurstMetric(e.target.value as 'density' | 'burstiness')}
   className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
 >
+  <option value="density">Density (event count)</option>
+  <option value="burstiness">Burstiness (clustering)</option>
+</select>
 ```
 
 ### 1.2 AdaptiveControls Component
@@ -52,13 +53,13 @@
 
 | Control | Line | Type | Store | Description |
 |---------|------|------|-------|-------------|
-| `spatialBandwidthMeters` | 95-105 | Native `<input type="number">` | `useStkdeStore` | Range 100-5000, step 50 |
-| `temporalBandwidthHours` | 107-118 | Native `<input type="number">` | `useStkdeStore` | Range 1-168 |
-| `gridCellMeters` | 121-130 | Native `<input type="number">` | `useStkdeStore` | Range 100-5000, step 50 |
-| `topK` | 133-141 | Native `<input type="number">` | `useStkdeStore` | Range 1-100 |
-| `minSupport` | 144-152 | Native `<input type="number">` | `useStkdeStore` | Range 1-1000 |
-| `timeWindowHours` | 154-163 | Native `<input type="number">` | `useStkdeStore` | Range 1-168 |
-| Scope mode toggle | 62-84 | `<button>` pair | `useDashboardStkde` | applied-slices/full-viewport |
+| `spatialBandwidthMeters` | 93-106 | Native `<input type="number">` | `useStkdeStore` | Range 100-5000, step 50 |
+| `temporalBandwidthHours` | 107-119 | Native `<input type="number">` | `useStkdeStore` | Range 1-168 |
+| `gridCellMeters` | 120-131 | Native `<input type="number">` | `useStkdeStore` | Range 100-5000, step 50 |
+| `topK` | 132-142 | Native `<input type="number">` | `useStkdeStore` | Range 1-100 |
+| `minSupport` | 143-153 | Native `<input type="number">` | `useStkdeStore` | Range 1-1000 |
+| `timeWindowHours` | 154-165 | Native `<input type="number">` | `useStkdeStore` | Range 1-168 |
+| Scope mode toggle | 61-84 | `<button>` pair | `useDashboardStkde` | applied-slices/full-viewport |
 
 **Layout:** Uses `grid grid-cols-2 gap-2` layout with `<label>` wrapping.
 
@@ -67,22 +68,10 @@
 
 | Control | Line | Type | Description |
 |---------|------|------|-------------|
-| Preset buttons | 175-195 | `<Button>` grid | 3 presets: Focus, Balanced, Wide |
-| Scope toggle | 203-218 | `<Button>` pair | applied-slices/full-viewport |
+| Scope toggle | 89-105 | `<Button>` pair | applied-slices/full-viewport |
+| Hotspot list | 110-170 | Clickable card list | Per-hotspot selection with spatial/temporal filter |
 
-**Preset pattern (lines 38-81):**
-```typescript
-const STKDE_PRESETS: DemoStkdePreset[] = [
-  {
-    id: 'focus',
-    label: 'Focus',
-    description: 'Tighter hotspot hunt for applied slices.',
-    scopeMode: 'applied-slices',
-    params: { spatialBandwidthMeters: 450, temporalBandwidthHours: 12, ... }
-  },
-  // ...
-];
-```
+**Key change from earlier versions:** No preset buttons remain. The panel now uses `useDemoStkde()` hook for data and `useDashboardDemoCoordinationStore` for state. The `useDashboardDemoAnalysisStore` was deleted in Phase 76. All parameters are preset-only (no individual parameter controls in the demo rail).
 
 ### 1.5 BinningControls Component
 **File:** `src/components/binning/BinningControls.tsx`
@@ -184,7 +173,7 @@ Uses `react-resizable-panels` for dashboard composition:
 | **Cluster visualization toggle** | Can't turn cluster labels on/off | `ClusterLabels.tsx` + store |
 
 **Evidence of clustering code but no UI:**
-- `src/lib/clustering/cluster-analysis.ts` uses DBSCAN with `epsilon` and `minPoints`
+- `src/lib/clustering/cluster-analysis.ts` uses DBSCAN from `density-clustering` with `epsilon` and `minPoints`
 - `src/components/viz/ClusterManager.tsx` calls `analyzeClusters`
 - `src/components/viz/ClusterLabels.tsx` renders cluster labels
 - **No user-accessible controls for any of these parameters**
@@ -193,8 +182,8 @@ Uses `react-resizable-panels` for dashboard composition:
 
 | Missing Control | Impact | Current Workaround |
 |----------------|--------|-------------------|
-| **Spatial bandwidth slider (visual)** | Users must type numbers | Native number inputs (lines 95-105) |
-| **Temporal bandwidth slider (visual)** | Users must type numbers | Native number inputs (lines 107-118) |
+| **Spatial bandwidth slider (visual)** | Users must type numbers | Native number inputs (lines 93-106) |
+| **Temporal bandwidth slider (visual)** | Users must type numbers | Native number inputs (lines 107-119) |
 | **Grid resolution slider** | Can't visually adjust | Type gridCellMeters |
 | **Min support slider** | Can't visually adjust | Type minSupport |
 
@@ -231,18 +220,14 @@ Uses `react-resizable-panels` for dashboard composition:
 | `Popover` | `@radix-ui/react-popover` | Available |
 | `Tooltip` | `@radix-ui/react-tooltip` | Available |
 | `Accordion` | `@radix-ui/react-accordion` | Available |
-| `Switch` | `@radix-ui/react-switch` | Available (NOT USED) |
 
 ### 4.2 Component Usage Patterns
 
 **Slider (shadcn) - Preferred pattern:**
 ```tsx
 import { Slider } from '@/components/ui/slider';
-// ...
 <Slider
-  min={0}
-  max={1}
-  step={0.01}
+  min={0} max={1} step={0.01}
   value={[value]}
   onValueChange={(vals) => setValue(vals[0])}
   className="w-full"
@@ -251,7 +236,7 @@ import { Slider } from '@/components/ui/slider';
 
 **Native select (NOT shadcn - inconsistency):**
 ```tsx
-// Line 338-345 in BurstList.tsx - uses native <select>
+// Lines 338-345 in BurstList.tsx — uses native <select>
 <select
   value={burstMetric}
   onChange={(e) => setBurstMetric(e.target.value as 'density' | 'burstiness')}
@@ -306,51 +291,20 @@ import { Slider } from '@/components/ui/slider';
 
 | Component | File | Position | Pattern |
 |-----------|------|----------|---------|
-| `FloatingToolbar` | `src/components/viz/FloatingToolbar.tsx` | Fixed position | Contains Settings trigger |
-| `SettingsPanel` | `src/components/settings/SettingsPanel.tsx` | Sheet drawer | Opens from toolbar |
 | `TimeControls` | `src/components/ui/TimeControls.tsx` | Fixed bottom | Full-width bar |
 | `StudyControls` | `src/components/study/StudyControls.tsx` | Fixed bottom-left | Collapsible panel |
+
+**Note:** `FloatingToolbar` is now re-exported as `Controls` from `src/components/viz/Controls.tsx`.
 
 ---
 
 ## 6. Preset vs Individual Controls Pattern
 
-### 6.1 Preset Pattern (DemoStkdePanel)
-**File:** `src/components/dashboard-demo/DemoStkdePanel.tsx`
+### 6.1 Preset Pattern (DemoStkdePanel — DEPRECATED)
 
-```typescript
-// Lines 38-81 - Preset definitions
-const STKDE_PRESETS: DemoStkdePreset[] = [
-  {
-    id: 'focus',
-    label: 'Focus',
-    description: 'Tighter hotspot hunt for applied slices.',
-    scopeMode: 'applied-slices',
-    params: { spatialBandwidthMeters: 450, temporalBandwidthHours: 12, ... }
-  },
-  // ... balanced, wide
-];
+DemoStkdePanel **no longer has presets**. The panel now uses a simplified scope toggle (applied-slices/full-viewport) via `useDemoStkde()` hook. All STKDE parameters are preset-only (fixed values set by the hook, no individual parameter controls).
 
-// Lines 117-130 - Active preset detection
-const activePreset = useMemo(
-  () => STKDE_PRESETS.find(
-    (preset) =>
-      preset.scopeMode === scopeMode &&
-      preset.params.spatialBandwidthMeters === params.spatialBandwidthMeters &&
-      // ... all params match
-  ) ?? null,
-  [params, scopeMode]
-);
-
-// Lines 178-194 - Preset button rendering
-<Button
-  key={preset.id}
-  variant={isActive ? 'secondary' : 'outline'}
-  onClick={() => applyPreset(preset)}
->
-  Active: {activePreset.label}
-</Button>
-```
+The `useDashboardDemoAnalysisStore` that previously managed presets was deleted in Phase 76. State is now in `useDashboardDemoCoordinationStore`.
 
 ### 6.2 Config Save/Load Pattern (BinningControls)
 **File:** `src/components/binning/BinningControls.tsx` (lines 516-546)
@@ -436,9 +390,9 @@ Direct number inputs with immediate parameter application:
 ```
 User Interaction → Component State → Store Setter → Zustand Store
                                                         ↓
-                                           Side Effects (if any)
+                                              Side Effects (if any)
                                                         ↓
-                                           Dependent Components Re-render
+                                              Dependent Components Re-render
 ```
 
 ### 8.2 BurstThreshold Example
@@ -448,8 +402,8 @@ User Interaction → Component State → Store Setter → Zustand Store
 setBurstThreshold: (v) =>
   set((state) => ({
     burstThreshold: v,
-    burstCutoff: resolveBurstMap(state) ? 
-      computePercentile(resolveBurstMap(state) as Float32Array, v) : 
+    burstCutoff: resolveBurstMap(state) ?
+      computePercentile(resolveBurstMap(state) as Float32Array, v) :
       state.burstCutoff
   })),
 ```
@@ -487,12 +441,10 @@ computeMaps: (timestamps, domain, options) => {
   if (!worker) return;
   activeRequestId += 1;
   set({ isComputing: true, mapDomain: domain });
-  
+
   const timestampsCopy = timestamps.slice();
   worker.postMessage({
-    requestId,
-    timestamps: timestampsCopy,
-    domain,
+    requestId, timestamps: timestampsCopy, domain,
     config: { binCount: ADAPTIVE_BIN_COUNT, kernelWidth: ADAPTIVE_KERNEL_WIDTH, binningMode }
   }, [timestampsCopy.buffer]);
 }
@@ -515,14 +467,12 @@ worker.onmessage = (e) => {
 
 ```typescript
 const runStkde = useCallback(async () => {
-  startRun(); // Sets runStatus to 'running'
-  
+  startRun();
   const result = await fetch('/api/stkde/hotspots', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ domain, filters: { bbox }, params, limits: DEFAULT_LIMITS }),
   });
-  
   const response = sanitizeResponseSize(await result.json());
   const projectedRows = await projectHotspotsWithWorker(response.hotspots);
   finishRunSuccess({ ...response, hotspots: projectedRows });
@@ -539,18 +489,17 @@ const runStkde = useCallback(async () => {
 | burstMetric | BurstList, AdaptiveControls | `BurstList.tsx:338`, `AdaptiveControls.tsx:128` | native select | useAdaptiveStore |
 | warpFactor | AdaptiveControls | `AdaptiveControls.tsx:85` | shadcn Slider | useAdaptiveStore |
 | densityScope | AdaptiveControls | `AdaptiveControls.tsx:111` | native select | useAdaptiveStore |
-| spatialBandwidthMeters | DashboardStkdePanel | `DashboardStkdePanel.tsx:95` | input number | useStkdeStore |
+| spatialBandwidthMeters | DashboardStkdePanel | `DashboardStkdePanel.tsx:93` | input number | useStkdeStore |
 | temporalBandwidthHours | DashboardStkdePanel | `DashboardStkdePanel.tsx:107` | input number | useStkdeStore |
-| gridCellMeters | DashboardStkdePanel | `DashboardStkdePanel.tsx:121` | input number | useStkdeStore |
-| topK | DashboardStkdePanel | `DashboardStkdePanel.tsx:133` | input number | useStkdeStore |
-| minSupport | DashboardStkdePanel | `DashboardStkdePanel.tsx:144` | input number | useStkdeStore |
+| gridCellMeters | DashboardStkdePanel | `DashboardStkdePanel.tsx:120` | input number | useStkdeStore |
+| topK | DashboardStkdePanel | `DashboardStkdePanel.tsx:132` | input number | useStkdeStore |
+| minSupport | DashboardStkdePanel | `DashboardStkdePanel.tsx:143` | input number | useStkdeStore |
 | timeWindowHours | DashboardStkdePanel | `DashboardStkdePanel.tsx:154` | input number | useStkdeStore |
-| STKDE presets | DemoStkdePanel | `DemoStkdePanel.tsx:175` | Button grid | useDashboardDemoAnalysisStore |
-| scopeMode | Multiple | various | button pair | useStkdeStore |
+| scopeMode | Multiple | various | button pair | useStkdeStore / useDashboardDemoCoordinationStore |
 | binning strategy | BinningControls | `BinningControls.tsx:353` | native select | useBinningStore |
 | granularity | BinningControls | `BinningControls.tsx:370` | button grid | useTimeslicingModeStore |
 | crimeTypes | BinningControls | `BinningControls.tsx:403` | button toggles | useTimeslicingModeStore |
 
 ---
 
-*UI Control Surfaces & UX Patterns audit: 2026-05-07*
+*UI Control Surfaces & UX Patterns audit: 2026-06-01*

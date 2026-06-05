@@ -62,7 +62,7 @@ Each task was committed atomically:
 1. **Task 1: Add interpolation-aware slice blending around the active slice** - `67c3c42` (feat)
 2. **Task 2: Layer ghosted aging trails with short-lived persistence** - `67c3c42` (feat)
 
-**Plan metadata:** pending docs commit
+**Plan metadata:** docs synced
 
 ## Files Created/Modified
 - `src/app/stkde-3d/components/StkdeSliceStack.tsx` - interpolation-aware rendering and trail layering

@@ -1,62 +1,160 @@
 # Dashboard Demo Slice Stores Analysis
 
-**Analysis Date:** 2026-05-07
+**Analysis Date:** 2026-06-01
 
 ## Overview
 
-Five demo-specific stores mirror shared stores with slight variations. Three are pure state mirrors (Time, Coordination, Adaptive), while two carry significant state and logic that can diverge from shared stores (Timeslicing Mode, Warp). The Slice store is an isolated fork.
+The demo previously had five isolated stores (`useDashboardDemoSliceStore`, `useDashboardDemoTimeslicingModeStore`, `useDashboardDemoWarpStore`, `useDashboardDemoCoordinationStore`, `useDashboardDemoTimeStore`). After Phase 76 consolidation, **two stores were removed** (slice store and warp store) and their responsibilities absorbed:
 
-## 1. `useDashboardDemoSliceStore.ts`
+- **`useDashboardDemoSliceStore`** — **REMOVED.** The demo now uses `useSliceDomainStore` directly.
+- **`useDashboardDemoWarpStore`** — **REMOVED.** Warp state fully merged into `useDashboardDemoCoordinationStore`.
 
-**File:** `src/store/useDashboardDemoSliceStore.ts`
-
-### What It Is
-
-A namespaced fork of `SliceDomainState` persisted separately under key `dashboard-demo-slice-domain-v1`. Uses identical slice-domain composition as `useSliceDomainStore`.
-
-```typescript
-// Composes same four slices as useSliceDomainStore:
-...createSliceCoreSlice(...args),
-...createSliceSelectionSlice(...args),
-...createSliceCreationSlice(...args),
-...createSliceAdjustmentSlice(...args),
-
-// Persists only slices field:
-partialize: (state) => ({ slices: state.slices }),
-
-// Guard prevents new root state creation
-const noNewRootGuard = <T>(store: T): T => store;
-```
-
-### Relationship to Shared Store
-
-- **Identity:** Completely separate Zustand store with its own persistence key.
-- **Shared code:** Re-exports identical selectors and types from `slice-domain/selectors.ts`.
-- **No synchronization:** No mechanism syncs slices between `useDashboardDemoSliceStore` and `useSliceDomainStore`.
-
-### Duplication
-
-| Aspect | Shared `useSliceDomainStore` | Demo `useDashboardDemoSliceStore` |
-|--------|------------------------------|-----------------------------------|
-| Persistence key | `slice-domain-v1` | `dashboard-demo-slice-domain-v1` |
-| Re-exports | Same selectors | Identical re-exports |
-| State shape | `SliceDomainState` | `SliceDomainState` |
-
-### Issues
-
-- **Isolated fork:** Slices created in demo store are invisible to shared `useSliceDomainStore`.
-- **Selective persistence:** Only `slices` persisted; selection/creation/adjustment state is ephemeral in both stores.
-- **No conflict resolution:** If both stores have slices, no mechanism decides which takes precedence.
-
-### Consumed By
-
-`src/store/useDashboardDemoSliceStore.ts` itself is consumed by slice tool components. Which components use it vs. the shared store is the critical question — current analysis shows this store is fully isolated.
+Three stores remain:
+1. `useDashboardDemoCoordinationStore` — now consolidated with warp, STKDE, volume, inspect, comparison state
+2. `useDashboardDemoTimeslicingModeStore` — persisted burst generation workflow
+3. `useDashboardDemoTimeStore` — time navigation (still a pure duplicate of `useTimeStore`)
 
 ---
 
-## 2. `useDashboardDemoTimeslicingModeStore.ts`
+## 1. Store Status Summary
 
-**File:** `src/store/useDashboardDemoTimeslicingModeStore.ts`
+| Store | Status | Notes |
+|-------|--------|-------|
+| **`useDashboardDemoSliceStore`** | **REMOVED** | Demo uses `useSliceDomainStore` directly via `import { useSliceDomainStore } from '@/store/useSliceDomainStore'` |
+| **`useDashboardDemoWarpStore`** | **REMOVED** | All warp fields merged into `useDashboardDemoCoordinationStore` |
+| **`useDashboardDemoCoordinationStore`** | **CONSOLIDATED** | Now includes warp state, STKDE params, inspect settings, volume settings, comparison slots |
+| **`useDashboardDemoTimeslicingModeStore`** | **ACTIVE** | Persisted independently under key `dashboard-demo-timeslicing-mode-v1` |
+| **`useDashboardDemoTimeStore`** | **ACTIVE** | Pure duplicate of `useTimeStore`, not persisted |
+
+---
+
+## 2. `useDashboardDemoCoordinationStore.ts` — Consolidated Store
+
+**File:** `src/store/useDashboardDemoCoordinationStore.ts` (425 lines)
+
+### What It Is
+
+A superset of the original coordination store that absorbed warp, STKDE, volume, inspect, and comparison state. This is the central hub for all demo cross-view state.
+
+### State Shape
+
+```typescript
+interface DashboardDemoCoordinationState {
+  // Selection sync (original)
+  selectedIndex: number | null;
+  selectedSource: DemoSelectionSource;
+  lastInteractionAt: number | null;
+  lastInteractionSource: DemoSelectionSource;
+  brushRange: [number, number] | null;
+  selectedBurstWindows: DemoBurstWindowSelection[];
+  selectedDetailPeriod: DemoDetailPeriodSelection | null;
+  detailsOpen: boolean;
+  syncStatus: DemoSyncStatus;
+  panelNoMatch: Partial<Record<DemoPanelName, DemoPanelNoMatchState>>;
+
+  // Comparison (original)
+  comparisonSliceIds: Record<DemoComparisonSlot, string | null>;
+  comparisonSelectionOrder: DemoComparisonSlot[];
+
+  // Inspect (merged)
+  activeSliceIndex: number;
+  viewMode: DemoSliceViewMode;
+  inspectIsPlaying: boolean;
+  inspectPlaybackSpeed: number;
+  inspectInterpolation: boolean;
+  inspectTrailEnabled: boolean;
+  inspectTrailDecay: number;
+  inspectIsScrubbing: boolean;
+  inspectSliceOpacity: number;
+
+  // Volume settings (merged)
+  volumeScaleSeconds: number;
+  volumeExaggeration: number;
+  volumeNormalizationMode: DemoVolumeNormalizationMode;
+
+  // Crime fetch (merged)
+  crimeFetchStatus: DemoCrimeFetchStatus;
+  sliceCrimeCounts: Record<string, number>;
+
+  // Rail tab (merged)
+  activeRailTab: DemoRailTab;
+
+  // WARP STATE (formerly useDashboardDemoWarpStore)
+  burstThreshold: number;
+  timeScaleMode: DemoWarpScaleMode;     // 'linear' | 'adaptive'
+  warpSource: DemoWarpSource;            // 'density' | 'slice-authored'
+  warpFactor: number;                    // 0-3
+  densityMap: Float32Array | null;
+  warpMap: Float32Array | null;
+  mapDomain: [number, number];
+  isComputing: boolean;
+
+  // Analysis/District (merged)
+  selectedDistricts: string[];
+  timeRange: DemoAnalysisTimeRange;
+
+  // STKDE state (merged)
+  stkdeScopeMode: DemoStkdeScopeMode;
+  stkdeParams: StkdeParams;
+  selectedHotspotId: string | null;
+  hoveredHotspotId: string | null;
+  spatialFilter: StkdeSpatialFilter | null;
+  temporalFilter: StkdeTemporalFilter | null;
+  stkdeResponse: StkdeResponse | null;
+
+  // ... actions for all of the above
+}
+```
+
+### Key Changes from Original Analysis
+
+- **No separate slice store.** The coordination store tracks `comparisonSliceIds` referencing `useSliceDomainStore` slices.
+- **No separate warp store.** Warp state (`timeScaleMode`, `warpFactor`, `densityMap`, `warpMap`, `mapDomain`, `isComputing`) lives in the coordination store.
+- **Precomputed maps via `setPrecomputedMaps`:** Like the removed `useDashboardDemoWarpStore`, this store only stores precomputed maps set externally — no Web Worker. The shared `useAdaptiveStore` has the full computation pipeline.
+
+### DemoBurstWindowSelection
+
+```typescript
+export interface DemoBurstWindowSelection {
+  id: string;
+  start: number;
+  end: number;
+  metric: 'density' | 'burstiness';
+  peak: number;
+  count: number;
+  duration: number;
+  burstClass: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+  burstConfidence: number;
+  burstScore: number;
+  burstRationale: string;
+  burstRuleVersion: string;
+  burstProvenance: string;
+  tieBreakReason: string;
+  thresholdSource: string;
+  neighborhoodSummary: string;
+}
+```
+
+vs. shared store's simple `{ start: number; end: number; metric: 'density' | 'burstiness' }`.
+
+### toggleBurstWindow Behavior
+
+Unlike the shared store's "append + slice(-3)" behavior, this replaces the entire array with a single window (effectively single selection):
+
+```typescript
+toggleBurstWindow: (window) =>
+  set((state) => {
+    const active = state.selectedBurstWindows[0];
+    const isSameWindow = active?.id === window.id && ...;
+    return { selectedBurstWindows: isSameWindow ? [active] : [window] };
+  }),
+```
+
+---
+
+## 3. `useDashboardDemoTimeslicingModeStore.ts`
+
+**File:** `src/store/useDashboardDemoTimeslicingModeStore.ts` (544 lines)
 
 ### What It Is
 
@@ -78,19 +176,19 @@ interface DashboardDemoTimeslicingState {
   pendingGeneratedBins: TimeBin[];
   lastGeneratedMetadata: GenerationResultMetadata | null;
   lastAppliedAt: number | null;
-  // ... actions
+  // ... all actions
 }
 ```
 
 ### Key Actions
 
-**`generateBurstDraftBinsFromWindows()`** (lines 315-363):
+**`generateBurstDraftBinsFromWindows()`** (lines ~315-363):
 1. Validates time window from `generationInputs`
 2. Fetches up to 100,000 crime records via `/api/crimes/range`
 3. Calls `buildNonUniformDraftBinsFromSelection()` from `@/components/dashboard-demo/lib/demo-burst-generation`
 4. Stores result in `pendingGeneratedBins` with metadata
 
-**`applyGeneratedBins(domain)`** (lines 375-391):
+**`applyGeneratedBins(domain)`** (lines ~375-391):
 ```typescript
 applyGeneratedBins: (domain) => {
   const { pendingGeneratedBins } = get();
@@ -99,209 +197,35 @@ applyGeneratedBins: (domain) => {
   // ...
 }
 ```
-Calls **shared** `useSliceDomainStore.getState().replaceSlicesFromBins()` — this is the ONLY link between demo timeslicing and shared store.
+Calls **shared** `useSliceDomainStore.getState().replaceSlicesFromBins()`.
 
-### Normalization Mismatches
+**New actions added:**
+- `applySingleGeneratedBin(binId, domain)` — applies a single draft bin
+- `addManualDraftRange(range)` — creates a manual draft from epoch ms bounds
+- `updatePendingBinRange(binId, startMs, endMs)` — resizes a draft bin
+- `computeManualDraftBin(binId)` — computes burst metadata for a manual draft
+- `replacePendingGeneratedBins(bins)` — replaces all pending bins (not just merge)
 
-**Merge bins** (lines 73-109):
-```typescript
-const mergeBins = (bins: TimeBin[], binIds: string[]): TimeBin[] => {
-  // ...
-  const preservedWarpWeight = Math.max(...selected.map((bin) => bin.warpWeight ?? 1));
-  // ...
-  warpWeight: preservedWarpWeight,
-  isNeutralPartition: selected.every((bin) => bin.isNeutralPartition),
-  ...copyBurstMetadata(preservedMetadataSource),  // copies full burst metadata
-  mergedFrom: selected.map((bin) => bin.id),
-};
-```
+### Normalization on Merge/Split
 
-**Split bin** (lines 111-149):
-```typescript
-const splitBin = (bins: TimeBin[], binId: string, splitPoint: number): TimeBin[] => {
-  // ...
-  const inheritedMetadata = copyBurstMetadata(target);
-  // Both children inherit ALL burst metadata
-  ...inheritedMetadata,
-  isModified: true,
-  // No mergedFrom reference
-};
-```
+**Merge bins** copies all burst metadata (`warpWeight`, `isNeutralPartition`, burst taxonomy fields, `mergedFrom`).
 
-**Delete bin** (line 151): Simple filter, no special handling.
-
-### Comparison with Shared `useTimeslicingModeStore`
-
-| Feature | Demo Store | Shared Store |
-|---------|-----------|--------------|
-| Persistence key | `dashboard-demo-timeslicing-mode-v1` | `timeslicing-mode-v2` |
-| Mode | `auto \| manual` | `auto \| manual` |
-| `preset` field | **Missing** | Present (hourly/daily/weekly/monthly/weekday-weekend/etc.) |
-| `generationStatus` persistence | Excluded from partialize | Included |
-| Merge bins | Copies all burst metadata + warpWeight + isNeutralPartition | Only copies count, crimeTypes, districts, avgTimestamp |
-| Split bins | Inherits all burst metadata to both children | Only copies crimeTypes, districts |
-| Delete bins | Simple filter | Simple filter |
-| Preset interval definitions | None | Full `PRESET_DEFINITIONS` object |
-| `getPresetIntervals()` | Missing | Present |
+**Split bin** creates two children inheriting ALL burst metadata from the parent, plus `isModified: true`.
 
 ### Stale/Wrapping Patterns
 
-**Stale state in pendingGeneratedBins:** `pendingGeneratedBins` can become stale if:
-- Time range changes (not monitored)
-- Crime data updates (not monitored)
-- Applied to outdated domain
-
-**No reconciliation:** When `applyGeneratedBins` is called, the domain passed may not match current `timeRange` in either demo time store or shared time store.
-
-**Incomplete normalization of bins:** The demo store copies `isNeutralPartition` and `warpWeight` which are not present in all TimeBin shapes — `hasBurstMetadata()` check catches this but relies on `undefined` propagation.
+- `pendingGeneratedBins` can become stale if time range or data changes (not monitored)
+- `applyGeneratedBins` bridges to shared `useSliceDomainStore` via direct state access — one-way push with no feedback loop
 
 ---
 
-## 3. `useDashboardDemoWarpStore.ts`
+## 4. `useDashboardDemoTimeStore.ts`
 
-**File:** `src/store/useDashboardDemoWarpStore.ts`
-
-### What It Is
-
-A lightweight warp state store with precomputed maps. Not persisted.
-
-```typescript
-interface DashboardDemoWarpState {
-  timeScaleMode: 'linear' | 'adaptive';
-  warpSource: 'density' | 'slice-authored';
-  warpFactor: number;
-  densityMap: Float32Array | null;
-  warpMap: Float32Array | null;
-  mapDomain: [number, number];
-  isComputing: boolean;
-  // ... actions
-}
-```
-
-### Relationship to Shared `useAdaptiveStore`
-
-| Field | Demo Store | Shared Store |
-|-------|-----------|--------------|
-| `warpFactor` | Present (0-1 normalized) | Present (0 = Linear, 1 = Fully Adaptive) |
-| `warpSource` | `'density' \| 'slice-authored'` | `'density' \| 'slice-authored' \| 'proposal-applied'` |
-| `timeScaleMode` | `'linear' \| 'adaptive'` | No equivalent field |
-| `warpControlMode` | Not present | `'automatic' \| 'manual'` |
-| `warpGranularity` | Not present | `ComparableWarpGranularity` |
-| `peerRelativeWarping` | Not present | Present |
-| `manualWarpWeightOverrides` | Not present | Present |
-| `densityScope` | Not present | `'viewport' \| 'global'` |
-| `densityMap` | `Float32Array \| null` | `Float32Array \| null` |
-| `burstinessMap` | Not present | `Float32Array \| null` |
-| `countMap` | Not present | `Float32Array \| null` |
-| `warpMap` | `Float32Array \| null` | `Float32Array \| null` |
-| `burstMetric` | Not present | `'density' \| 'burstiness'` |
-| `burstThreshold` | Not present | Present |
-| `burstCutoff` | Not present | Present |
-| `mapDomain` | `[number, number]` | `[number, number]` |
-| `isComputing` | boolean | boolean |
-| Web Worker | Not used | Used (`adaptiveTime.worker.ts`) |
-
-### Key Differences
-
-1. **No Web Worker:** Demo warp store does not have `computeMaps()` — it only stores precomputed maps set externally via `setPrecomputedMaps()`.
-2. **No burstinessMap/countMap:** Only `densityMap` and `warpMap`.
-3. **No dynamic computation:** Maps must be provided from external source (likely shared `useAdaptiveStore` or some computation layer).
-4. **Simpler state:** Only tracks what visualization needs, not computation configuration.
-
-### How It Differs from `useAdaptiveStore`
-
-The demo warp store is a **simplified view** of adaptive state for visualization. The shared `useAdaptiveStore` manages the full adaptive computation pipeline with web workers, density/burstiness/count maps, threshold management, and manual overrides.
-
-The demo store appears designed to hold already-computed maps for rendering without triggering new computation.
-
----
-
-## 4. `useDashboardDemoCoordinationStore.ts`
-
-**File:** `src/store/useDashboardDemoCoordinationStore.ts`
+**File:** `src/store/useDashboardDemoTimeStore.ts` (81 lines)
 
 ### What It Is
 
-Cross-panel coordination store tracking selection, brush range, burst windows, and workflow phase.
-
-### State Shape
-
-```typescript
-interface DashboardDemoCoordinationState {
-  selectedIndex: number | null;
-  selectedSource: 'cube' | 'timeline' | 'map' | null;
-  lastInteractionAt: number | null;
-  lastInteractionSource: DemoSelectionSource;
-  brushRange: [number, number] | null;
-  selectedBurstWindows: DemoBurstWindowSelection[];  // Rich burst window objects
-  selectedDetailPeriod: DemoDetailPeriodSelection | null;
-  detailsOpen: boolean;
-  workflowPhase: 'generate' | 'review' | 'applied' | 'refine';
-  syncStatus: DemoSyncStatus;
-  panelNoMatch: Partial<Record<DemoPanelName, DemoPanelNoMatchState>>;
-  comparisonSliceIds: Record<'left' | 'right', string | null>;
-  comparisonSelectionOrder: DemoComparisonSlot[];
-  // ... many actions
-}
-```
-
-### Relationship to Shared `useCoordinationStore`
-
-| Field | Demo Store | Shared Store |
-|-------|-----------|--------------|
-| `brushRange` | `[number, number] \| null` | `[number, number] \| null` (marked as "Normalized time range for brush") |
-| `selectedBurstWindows` | Rich `DemoBurstWindowSelection[]` with full burst metadata | `{ start, end, metric }[]` — simple shape |
-| `selectedDetailPeriod` | Present (Demo-specific) | Not present |
-| `detailsOpen` | Present | Present |
-| `workflowPhase` | Same enum | Same enum |
-| `syncStatus` | `DemoSyncStatus` | `SyncStatus` (same shape) |
-| `panelNoMatch` | Same | Same |
-| `comparisonSliceIds` | Demo-specific left/right comparison | Not present |
-| `comparisonSelectionOrder` | Demo-specific | Not present |
-
-### Normalization Mismatch
-
-**`DemoBurstWindowSelection`** (lines 10-27):
-```typescript
-export interface DemoBurstWindowSelection {
-  id: string;
-  start: number;
-  end: number;
-  metric: DemoBurstMetric;  // 'density' | 'burstiness'
-  peak: number;
-  count: number;
-  duration: number;
-  burstClass: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
-  burstConfidence: number;
-  burstScore: number;
-  burstRationale: string;
-  burstRuleVersion: string;
-  burstProvenance: string;
-  tieBreakReason: string;
-  thresholdSource: string;
-  neighborhoodSummary: string;
-}
-```
-
-vs. shared store's simple `{ start: number; end: number; metric: 'density' | 'burstiness' }`.
-
-**The demo store stores full burst metadata** (confidence, score, class, provenance, etc.) in the coordination store. The shared `useCoordinationStore` only tracks the time range and metric.
-
-### Stale/Wrapping Patterns
-
-1. **`selectedBurstWindows` can desync:** If burst generation runs multiple times, old windows remain in `selectedBurstWindows` until explicitly cleared.
-2. **`toggleBurstWindow` behavior** (lines 180-192): Replaces entire array with single window if ID matches, otherwise replaces with single new window — effectively single selection only, despite array storage.
-3. **Comparison slots independent:** `comparisonSliceIds` and `comparisonSelectionOrder` track slice IDs that may not exist in either demo slice store or shared slice store.
-
----
-
-## 5. `useDashboardDemoTimeStore.ts`
-
-**File:** `src/store/useDashboardDemoTimeStore.ts`
-
-### What It Is
-
-Simple time navigation store — current time, playback, range, resolution.
+Simple time navigation store — current time, playback, range, resolution. Pure duplicate of `useTimeStore`.
 
 ### State Shape
 
@@ -314,7 +238,6 @@ interface DashboardDemoTimeState {
   timeWindow: number;
   timeResolution: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';
   timeScaleMode: 'linear' | 'adaptive';
-  // ... actions
 }
 ```
 
@@ -330,55 +253,71 @@ The demo time store has **no distinguishing features** — it's a plain copy wit
 
 ---
 
-## Summary: Store Relationships
+## 5. What Changed: Stores Removed
+
+### `useDashboardDemoSliceStore.ts` — **REMOVED**
+
+The demo previously had a namespaced fork of `SliceDomainState` persisted under key `dashboard-demo-slice-domain-v1`. It is completely gone. The demo now uses the shared `useSliceDomainStore` directly.
+
+**Consumer impact:** All demo components (`DemoSlicePanel`, etc.) now read/write slices from the shared `useSliceDomainStore`, same as non-demo components.
+
+### `useDashboardDemoWarpStore.ts` — **REMOVED**
+
+The demo warp store was a simplified view of adaptive state (precomputed maps only, no Web Worker). Its state (`timeScaleMode`, `warpFactor`, `densityMap`, `warpMap`, `mapDomain`, `isComputing`) was merged directly into `useDashboardDemoCoordinationStore`.
+
+**Consumer impact:** Components that previously accessed `useDashboardDemoWarpStore` now read from `useDashboardDemoCoordinationStore`:
+```typescript
+// Before:
+const warpMode = useDashboardDemoWarpStore((s) => s.timeScaleMode);
+// After:
+const warpMode = useDashboardDemoCoordinationStore((s) => s.timeScaleMode);
+```
+
+---
+
+## 6. Store Architecture
 
 ```
 SHARED LAYER
 ├── useSliceDomainStore (persisted: 'slice-domain-v1')
-│   └── Core slice state
-├── useSliceStore  ─── thin wrapper of useSliceDomainStore with normalization hooks
+│   └── Core slice state (used by both demo and non-demo components)
+├── useTimeStore (not persisted)
+│   └── Pure time state (duplicated by demo)
 ├── useAdaptiveStore (not persisted)
 │   ├── Full adaptive computation (Web Worker)
 │   ├── densityMap, burstinessMap, countMap, warpMap
 │   └── burstThreshold, burstCutoff, warpGranularity, etc.
-├── useTimeslicingModeStore (persisted: 'timeslicing-mode-v2')
-│   ├── generationInputs, pendingGeneratedBins
-│   ├── applyGeneratedBins() → calls useSliceDomainStore.replaceSlicesFromBins()
-│   └── Preset definitions, full merge/split/delete with metadata
 ├── useCoordinationStore (not persisted)
-│   ├── brushRange, workflowPhase, syncStatus
+│   ├── brushRange, syncStatus
 │   └── Simple { start, end, metric } burst windows
-└── useTimeStore (not persisted)
-    └── Pure time state
+└── useTimeslicingModeStore (persisted: 'timeslicing-mode-v2')
+    └── Shared timeslicing store
 
-DEMO LAYER (isolated)
-├── useDashboardDemoSliceStore (persisted: 'dashboard-demo-slice-domain-v1')
-│   └── Identical composition to useSliceDomainStore, separate persistence
+DEMO LAYER
+├── useDashboardDemoCoordinationStore (not persisted)
+│   ├── Warp state (absorbed from removed useDashboardDemoWarpStore)
+│   ├── STKDE analysis state
+│   ├── Volume/inspect settings
+│   ├── Comparison slots
+│   └── Rich DemoBurstWindowSelection (full burst metadata)
 ├── useDashboardDemoTimeslicingModeStore (persisted: 'dashboard-demo-timeslicing-mode-v1')
 │   ├── generationInputs, pendingGeneratedBins
-│   ├── applyGeneratedBins() → calls useSliceDomainStore.getState().replaceSlicesFromBins()
+│   ├── applyGeneratedBins() → calls useSliceDomainStore.replaceSlicesFromBins()
 │   ├── Rich burst metadata in merge/split (isNeutralPartition, warpWeight)
-│   └── Missing preset system and getPresetIntervals()
-├── useDashboardDemoWarpStore (not persisted)
-│   ├── Precomputed maps only (no worker, no dynamic computation)
-│   └── Simplification of useAdaptiveStore for visualization
-├── useDashboardDemoCoordinationStore (not persisted)
-│   ├── Rich DemoBurstWindowSelection (full burst metadata)
-│   ├── selectedDetailPeriod, comparisonSliceIds (demo-specific)
-│   └── toggleBurstWindow replaces array (single-selection behavior)
+│   └── Manual draft + single-bin apply
 └── useDashboardDemoTimeStore (not persisted)
     └── Pure duplicate of useTimeStore
 ```
 
-## Key Findings
+---
+
+## 7. Key Findings
 
 ### Duplicate State
 
-1. **Time:** `useTimeStore` and `useDashboardDemoTimeStore` are identical — no synchronization mechanism.
+1. **Time:** `useTimeStore` and `useDashboardDemoTimeStore` are identical — no synchronization mechanism. This was not addressed in Phase 76.
 
-2. **Coordination:** Demo store has rich `DemoBurstWindowSelection[]` with full metadata; shared has simple `{start, end, metric}[]` — both represent the same logical burst windows but at different fidelity levels.
-
-3. **Slice domain:** `useSliceDomainStore` and `useDashboardDemoSliceStore` maintain separate slice arrays with no sync.
+2. **Coordination:** Demo store has rich `DemoBurstWindowSelection[]` with full metadata; shared `useCoordinationStore` has simple `{start, end, metric}[]` — both represent the same logical burst windows but at different fidelity levels.
 
 ### Normalization Mismatches
 
@@ -386,33 +325,32 @@ DEMO LAYER (isolated)
 
 2. **Burst window shape:** Demo coordination store preserves full burst metadata on selected windows; shared store only keeps time range and metric.
 
-3. **Time range normalization:** Demo time store and shared time store both have `normalizeRange()` but could produce different results if called with different input types (the functions are identical though).
-
 ### Stale/Wrapping Patterns
 
 1. **`pendingGeneratedBins` in demo timeslicing:** No invalidation when time range or data changes; can be applied to stale domain.
 
-2. **`applyGeneratedBins` bridge:** Demo timeslicing writes to shared `useSliceDomainStore` via direct state access (`useSliceDomainStore.getState().replaceSlicesFromBins(...)`) — this is the only sync point but it's a one-way push with no feedback loop.
+2. **`applyGeneratedBins` bridge:** Demo timeslicing writes to shared `useSliceDomainStore` via direct state access — this is the only connection between demo and shared layers, but it's a one-way push with no feedback loop.
 
-3. **`toggleBurstWindow` single-selection behavior:** Despite `selectedBurstWindows` being an array, `toggleBurstWindow` replaces the entire array when a window is toggled — effectively single selection with array storage, different from shared store's "append + slice(-3)" behavior.
-
-4. **No synchronization between demo stores:** Demo time store doesn't sync with shared time store; demo warp store doesn't sync with shared adaptive store; demo slice store doesn't sync with shared slice domain store.
+3. **`toggleBurstWindow` single-selection behavior:** Despite `selectedBurstWindows` being an array, `toggleBurstWindow` replaces the entire array when a window is toggled — effectively single selection with array storage.
 
 ### Which Stores Are Actually Consumed by Slice Tools
 
-Based on the architecture:
-- **Direct slice manipulation:** `useSliceDomainStore` (via shared) or `useDashboardDemoSliceStore` (isolated) — components must choose one
-- **Burst generation workflow:** `useDashboardDemoTimeslicingModeStore` or `useTimeslicingModeStore` — must choose one
-- **Applying bins:** Both timeslicing stores call `useSliceDomainStore.getState().replaceSlicesFromBins()` — so shared slice domain receives the applied slices regardless of which timeslicing store is used
+- **Direct slice manipulation:** `useSliceDomainStore` (shared) — used by both demo and non-demo components
+- **Burst generation workflow:** `useDashboardDemoTimeslicingModeStore` (demo-specific)
+- **Applying bins:** Demo timeslicing calls `useSliceDomainStore.getState().replaceSlicesFromBins()` — shared slice domain receives the applied slices regardless
+- **Warp controls:** `useDashboardDemoCoordinationStore` (consolidated)
+- **Time navigation:** `useDashboardDemoTimeStore` or `useTimeStore` — either, depending on component
 
 ### Recommendations
 
-1. **Eliminate duplicate stores:** Demo time store is a pure duplicate — use shared `useTimeStore` directly or remove.
+1. **Eliminate duplicate time store:** Demo time store is a pure duplicate — use shared `useTimeStore` directly.
 
-2. **Sync or isolate:** Either establish bidirectional sync between demo and shared stores (complex) or ensure components consistently pick one (demo OR shared, not both).
+2. **Unify burst metadata model:** Decide if coordination stores should hold rich burst window metadata or simple references — current dual model causes desync risk.
 
-3. **Unify burst metadata model:** Decide if coordination stores should hold rich burst window metadata or simple references — current dual model causes desync risk.
+3. **Validate `pendingGeneratedBins` before apply:** Add domain/timestamp validation to prevent applying stale bins.
 
-4. **Validate pendingGeneratedBins before apply:** Add domain/timestamp validation to prevent applying stale bins.
+4. **Sync or remove `useDashboardDemoTimeStore`:** Either establish sync with `useTimeStore` or migrate consumers to use the shared store.
 
-5. **Consider `useSliceStore` normalization hooks for demo:** The `useAutoBurstSlices` hook in shared `useSliceStore` handles range normalization — demo store lacks equivalent logic.
+---
+
+*Demo slice stores analysis: 2026-06-01*

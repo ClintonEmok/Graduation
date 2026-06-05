@@ -1,6 +1,6 @@
 # Slice System Analysis
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-06-01
 
 ---
 
@@ -23,13 +23,26 @@ export interface TimeSlice {
   range?: [number, number]; // For range slices: [start, end] normalized
   isBurst?: boolean;       // Auto-generated from burst detection
   burstSliceId?: string;   // Deterministic ID for burst deduplication
+  warpEnabled?: boolean;
+  warpWeight?: number;
+  burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+  burstRuleVersion?: string;
+  burstScore?: number;
+  burstConfidence?: number;
+  burstProvenance?: string;
+  burstinessCoefficient?: number;
+  tieBreakReason?: string;
+  thresholdSource?: string;
+  neighborhoodSummary?: string;
   isLocked: boolean;
   isVisible: boolean;
+  startDateTimeMs?: number | null;
+  endDateTimeMs?: number | null;
 }
 ```
 
 ### Slice Domain State (Combined Store State)
-**Location:** `src/store/slice-domain/types.ts` (lines 22-139)
+**Location:** `src/store/slice-domain/types.ts` (lines 148-153)
 
 ```typescript
 export type SliceDomainState =
@@ -40,21 +53,27 @@ export type SliceDomainState =
 ```
 
 ### Burst Window Type
-**Location:** `src/components/viz/BurstList.tsx`
+**Location:** `src/store/useDashboardDemoCoordinationStore.ts`
 
 ```typescript
-export type BurstWindow = {
+export interface DemoBurstWindowSelection {
   id: string;
   start: number;           // Epoch seconds
   end: number;             // Epoch seconds
+  metric: 'density' | 'burstiness';
   peak: number;            // Normalized density/burstiness value
   count: number;
   duration: number;         // Seconds
   burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
   burstConfidence?: number;
   burstScore?: number;
-  // ... taxonomy metadata
-};
+  burstRationale: string;
+  burstRuleVersion: string;
+  burstProvenance: string;
+  tieBreakReason: string;
+  thresholdSource: string;
+  neighborhoodSummary: string;
+}
 ```
 
 ---
@@ -107,31 +126,24 @@ selectHoverSliceId        // Which slice is hovered
 ## 3. Slice Generation Logic
 
 ### 3.1 Burst Window Detection
-**Source:** `src/components/viz/BurstList.tsx` → `useBurstWindows()`
+**Source:** `src/lib/binning/burst-taxonomy.ts`, `src/lib/interval-detection.ts`
 
-1. Reads from `useAdaptiveStore`:
-   - `densityMap` / `burstinessMap` (Float32Array)
-   - `burstCutoff` (percentile threshold, default 0.7)
-   - `mapDomain` (time range as epoch seconds)
+1. Crime data is binned into time windows via DuckDB queries
+2. Burst windows are detected via density peaks or burstiness coefficient
+3. Taxonomy classification assigns classes (`prolonged-peak`, `isolated-spike`, `valley`, `neutral`)
 
-2. Algorithm:
-   - Iterate through density/burstiness array
-   - Find contiguous regions above `burstCutoff`
-   - Convert indices back to epoch seconds
-   - Sort by peak value, return top 10
+**Taxonomy Classification:**
+**Location:** `src/lib/binning/burst-taxonomy.ts`
 
-3. Taxonomy Classification:
-   **Location:** `src/lib/binning/burst-taxonomy.ts`
+```typescript
+classifyBurstWindow(input: BurstTaxonomyInput): BurstTaxonomyResult
 
-   ```typescript
-   classifyBurstWindow(input: BurstTaxonomyInput): BurstTaxonomyResult
-   
-   // Burst classes:
-   // - 'prolonged-peak': High density + sustained over multiple windows
-   // - 'isolated-spike': High density + brief + no neighborhood support
-   // - 'valley': Low density relative to neighbors
-   // - 'neutral': Default for ambiguous cases
-   ```
+// Burst classes:
+// - 'prolonged-peak': High density + sustained over multiple windows
+// - 'isolated-spike': High density + brief + no neighborhood support
+// - 'valley': Low density relative to neighbors
+// - 'neutral': Default for ambiguous cases
+```
 
 ### 3.2 Auto-Burst Slice Creation
 **Source:** `src/store/useSliceStore.ts` → `useAutoBurstSlices()`
@@ -194,36 +206,9 @@ interface AdaptiveState {
 **Location:** `src/components/timeline/DualTimeline.tsx`
 
 #### Slice Geometry Calculation
-**Lines 647-753:**
-
-```typescript
-// Computes pixel positions for each slice
-const sliceGeometries = useMemo<TimelineSliceGeometry[]>(() => {
-  // 1. Convert normalized slice range → pixel coordinates
-  const toX = (normalized: number): number | null => {
-    const sec = domainStart + (clampedNorm / 100) * spanSec;
-    return detailScale(new Date(sec * 1000));
-  };
-  
-  // 2. Filter visible slices, compute overlap counts
-  // 3. Return geometry objects with pixel positions
-}, [slices, detailScale, domainStart, domainEnd]);
-
-interface TimelineSliceGeometry {
-  id: string;
-  left: number;           // Pixel x position
-  width: number;          // Pixel width
-  isActive: boolean;       // Currently focused
-  isBurst: boolean;       // Auto-generated burst
-  isSuggestion: boolean;   // Proposal slice
-  isGeneratedApplied: boolean; // Accepted proposal
-  overlapCount: number;   // How many slices overlap
-  color: string | undefined;
-}
-```
+Computes pixel positions for each slice from normalized range → pixel coordinates via domain scaling.
 
 #### Rendering Styles
-**Lines 1063-1129:**
 
 | Slice Type | Fill Color | Stroke | Special Effects |
 |------------|------------|--------|----------------|
@@ -234,20 +219,7 @@ interface TimelineSliceGeometry {
 | Overlap ≥2 | Hatching pattern overlay | Dashed stroke | Hatch fill |
 
 #### Stacking Order
-**Lines 737-753:**
-
-```typescript
-// Active slices render on top
-// Higher overlap count = lower in stack (drawn first)
-const stackWeight = (geometry) => {
-  let weight = 0;
-  if (geometry.overlapCount >= 2) weight += 1;
-  if (geometry.isBurst) weight += 1;
-  if (geometry.isActive) weight += 3;
-  return weight;
-};
-return [...sliceGeometries].sort((a, b) => stackWeight(a) - stackWeight(b));
-```
+Active slices render on top; higher overlap count = lower in stack.
 
 ---
 
@@ -262,83 +234,72 @@ export function TimeSlices() {
   const addSlice = useSliceStore((state) => state.addSlice);
   const updateSlice = useSliceStore((state) => state.updateSlice);
   
-  // Maps normalized time → Y position in cube
+  // Maps normalized time → Y position in cube using adaptive or linear scale
   const scale = useMemo(() => {
-    // Uses adaptive or linear scale based on timeScaleMode
-  }, [timeScaleMode, columns, data]);
+    if (timeScaleMode === 'linear') {
+      return scaleLinear().domain([0, 100]).range([0, 100]);
+    }
+    // Adaptive relational projection
+    let config;
+    if (columns) {
+      config = getAdaptiveScaleConfigColumnar(columns.timestamp, [0, 100], [0, 100]);
+    } else {
+      config = getAdaptiveScaleConfig(data, [0, 100], [0, 100]);
+    }
+    return scaleLinear().domain(config.domain).range(config.range);
+  }, [timeScaleMode, data, columns]);
   
   return (
     <group>
       {slices.map((slice) => (
-        <SlicePlane
-          key={slice.id}
-          slice={slice}
-          y={scale(slice.time)}  // Y position based on time
-          onUpdate={(updates) => updateSlice(slice.id, updates)}
-        />
+        <group key={slice.id}>
+          <SlicePlane .../>
+          <SliceClusterOverlay slice={slice} y={scale(slice.time)} />
+          <SliceCrimePoints points={...} />
+        </group>
       ))}
+      <BurstEvolutionOverlay .../>
+      <EvolutionFlowOverlay .../>
     </group>
   );
 }
 ```
 
 ### 5.2 DataPoints Shader Integration
-**Location:** `src/components/viz/DataPoints.tsx` (lines 397-425)
+**Location:** `src/components/viz/DataPoints.tsx`
 
-```typescript
-// Updates shader uniforms for each frame
-const slices = useSliceStore.getState().slices;
-const activeSlices = slices.filter(s => s.isVisible);
-
-if (shader.uniforms.uSliceCount) {
-  shader.uniforms.uSliceCount.value = activeSlices.length;
-}
-
-if (shader.uniforms.uSliceRanges) {
-  for (let i = 0; i < 20; i++) {
-    if (i < activeSlices.length) {
-      const slice = activeSlices[i];
-      if (slice.type === 'point') {
-        sliceRanges[i * 2] = slice.time - threshold;
-        sliceRanges[i * 2 + 1] = slice.time + threshold;
-      } else {
-        sliceRanges[i * 2] = slice.range?.[0] ?? 0;
-        sliceRanges[i * 2 + 1] = slice.range?.[1] ?? 0;
-      }
-    }
-  }
-}
-```
+Slices are passed to shader uniforms to highlight points within slice ranges:
+- `uSliceCount` uniform — number of active slices
+- `uSliceRanges` uniform — array of [start, end] normalized values
 
 ### 5.3 Coordination via Shared Store
-**Location:** `src/store/useCoordinationStore.ts`
+**Location:** `src/store/useDashboardDemoCoordinationStore.ts`
 
 ```typescript
-interface CoordinationState {
-  selectedIndex: number | null;      // Selected crime point
-  selectedSource: SelectionSource;  // 'cube' | 'timeline' | 'map'
+interface DashboardDemoCoordinationState {
+  selectedIndex: number | null;
+  selectedSource: DemoSelectionSource;  // 'cube' | 'timeline' | 'map'
   brushRange: [number, number] | null;
-  selectedBurstWindows: BurstWindow[];
-  workflowPhase: 'generate' | 'review' | 'applied' | 'refine';
-  syncStatus: SyncStatus;
+  selectedBurstWindows: DemoBurstWindowSelection[];
+  syncStatus: DemoSyncStatus;
+  // ... warp, STKDE, volume, inspect, comparison state
 }
-
-// Selection sync flow:
-// 1. Any component calls setSelectedIndex(index, source)
-// 2. CoordinationStore tracks which component initiated
-// 3. Other components subscribe and react to changes
 ```
+
+Selection sync flow:
+1. Any component calls `setSelectedIndex(index, source)`
+2. Coordination store tracks which component initiated
+3. Other components subscribe and react to changes
 
 ### 5.4 Active Slice Focus
 **Multiple locations sync via `activeSliceId`:**
 
 | Component | Behavior on Active Slice |
 |-----------|-------------------------|
-| `DualTimeline.tsx` | Renders pulsing highlight, updates on `activeSliceUpdatedAt` |
-| `TimeSlices.tsx` | 3D plane gets enhanced rendering |
+| `DualTimeline.tsx` | Renders pulsing highlight |
+| `TimeSlices.tsx` | 3D plane gets enhanced rendering via `evolutionState` |
 | `DataPoints.tsx` | Shader highlights points within slice |
-| `BurstList.tsx` | Highlights matching burst window |
-| `ContextualSlicePanel.tsx` | Opens analysis panel |
+| `DemoSlicePanel.tsx` | Opens analysis panel for selected slice |
 
 ---
 
@@ -357,12 +318,13 @@ interface CoordinationState {
 | Slice Utilities | `src/lib/slice-utils.ts` |
 | Interval Detection | `src/lib/interval-detection.ts` |
 | Burst Taxonomy | `src/lib/binning/burst-taxonomy.ts` |
-| Burst Windows | `src/components/viz/BurstList.tsx` |
 | Timeline Rendering | `src/components/timeline/DualTimeline.tsx` |
 | Cube Slice Planes | `src/components/viz/TimeSlices.tsx` |
 | Shader Integration | `src/components/viz/DataPoints.tsx` |
-| Coordination | `src/store/useCoordinationStore.ts` |
+| Demo Coordination Store | `src/store/useDashboardDemoCoordinationStore.ts` |
 | Adaptive Store | `src/store/useAdaptiveStore.ts` |
+| Demo Slice Panel | `src/components/dashboard-demo/DemoSlicePanel.tsx` |
+| Demo Timeslicing Mode | `src/store/useDashboardDemoTimeslicingModeStore.ts` |
 
 ---
 
@@ -383,7 +345,7 @@ interface CoordinationState {
 │                   │ (computed in worker)  │                    │
 │                   └───────────────────────┘                    │
 │                            ↓                                    │
-│                   useBurstWindows()                             │
+│                   Burst window detection                        │
 │                   ┌───────────────────────┐                    │
 │                   │ Detects contiguous    │                    │
 │                   │ high-density regions │                    │
@@ -414,4 +376,4 @@ interface CoordinationState {
 
 ---
 
-*Slice system analysis complete*
+*Slice system analysis: 2026-06-01*
