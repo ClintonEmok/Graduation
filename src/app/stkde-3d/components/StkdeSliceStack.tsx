@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildAgingOpacityMap, computeTrailIntensity } from '@/lib/motion/aging';
 import { easeInOutCubic, interpolateKdeCells } from '@/lib/motion/easing';
+import { sampleWarpSeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import type { KdeCell, EvolvingSlice } from '../lib/types';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 
@@ -18,6 +20,12 @@ const TRANSITION_DURATION_MS = 240;
 export function yForIndex(index: number): number {
   return START_Y + index * SLICE_SPACING;
 }
+
+const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number): number => {
+  const span = Math.max(1e-9, inMax - inMin);
+  const t = Math.min(1, Math.max(0, (value - inMin) / span));
+  return outMin + t * (outMax - outMin);
+};
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -176,6 +184,34 @@ export function StkdeSliceStack({
   const isInterpolated = useDashboardDemoCoordinationStore((state) => state.inspectInterpolation);
   const trailEnabled = useDashboardDemoCoordinationStore((state) => state.inspectTrailEnabled);
   const trailDecay = useDashboardDemoCoordinationStore((state) => state.inspectTrailDecay);
+  const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
+  const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+
+  const adaptiveDomain = useMemo<[number, number]>(() => {
+    if (!Number.isFinite(viewportStart) || !Number.isFinite(viewportEnd) || viewportEnd <= viewportStart) {
+      return [0, 1];
+    }
+    return [viewportStart, viewportEnd];
+  }, [viewportEnd, viewportStart]);
+
+  const stackEndY = useMemo(() => START_Y + SLICE_SPACING * Math.max(1, slices.length - 1), [slices.length]);
+
+  const resolveSliceY = useMemo(
+    () => (slice: EvolvingSlice): number => {
+      if (compact) return 0;
+      if (timeScaleMode !== 'adaptive' || warpFactor <= 0 || !warpMap || warpMap.length < 2) {
+        return yForIndex(slice.index);
+      }
+
+      const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
+      const displayEpoch = sampleWarpSeconds(midEpoch, warpMap, adaptiveDomain);
+      return mapRange(displayEpoch, adaptiveDomain[0], adaptiveDomain[1], START_Y, stackEndY);
+    },
+    [adaptiveDomain, compact, stackEndY, timeScaleMode, warpFactor, warpMap]
+  );
 
   const textures = useMemo(() => {
     const newTextures = new Map<number, THREE.CanvasTexture>();
@@ -264,7 +300,7 @@ export function StkdeSliceStack({
     <group>
       {slices.map((slice) => {
         const i = slice.index;
-        const y = compact ? 0 : yForIndex(i);
+        const y = resolveSliceY(slice);
         const diff = Math.abs(i - activeIndex);
         const isActive = diff === 0;
         const isAdjacent = diff === 1;

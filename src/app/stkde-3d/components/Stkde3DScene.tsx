@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import Map, { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
+import { AdaptiveWarpAxis } from './AdaptiveWarpAxis';
 import { StkdeSliceStack, yForIndex } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
@@ -183,6 +184,8 @@ function SceneContent({
       <ambientLight intensity={0.4} />
       <directionalLight position={[30, 50, 20]} intensity={0.7} />
       <directionalLight position={[-30, 30, -20]} intensity={0.3} />
+
+      <AdaptiveWarpAxis />
 
       <StkdeSliceStack
         slices={viewMode === 'focus' ? focusedSlices : slices}
