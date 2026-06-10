@@ -6,9 +6,14 @@ import { CameraControls } from '@react-three/drei';
 import * as THREE from 'three';
 import Map, { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useSliceDomainStore } from '@/store/useSliceDomainStore';
+import { useViewportStore } from '@/lib/stores/viewportStore';
+import { toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
 import { AdaptiveWarpAxis } from './AdaptiveWarpAxis';
-import { StkdeSliceStack, yForIndex } from './StkdeSliceStack';
+import { START_Y, SLICE_SPACING, StkdeSliceStack, yForIndex } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
 
@@ -25,6 +30,16 @@ const MAP_VIEW_STATE = {
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 const MAP_PLANE_Y = -38;
+
+const MIN_DRAFT_WINDOW_SEC = 6 * 60 * 60;
+
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number): number => {
+  const span = Math.max(1e-9, inMax - inMin);
+  const t = clamp((value - inMin) / span, 0, 1);
+  return outMin + t * (outMax - outMin);
+};
 
 function MapTileSource({
   onTextureReady,
@@ -86,7 +101,7 @@ function MapTileSource({
 }
 
 interface Stkde3DSceneProps {
-  slices: EvolvingSlice[];
+  slices: Array<EvolvingSlice & { sourceSliceId?: string }>;
   sliceKdes: KdeCell[][];
   volumeProfile?: DurationVolumeProfileEntry[];
   sliceEvents?: MockCrimeEvent[][];
@@ -94,6 +109,9 @@ interface Stkde3DSceneProps {
   viewMode?: 'stack' | 'focus';
   showRawEvents?: boolean;
   sliceOpacity?: number;
+  onCreateDraftAtPoint?: (payload: { y: number; clientX: number; clientY: number }) => void;
+  onUpdateSliceWarpWeight?: (index: number, weight: number) => void;
+  onDeleteSlice?: (index: number) => void;
 }
 
 function RawEventPoints({
@@ -152,6 +170,9 @@ function SceneContent({
   viewMode = 'stack',
   showRawEvents = false,
   sliceOpacity = 1,
+  onCreateDraftAtPoint,
+  onUpdateSliceWarpWeight,
+  onDeleteSlice,
 }: Stkde3DSceneProps) {
   const controlsRef = useRef<CameraControls>(null);
   const focusedSlice = slices[activeIndex]
@@ -185,6 +206,18 @@ function SceneContent({
       <directionalLight position={[30, 50, 20]} intensity={0.7} />
       <directionalLight position={[-30, 30, -20]} intensity={0.3} />
 
+      <mesh
+        position={[0, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          onCreateDraftAtPoint?.({ y: event.point.y, clientX: event.clientX, clientY: event.clientY });
+        }}
+      >
+        <planeGeometry args={[360, 260]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       <AdaptiveWarpAxis />
 
       <StkdeSliceStack
@@ -194,6 +227,8 @@ function SceneContent({
         activeIndex={viewMode === 'focus' ? 0 : activeIndex}
         compact={viewMode === 'focus'}
         sliceOpacity={sliceOpacity}
+        onUpdateSliceWarpWeight={onUpdateSliceWarpWeight}
+        onDeleteSlice={onDeleteSlice}
       />
 
       {showRawEvents ? (
@@ -226,6 +261,72 @@ export function Stkde3DScene({
   sliceOpacity = 1,
 }: Stkde3DSceneProps) {
   const [mapTexture, setMapTexture] = useState<THREE.CanvasTexture | null>(null);
+  const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
+  const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
+  const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
+  const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
+  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
+  const removeSlice = useSliceDomainStore((state) => state.removeSlice);
+  const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
+  const computeManualDraftBin = useDashboardDemoTimeslicingModeStore((state) => state.computeManualDraftBin);
+  const canvasPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const stackEndY = useMemo(() => START_Y + SLICE_SPACING * Math.max(1, slices.length - 1), [slices.length]);
+
+  const yToEpoch = useCallback((y: number): number => {
+    const domain: [number, number] = viewportEnd > viewportStart ? [viewportStart, viewportEnd] : [0, 1];
+    const displayEpoch = mapRange(y, START_Y, stackEndY, domain[0], domain[1]);
+    if (timeScaleMode === 'adaptive' && warpMap && warpFactor > 0 && warpMap.length > 1) {
+      return toLinearSeconds(displayEpoch, domain, warpFactor, warpMap, domain);
+    }
+    return displayEpoch;
+  }, [stackEndY, timeScaleMode, viewportEnd, viewportStart, warpFactor, warpMap]);
+
+  const clearActiveSlice = useCallback(() => {
+    setActiveSliceIndex(-1);
+    setActiveSlice(null);
+  }, [setActiveSlice, setActiveSliceIndex]);
+
+  const handleCreateDraftAtPoint = useCallback(({ y, clientX, clientY }: { y: number; clientX: number; clientY: number }) => {
+    const pointer = canvasPointerRef.current;
+    const movedTooFar = pointer ? Math.hypot(clientX - pointer.x, clientY - pointer.y) > 8 : false;
+    if (movedTooFar) return;
+
+    const clickEpoch = yToEpoch(y);
+    const startEpoch = Math.max(viewportStart, clickEpoch - MIN_DRAFT_WINDOW_SEC);
+    const endEpoch = Math.min(viewportEnd, clickEpoch + MIN_DRAFT_WINDOW_SEC);
+    const draftId = addManualDraftRange({ startMs: startEpoch * 1000, endMs: endEpoch * 1000 });
+    setActiveRailTab('slices');
+    void computeManualDraftBin(draftId);
+  }, [addManualDraftRange, computeManualDraftBin, setActiveRailTab, viewportEnd, viewportStart, yToEpoch]);
+
+  const handleUpdateSliceWarpWeight = useCallback((sliceIndex: number, weight: number) => {
+    const sourceSliceId = slices[sliceIndex]?.sourceSliceId;
+    if (!sourceSliceId) return;
+    updateSlice(sourceSliceId, { warpWeight: weight });
+  }, [slices, updateSlice]);
+
+  const handleDeleteSlice = useCallback((sliceIndex: number) => {
+    const sourceSliceId = slices[sliceIndex]?.sourceSliceId;
+    if (!sourceSliceId) return;
+
+    removeSlice(sourceSliceId);
+    if (sliceIndex === activeIndex) {
+      setActiveSlice(null);
+      setActiveSliceIndex(0);
+    }
+  }, [activeIndex, removeSlice, setActiveSlice, setActiveSliceIndex, slices]);
+
+  const handleCanvasPointerDown = useCallback((event: { clientX: number; clientY: number }) => {
+    canvasPointerRef.current = { x: event.clientX, y: event.clientY };
+  }, []);
+
+  const handleCanvasPointerMissed = useCallback(() => {
+    clearActiveSlice();
+  }, [clearActiveSlice]);
 
   useEffect(() => {
     return () => {
@@ -240,6 +341,8 @@ export function Stkde3DScene({
         <Canvas
           camera={{ position: CAMERA_POSITION, fov: 38 }}
           gl={{ alpha: true, antialias: true }}
+          onPointerDown={handleCanvasPointerDown}
+          onPointerMissed={handleCanvasPointerMissed}
         >
           <SceneContent
             slices={slices}
@@ -250,6 +353,9 @@ export function Stkde3DScene({
             viewMode={viewMode}
             showRawEvents={showRawEvents}
             sliceOpacity={sliceOpacity}
+            onCreateDraftAtPoint={handleCreateDraftAtPoint}
+            onUpdateSliceWarpWeight={handleUpdateSliceWarpWeight}
+            onDeleteSlice={handleDeleteSlice}
           />
 
           {mapTexture ? (

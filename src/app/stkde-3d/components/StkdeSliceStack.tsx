@@ -1,31 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
+import { ThreeEvent, useThree } from '@react-three/fiber';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useSliceDomainStore } from '@/store/useSliceDomainStore';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildAgingOpacityMap, computeTrailIntensity } from '@/lib/motion/aging';
 import { easeInOutCubic, interpolateKdeCells } from '@/lib/motion/easing';
-import { sampleWarpSeconds } from '@/components/timeline/hooks/useScaleTransforms';
+import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
+import { sampleWarpSeconds, toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import type { KdeCell, EvolvingSlice } from '../lib/types';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
+import type { TimeSlice } from '@/store/slice-domain/types';
 
 export const SLICE_SPACING = 7.25;
 export const START_Y = -32.625;
 const TEXTURE_SIZE = 256;
 const TRAIL_HISTORY_LIMIT = 4;
 const TRANSITION_DURATION_MS = 240;
+const MIN_RESIZE_DURATION_SEC = 3600;
 
 export function yForIndex(index: number): number {
   return START_Y + index * SLICE_SPACING;
 }
-
-const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number): number => {
-  const span = Math.max(1e-9, inMax - inMin);
-  const t = Math.min(1, Math.max(0, (value - inMin) / span));
-  return outMin + t * (outMax - outMin);
-};
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -33,6 +33,50 @@ function clamp01(value: number): number {
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function mapRange(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+  const span = Math.max(1e-9, inMax - inMin);
+  const t = clamp((value - inMin) / span, 0, 1);
+  return outMin + t * (outMax - outMin);
+}
+
+function formatRangeLabel(startEpoch: number, endEpoch: number): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return `${formatter.format(new Date(startEpoch * 1000))} → ${formatter.format(new Date(endEpoch * 1000))}`;
+}
+
+function resolveSliceEpochRange(
+  slice: TimeSlice,
+  minTimestampSec: number,
+  maxTimestampSec: number,
+): [number, number] {
+  if (slice.startDateTimeMs !== undefined || slice.endDateTimeMs !== undefined) {
+    const startMs = slice.startDateTimeMs ?? slice.endDateTimeMs ?? 0;
+    const endMs = slice.endDateTimeMs ?? slice.startDateTimeMs ?? startMs;
+    const start = startMs / 1000;
+    const end = endMs / 1000;
+    return start <= end ? [start, end] : [end, start];
+  }
+
+  if (slice.type === 'range' && slice.range) {
+    const start = normalizedToEpochSeconds(slice.range[0], minTimestampSec, maxTimestampSec);
+    const end = normalizedToEpochSeconds(slice.range[1], minTimestampSec, maxTimestampSec);
+    return start <= end ? [start, end] : [end, start];
+  }
+
+  const time = normalizedToEpochSeconds(slice.time, minTimestampSec, maxTimestampSec);
+  return [time, time];
 }
 
 function rgba(r: number, g: number, b: number, a: number): string {
@@ -159,11 +203,27 @@ interface StkdeSliceStackProps {
   activeIndex: number;
   compact?: boolean;
   sliceOpacity?: number;
+  onUpdateSliceWarpWeight?: (index: number, weight: number) => void;
+  onDeleteSlice?: (index: number) => void;
 }
 
 interface ActiveTrailEntry {
   index: number;
   startedAt: number;
+}
+
+type ResizeHandle = 'start' | 'end';
+
+interface DragState {
+  sliceId: string;
+  sliceIndex: number;
+  handle: ResizeHandle;
+  pointerId: number;
+  centerY: number;
+  startEpoch: number;
+  endEpoch: number;
+  previewStartEpoch: number;
+  previewEndEpoch: number;
 }
 
 interface SliceTransition {
@@ -179,6 +239,8 @@ export function StkdeSliceStack({
   activeIndex,
   compact = false,
   sliceOpacity = 1,
+  onUpdateSliceWarpWeight,
+  onDeleteSlice,
 }: StkdeSliceStackProps) {
   const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
   const isInterpolated = useDashboardDemoCoordinationStore((state) => state.inspectInterpolation);
@@ -187,8 +249,42 @@ export function StkdeSliceStack({
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
+  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
+  const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
+  const activeSliceId = useSliceDomainStore((state) => state.activeSliceId);
+  const sourceSlices = useSliceDomainStore((state) => state.slices);
+  const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
+  const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
+  const { camera, gl } = useThree();
+
+  const [dragState, setDragState] = useState<DragState | null>(null);
+
+  const orderedSourceSliceIds = useMemo(() => {
+    if (minTimestampSec === null || maxTimestampSec === null) return [];
+
+    return sourceSlices
+      .filter((slice) => slice.isVisible && slice.type === 'range')
+      .map((slice, originalIndex) => {
+        const [startEpoch, endEpoch] = resolveSliceEpochRange(slice, minTimestampSec, maxTimestampSec);
+        return {
+          sourceSliceId: slice.id,
+          index: originalIndex,
+          startEpoch,
+          endEpoch,
+        };
+      })
+      .sort((left, right) => {
+        const startDelta = left.startEpoch - right.startEpoch;
+        if (startDelta !== 0) return startDelta;
+        const endDelta = left.endEpoch - right.endEpoch;
+        if (endDelta !== 0) return endDelta;
+        return left.sourceSliceId.localeCompare(right.sourceSliceId);
+      })
+      .map((slice) => slice.sourceSliceId);
+  }, [maxTimestampSec, minTimestampSec, sourceSlices]);
 
   const adaptiveDomain = useMemo<[number, number]>(() => {
     if (!Number.isFinite(viewportStart) || !Number.isFinite(viewportEnd) || viewportEnd <= viewportStart) {
@@ -212,6 +308,143 @@ export function StkdeSliceStack({
     },
     [adaptiveDomain, compact, stackEndY, timeScaleMode, warpFactor, warpMap]
   );
+
+  const resolveSourceSliceId = useCallback(
+    (sliceIndex: number): string | null => {
+      if (compact) {
+        return activeSliceId ?? orderedSourceSliceIds[0] ?? null;
+      }
+
+      return orderedSourceSliceIds[sliceIndex] ?? null;
+    },
+    [activeSliceId, compact, orderedSourceSliceIds]
+  );
+
+  const yToEpoch = useCallback(
+    (y: number): number => {
+      if (timeScaleMode === 'adaptive' && warpMap && warpFactor > 0 && warpMap.length > 1) {
+        const displayEpoch = mapRange(y, START_Y, stackEndY, adaptiveDomain[0], adaptiveDomain[1]);
+        return toLinearSeconds(displayEpoch, adaptiveDomain, warpFactor, warpMap, adaptiveDomain);
+      }
+
+      return mapRange(y, START_Y, stackEndY, adaptiveDomain[0], adaptiveDomain[1]);
+    },
+    [adaptiveDomain, stackEndY, timeScaleMode, warpFactor, warpMap]
+  );
+
+  const resolvePointerY = useCallback(
+    (clientX: number, clientY: number, planeY: number): number => {
+      const rect = gl.domElement.getBoundingClientRect();
+      const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+      cameraDirection.y = 0;
+      cameraDirection.normalize();
+
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        cameraDirection.clone().negate(),
+        new THREE.Vector3(0, planeY, 0),
+      );
+
+      const target = new THREE.Vector3();
+      const intersection = raycaster.ray.intersectPlane(plane, target);
+      return intersection?.y ?? planeY;
+    },
+    [camera, gl.domElement]
+  );
+
+  const commitResize = useCallback((state: DragState) => {
+    const startEpoch = Math.min(state.previewStartEpoch, state.previewEndEpoch);
+    const endEpoch = Math.max(state.previewStartEpoch, state.previewEndEpoch);
+    const normalizedStart = minTimestampSec !== null && maxTimestampSec !== null
+      ? epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec)
+      : null;
+    const normalizedEnd = minTimestampSec !== null && maxTimestampSec !== null
+      ? epochSecondsToNormalized(endEpoch, minTimestampSec, maxTimestampSec)
+      : null;
+
+    updateSlice(state.sliceId, {
+      startDateTimeMs: startEpoch * 1000,
+      endDateTimeMs: endEpoch * 1000,
+      time: startEpoch,
+      ...(normalizedStart !== null && normalizedEnd !== null ? { range: [normalizedStart, normalizedEnd] as [number, number] } : {}),
+    });
+  }, [maxTimestampSec, minTimestampSec, updateSlice]);
+
+  const handleSliceSelect = useCallback((sliceIndex: number) => {
+    const sourceSliceId = resolveSourceSliceId(sliceIndex);
+    if (sourceSliceId) {
+      setActiveSlice(sourceSliceId);
+    }
+    setActiveSliceIndex(compact ? 0 : sliceIndex);
+  }, [compact, resolveSourceSliceId, setActiveSlice, setActiveSliceIndex]);
+
+  const handleHandlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, sliceIndex: number, handle: ResizeHandle) => {
+    e.stopPropagation();
+    const sourceSliceId = resolveSourceSliceId(sliceIndex);
+    if (!sourceSliceId) return;
+
+    const slice = slices[sliceIndex];
+    if (!slice) return;
+
+    handleSliceSelect(sliceIndex);
+    gl.domElement.setPointerCapture(e.pointerId);
+    setDragState({
+      sliceId: sourceSliceId,
+      sliceIndex,
+      handle,
+      pointerId: e.pointerId,
+      centerY: resolveSliceY(slice),
+      startEpoch: slice.startEpoch,
+      endEpoch: slice.endEpoch,
+      previewStartEpoch: slice.startEpoch,
+      previewEndEpoch: slice.endEpoch,
+    });
+  }, [gl.domElement, handleSliceSelect, resolveSourceSliceId, resolveSliceY, slices]);
+
+  useEffect(() => {
+    if (!dragState) return undefined;
+
+    const onPointerMove = (event: PointerEvent) => {
+      const y = resolvePointerY(event.clientX, event.clientY, dragState.centerY);
+      const nextEpoch = yToEpoch(y);
+
+      const nextStart = dragState.handle === 'start'
+        ? Math.min(nextEpoch, dragState.endEpoch - MIN_RESIZE_DURATION_SEC)
+        : dragState.startEpoch;
+      const nextEnd = dragState.handle === 'end'
+        ? Math.max(nextEpoch, dragState.startEpoch + MIN_RESIZE_DURATION_SEC)
+        : dragState.endEpoch;
+
+      setDragState((current) => (current ? {
+        ...current,
+        previewStartEpoch: nextStart,
+        previewEndEpoch: nextEnd,
+      } : current));
+    };
+
+    const onPointerUp = () => {
+      commitResize(dragState);
+      setDragState(null);
+      try {
+        gl.domElement.releasePointerCapture(dragState.pointerId);
+      } catch {
+        // ignore capture release issues
+      }
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [commitResize, dragState, gl.domElement, resolvePointerY, yToEpoch]);
 
   const textures = useMemo(() => {
     const newTextures = new Map<number, THREE.CanvasTexture>();
@@ -335,9 +568,25 @@ export function StkdeSliceStack({
         const trailOffset = trailEnabled && !isActive ? Math.min(0.5, trailIntensity * 0.28) : 0;
 
         const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;
+        const sourceSliceId = resolveSourceSliceId(i);
+        const isDraggingThisSlice = dragState?.sliceId === sourceSliceId;
+        const labelText = isDraggingThisSlice && dragState
+          ? formatRangeLabel(dragState.previewStartEpoch, dragState.previewEndEpoch)
+          : slice.label;
+        const handleInset = Math.max(0.06, thickness * 0.12);
+        const bottomHandleY = hasVolume ? handleInset : 0.08;
+        const topHandleY = hasVolume ? Math.max(handleInset + 0.06, thickness - handleInset) : 0.18;
 
         return (
-          <group key={slice.index} position={[0, y, 0]}>
+          <group
+            key={slice.index}
+            position={[0, y, 0]}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleSliceSelect(i);
+            }}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
             {hasVolume ? (
               <>
                 <mesh position={[0, thickness / 2, 0]}>
@@ -388,10 +637,29 @@ export function StkdeSliceStack({
                     opacity={surfaceOpacity}
                     depthWrite={false}
                     side={THREE.DoubleSide}
-                  />
-                </mesh>
-              ) : null
+                />
+              </mesh>
+            ) : null
             )}
+
+            {isActive && sourceSliceId ? (
+              <>
+                <mesh
+                  position={[50, topHandleY, 0]}
+                  onPointerDown={(event) => handleHandlePointerDown(event, i, 'end')}
+                >
+                  <sphereGeometry args={[0.9, 16, 16]} />
+                  <meshBasicMaterial color={dragState?.sliceId === sourceSliceId && dragState.handle === 'end' ? '#67e8f9' : '#ffffff'} />
+                </mesh>
+                <mesh
+                  position={[50, bottomHandleY, 0]}
+                  onPointerDown={(event) => handleHandlePointerDown(event, i, 'start')}
+                >
+                  <sphereGeometry args={[0.9, 16, 16]} />
+                  <meshBasicMaterial color={dragState?.sliceId === sourceSliceId && dragState.handle === 'start' ? '#67e8f9' : '#ffffff'} />
+                </mesh>
+              </>
+            ) : null}
 
             {trailEnabled && trailOpacity > 0 && texture ? (
               <mesh
@@ -476,9 +744,9 @@ export function StkdeSliceStack({
                     ? 'border-sky-400/60 bg-slate-950/95 text-sky-100'
                     : 'border-sky-800/40 bg-slate-950/80 text-sky-300'
                 }`}
-              >
+                >
                 <div className="font-medium tracking-wide">
-                  {slice.label}
+                  {labelText}
                 </div>
                 <div className="flex gap-2 text-[9px] uppercase tracking-[0.15em]">
                   <span
@@ -494,8 +762,49 @@ export function StkdeSliceStack({
                     {slice.crimeCount} ev
                   </span>
                 </div>
+                {isActive && sourceSliceId ? (
+                  <div className="pointer-events-auto mt-2 space-y-2 rounded-md border border-sky-400/15 bg-slate-950/90 p-2 text-[9px]">
+                    <div className="flex items-center justify-between gap-3 text-sky-100">
+                      <span className="uppercase tracking-[0.14em] text-sky-300">Warp weight</span>
+                      <span className="font-mono text-sky-200">
+                        {(sourceSlices.find((sourceSlice) => sourceSlice.id === sourceSliceId)?.warpWeight ?? 1).toFixed(2)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={3}
+                      step={0.05}
+                      value={sourceSlices.find((sourceSlice) => sourceSlice.id === sourceSliceId)?.warpWeight ?? 1}
+                      onChange={(event) => {
+                        onUpdateSliceWarpWeight?.(i, parseFloat(event.target.value));
+                      }}
+                      className="h-1 w-full accent-cyan-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onDeleteSlice?.(i)}
+                      className="w-full rounded border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-rose-200 transition hover:border-rose-400/40 hover:bg-rose-500/20"
+                    >
+                      Delete slice
+                    </button>
+                  </div>
+                ) : null}
+                {isDraggingThisSlice && dragState ? (
+                  <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-cyan-200">
+                    {dragState.handle === 'start' ? 'Resizing start boundary' : 'Resizing end boundary'}
+                  </div>
+                ) : null}
               </div>
             </Html>
+
+            {isDraggingThisSlice && dragState ? (
+              <Html position={[52, 18, 0]} center className="pointer-events-none select-none">
+                <div className="rounded-md border border-cyan-400/40 bg-slate-950/90 px-2 py-1 text-[9px] font-medium tracking-[0.12em] text-cyan-100 shadow-sm">
+                  {formatRangeLabel(dragState.previewStartEpoch, dragState.previewEndEpoch)}
+                </div>
+              </Html>
+            ) : null}
 
             {transitionTexture && transition && i === transition.toIndex ? (
               <mesh
