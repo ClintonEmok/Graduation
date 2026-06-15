@@ -4,8 +4,8 @@ milestone: v3.3
 milestone_name: Adaptive 3D Visualization
 status: in_progress
 stopped_at: Phase 79 planning complete
-last_updated: "2026-06-09T10:00:00.000Z"
-last_activity: 2026-06-15 - Completed quick task 260615-l1g: Add lightweight hotspot evolution visualization to demo dashboard
+last_updated: "2026-06-15T13:26:37Z"
+last_activity: 2026-06-15 - Completed quick task 260615-l64: Add hotspot trajectory overlays to demo map and 3D views
 progress:
   total_phases: 5
   completed_phases: 3
@@ -29,7 +29,7 @@ Milestone: v3.3
 Phase: 79 of 79 (Adaptive 3D Visualization)
 Plan: 79-01, 79-02, 79-03 (planned, not yet executed)
 Status: Ready for execution
-Last activity: 2026-06-09
+Last activity: 2026-06-15
 
 Progress: [████████████████████] 75% (v3.2 complete, v3.3 planned)
 
@@ -84,6 +84,7 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260615-l1g | Add lightweight hotspot evolution visualization to demo dashboard | 2026-06-15 | b9cb7cf | [260615-l1g-add-lightweight-hotspot-evolution-visual](./quick/260615-l1g-add-lightweight-hotspot-evolution-visual/) |
+| 260615-l64 | Add hotspot trajectory overlays to demo map and 3D views | 2026-06-15 | 1fe41fa | [260615-l64-add-hotspot-trajectory-overlays-to-demo-](./quick/260615-l64-add-hotspot-trajectory-overlays-to-demo-/) |
 
 ## Session Continuity
 
