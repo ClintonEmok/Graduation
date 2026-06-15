@@ -618,7 +618,7 @@ export function DemoSlicePanel() {
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Slice summary</div>
                   <div className="mt-2 text-sm text-slate-100">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
                   <div className="mt-1 text-xs text-slate-400">
-                    {selectedSlice.type} · {formatDateTime(selectedSlice.startDateTimeMs)}{selectedSlice.type === 'range' ? ` → ${formatDateTime(selectedSlice.endDateTimeMs)}` : ''}
+                    {formatDateTime(selectedSlice.startDateTimeMs)}{selectedSlice.type === 'range' ? ` → ${formatDateTime(selectedSlice.endDateTimeMs)}` : ''}
                   </div>
                 </div>
 
