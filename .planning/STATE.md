@@ -4,8 +4,8 @@ milestone: v3.3
 milestone_name: Adaptive 3D Visualization
 status: in_progress
 stopped_at: Phase 79 planning complete
-last_updated: "2026-06-15T14:59:05Z"
-last_activity: 2026-06-15 - Completed quick task 260615-nkm: Hide adaptive axis ribbon again in 3D scene
+last_updated: "2026-06-15T15:02:56Z"
+last_activity: 2026-06-15 - Completed quick task 260615-nmv: Allow adjusting slice date boundaries in slices tab
 progress:
   total_phases: 5
   completed_phases: 3
@@ -89,6 +89,7 @@ None.
 | 260615-mn1 | Temporarily hide adaptive axis volume in 3D scene | 2026-06-15 | 72b4fe5 | [260615-mn1-temporarily-hide-adaptive-axis-volume-in](./quick/260615-mn1-temporarily-hide-adaptive-axis-volume-in/) |
 | 260615-n3i | Replace adaptive axis volume with back-edge ribbon guide | 2026-06-15 | 4482cd0 | [260615-n3i-replace-adaptive-axis-volume-with-back-e](./quick/260615-n3i-replace-adaptive-axis-volume-with-back-e/) |
 | 260615-nkm | Hide adaptive axis ribbon again in 3D scene | 2026-06-15 | 96ba3b9 | [260615-nkm-hide-adaptive-axis-ribbon-again-in-3d-sc](./quick/260615-nkm-hide-adaptive-axis-ribbon-again-in-3d-sc/) |
+| 260615-nmv | Allow adjusting slice date boundaries in slices tab | 2026-06-15 | 888cb6c | [260615-nmv-allow-adjusting-slice-date-boundaries-in](./quick/260615-nmv-allow-adjusting-slice-date-boundaries-in/) |
 
 ## Session Continuity
 
