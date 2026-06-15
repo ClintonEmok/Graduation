@@ -696,7 +696,7 @@ export function DemoSlicePanel() {
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Warp / state</div>
                 <div className="mt-2 text-sm text-slate-100">Warp weight {(selectedDraft.warpWeight ?? 1).toFixed(2)}</div>
-                <div className="mt-1 text-xs text-slate-400">{selectedDraft.isNeutralPartition ? 'Neutral fallback partition' : 'Expanded partition'}</div>
+                <div className="mt-1 text-xs text-slate-400">{selectedDraft.isNeutralPartition ? 'Fallback partition' : 'Expanded partition'}</div>
               </div>
 
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
