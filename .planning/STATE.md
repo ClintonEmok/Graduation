@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.2
-milestone_name: Visualization Level Up
-status: completed
-stopped_at: Completed Phase 78 Temporal Evolution
-last_updated: "2026-06-01T08:21:51.056Z"
-last_activity: 2026-06-01
+milestone: v3.3
+milestone_name: Adaptive 3D Visualization
+status: in_progress
+stopped_at: Phase 79 planning complete
+last_updated: "2026-06-09T10:00:00.000Z"
+last_activity: 2026-06-15 - Completed quick task 260615-l1g: Add lightweight hotspot evolution visualization to demo dashboard
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 3
-  total_plans: 9
+  total_plans: 12
   completed_plans: 9
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** v3.2 Visualization Level Up — Phase 78 Temporal Evolution
+**Current focus:** v3.3 Adaptive 3D Visualization — Phase 79
 
 ## Current Position
 
-Milestone: v3.2
-Phase: 78 of 78 (Temporal Evolution)
-Plan: 78-01, 78-02
-Status: Phase complete
-Last activity: 2026-06-01
+Milestone: v3.3
+Phase: 79 of 79 (Adaptive 3D Visualization)
+Plan: 79-01, 79-02, 79-03 (planned, not yet executed)
+Status: Ready for execution
+Last activity: 2026-06-09
 
-Progress: [██████████] 100%
+Progress: [████████████████████] 75% (v3.2 complete, v3.3 planned)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9 (this milestone)
+- Total plans completed: 9 (v3.2 milestone)
 - Average duration: ~30m
 - Total execution time: ~2h 55m
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100%
 | 76 Foundation | 5 | 5 | — |
 | 77 Volumetric Duration | 2 | 2 | — |
 | 78 Temporal Evolution | 2 | 2 | ~30m |
+| 79 Adaptive 3D | 3 | 0 | — |
 
 **Recent Trend:**
 
@@ -60,24 +61,32 @@ Progress: [██████████] 100%
 
 Recent decisions affecting current work:
 
-- [Phase 78]: Temporal evolution is limited to the demo 3D STKDE widget path only.
-- [v3.2]: Bloom/SelectiveBloom were removed from scope; interpolation and fluid motion are the emphasis for the 3D widget.
-- [v3.2]: Multi-Scale Temporal, Dense Data Readability, and Evaluation Readiness remain deferred.
-- [v3.2]: Keep the existing Next.js + Three.js + MapLibre stack; add only the visualization packages already scoped.
-- [v3.2]: Phase 78 is split into a control/state plan and a rendering plan; requirement IDs stay unchanged.
-- [Phase 78]: Temporal evolution now ships through the shared dashboard-demo store and the demo 3D widget stack only.
-- [Phase 78]: Interpolation remains opt-in during playback, and aging trails are rendered as ghosted layers with short-lived persistence.
+- [Phase 79]: Adaptive warp map renders as a volumetric 1024-bin colored axis behind the slice stack in Stkde3DScene.
+- [Phase 79]: Applied slice Y-positions come from the warp map instead of fixed yForIndex spacing when in adaptive mode.
+- [Phase 79]: Slices are interactive in 3D: click to select, drag to resize, double-click to create, warp weight slider, delete button.
+- [Phase 79]: All slice edits sync through shared stores (useSliceDomainStore, useDashboardDemoCoordinationStore, useDashboardDemoTimeslicingModeStore) — no new coordination channel.
+- [Phase 79]: The timeline gets a density strip matching the 3D warp axis colors when in adaptive mode.
+- [Phase 79]: Study infrastructure (task runner, NASA-TLX, structured logging) is deferred to a future milestone after adaptive 3D visualization is stable.
+- [Phase 79]: 3 plans split by foundation (axis + spacing), interaction (select/resize/create), and polish (warp weight, delete, density strip, cross-view verification).
 
 ### Pending Todos
 
-None.
+- Execute 79-01: Build AdaptiveWarpAxis component + variable slice spacing
+- Execute 79-02: Add 3D slice selection, drag-to-resize, double-click-to-create
+- Execute 79-03: Add warp weight slider, delete button, timeline density strip, cross-view sync verification
 
 ### Blockers/Concerns
 
 None.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260615-l1g | Add lightweight hotspot evolution visualization to demo dashboard | 2026-06-15 | b9cb7cf | [260615-l1g-add-lightweight-hotspot-evolution-visual](./quick/260615-l1g-add-lightweight-hotspot-evolution-visual/) |
+
 ## Session Continuity
 
-Last session: 2026-05-31T22:48:06Z
-Stopped at: Completed Phase 78 Temporal Evolution
-Resume file: None
+Last session: 2026-06-09
+Stopped at: Phase 79 planning complete — all 3 PLAN files plus CONTEXT, ROADMAP, REQUIREMENTS, and STATE updates
+Resume file: `.planning/phases/79-adaptive-3d-visualization/79-CONTEXT.md`
