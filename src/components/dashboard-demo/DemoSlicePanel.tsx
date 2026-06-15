@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
+import { SliceComparisonCard } from '@/components/dashboard-demo/SliceComparisonCard';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -64,6 +65,7 @@ export function DemoSlicePanel() {
   const { isComputing } = useDebouncedDensity();
 
   const slices = useSliceDomainStore((state) => state.slices);
+  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
   const removeSlice = useSliceDomainStore((state) => state.removeSlice);
   const clearSlices = useSliceDomainStore((state) => state.clearSlices);
 
@@ -93,6 +95,11 @@ export function DemoSlicePanel() {
   const selectedDraft = useMemo(
     () => pendingGeneratedBins.find((bin) => bin.id === selectedDraftId) ?? null,
     [pendingGeneratedBins, selectedDraftId]
+  );
+
+  const selectedSliceIndex = useMemo(
+    () => slices.findIndex((slice) => slice.id === selectedSliceId),
+    [selectedSliceId, slices],
   );
 
   const selectedSliceLabel = selectedSlice
@@ -212,6 +219,27 @@ export function DemoSlicePanel() {
     () => [...slices].sort((a, b) => (a.startDateTimeMs ?? 0) - (b.startDateTimeMs ?? 0)),
     [slices],
   );
+
+  const toNormalizedFromTimestampMs = useCallback(
+    (timestampMs: number | null): number | null => {
+      if (timestampMs === null || minTimestampSec === null || maxTimestampSec === null || maxTimestampSec <= minTimestampSec) {
+        return null;
+      }
+
+      const epochSec = timestampMs / 1000;
+      const normalized = ((epochSec - minTimestampSec) / (maxTimestampSec - minTimestampSec)) * 100;
+      return Math.min(100, Math.max(0, normalized));
+    },
+    [maxTimestampSec, minTimestampSec],
+  );
+
+  const formatSliceLabel = useCallback((slice: typeof slices[number], index: number) => {
+    if (slice.startDateTimeMs || slice.endDateTimeMs) {
+      return `${formatCompactDate(slice.startDateTimeMs)} → ${formatCompactDate(slice.endDateTimeMs)}`;
+    }
+
+    return slice.name?.trim() || `Slice ${index + 1}`;
+  }, []);
 
   const hasItems = pendingItems.length > 0 || appliedItems.length > 0;
 
@@ -488,7 +516,18 @@ export function DemoSlicePanel() {
           </DialogHeader>
 
           {selectedSlice ? (
-            <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-3 pt-2">
+              <SliceComparisonCard
+                slice={selectedSlice}
+                index={selectedSliceIndex >= 0 ? selectedSliceIndex : 0}
+                minTimestampSec={minTimestampSec}
+                maxTimestampSec={maxTimestampSec}
+                onUpdateSlice={updateSlice}
+                toNormalizedFromTimestampMs={toNormalizedFromTimestampMs}
+                formatSliceLabel={formatSliceLabel}
+              />
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Name / type</div>
                 <div className="mt-2 text-sm text-slate-100">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
@@ -549,6 +588,7 @@ export function DemoSlicePanel() {
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">End datetime</div>
                 <div className="mt-2 text-sm text-slate-100">{formatDateTime(selectedSlice.endDateTimeMs)}</div>
+              </div>
               </div>
             </div>
           ) : null}
