@@ -613,68 +613,46 @@ export function DemoSlicePanel() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Name / type</div>
-                <div className="mt-2 text-sm text-slate-100">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
-                <div className="mt-1 text-xs text-slate-400">{selectedSlice.type}</div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
-                <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  Coefficient {formatCoefficient(selectedSlice.burstinessCoefficient ?? selectedSlice.burstScore) ?? '—'} · Confidence {formatNormalizedScore(selectedSlice.burstConfidence) ?? '—'}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Slice summary</div>
+                  <div className="mt-2 text-sm text-slate-100">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {selectedSlice.type} · {formatDateTime(selectedSlice.startDateTimeMs)}{selectedSlice.type === 'range' ? ` → ${formatDateTime(selectedSlice.endDateTimeMs)}` : ''}
+                  </div>
                 </div>
-              </div>
 
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst confidence</div>
-                <div className="mt-2 text-sm text-slate-100">{formatNormalizedScore(selectedSlice.burstConfidence) ?? '—'}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  Warp {(selectedSlice.warpEnabled ?? true) ? 'enabled' : 'disabled'} · Strength {(selectedSlice.warpWeight ?? 1).toFixed(2)}
+                <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst / warp</div>
+                  <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    Confidence {formatNormalizedScore(selectedSlice.burstConfidence) ?? '—'} · Coefficient {formatCoefficient(selectedSlice.burstinessCoefficient ?? selectedSlice.burstScore) ?? '—'}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    Warp {(selectedSlice.warpEnabled ?? true) ? 'enabled' : 'disabled'} · Strength {(selectedSlice.warpWeight ?? 1).toFixed(2)}
+                  </div>
                 </div>
-              </div>
 
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Visibility / lock</div>
-                <div className="mt-2 text-sm text-slate-100">{selectedSlice.isVisible ? 'Visible' : 'Hidden'}</div>
-                <div className="mt-1 text-xs text-slate-400">{selectedSlice.isLocked ? 'Locked' : 'Unlocked'}</div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst provenance</div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
-                  {selectedSlice.burstProvenance ?? '—'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Tie-break / threshold</div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
-                  {selectedSlice.tieBreakReason ?? '—'}
-                </div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">
-                  {selectedSlice.thresholdSource ?? '—'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Neighborhood summary</div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
-                  {selectedSlice.neighborhoodSummary ?? '—'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Start datetime</div>
-                <div className="mt-2 text-sm text-slate-100">{formatDateTime(selectedSlice.startDateTimeMs)}</div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">End datetime</div>
-                <div className="mt-2 text-sm text-slate-100">{formatDateTime(selectedSlice.endDateTimeMs)}</div>
-              </div>
+                {(selectedSlice.burstProvenance || selectedSlice.tieBreakReason || selectedSlice.thresholdSource) ? (
+                  <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Method notes</div>
+                    {selectedSlice.burstProvenance ? (
+                      <div className="mt-2 text-sm text-slate-100 whitespace-pre-wrap break-words">
+                        {selectedSlice.burstProvenance}
+                      </div>
+                    ) : null}
+                    {selectedSlice.tieBreakReason ? (
+                      <div className="mt-2 text-xs text-slate-300 whitespace-pre-wrap break-words">
+                        {selectedSlice.tieBreakReason}
+                      </div>
+                    ) : null}
+                    {selectedSlice.thresholdSource ? (
+                      <div className="mt-2 text-xs text-slate-400 whitespace-pre-wrap break-words">
+                        {selectedSlice.thresholdSource}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
