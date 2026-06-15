@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { HotspotEvolutionCard } from '@/components/dashboard-demo/HotspotEvolutionCard';
 import {
   Card,
   CardContent,
@@ -170,6 +171,8 @@ export function DemoStkdePanel() {
             )}
           </CardContent>
         </Card>
+
+        <HotspotEvolutionCard />
       </CardContent>
     </Card>
   );
