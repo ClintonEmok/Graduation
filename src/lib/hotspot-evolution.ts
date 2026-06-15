@@ -48,33 +48,30 @@ interface SliceEntry {
   id: string;
   label: string;
   hotspots: TrackedHotspotSnapshot[];
-  startEpoch: number;
 }
 
 function buildSliceEntries(
   sliceResults: Record<string, StkdeSurfaceResponse>,
 ): SliceEntry[] {
-  return Object.entries(sliceResults)
-    .map(([sliceId, surface]) => {
-      const hotspots: TrackedHotspotSnapshot[] = (surface.hotspots ?? [])
-        .filter((h) => h.supportCount > 0)
-        .sort((a, b) => b.intensityScore - a.intensityScore)
-        .slice(0, 5)
-        .map((h) => ({
-          sliceId,
-          sliceLabel: sliceId,
-          centroidLng: h.centroidLng,
-          centroidLat: h.centroidLat,
-          supportCount: h.supportCount,
-          intensityScore: h.intensityScore,
-          radiusMeters: h.radiusMeters,
-          peakStartEpochSec: h.peakStartEpochSec,
-          peakEndEpochSec: h.peakEndEpochSec,
-        }));
-      const startEpoch = surface.hotspots[0]?.peakStartEpochSec ?? 0;
-      return { id: sliceId, label: sliceId, hotspots, startEpoch };
-    })
-    .sort((a, b) => a.startEpoch - b.startEpoch || a.id.localeCompare(b.id));
+  return Object.entries(sliceResults).map(([sliceId, surface]) => {
+    const hotspots: TrackedHotspotSnapshot[] = (surface.hotspots ?? [])
+      .filter((h) => h.supportCount > 0)
+      .sort((a, b) => b.intensityScore - a.intensityScore)
+      .slice(0, 5)
+      .map((h) => ({
+        sliceId,
+        sliceLabel: sliceId,
+        centroidLng: h.centroidLng,
+        centroidLat: h.centroidLat,
+        supportCount: h.supportCount,
+        intensityScore: h.intensityScore,
+        radiusMeters: h.radiusMeters,
+        peakStartEpochSec: h.peakStartEpochSec,
+        peakEndEpochSec: h.peakEndEpochSec,
+      }));
+
+    return { id: sliceId, label: sliceId, hotspots };
+  });
 }
 
 function matchHotspotsAcrossSlices(entries: SliceEntry[]): TrackedHotspot[] {

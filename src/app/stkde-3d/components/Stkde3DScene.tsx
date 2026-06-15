@@ -10,9 +10,11 @@ import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoord
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
+import type { StkdeSurfaceResponse } from '@/lib/stkde/contracts';
 import { toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
 import { AdaptiveWarpAxis } from './AdaptiveWarpAxis';
+import { HotspotTrajectoryOverlay } from './HotspotTrajectoryOverlay';
 import { START_Y, SLICE_SPACING, StkdeSliceStack, yForIndex } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
@@ -105,6 +107,7 @@ interface Stkde3DSceneProps {
   sliceKdes: KdeCell[][];
   volumeProfile?: DurationVolumeProfileEntry[];
   sliceEvents?: MockCrimeEvent[][];
+  hotspotSliceResults?: Record<string, StkdeSurfaceResponse> | null;
   activeIndex: number;
   viewMode?: 'stack' | 'focus';
   showRawEvents?: boolean;
@@ -166,6 +169,7 @@ function SceneContent({
   sliceKdes,
   volumeProfile,
   sliceEvents = [],
+  hotspotSliceResults = null,
   activeIndex,
   viewMode = 'stack',
   showRawEvents = false,
@@ -173,7 +177,7 @@ function SceneContent({
   onCreateDraftAtPoint,
   onUpdateSliceWarpWeight,
   onDeleteSlice,
-}: Stkde3DSceneProps) {
+  }: Stkde3DSceneProps) {
   const controlsRef = useRef<CameraControls>(null);
   const focusedSlice = slices[activeIndex]
     ? { ...slices[activeIndex], index: 0 }
@@ -231,6 +235,12 @@ function SceneContent({
         onDeleteSlice={onDeleteSlice}
       />
 
+      <HotspotTrajectoryOverlay
+        slices={viewMode === 'focus' ? focusedSlices : slices}
+        sliceResults={hotspotSliceResults}
+        viewMode={viewMode}
+      />
+
       {showRawEvents ? (
         <RawEventPoints
           slices={slices}
@@ -255,6 +265,7 @@ export function Stkde3DScene({
   sliceKdes,
   volumeProfile,
   sliceEvents = [],
+  hotspotSliceResults = null,
   activeIndex,
   viewMode = 'stack',
   showRawEvents = false,
@@ -348,11 +359,12 @@ export function Stkde3DScene({
             slices={slices}
             sliceKdes={sliceKdes}
             volumeProfile={volumeProfile}
-            sliceEvents={sliceEvents}
-            activeIndex={activeIndex}
-            viewMode={viewMode}
-            showRawEvents={showRawEvents}
-            sliceOpacity={sliceOpacity}
+          sliceEvents={sliceEvents}
+          hotspotSliceResults={hotspotSliceResults}
+          activeIndex={activeIndex}
+          viewMode={viewMode}
+          showRawEvents={showRawEvents}
+          sliceOpacity={sliceOpacity}
             onCreateDraftAtPoint={handleCreateDraftAtPoint}
             onUpdateSliceWarpWeight={handleUpdateSliceWarpWeight}
             onDeleteSlice={handleDeleteSlice}

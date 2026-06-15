@@ -12,6 +12,7 @@ import MapDebugOverlay from './MapDebugOverlay';
 import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
+import { MapHotspotTrajectoryLayer } from './MapHotspotTrajectoryLayer';
 import { MapTypeLegend } from './MapTypeLegend';
 import { MapStkdeHeatmapLayer } from './MapStkdeHeatmapLayer';
 import DeckGlHeatmapOverlay from './DeckGlHeatmapOverlay';
@@ -193,6 +194,9 @@ export default function MapVisualization({
             activeHotspotCentroid={activeHotspotCentroid}
             opacity={opacity.stkde}
           />
+        ) : null}
+        {isStkdeVisible ? (
+          <MapHotspotTrajectoryLayer sliceResults={stkdeResponse?.sliceResults ?? null} />
         ) : null}
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={null} />
         <MapDebugOverlay clickPoint={lastClick} selectedPoint={selectionPoint} />

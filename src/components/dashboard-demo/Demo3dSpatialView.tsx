@@ -55,6 +55,7 @@ export function Demo3dSpatialView() {
   const slices = useSliceDomainStore((state) => state.slices);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
+  const stkdeResponse = useDashboardDemoCoordinationStore((state) => state.stkdeResponse);
   const activeIndex = useDashboardDemoCoordinationStore((state) => state.activeSliceIndex);
   const viewMode = useDashboardDemoCoordinationStore((state) => state.viewMode);
   const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
@@ -314,6 +315,7 @@ export function Demo3dSpatialView() {
         slices={countedSlices}
         sliceKdes={sliceKdes}
         volumeProfile={volumeProfile}
+        hotspotSliceResults={stkdeResponse?.sliceResults ?? null}
         activeIndex={activeIndex}
         viewMode={viewMode}
         sliceOpacity={sliceOpacity}
