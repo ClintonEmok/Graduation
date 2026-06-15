@@ -99,7 +99,7 @@ function matchHotspotsAcrossSlices(entries: SliceEntry[]): TrackedHotspot[] {
       if (bestMatch) {
         usedInNext.add(bestMatch.index);
 
-        let existingTrack = tracks.find(
+        const existingTrack = tracks.find(
           (t) =>
             t.snapshots.length > 0 &&
             t.snapshots[t.snapshots.length - 1].sliceId === curHs.sliceId,

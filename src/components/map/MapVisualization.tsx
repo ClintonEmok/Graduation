@@ -72,7 +72,7 @@ export default function MapVisualization({
     limit: 50000,
   });
   
-  const data = crimeRecords || [];
+  const data = useMemo(() => crimeRecords || [], [crimeRecords]);
   
   const filteredData = useMemo(() => {
     if (!sliceTimeRange) return data;

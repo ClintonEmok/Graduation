@@ -346,12 +346,13 @@ export function Stkde3DScene({
   }, [mapTexture]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-md border border-sky-800/40">
+    <div className="relative h-full w-full overflow-hidden bg-transparent">
       <MapTileSource onTextureReady={setMapTexture} />
       <div className="absolute inset-0 z-10">
         <Canvas
           camera={{ position: CAMERA_POSITION, fov: 38 }}
           gl={{ alpha: true, antialias: true }}
+          style={{ background: 'transparent' }}
           onPointerDown={handleCanvasPointerDown}
           onPointerMissed={handleCanvasPointerMissed}
         >

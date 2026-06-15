@@ -264,7 +264,7 @@ export function DemoInspectPanel() {
     hasDefaultedFocusRef.current = true;
   }, [viewMode, visibleSlices.length, setViewMode]);
 
-  const activeEvolvingSlice = visibleSlices[activeIndex];
+  const activeEvolvingSlice = visibleSlices[activeIndex] ?? visibleSlices[0] ?? null;
   const activeSliceCrimeData = useCrimeData({
     startEpoch: activeEvolvingSlice?.startEpoch ?? 0,
     endEpoch: activeEvolvingSlice?.endEpoch ?? 0,
@@ -497,21 +497,27 @@ export function DemoInspectPanel() {
                   Active slice
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-50">
-                  {activeEvolvingSlice.label}
+                  {activeEvolvingSlice?.label ?? 'Active slice'}
                 </div>
                 <div className="mt-1 text-xs text-slate-400">
-                  {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(activeEvolvingSlice.startEpoch * 1000))}
-                  {' '}to{' '}
-                  {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(activeEvolvingSlice.endEpoch * 1000))}
+                  {activeEvolvingSlice ? (
+                    <>
+                      {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(activeEvolvingSlice.startEpoch * 1000))}
+                      {' '}to{' '}
+                      {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(activeEvolvingSlice.endEpoch * 1000))}
+                    </>
+                  ) : (
+                    'No active slice'
+                  )}
                 </div>
               </div>
 
               <div className="text-right">
                 <div className="text-xs text-slate-300">
-                  {activeEvolvingSlice.crimeCount.toLocaleString()} events
+                  {(activeEvolvingSlice?.crimeCount ?? 0).toLocaleString()} events
                 </div>
                 <div className="text-[10px] uppercase tracking-[0.18em] text-sky-200">
-                  burst intensity {formatBurstPercent(activeEvolvingSlice.burstScore)}
+                  burst intensity {formatBurstPercent(activeEvolvingSlice?.burstScore ?? 0)}
                 </div>
               </div>
             </header>

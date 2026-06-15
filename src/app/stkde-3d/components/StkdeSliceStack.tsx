@@ -592,7 +592,7 @@ export function StkdeSliceStack({
                 <mesh position={[0, thickness / 2, 0]}>
                   <boxGeometry args={[100, thickness, 100]} />
                   <meshStandardMaterial
-                    color={isActive ? '#132238' : '#0f172a'}
+                    color={isActive ? '#1e40af' : '#334155'}
                     transparent
                     opacity={slabOpacity}
                     roughness={0.96}
