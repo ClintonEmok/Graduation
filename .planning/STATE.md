@@ -4,8 +4,8 @@ milestone: v3.3
 milestone_name: Adaptive 3D Visualization
 status: in_progress
 stopped_at: Phase 79 planning complete
-last_updated: "2026-06-15T14:19:09Z"
-last_activity: 2026-06-15 - Completed quick task 260615-mn1: Temporarily hide adaptive axis volume in 3D scene
+last_updated: "2026-06-15T14:39:05Z"
+last_activity: 2026-06-15 - Completed quick task 260615-n3i: Replace adaptive axis volume with back-edge ribbon guide
 progress:
   total_phases: 5
   completed_phases: 3
@@ -87,6 +87,7 @@ None.
 | 260615-l64 | Add hotspot trajectory overlays to demo map and 3D views | 2026-06-15 | 1fe41fa | [260615-l64-add-hotspot-trajectory-overlays-to-demo-](./quick/260615-l64-add-hotspot-trajectory-overlays-to-demo-/) |
 | 260615-mcc | Fix demo inspect crash and remove 3D black box | 2026-06-15 | bedd79d | [260615-mcc-fix-demo-inspect-crash-and-remove-3d-bla](./quick/260615-mcc-fix-demo-inspect-crash-and-remove-3d-bla/) |
 | 260615-mn1 | Temporarily hide adaptive axis volume in 3D scene | 2026-06-15 | 72b4fe5 | [260615-mn1-temporarily-hide-adaptive-axis-volume-in](./quick/260615-mn1-temporarily-hide-adaptive-axis-volume-in/) |
+| 260615-n3i | Replace adaptive axis volume with back-edge ribbon guide | 2026-06-15 | 4482cd0 | [260615-n3i-replace-adaptive-axis-volume-with-back-e](./quick/260615-n3i-replace-adaptive-axis-volume-with-back-e/) |
 
 ## Session Continuity
 
