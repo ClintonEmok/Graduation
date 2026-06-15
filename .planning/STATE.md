@@ -4,8 +4,8 @@ milestone: v3.3
 milestone_name: Adaptive 3D Visualization
 status: in_progress
 stopped_at: Phase 79 planning complete
-last_updated: "2026-06-15T19:33:39Z"
-last_activity: 2026-06-15 - Completed quick task 260615-tx5: Remove slice type from slices tab details dialog
+last_updated: "2026-06-15T19:36:31Z"
+last_activity: 2026-06-15 - Completed quick task 260615-tze: Remove neutral language from slices tab dialogs
 progress:
   total_phases: 5
   completed_phases: 3
@@ -92,6 +92,7 @@ None.
 | 260615-nmv | Allow adjusting slice date boundaries in slices tab | 2026-06-15 | 888cb6c | [260615-nmv-allow-adjusting-slice-date-boundaries-in](./quick/260615-nmv-allow-adjusting-slice-date-boundaries-in/) |
 | 260615-pc4 | Simplify slices tab details dialog | 2026-06-15 | 667a078 | [260615-pc4-simplify-slices-tab-date-editing-to-dire](./quick/260615-pc4-simplify-slices-tab-date-editing-to-dire/) |
 | 260615-tx5 | Remove slice type from slices tab details dialog | 2026-06-15 | 4cae5bc | [260615-tx5-remove-slice-type-from-slices-tab-detail](./quick/260615-tx5-remove-slice-type-from-slices-tab-detail/) |
+| 260615-tze | Remove neutral language from slices tab dialogs | 2026-06-15 | 7b0ad04 | [260615-tze-remove-neutral-language-from-slices-tab-](./quick/260615-tze-remove-neutral-language-from-slices-tab-/) |
 
 ## Session Continuity
 
