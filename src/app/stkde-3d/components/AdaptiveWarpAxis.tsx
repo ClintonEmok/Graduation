@@ -10,10 +10,11 @@ import { START_Y } from './StkdeSliceStack';
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 
-const AXIS_WIDTH = 100;
-const AXIS_DEPTH = 100;
+const AXIS_WIDTH = 96;
+const AXIS_DEPTH = 1.8;
 const AXIS_HEIGHT = 100;
 const AXIS_BOTTOM_Y = START_Y - 2;
+const AXIS_Z = -50.4;
 
 const COLOR_STOPS: Array<{ stop: number; color: [number, number, number] }> = [
   { stop: 0, color: [30, 58, 95] },
@@ -98,9 +99,9 @@ export function AdaptiveWarpAxis() {
     mesh.count = ADAPTIVE_BIN_COUNT;
 
     bins.forEach((bin, index) => {
-      tempObject.position.set(0, bin.centerY, 0);
-      tempObject.scale.set(AXIS_WIDTH, bin.height, AXIS_DEPTH);
-      tempObject.updateMatrix();
+        tempObject.position.set(0, bin.centerY, AXIS_Z);
+        tempObject.scale.set(AXIS_WIDTH, bin.height, AXIS_DEPTH);
+        tempObject.updateMatrix();
 
       mesh.setMatrixAt(index, tempObject.matrix);
       mesh.setColorAt(index, bin.color);
