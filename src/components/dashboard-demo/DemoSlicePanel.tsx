@@ -18,8 +18,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { SliceComparisonCard } from '@/components/dashboard-demo/SliceComparisonCard';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -54,6 +54,26 @@ const formatNormalizedScore = (value: number | undefined) => {
     return null;
   }
   return `${Math.round(value)} / 100`;
+};
+
+const toDateTimeLocalValue = (timestampMs: number | null | undefined) => {
+  if (timestampMs === null || timestampMs === undefined || !Number.isFinite(timestampMs)) {
+    return '';
+  }
+
+  const date = new Date(timestampMs);
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const parseDateTimeLocalValue = (value: string) => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 export function DemoSlicePanel() {
@@ -95,11 +115,6 @@ export function DemoSlicePanel() {
   const selectedDraft = useMemo(
     () => pendingGeneratedBins.find((bin) => bin.id === selectedDraftId) ?? null,
     [pendingGeneratedBins, selectedDraftId]
-  );
-
-  const selectedSliceIndex = useMemo(
-    () => slices.findIndex((slice) => slice.id === selectedSliceId),
-    [selectedSliceId, slices],
   );
 
   const selectedSliceLabel = selectedSlice
@@ -233,13 +248,67 @@ export function DemoSlicePanel() {
     [maxTimestampSec, minTimestampSec],
   );
 
-  const formatSliceLabel = useCallback((slice: typeof slices[number], index: number) => {
-    if (slice.startDateTimeMs || slice.endDateTimeMs) {
-      return `${formatCompactDate(slice.startDateTimeMs)} → ${formatCompactDate(slice.endDateTimeMs)}`;
+  const handleSelectedSliceStartChange = useCallback((value: string) => {
+    if (!selectedSlice) return;
+
+    const nextStartMs = parseDateTimeLocalValue(value);
+    if (selectedSlice.type === 'point') {
+      const nextTime = toNormalizedFromTimestampMs(nextStartMs);
+      updateSlice(selectedSlice.id, {
+        startDateTimeMs: nextStartMs,
+        ...(nextTime !== null ? { time: nextTime } : {}),
+      });
+      return;
     }
 
-    return slice.name?.trim() || `Slice ${index + 1}`;
-  }, []);
+    const currentStartMs = selectedSlice.startDateTimeMs ?? (selectedSlice.range && minTimestampSec !== null && maxTimestampSec !== null
+      ? normalizedToEpochSeconds(selectedSlice.range[0], minTimestampSec, maxTimestampSec) * 1000
+      : null);
+    const currentEndMs = selectedSlice.endDateTimeMs ?? (selectedSlice.range && minTimestampSec !== null && maxTimestampSec !== null
+      ? normalizedToEpochSeconds(selectedSlice.range[1], minTimestampSec, maxTimestampSec) * 1000
+      : null);
+
+    const resolvedStartMs = nextStartMs ?? currentStartMs;
+    const nextStartNorm = toNormalizedFromTimestampMs(resolvedStartMs);
+    const nextEndNorm = toNormalizedFromTimestampMs(currentEndMs);
+
+    if (nextStartNorm !== null && nextEndNorm !== null) {
+      const start = Math.min(nextStartNorm, nextEndNorm);
+      const end = Math.max(nextStartNorm, nextEndNorm);
+      updateSlice(selectedSlice.id, {
+        startDateTimeMs: nextStartMs,
+        range: [start, end],
+        time: (start + end) / 2,
+      });
+      return;
+    }
+
+    updateSlice(selectedSlice.id, { startDateTimeMs: nextStartMs });
+  }, [maxTimestampSec, minTimestampSec, selectedSlice, toNormalizedFromTimestampMs, updateSlice]);
+
+  const handleSelectedSliceEndChange = useCallback((value: string) => {
+    if (!selectedSlice || selectedSlice.type !== 'range') return;
+
+    const nextEndMs = parseDateTimeLocalValue(value);
+    const currentStartMs = selectedSlice.startDateTimeMs ?? (selectedSlice.range && minTimestampSec !== null && maxTimestampSec !== null
+      ? normalizedToEpochSeconds(selectedSlice.range[0], minTimestampSec, maxTimestampSec) * 1000
+      : null);
+    const nextStartNorm = toNormalizedFromTimestampMs(currentStartMs);
+    const nextEndNorm = toNormalizedFromTimestampMs(nextEndMs);
+
+    if (nextStartNorm !== null && nextEndNorm !== null) {
+      const start = Math.min(nextStartNorm, nextEndNorm);
+      const end = Math.max(nextStartNorm, nextEndNorm);
+      updateSlice(selectedSlice.id, {
+        endDateTimeMs: nextEndMs,
+        range: [start, end],
+        time: (start + end) / 2,
+      });
+      return;
+    }
+
+    updateSlice(selectedSlice.id, { endDateTimeMs: nextEndMs });
+  }, [maxTimestampSec, minTimestampSec, selectedSlice, toNormalizedFromTimestampMs, updateSlice]);
 
   const hasItems = pendingItems.length > 0 || appliedItems.length > 0;
 
@@ -517,15 +586,32 @@ export function DemoSlicePanel() {
 
           {selectedSlice ? (
             <div className="space-y-3 pt-2">
-              <SliceComparisonCard
-                slice={selectedSlice}
-                index={selectedSliceIndex >= 0 ? selectedSliceIndex : 0}
-                minTimestampSec={minTimestampSec}
-                maxTimestampSec={maxTimestampSec}
-                onUpdateSlice={updateSlice}
-                toNormalizedFromTimestampMs={toNormalizedFromTimestampMs}
-                formatSliceLabel={formatSliceLabel}
-              />
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Boundary editor</div>
+                <div className="mt-3 flex gap-2">
+                  <label className="min-w-0 flex-1 space-y-1 text-[11px] text-slate-400">
+                    <span>{selectedSlice.type === 'range' ? 'Start datetime' : 'Datetime'}</span>
+                    <Input
+                      type="datetime-local"
+                      value={toDateTimeLocalValue(selectedSlice.startDateTimeMs ?? null)}
+                      onChange={(event) => handleSelectedSliceStartChange(event.target.value)}
+                      className="border-slate-700 bg-slate-950 text-slate-100"
+                    />
+                  </label>
+
+                  {selectedSlice.type === 'range' ? (
+                    <label className="min-w-0 flex-1 space-y-1 text-[11px] text-slate-400">
+                      <span>End datetime</span>
+                      <Input
+                        type="datetime-local"
+                        value={toDateTimeLocalValue(selectedSlice.endDateTimeMs ?? null)}
+                        onChange={(event) => handleSelectedSliceEndChange(event.target.value)}
+                        className="border-slate-700 bg-slate-950 text-slate-100"
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
