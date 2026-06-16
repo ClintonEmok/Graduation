@@ -75,6 +75,10 @@ Recent decisions affecting current work:
 - Execute 79-02: Add 3D slice selection, drag-to-resize, double-click-to-create
 - Execute 79-03: Add warp weight slider, delete button, timeline density strip, cross-view sync verification
 
+### Roadmap Evolution
+
+- Phase 80 added: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
+
 ### Blockers/Concerns
 
 None.
