@@ -112,3 +112,16 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 80 to break down)
+
+### Phase 81: Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads
+
+**Goal:** Dashboard startup stays summary-first and low-memory by serving overview/meta from persisted DuckDB summary tables, while exact detail loads only after explicit user narrowing through a paged working-window contract.
+**Requirements**: TBD
+**Depends on:** Phase 80
+**Plans:** 3 plans
+
+Plans:
+
+- [ ] 81-01-PLAN.md — Persist DuckDB fact/summary tables and cut `/api/crime/meta` + `/api/crime/overview` over to them
+- [ ] 81-02-PLAN.md — Audit dashboard `useTimelineDataStore` consumers and enforce summary-first preview-safe startup
+- [ ] 81-03-PLAN.md — Rebuild `/api/crimes/range` as exact paged detail and migrate active-slice-first consumers
