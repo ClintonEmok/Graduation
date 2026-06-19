@@ -11,17 +11,17 @@ import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTi
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import type { StkdeSurfaceResponse } from '@/lib/stkde/contracts';
-import { toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
+import { toDisplaySeconds, toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
 import { AdaptiveWarpAxis } from './AdaptiveWarpAxis';
 import { HotspotTrajectoryOverlay } from './HotspotTrajectoryOverlay';
 import { START_Y, SLICE_SPACING, StkdeSliceStack, yForIndex } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
-import type { TimeSlice } from '@/store/slice-domain/types';
 
 const CAMERA_POSITION: [number, number, number] = [105, 175, 105];
 const CAMERA_TARGET: [number, number, number] = [0, 0, 0];
+const normalizeWarpBlend = (warpFactor: number): number => clamp(warpFactor / 3, 0, 1);
 
 const MAP_VIEW_STATE = {
   longitude: -87.649,
@@ -37,23 +37,6 @@ const MAP_PLANE_Y = -38;
 const MIN_DRAFT_WINDOW_SEC = 6 * 60 * 60;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
-
-const buildOrderedRangeSliceIds = (allSlices: TimeSlice[]): string[] => {
-  return [...allSlices]
-    .filter((slice) => slice.isVisible && slice.type === 'range')
-    .sort((left, right) => {
-      const leftStart = left.startDateTimeMs ?? left.endDateTimeMs ?? 0;
-      const rightStart = right.startDateTimeMs ?? right.endDateTimeMs ?? 0;
-      if (leftStart !== rightStart) return leftStart - rightStart;
-
-      const leftEnd = left.endDateTimeMs ?? left.startDateTimeMs ?? leftStart;
-      const rightEnd = right.endDateTimeMs ?? right.startDateTimeMs ?? rightStart;
-      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
-
-      return left.id.localeCompare(right.id);
-    })
-    .map((slice) => slice.id);
-};
 
 const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number): number => {
   const span = Math.max(1e-9, inMax - inMin);
@@ -160,15 +143,16 @@ interface Stkde3DSceneProps {
   showRawEvents?: boolean;
   sliceOpacity?: number;
   onCreateDraftAtPoint?: (payload: { y: number; clientX: number; clientY: number }) => void;
-  onUpdateSliceWarpWeight?: (index: number, weight: number) => void;
-  onDeleteSlice?: (index: number) => void;
 }
 
 function RawEventPoints({
   slices,
   sliceEvents = [],
   activeIndex,
-}: Pick<Stkde3DSceneProps, 'slices' | 'sliceEvents' | 'activeIndex'>) {
+  resolveSliceY,
+}: Pick<Stkde3DSceneProps, 'slices' | 'sliceEvents' | 'activeIndex'> & {
+  resolveSliceY: (slice: EvolvingSlice & { sourceSliceId?: string }) => number;
+}) {
   const positions = useMemo(() => {
     if (sliceEvents.length === 0 || slices.length === 0) {
       return new Float32Array();
@@ -180,7 +164,7 @@ function RawEventPoints({
     const events = sliceEvents[slice.index] ?? [];
     const flattened = new Float32Array(events.length * 3);
     let cursor = 0;
-    const y = yForIndex(slice.index) + 0.15;
+    const y = resolveSliceY(slice) + 0.15;
 
     for (const event of events) {
       flattened[cursor] = event.x;
@@ -190,7 +174,7 @@ function RawEventPoints({
     }
 
     return flattened;
-  }, [activeIndex, sliceEvents, slices]);
+  }, [activeIndex, resolveSliceY, sliceEvents, slices]);
 
   if (positions.length === 0) return null;
 
@@ -222,9 +206,10 @@ function SceneContent({
   showRawEvents = false,
   sliceOpacity = 1,
   onCreateDraftAtPoint,
-  onUpdateSliceWarpWeight,
-  onDeleteSlice,
-  }: Stkde3DSceneProps) {
+  resolveSliceY,
+  }: Stkde3DSceneProps & {
+    resolveSliceY: (slice: EvolvingSlice & { sourceSliceId?: string }) => number;
+  }) {
   const controlsRef = useRef<CameraControls>(null);
   const focusedSlice = slices[activeIndex]
     ? { ...slices[activeIndex], index: 0 }
@@ -278,14 +263,13 @@ function SceneContent({
         activeIndex={viewMode === 'focus' ? 0 : activeIndex}
         compact={viewMode === 'focus'}
         sliceOpacity={sliceOpacity}
-        onUpdateSliceWarpWeight={onUpdateSliceWarpWeight}
-        onDeleteSlice={onDeleteSlice}
       />
 
       <HotspotTrajectoryOverlay
         slices={viewMode === 'focus' ? focusedSlices : slices}
         sliceResults={hotspotSliceResults}
         viewMode={viewMode}
+        resolveSliceY={resolveSliceY}
       />
 
       {showRawEvents ? (
@@ -293,6 +277,7 @@ function SceneContent({
           slices={slices}
           sliceEvents={sliceEvents}
           activeIndex={activeIndex}
+          resolveSliceY={resolveSliceY}
         />
       ) : null}
 
@@ -324,6 +309,8 @@ export function Stkde3DScene({
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const warpBlend = useMemo(() => normalizeWarpBlend(warpFactor), [warpFactor]);
+  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
   const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
@@ -331,15 +318,40 @@ export function Stkde3DScene({
   const computeManualDraftBin = useDashboardDemoTimeslicingModeStore((state) => state.computeManualDraftBin);
   const canvasPointerRef = useRef<{ x: number; y: number } | null>(null);
   const stackEndY = useMemo(() => START_Y + SLICE_SPACING * Math.max(1, slices.length - 1), [slices.length]);
+  const viewDomain = useMemo<[number, number]>(() => (
+    viewportEnd > viewportStart ? [viewportStart, viewportEnd] : [0, 1]
+  ), [viewportEnd, viewportStart]);
+  const warpDomain = useMemo<[number, number]>(() => (
+    mapDomain[1] > mapDomain[0] ? mapDomain : viewDomain
+  ), [mapDomain, viewDomain]);
+  const warpDomainDisplay = useMemo<[number, number]>(() => {
+    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
+      return warpDomain;
+    }
+
+    return [
+      toDisplaySeconds(warpDomain[0], warpBlend, warpMap, warpDomain),
+      toDisplaySeconds(warpDomain[1], warpBlend, warpMap, warpDomain),
+    ];
+  }, [timeScaleMode, warpDomain, warpBlend, warpMap]);
+
+  const resolveSliceY = useCallback((slice: EvolvingSlice & { sourceSliceId?: string }): number => {
+    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
+      return yForIndex(slice.index);
+    }
+
+    const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
+    const displayEpoch = toDisplaySeconds(midEpoch, warpBlend, warpMap, warpDomain);
+    return mapRange(displayEpoch, warpDomainDisplay[0], warpDomainDisplay[1], START_Y, stackEndY);
+  }, [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]);
 
   const yToEpoch = useCallback((y: number): number => {
-    const domain: [number, number] = viewportEnd > viewportStart ? [viewportStart, viewportEnd] : [0, 1];
-    const displayEpoch = mapRange(y, START_Y, stackEndY, domain[0], domain[1]);
-    if (timeScaleMode === 'adaptive' && warpMap && warpFactor > 0 && warpMap.length > 1) {
-      return toLinearSeconds(displayEpoch, domain, warpFactor, warpMap, domain);
+    if (timeScaleMode === 'adaptive' && warpMap && warpBlend > 0 && warpMap.length > 1) {
+      const displayEpoch = mapRange(y, START_Y, stackEndY, warpDomainDisplay[0], warpDomainDisplay[1]);
+      return toLinearSeconds(displayEpoch, warpDomain, warpBlend, warpMap, warpDomain);
     }
-    return displayEpoch;
-  }, [stackEndY, timeScaleMode, viewportEnd, viewportStart, warpFactor, warpMap]);
+    return mapRange(y, START_Y, stackEndY, warpDomain[0], warpDomain[1]);
+  }, [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]);
 
   const clearActiveSlice = useCallback(() => {
     setActiveSliceIndex(-1);
@@ -362,33 +374,6 @@ export function Stkde3DScene({
     setActiveRailTab('slices');
     void computeManualDraftBin(draftId);
   }, [addManualDraftRange, computeManualDraftBin, setActiveRailTab, viewportEnd, viewportStart, yToEpoch]);
-
-  const handleUpdateSliceWarpWeight = useCallback((sliceIndex: number, weight: number) => {
-    const sourceSliceId = slices[sliceIndex]?.sourceSliceId;
-    if (!sourceSliceId) return;
-
-    useSliceDomainStore.getState().updateSlice(sourceSliceId, { warpWeight: weight });
-  }, [slices]);
-
-  const handleDeleteSlice = useCallback((sliceIndex: number) => {
-    const sourceSliceId = slices[sliceIndex]?.sourceSliceId;
-    if (!sourceSliceId) return;
-
-    const activeSourceSliceId = slices[activeIndex]?.sourceSliceId ?? null;
-    useSliceDomainStore.getState().removeSlice(sourceSliceId);
-
-    if (sourceSliceId === activeSourceSliceId) {
-      setActiveSlice(null);
-      setActiveSliceIndex(-1);
-      return;
-    }
-
-    const nextOrderedIds = buildOrderedRangeSliceIds(useSliceDomainStore.getState().slices);
-    const nextActiveIndex = activeSourceSliceId ? nextOrderedIds.indexOf(activeSourceSliceId) : -1;
-    if (nextActiveIndex >= 0) {
-      setActiveSliceIndex(nextActiveIndex);
-    }
-  }, [activeIndex, setActiveSlice, setActiveSliceIndex, slices]);
 
   const handleCanvasPointerDown = useCallback((event: { clientX: number; clientY: number }) => {
     canvasPointerRef.current = { x: event.clientX, y: event.clientY };
@@ -425,9 +410,8 @@ export function Stkde3DScene({
           viewMode={viewMode}
           showRawEvents={showRawEvents}
           sliceOpacity={sliceOpacity}
-            onCreateDraftAtPoint={handleCreateDraftAtPoint}
-            onUpdateSliceWarpWeight={handleUpdateSliceWarpWeight}
-            onDeleteSlice={handleDeleteSlice}
+          resolveSliceY={resolveSliceY}
+          onCreateDraftAtPoint={handleCreateDraftAtPoint}
           />
 
           {mapTexture ? (
