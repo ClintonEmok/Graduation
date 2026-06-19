@@ -166,7 +166,11 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
-  const overviewTimestampSec = useTimelineDataStore((state) => state.overviewTimestampSec);
+  // Phase 81: read directly from the server-binned overview bins. The
+  // legacy `overviewTimestampSec` derived array has been removed from the
+  // store. We synthesize a representative per-bin midpoint series for
+  // downstream density and burst-window derivation.
+  const overviewBinsState = useTimelineDataStore((state) => state.overviewBins);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const timeStore = (timeStoreOverride ?? useTimeStore) as typeof useTimeStore;
@@ -264,21 +268,33 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     if (data && data.length > 0) {
       return data.map((point) => point.timestamp as number);
     }
-    if (overviewTimestampSec.length > 0) {
-      return overviewTimestampSec;
+    // Phase 81: synthesize a representative timestamp per bin midpoint on
+    // the summary path. The count is the same as the bin's aggregated count;
+    // we re-expand each midpoint `count` times (capped) so downstream
+    // density smoothing sees a proportional signal.
+    if (overviewBinsState.length > 0) {
+      const points: number[] = [];
+      for (const bin of overviewBinsState) {
+        const midpoint = (bin.startEpoch + bin.endEpoch) / 2;
+        const repeats = Math.max(1, Math.min(bin.count, 64));
+        for (let i = 0; i < repeats; i += 1) {
+          points.push(midpoint);
+        }
+      }
+      return points;
     }
     return [];
-  }, [columns, data, overviewTimestampSec]);
+  }, [columns, data, overviewBinsState]);
 
   const overviewSeries = useMemo<number[]>(() => {
-    if (overviewTimestampSec.length > 0) {
-      return overviewTimestampSec;
+    if (overviewBinsState.length > 0) {
+      return overviewBinsState.map((bin) => (bin.startEpoch + bin.endEpoch) / 2);
     }
     if (timestampSeconds.length > 0) {
       return sampleTimelinePoints(timestampSeconds);
     }
     return [];
-  }, [overviewTimestampSec, timestampSeconds]);
+  }, [overviewBinsState, timestampSeconds]);
 
   const overviewBins = useMemo(() => {
     const values = timestampSecondsOverride ?? overviewSeries;
@@ -683,6 +699,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     detailInnerWidth,
     isComputing,
     densityMap,
+    showAdaptiveDensityStrip: timeScaleMode === 'adaptive',
     overviewScale,
     detailScale,
     overviewSvgRef,

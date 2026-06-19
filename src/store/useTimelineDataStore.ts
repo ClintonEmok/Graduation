@@ -5,13 +5,25 @@ import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { ColumnarData, DataPoint } from '@/lib/data/types';
 import { epochSecondsToNormalized, toEpochSeconds } from '@/lib/time-domain';
 import { TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS } from '@/lib/timeline-series';
+import type { OverviewFilter } from '@/lib/queries/types';
 
 export interface LoadRealDataOptions {
   maxRows?: number;
 }
 
 export interface LoadSummaryDataOptions {
+  /**
+   * Legacy `maxPoints` cap. Phase 81 dropped sampled-timestamp responses in
+   * favor of server-binned counts at a fixed medium resolution, so this field
+   * is kept on the wire for backward compatibility but is otherwise a no-op.
+   */
   maxPoints?: number;
+  /**
+   * Optional filter inputs forwarded to the overview endpoint. The endpoint
+   * contract is filter-aware for crime-type and district (D-02); viewport
+   * movement must NOT change these inputs.
+   */
+  filters?: Partial<OverviewFilter>;
 }
 
 function getBounds(values: ArrayLike<number>): { min: number; max: number } | null {
@@ -46,11 +58,14 @@ export interface OverviewBinState {
   count: number;
 }
 
+export type TimelineDataMode = 'summary' | 'detail' | 'mock';
+
 export interface TimelineDataState {
   data: DataPoint[];
   columns: ColumnarData | null;
-  overviewTimestampSec: number[];
   overviewBins: OverviewBinState[];
+  overviewBinsDomain: { startEpoch: number; endEpoch: number; binCount: number; binSizeSec: number } | null;
+  overviewBinsFilter: OverviewFilter;
   crimeTypes: string[];
   minX: number | null;
   maxX: number | null;
@@ -61,18 +76,60 @@ export interface TimelineDataState {
   isLoading: boolean;
   isMock: boolean;
   dataCount: number | null;
+  /**
+   * Phase 81: explicit summary-vs-detail mode.
+   *
+   * - `summary`: only the persisted overview bins + metadata are loaded.
+   *   `columns` is null and the dashboard is in preview mode.
+   * - `detail`: `columns` is loaded; dashboard surfaces that need full Arrow
+   *   detail can render against the in-memory working-window cache.
+   * - `mock`: dataset unavailable; the store is using the mock fallback.
+   */
+  mode: TimelineDataMode;
+  /**
+   * Last filter inputs passed to `loadSummaryData`. Tracked so callers can
+   * reason about what triggered the most recent request (and so test
+   * fixtures can assert filter-aware behavior).
+   */
+  lastSummaryFilters: OverviewFilter;
 
   setData: (data: DataPoint[]) => void;
   generateMockData: (count: number) => void;
   loadSummaryData: (options?: LoadSummaryDataOptions) => Promise<void>;
   loadRealData: (options?: LoadRealDataOptions) => Promise<void>;
+  /**
+   * Phase 81: explicit detail-on-intent entry point. Callers (e.g. brush or
+   * zoom handlers in `CubeVisualization` or `MainScene`) invoke this when
+   * the user has narrowed a window. Mount-time callers should NOT use this.
+   */
+  loadDetailOnIntent: (options?: LoadRealDataOptions) => Promise<void>;
 }
+
+const EMPTY_FILTERS: OverviewFilter = { crimeTypes: [], districts: [] };
+
+const sanitizeFilters = (filters?: Partial<OverviewFilter>): OverviewFilter => ({
+  crimeTypes: Array.isArray(filters?.crimeTypes) ? filters!.crimeTypes.filter((value) => typeof value === 'string') : [],
+  districts: Array.isArray(filters?.districts) ? filters!.districts.filter((value) => typeof value === 'string') : [],
+});
+
+const areFiltersEqual = (a: OverviewFilter, b: OverviewFilter): boolean => {
+  if (a.crimeTypes.length !== b.crimeTypes.length) return false;
+  if (a.districts.length !== b.districts.length) return false;
+  for (let i = 0; i < a.crimeTypes.length; i += 1) {
+    if (a.crimeTypes[i] !== b.crimeTypes[i]) return false;
+  }
+  for (let i = 0; i < a.districts.length; i += 1) {
+    if (a.districts[i] !== b.districts[i]) return false;
+  }
+  return true;
+};
 
 export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
   data: [],
   columns: null,
-  overviewTimestampSec: [],
   overviewBins: [],
+  overviewBinsDomain: null,
+  overviewBinsFilter: EMPTY_FILTERS,
   crimeTypes: [],
   minX: null,
   maxX: null,
@@ -83,6 +140,8 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
   isLoading: false,
   isMock: false,
   dataCount: null,
+  mode: 'summary',
+  lastSummaryFilters: EMPTY_FILTERS,
 
   setData: (data) => set({ data }),
 
@@ -108,8 +167,9 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
     set({
       data,
       columns: null,
-      overviewTimestampSec: data.map((point) => point.timestamp / 1000),
       overviewBins: [],
+      overviewBinsDomain: null,
+      overviewBinsFilter: EMPTY_FILTERS,
       crimeTypes,
       minTimestampSec: MOCK_START_SEC,
       maxTimestampSec: MOCK_END_SEC,
@@ -118,12 +178,21 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       minZ: -50,
       maxZ: 50,
       dataCount: count,
+      mode: 'mock',
     });
   },
 
   loadSummaryData: async (options?: LoadSummaryDataOptions) => {
-    const { isLoading, overviewTimestampSec, columns } = get();
-    if (isLoading || (columns && overviewTimestampSec.length > 0)) return;
+    const { isLoading, mode, lastSummaryFilters } = get();
+    if (isLoading) return;
+    const filters = sanitizeFilters(options?.filters);
+    // Reuse the previously-loaded summary when the request would be identical
+    // (e.g. a no-op filter change). A genuinely new request always goes
+    // through; this matches the existing "guard against in-flight load only"
+    // behavior we had pre-Phase 81 plus a filter-equality short-circuit.
+    if (mode === 'summary' && areFiltersEqual(filters, lastSummaryFilters) && get().overviewBins.length > 0) {
+      return;
+    }
     set({ isLoading: true });
 
     try {
@@ -131,9 +200,18 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       // (the server returns pre-binned counts at a fixed medium resolution)
       // but the query param is kept on the wire for backward compatibility.
       const maxPoints = Math.max(1, Math.floor(options?.maxPoints ?? TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS));
+      const overviewParams = new URLSearchParams({ maxPoints: String(maxPoints) });
+      if (filters.crimeTypes.length > 0) {
+        overviewParams.set('crimeTypes', filters.crimeTypes.join(','));
+      }
+      if (filters.districts.length > 0) {
+        overviewParams.set('districts', filters.districts.join(','));
+      }
+      const overviewQuery = overviewParams.toString();
+
       const [metaRes, overviewRes] = await Promise.all([
         fetch('/api/crime/meta'),
-        fetch(`/api/crime/overview?maxPoints=${maxPoints}`),
+        fetch(`/api/crime/overview?${overviewQuery}`),
       ]);
 
       if (!metaRes.ok) throw new Error(`Meta HTTP error! status: ${metaRes.status}`);
@@ -156,13 +234,11 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       }
 
       // Phase 81: overview is now server-binned counts. We materialize the
-      // bins as a new `overviewBins` field AND derive a one-timestamp-per-bin
-      // midpoint array for legacy consumers (e.g. DemoDualTimeline density
-      // strip derivation). 81-02 will replace the derived array with direct
-      // bin consumption.
+      // bins as a new `overviewBins` field; there is no client-side rebucketing
+      // of large raw timestamp arrays on the summary path. Direct consumers
+      // (e.g. `DemoDualTimeline`) read the bins shape directly.
       const rawBins = Array.isArray(overview?.bins) ? overview.bins : [];
       const normalizedBins: OverviewBinState[] = [];
-      const derivedTimestamps: number[] = [];
       for (const raw of rawBins) {
         if (!raw) continue;
         const startEpoch = Number(raw.startEpoch);
@@ -172,23 +248,37 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch) || !Number.isFinite(count)) {
           continue;
         }
-        const midpoint = (startEpoch + endEpoch) / 2;
         normalizedBins.push({
           binIndex: Number.isFinite(binIndex) ? binIndex : normalizedBins.length,
           startEpoch,
           endEpoch,
           count,
         });
-        if (count > 0) {
-          derivedTimestamps.push(midpoint);
-        }
       }
+
+      const domainMeta = overview?.domain;
+      const domain =
+        domainMeta && Number.isFinite(Number(domainMeta.startEpoch)) && Number.isFinite(Number(domainMeta.endEpoch))
+          ? {
+              startEpoch: Number(domainMeta.startEpoch),
+              endEpoch: Number(domainMeta.endEpoch),
+              binCount: Number.isFinite(Number(domainMeta.binCount)) ? Number(domainMeta.binCount) : normalizedBins.length,
+              binSizeSec: Number.isFinite(Number(domainMeta.binSizeSec)) ? Number(domainMeta.binSizeSec) : 0,
+            }
+          : null;
+
+      const responseFilter = overview?.filter;
+      const normalizedFilter: OverviewFilter = {
+        crimeTypes: Array.isArray(responseFilter?.crimeTypes) ? responseFilter.crimeTypes.filter((v: unknown) => typeof v === 'string') : [],
+        districts: Array.isArray(responseFilter?.districts) ? responseFilter.districts.filter((v: unknown) => typeof v === 'string') : [],
+      };
 
       set({
         data: [],
         columns: null,
-        overviewTimestampSec: derivedTimestamps,
         overviewBins: normalizedBins,
+        overviewBinsDomain: domain,
+        overviewBinsFilter: normalizedFilter,
         crimeTypes: Array.isArray(meta?.crimeTypes) ? meta.crimeTypes.filter((value: string) => typeof value === 'string') : [],
         minTimestampSec: minTimeSec,
         maxTimestampSec: maxTimeSec,
@@ -199,12 +289,14 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         isLoading: false,
         isMock: meta?.isMock || false,
         dataCount: meta?.count ?? null,
+        mode: meta?.isMock ? 'mock' : 'summary',
+        lastSummaryFilters: filters,
       });
     } catch (err) {
       console.error('Error loading summary data:', err);
       console.warn('Using demo data - database unavailable');
       get().generateMockData(1000);
-      set({ isLoading: false, isMock: true });
+      set({ isLoading: false, isMock: true, mode: 'mock', lastSummaryFilters: filters });
     }
   },
 
@@ -315,8 +407,9 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
 
       set({
         columns,
-        overviewTimestampSec: [],
         overviewBins: [],
+        overviewBinsDomain: null,
+        overviewBinsFilter: EMPTY_FILTERS,
         crimeTypes: meta?.crimeTypes || [],
         minTimestampSec: effectiveMinTimeSec,
         maxTimestampSec: effectiveMaxTimeSec,
@@ -327,11 +420,25 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         isLoading: false,
         isMock: meta?.isMock || false,
         dataCount: meta?.count || count,
+        mode: meta?.isMock ? 'mock' : 'detail',
       });
     } catch (err) {
       console.error('Error loading real data:', err);
       console.warn('Using demo data - database unavailable');
-      set({ isLoading: false, isMock: true });
+      set({ isLoading: false, isMock: true, mode: 'mock' });
     }
+  },
+
+  /**
+   * Phase 81: explicit detail-on-intent entry point. Identical to
+   * `loadRealData()` today, but separates the "fetch on first user
+   * narrowing" semantics from the "fetch on mount" semantics. Callers
+   * that need detail (CubeVisualization's intent button, MainScene's
+   * brush handlers) should call this so a future Wave 3 migration can
+   * route this call to the paged `/api/crimes/range` endpoint with the
+   * narrowed window instead of `/api/crime/stream` (full Arrow).
+   */
+  loadDetailOnIntent: async (options?: LoadRealDataOptions) => {
+    await get().loadRealData(options);
   },
 }));

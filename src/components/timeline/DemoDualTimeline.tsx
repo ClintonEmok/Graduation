@@ -182,7 +182,10 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
-  const overviewTimestampSec = useTimelineDataStore((state) => state.overviewTimestampSec);
+  // Phase 81: render directly from the server-binned overview bins. The
+  // legacy `overviewTimestampSec` derived array has been removed from the
+  // store; this timeline component is the canonical direct consumer.
+  const overviewBinsState = useTimelineDataStore((state) => state.overviewBins);
   const isDataLoading = useTimelineDataStore((state) => state.isLoading);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -288,21 +291,39 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     if (data && data.length > 0) {
       return data.map((point) => point.timestamp as number);
     }
-    if (overviewTimestampSec.length > 0) {
-      return overviewTimestampSec;
+    // Phase 81: summary path uses the persisted overview bins. We synthesize a
+    // representative timestamp per bin midpoint so the density-map derivation
+    // still has a single-timestamp-per-event source. The count is the same as
+    // the bin's aggregated count; we re-expand each midpoint `count` times
+    // so downstream density smoothing sees a proportional signal without
+    // re-bucketing from a raw `number[]` on the summary path.
+    if (overviewBinsState.length > 0) {
+      const points: number[] = [];
+      for (const bin of overviewBinsState) {
+        const midpoint = (bin.startEpoch + bin.endEpoch) / 2;
+        const repeats = Math.max(1, Math.min(bin.count, 64));
+        for (let i = 0; i < repeats; i += 1) {
+          points.push(midpoint);
+        }
+      }
+      return points;
     }
     return [];
-  }, [columns, data, overviewTimestampSec]);
+  }, [columns, data, overviewBinsState]);
 
   const overviewSeries = useMemo<number[]>(() => {
-    if (overviewTimestampSec.length > 0) {
-      return overviewTimestampSec;
+    // Phase 81: on the summary path the server-binned counts are the source
+    // of truth. There is no client-side re-bucketing of a raw `number[]`
+    // (D-04: server-binned contract). We use the per-bin midpoints as a
+    // lightweight representative series for downstream consumers.
+    if (overviewBinsState.length > 0) {
+      return overviewBinsState.map((bin) => (bin.startEpoch + bin.endEpoch) / 2);
     }
     if (timestampSeconds.length > 0) {
       return sampleTimelinePoints(timestampSeconds);
     }
     return [];
-  }, [overviewTimestampSec, timestampSeconds]);
+  }, [overviewBinsState, timestampSeconds]);
 
   const nextDensityMap = useMemo(() => {
     if (!timestampSeconds.length || warpDomain[1] <= warpDomain[0]) {
@@ -330,17 +351,41 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const effectiveWarpFactor = shouldForceAdaptiveFromSlices ? (warpFactor > 0 ? warpFactor : 1) : warpFactor;
   const effectiveTimeScaleMode = shouldForceAdaptiveFromSlices ? 'adaptive' : timeScaleMode;
 
-  const overviewBins = useMemo(() => {
-    const values = timestampSecondsOverride ?? overviewSeries;
-    if (!values.length) return [];
-    const binner = bin<number, number>()
-      .value((d) => d)
-      .domain([domainStart, domainEnd])
-      .thresholds(50);
-    return binner(values);
-  }, [timestampSecondsOverride, overviewSeries, domainStart, domainEnd]);
+  const overviewBins = useMemo<Array<{ x0?: number; x1?: number; length: number }>>(() => {
+    // Phase 81: on the summary path, render directly from the persisted
+    // server-binned overview bins. No client-side re-bucketing of a raw
+    // `number[]` (D-04: server-binned contract, D-02: no viewport sensitivity).
+    // When an explicit `timestampSecondsOverride` is supplied (e.g. a test
+    // fixture), fall back to the legacy d3-array binner so existing
+    // visual-output tests stay green.
+    if (timestampSecondsOverride && timestampSecondsOverride.length > 0) {
+      const binner = bin<number, number>()
+        .value((d) => d)
+        .domain([domainStart, domainEnd])
+        .thresholds(50);
+      return binner(timestampSecondsOverride).map((b) => ({
+        x0: b.x0,
+        x1: b.x1,
+        length: b.length,
+      }));
+    }
+    if (overviewBinsState.length > 0) {
+      return overviewBinsState.map((bin) => ({
+        x0: bin.startEpoch,
+        x1: bin.endEpoch,
+        length: bin.count,
+      }));
+    }
+    return [];
+  }, [timestampSecondsOverride, overviewBinsState, domainStart, domainEnd]);
 
-  const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
+  const overviewMax = useMemo(() => {
+    let maxLen = 0;
+    for (const bin of overviewBins) {
+      if (bin.length > maxLen) maxLen = bin.length;
+    }
+    return maxLen || 1;
+  }, [overviewBins]);
 
   const detailPoints = useMemo(() => {
     if (detailPointsOverride) {
