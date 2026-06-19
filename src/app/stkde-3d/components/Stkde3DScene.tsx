@@ -18,6 +18,7 @@ import { HotspotTrajectoryOverlay } from './HotspotTrajectoryOverlay';
 import { START_Y, SLICE_SPACING, StkdeSliceStack, yForIndex } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
+import type { TimeSlice } from '@/store/slice-domain/types';
 
 const CAMERA_POSITION: [number, number, number] = [105, 175, 105];
 const CAMERA_TARGET: [number, number, number] = [0, 0, 0];
@@ -36,6 +37,23 @@ const MAP_PLANE_Y = -38;
 const MIN_DRAFT_WINDOW_SEC = 6 * 60 * 60;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+const buildOrderedRangeSliceIds = (allSlices: TimeSlice[]): string[] => {
+  return [...allSlices]
+    .filter((slice) => slice.isVisible && slice.type === 'range')
+    .sort((left, right) => {
+      const leftStart = left.startDateTimeMs ?? left.endDateTimeMs ?? 0;
+      const rightStart = right.startDateTimeMs ?? right.endDateTimeMs ?? 0;
+      if (leftStart !== rightStart) return leftStart - rightStart;
+
+      const leftEnd = left.endDateTimeMs ?? left.startDateTimeMs ?? leftStart;
+      const rightEnd = right.endDateTimeMs ?? right.startDateTimeMs ?? rightStart;
+      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
+
+      return left.id.localeCompare(right.id);
+    })
+    .map((slice) => slice.id);
+};
 
 const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number): number => {
   const span = Math.max(1e-9, inMax - inMin);
@@ -309,8 +327,6 @@ export function Stkde3DScene({
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
   const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
-  const updateSlice = useSliceDomainStore((state) => state.updateSlice);
-  const removeSlice = useSliceDomainStore((state) => state.removeSlice);
   const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
   const computeManualDraftBin = useDashboardDemoTimeslicingModeStore((state) => state.computeManualDraftBin);
   const canvasPointerRef = useRef<{ x: number; y: number } | null>(null);
@@ -350,20 +366,29 @@ export function Stkde3DScene({
   const handleUpdateSliceWarpWeight = useCallback((sliceIndex: number, weight: number) => {
     const sourceSliceId = slices[sliceIndex]?.sourceSliceId;
     if (!sourceSliceId) return;
-    updateSlice(sourceSliceId, { warpWeight: weight });
-  }, [slices, updateSlice]);
+
+    useSliceDomainStore.getState().updateSlice(sourceSliceId, { warpWeight: weight });
+  }, [slices]);
 
   const handleDeleteSlice = useCallback((sliceIndex: number) => {
     const sourceSliceId = slices[sliceIndex]?.sourceSliceId;
     if (!sourceSliceId) return;
 
-    removeSlice(sourceSliceId);
-    if (sliceIndex === activeIndex) {
+    const activeSourceSliceId = slices[activeIndex]?.sourceSliceId ?? null;
+    useSliceDomainStore.getState().removeSlice(sourceSliceId);
+
+    if (sourceSliceId === activeSourceSliceId) {
       setActiveSlice(null);
-      const remainingSliceCount = Math.max(0, slices.length - 1);
-      setActiveSliceIndex(remainingSliceCount > 0 ? Math.min(sliceIndex, remainingSliceCount - 1) : -1);
+      setActiveSliceIndex(-1);
+      return;
     }
-  }, [activeIndex, removeSlice, setActiveSlice, setActiveSliceIndex, slices]);
+
+    const nextOrderedIds = buildOrderedRangeSliceIds(useSliceDomainStore.getState().slices);
+    const nextActiveIndex = activeSourceSliceId ? nextOrderedIds.indexOf(activeSourceSliceId) : -1;
+    if (nextActiveIndex >= 0) {
+      setActiveSliceIndex(nextActiveIndex);
+    }
+  }, [activeIndex, setActiveSlice, setActiveSliceIndex, slices]);
 
   const handleCanvasPointerDown = useCallback((event: { clientX: number; clientY: number }) => {
     canvasPointerRef.current = { x: event.clientX, y: event.clientY };
