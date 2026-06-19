@@ -18,6 +18,7 @@ const AXIS_BOTTOM_Y = START_Y;
 const AXIS_Z = -50.6;
 const LINEAR_COLOR = new THREE.Color('#4f7fa8');
 const MIN_BIN_HEIGHT = AXIS_HEIGHT / ADAPTIVE_BIN_COUNT / 3;
+const normalizeWarpBlend = (warpFactor: number): number => Math.min(1, Math.max(0, warpFactor / 3));
 
 const COLOR_STOPS: Array<{ stop: number; color: [number, number, number] }> = [
   { stop: 0, color: [30, 58, 95] },
@@ -57,25 +58,30 @@ export function AdaptiveWarpAxis() {
   const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const warpBlend = useMemo(() => normalizeWarpBlend(warpFactor), [warpFactor]);
+  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
-
-  const bins = useMemo(() => {
-    const hasViewport = Number.isFinite(viewportStart) && Number.isFinite(viewportEnd) && viewportEnd > viewportStart;
-    const domain: [number, number] = hasViewport ? [viewportStart, viewportEnd] : [0, 1];
-    const domainSpan = Math.max(1e-9, domain[1] - domain[0]);
-    const adaptiveEnabled = timeScaleMode === 'adaptive' && warpFactor > 0 && warpMap && warpMap.length > 1;
-    const equalHeight = AXIS_HEIGHT / ADAPTIVE_BIN_COUNT;
-
-    let displayStart = domain[0];
-    let displayEnd = domain[1];
-
-    if (adaptiveEnabled && warpMap) {
-      displayStart = toDisplaySeconds(domain[0], warpFactor, warpMap, domain);
-      displayEnd = toDisplaySeconds(domain[1], warpFactor, warpMap, domain);
+  const hasViewport = Number.isFinite(viewportStart) && Number.isFinite(viewportEnd) && viewportEnd > viewportStart;
+  const viewportDomain: [number, number] = hasViewport ? [viewportStart, viewportEnd] : [0, 1];
+  const warpDomain: [number, number] = mapDomain[1] > mapDomain[0] ? mapDomain : viewportDomain;
+  const warpDomainDisplay = useMemo<[number, number]>(() => {
+    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
+      return warpDomain;
     }
 
-    const totalDisplaySpan = Math.max(1e-9, displayEnd - displayStart);
+    return [
+      toDisplaySeconds(warpDomain[0], warpBlend, warpMap, warpDomain),
+      toDisplaySeconds(warpDomain[1], warpBlend, warpMap, warpDomain),
+    ];
+  }, [timeScaleMode, warpDomain, warpBlend, warpMap]);
+
+  const bins = useMemo(() => {
+    const domain: [number, number] = warpDomain;
+    const domainSpan = Math.max(1e-9, domain[1] - domain[0]);
+    const adaptiveEnabled = timeScaleMode === 'adaptive' && warpBlend > 0 && warpMap && warpMap.length > 1;
+    const equalHeight = AXIS_HEIGHT / ADAPTIVE_BIN_COUNT;
+    const totalDisplaySpan = Math.max(1e-9, warpDomainDisplay[1] - warpDomainDisplay[0]);
 
     return Array.from({ length: ADAPTIVE_BIN_COUNT }).reduce<Array<{ centerY: number; height: number; color: THREE.Color }>>(
       (acc, _, index) => {
@@ -87,10 +93,10 @@ export function AdaptiveWarpAxis() {
         const densityValue = densityIndex >= 0 ? densityMap?.[densityIndex] ?? 0 : 0;
 
         const displayedStart = adaptiveEnabled && warpMap
-          ? toDisplaySeconds(boundaryStart, warpFactor, warpMap, domain)
+          ? toDisplaySeconds(boundaryStart, warpBlend, warpMap, warpDomain)
           : boundaryStart;
         const displayedEnd = adaptiveEnabled && warpMap
-          ? toDisplaySeconds(boundaryEnd, warpFactor, warpMap, domain)
+          ? toDisplaySeconds(boundaryEnd, warpBlend, warpMap, warpDomain)
           : boundaryEnd;
 
         const binHeight = adaptiveEnabled
@@ -110,7 +116,7 @@ export function AdaptiveWarpAxis() {
       },
       [],
     );
-  }, [densityMap, timeScaleMode, viewportEnd, viewportStart, warpFactor, warpMap]);
+  }, [densityMap, timeScaleMode, warpBlend, warpDomain, warpDomainDisplay, warpMap]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -146,7 +152,7 @@ export function AdaptiveWarpAxis() {
       <boxGeometry args={[1, 1, 1]} />
       <meshBasicMaterial
         transparent
-        opacity={timeScaleMode === 'adaptive' && warpFactor > 0 ? 0.15 : 0.08}
+        opacity={warpBlend > 0 ? 0.15 : 0.08}
         vertexColors
         depthWrite={false}
       />
