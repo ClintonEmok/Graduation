@@ -21,6 +21,7 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { usePathname } from 'next/navigation';
 
 import {
   STUDY_PROTOCOL_VERSION,
@@ -512,3 +513,14 @@ export const selectAllResetTargets = (): readonly ResetOutcome[] => RESET_TARGET
 
 export const selectHasActiveSession = (state: EvaluationStudyState): boolean =>
   state.sessionId.length > 0 && state.participantId !== null;
+
+/**
+ * Hook used by shared dashboard-demo panels to determine whether the
+ * current route is `/evaluation` and the participant-mode lock should be
+ * applied to editing affordances. The lock is route-scoped so the standard
+ * `/dashboard-demo` workspace remains fully interactive for Phase 79 work.
+ */
+export const useIsEvaluationLocked = (): boolean => {
+  const pathname = usePathname() ?? '';
+  return pathname.startsWith('/evaluation');
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Lock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,7 @@ import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoord
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
 import {
   partitionSelectionByGranularity,
   recommendGranularityForSelection,
@@ -32,6 +33,7 @@ import {
   type BurstMetric,
 } from '@/lib/burst-detection';
 import type { BurstBinResult } from '@/lib/burst-detection';
+import { cn } from '@/lib/utils';
 
 const GRANULARITY_OPTIONS = [
   { value: 'hourly', label: 'Hourly' },
@@ -64,6 +66,7 @@ export function DemoDetectPanel() {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
+  const isEvaluationLocked = useIsEvaluationLocked();
   const canGenerate =
     generationStatus !== 'generating' &&
     minTimestampSec !== null &&
@@ -196,6 +199,16 @@ export function DemoDetectPanel() {
 
   return (
     <div className="space-y-3">
+      {isEvaluationLocked ? (
+        <div
+          className="flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+          role="note"
+          aria-label="setup locked during evaluation"
+        >
+          <Lock className="size-3.5 text-slate-400" aria-hidden />
+          Setup locked during evaluation.
+        </div>
+      ) : null}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Detect</CardTitle>
@@ -221,7 +234,7 @@ export function DemoDetectPanel() {
               <span>Granularity</span>
               <span className="text-muted-foreground/70">Suggested: {suggestedGranularityLabel}</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               {GRANULARITY_OPTIONS.map((option) => {
                 const isActive = generationInputs.granularity === option.value;
                 const isRecommended = option.value === suggestedGranularity;
@@ -230,6 +243,9 @@ export function DemoDetectPanel() {
                     key={option.value}
                     type="button"
                     onClick={() => setGenerationInputs({ granularity: option.value })}
+                    disabled={isEvaluationLocked}
+                    aria-disabled={isEvaluationLocked}
+                    tabIndex={isEvaluationLocked ? -1 : undefined}
                     className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       isActive
                         ? 'border-violet-300 bg-violet-500/20 text-violet-50'
@@ -256,7 +272,7 @@ export function DemoDetectPanel() {
               <span>Burst metric</span>
               <span className="text-muted-foreground/70">Active: {activeBurstMetricLabel}</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               {BURST_METRIC_OPTIONS.map((option) => {
                 const isActive = burstMetric === option.value;
                 return (
@@ -264,6 +280,9 @@ export function DemoDetectPanel() {
                     key={option.value}
                     type="button"
                     onClick={() => setBurstMetric(option.value)}
+                    disabled={isEvaluationLocked}
+                    aria-disabled={isEvaluationLocked}
+                    tabIndex={isEvaluationLocked ? -1 : undefined}
                     className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       isActive
                         ? 'border-violet-300 bg-violet-500/20 text-violet-50'
@@ -283,7 +302,7 @@ export function DemoDetectPanel() {
               <span>Spatial formula</span>
               <span className="text-muted-foreground/70">Active: {activeSpatialFormulaLabel}</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               {SPATIAL_FORMULA_OPTIONS.map((option) => {
                 const isActive = spatialFormula === option.value;
                 return (
@@ -291,6 +310,9 @@ export function DemoDetectPanel() {
                     key={option.value}
                     type="button"
                     onClick={() => setSpatialFormula(option.value)}
+                    disabled={isEvaluationLocked}
+                    aria-disabled={isEvaluationLocked}
+                    tabIndex={isEvaluationLocked ? -1 : undefined}
                     className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       isActive
                         ? 'border-violet-300 bg-violet-500/20 text-violet-50'
@@ -311,12 +333,15 @@ export function DemoDetectPanel() {
               <button
                 type="button"
                 onClick={() => setGenerationInputs({ crimeTypes: [] })}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
                 className="text-[10px] text-muted-foreground hover:text-foreground"
               >
                 All types
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               {availableCrimeTypes.length > 0 ? availableCrimeTypes.map((crimeType) => {
                 const isActive = selectedCrimeTypes.includes(crimeType);
                 return (
@@ -328,6 +353,9 @@ export function DemoDetectPanel() {
                         ? selectedCrimeTypes.filter((t) => t !== crimeType)
                         : [...selectedCrimeTypes, crimeType],
                     })}
+                    disabled={isEvaluationLocked}
+                    aria-disabled={isEvaluationLocked}
+                    tabIndex={isEvaluationLocked ? -1 : undefined}
                     className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       isActive
                         ? 'border-violet-300 bg-violet-500/20 text-violet-50'
@@ -347,10 +375,12 @@ export function DemoDetectPanel() {
             <Button
               type="button"
               onClick={handleFetchBurstBins}
-              disabled={isFetchingBurst || !canGenerate}
+              disabled={isFetchingBurst || !canGenerate || isEvaluationLocked}
+              aria-disabled={isEvaluationLocked || isFetchingBurst || !canGenerate}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
               size="sm"
               variant="outline"
-              className="gap-2"
+              className={cn('gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}
             >
               <Sparkles className="size-3.5" />
               {isFetchingBurst ? 'Scanning…' : 'Scan brushed range'}
@@ -358,9 +388,11 @@ export function DemoDetectPanel() {
             <Button
               type="button"
               onClick={handleGenerateBurstDrafts}
-              disabled={!canGenerate}
+              disabled={!canGenerate || isEvaluationLocked}
+              aria-disabled={isEvaluationLocked || !canGenerate}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
               size="sm"
-              className="gap-2"
+              className={cn('gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}
             >
               {generationStatus === 'generating' ? 'Generating…' : 'Generate slices'}
             </Button>

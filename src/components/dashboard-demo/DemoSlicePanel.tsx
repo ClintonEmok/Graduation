@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Check,
+  Lock,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -26,7 +27,9 @@ import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoord
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
+import { cn } from '@/lib/utils';
 
 const formatDateTime = (value: number | null | undefined) => {
   if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -83,6 +86,7 @@ export function DemoSlicePanel() {
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const { isComputing } = useDebouncedDensity();
+  const isEvaluationLocked = useIsEvaluationLocked();
 
   const slices = useSliceDomainStore((state) => state.slices);
   const updateSlice = useSliceDomainStore((state) => state.updateSlice);
@@ -322,6 +326,16 @@ export function DemoSlicePanel() {
         <div className="text-xs text-muted-foreground">
           {lastAppliedAt ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}` : 'No applied state yet'}
         </div>
+        {isEvaluationLocked ? (
+          <div
+            className="mt-2 flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+            role="note"
+            aria-label="setup locked during evaluation"
+          >
+            <Lock className="size-3.5 text-slate-400" aria-hidden />
+            Setup locked during evaluation.
+          </div>
+        ) : null}
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3 px-4 pb-4">
@@ -332,7 +346,10 @@ export function DemoSlicePanel() {
               variant="outline"
               size="sm"
               onClick={handleAddRangeSlice}
-              className="gap-2"
+              disabled={isEvaluationLocked}
+              aria-disabled={isEvaluationLocked}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
+              className={cn('gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}
             >
               <Plus className="h-3.5 w-3.5" />
               Range
@@ -342,8 +359,10 @@ export function DemoSlicePanel() {
               variant="outline"
               size="sm"
               onClick={handleClearAll}
-              disabled={!hasItems}
-              className="gap-2"
+              disabled={!hasItems || isEvaluationLocked}
+              aria-disabled={isEvaluationLocked || !hasItems}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
+              className={cn('gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Clear all
@@ -358,10 +377,13 @@ export function DemoSlicePanel() {
               {warpMode} · {warpMode === 'adaptive' ? `${warpFactor.toFixed(2)}x` : '—'}
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
+          <div className={cn('flex items-center gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
             <button
               type="button"
               onClick={() => setTimeScaleMode('linear')}
+              disabled={isEvaluationLocked}
+              aria-disabled={isEvaluationLocked}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
               className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
                 warpMode === 'linear'
                   ? 'bg-slate-700 text-slate-100'
@@ -373,6 +395,9 @@ export function DemoSlicePanel() {
             <button
               type="button"
               onClick={() => setTimeScaleMode('adaptive')}
+              disabled={isEvaluationLocked}
+              aria-disabled={isEvaluationLocked}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
               className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
                 warpMode === 'adaptive'
                   ? 'bg-violet-700 text-violet-100'
@@ -383,7 +408,7 @@ export function DemoSlicePanel() {
             </button>
           </div>
           {warpMode === 'adaptive' && (
-            <div className="mt-2.5 space-y-1.5">
+            <div className={cn('mt-2.5 space-y-1.5', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               <div className="flex items-center justify-between text-[10px] text-slate-500">
                 <span>Warp factor</span>
                 <span className="font-mono text-slate-300">{warpFactor.toFixed(2)}</span>
@@ -394,6 +419,9 @@ export function DemoSlicePanel() {
                 min={0}
                 max={3}
                 step={0.05}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
                 className="[&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-range]]:bg-violet-500 [&_[data-slot=slider-thumb]]:size-3.5"
               />
             </div>
@@ -448,12 +476,15 @@ export function DemoSlicePanel() {
                           {formatCompactDate(bin.startTime)} → {formatCompactDate(bin.endTime)}
                         </span>
 
-                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                        <div className={cn('ml-auto flex shrink-0 items-center gap-1', isEvaluationLocked && 'pointer-events-none opacity-40')}>
                           <Button
                             type="button"
                             variant="default"
                             size="xs"
                             onClick={() => handleApplySingleDraft(bin.id)}
+                            disabled={isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 gap-1 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
                           >
                             <Check className="h-3 w-3" />
@@ -464,6 +495,9 @@ export function DemoSlicePanel() {
                             variant="outline"
                             size="xs"
                             onClick={() => handleOpenPendingDraftDetails(bin.id)}
+                            disabled={isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
                           >
                             Details
@@ -473,7 +507,9 @@ export function DemoSlicePanel() {
                             variant="outline"
                             size="xs"
                             onClick={() => handleMergePendingDraft(pendingItems.findIndex((b) => b.id === bin.id))}
-                            disabled={pendingItems.length <= 1}
+                            disabled={pendingItems.length <= 1 || isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked || pendingItems.length <= 1}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
                           >
                             Merge
@@ -483,7 +519,9 @@ export function DemoSlicePanel() {
                             variant="outline"
                             size="xs"
                             onClick={() => handleSplitPendingDraft(bin.id)}
-                            disabled={bin.endTime <= bin.startTime}
+                            disabled={bin.endTime <= bin.startTime || isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked || bin.endTime <= bin.startTime}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
                           >
                             Split
@@ -493,6 +531,9 @@ export function DemoSlicePanel() {
                             variant="outline"
                             size="xs"
                             onClick={() => handleDeletePendingDraft(bin.id)}
+                            disabled={isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -539,12 +580,15 @@ export function DemoSlicePanel() {
                           </span>
                         )}
 
-                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                        <div className={cn('ml-auto flex shrink-0 items-center gap-1', isEvaluationLocked && 'pointer-events-none opacity-40')}>
                           <Button
                             type="button"
                             variant="outline"
                             size="xs"
                             onClick={() => handleOpenSliceDetails(slice.id)}
+                            disabled={isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
                           >
                             Details
@@ -554,6 +598,9 @@ export function DemoSlicePanel() {
                             variant="outline"
                             size="xs"
                             onClick={() => removeSlice(slice.id)}
+                            disabled={isEvaluationLocked}
+                            aria-disabled={isEvaluationLocked}
+                            tabIndex={isEvaluationLocked ? -1 : undefined}
                             className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
                           >
                             <Trash2 className="h-3 w-3" />

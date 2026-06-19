@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { DemoStatsPanel } from '@/components/dashboard-demo/DemoStatsPanel';
@@ -8,13 +9,29 @@ import { DemoSlicePanel } from '@/components/dashboard-demo/DemoSlicePanel';
 import { DemoInspectPanel } from '@/components/dashboard-demo/DemoInspectPanel';
 import { DemoConfigurePanel } from '@/components/dashboard-demo/DemoConfigurePanel';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
 
 export function DashboardDemoRailTabs() {
   const tab = useDashboardDemoCoordinationStore((state) => state.activeRailTab);
   const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
+  // The rail tabs themselves stay visible and navigable (they are
+  // navigation, not editing controls). The lock status is surfaced once
+  // at the rail level; the actual controls inside each panel are
+  // disabled and removed from tab order by the per-panel lock pattern.
+  const isEvaluationLocked = useIsEvaluationLocked();
 
   return (
     <aside className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 p-2 shadow-2xl backdrop-blur">
+      {isEvaluationLocked ? (
+        <div
+          className="mb-2 flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+          role="note"
+          aria-label="setup locked during evaluation"
+        >
+          <Lock className="size-3.5 text-slate-400" aria-hidden />
+          Setup locked during evaluation.
+        </div>
+      ) : null}
       <Tabs value={tab} onValueChange={setActiveRailTab} className="w-full">
         <Card className="border-slate-700/70 bg-slate-900/80 p-0 shadow-sm">
           <CardContent className="p-1.5">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from 'react';
+import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -8,8 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
 import { DemoStkdePanel } from '@/components/dashboard-demo/DemoStkdePanel';
 import type { TimeslicingMode } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { cn } from '@/lib/utils';
 
 const STKDE_SCOPE_LABELS = {
   'applied-slices': 'Applied slices',
@@ -87,6 +90,7 @@ export function DemoConfigurePanel() {
   const stkdeParams = useDashboardDemoCoordinationStore((state) => state.stkdeParams);
   const setStkdeScopeMode = useDashboardDemoCoordinationStore((state) => state.setStkdeScopeMode);
   const setStkdeParams = useDashboardDemoCoordinationStore((state) => state.setStkdeParams);
+  const isEvaluationLocked = useIsEvaluationLocked();
 
   const activePreset = useMemo(
     () =>
@@ -132,6 +136,16 @@ export function DemoConfigurePanel() {
 
   return (
     <div className="space-y-3">
+      {isEvaluationLocked ? (
+        <div
+          className="flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+          role="note"
+          aria-label="setup locked during evaluation"
+        >
+          <Lock className="size-3.5 text-slate-400" aria-hidden />
+          Setup locked during evaluation.
+        </div>
+      ) : null}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Configure</CardTitle>
@@ -149,6 +163,10 @@ export function DemoConfigurePanel() {
                 id="auto-mode-toggle"
                 checked={isAuto}
                 onCheckedChange={handleModeToggle}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
+                className={cn(isEvaluationLocked && 'pointer-events-none opacity-40')}
               />
             </div>
             <p className="text-[10px] text-muted-foreground">
@@ -174,6 +192,10 @@ export function DemoConfigurePanel() {
               step={0.05}
               value={[autoConfig.burstThreshold]}
               onValueChange={handleThresholdChange}
+              disabled={isEvaluationLocked}
+              aria-disabled={isEvaluationLocked}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
+              className={cn(isEvaluationLocked && 'pointer-events-none opacity-40')}
             />
             <div className="flex justify-between text-[10px] text-muted-foreground">
               <span>Quiet</span>
@@ -197,6 +219,10 @@ export function DemoConfigurePanel() {
               step={0.1}
               value={[warpFactor]}
               onValueChange={handleWarpChange}
+              disabled={isEvaluationLocked}
+              aria-disabled={isEvaluationLocked}
+              tabIndex={isEvaluationLocked ? -1 : undefined}
+              className={cn(isEvaluationLocked && 'pointer-events-none opacity-40')}
             />
             <div className="flex justify-between text-[10px] text-muted-foreground">
               <span>Linear</span>
@@ -233,12 +259,15 @@ export function DemoConfigurePanel() {
               </div>
               <span className="text-xs text-muted-foreground">{STKDE_SCOPE_LABELS[scopeMode]}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={cn('grid grid-cols-2 gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               <Button
                 type="button"
                 variant={scopeMode === 'applied-slices' ? 'secondary' : 'outline'}
                 size="sm"
                 onClick={() => setStkdeScopeMode('applied-slices')}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
               >
                 Applied slices
               </Button>
@@ -247,6 +276,9 @@ export function DemoConfigurePanel() {
                 variant={scopeMode === 'full-viewport' ? 'secondary' : 'outline'}
                 size="sm"
                 onClick={() => setStkdeScopeMode('full-viewport')}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
               >
                 Full viewport
               </Button>
@@ -258,7 +290,7 @@ export function DemoConfigurePanel() {
               <span>Presets</span>
               <span>{activePreset ? `Active: ${activePreset.label}` : 'Custom'}</span>
             </div>
-            <div className="grid gap-2">
+            <div className={cn('grid gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
               {STKDE_PRESETS.map((preset) => {
                 const isActive = activePreset?.id === preset.id;
 
@@ -268,6 +300,9 @@ export function DemoConfigurePanel() {
                     type="button"
                     variant={isActive ? 'secondary' : 'outline'}
                     onClick={() => applyPreset(preset)}
+                    disabled={isEvaluationLocked}
+                    aria-disabled={isEvaluationLocked}
+                    tabIndex={isEvaluationLocked ? -1 : undefined}
                     className="h-auto flex-col items-start justify-start gap-1 rounded-lg px-3 py-2 text-left"
                   >
                     <div className="flex w-full items-center justify-between gap-2">
@@ -284,7 +319,7 @@ export function DemoConfigurePanel() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className={cn('space-y-3', isEvaluationLocked && 'pointer-events-none opacity-40')}>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="spatial-bandwidth-slider" className="text-xs">
@@ -299,6 +334,9 @@ export function DemoConfigurePanel() {
                 step={50}
                 value={[stkdeParams.spatialBandwidthMeters]}
                 onValueChange={handleStkdeParamChange('spatialBandwidthMeters')}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
               />
             </div>
 
@@ -316,6 +354,9 @@ export function DemoConfigurePanel() {
                 step={1}
                 value={[stkdeParams.temporalBandwidthHours]}
                 onValueChange={handleStkdeParamChange('temporalBandwidthHours')}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
               />
             </div>
 
@@ -333,6 +374,9 @@ export function DemoConfigurePanel() {
                 step={50}
                 value={[stkdeParams.gridCellMeters]}
                 onValueChange={handleStkdeParamChange('gridCellMeters')}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
               />
             </div>
 
@@ -351,6 +395,9 @@ export function DemoConfigurePanel() {
                   step={1}
                   value={[stkdeParams.topK]}
                   onValueChange={handleStkdeParamChange('topK')}
+                  disabled={isEvaluationLocked}
+                  aria-disabled={isEvaluationLocked}
+                  tabIndex={isEvaluationLocked ? -1 : undefined}
                 />
               </div>
 
@@ -368,6 +415,9 @@ export function DemoConfigurePanel() {
                   step={1}
                   value={[stkdeParams.minSupport]}
                   onValueChange={handleStkdeParamChange('minSupport')}
+                  disabled={isEvaluationLocked}
+                  aria-disabled={isEvaluationLocked}
+                  tabIndex={isEvaluationLocked ? -1 : undefined}
                 />
               </div>
             </div>
@@ -386,6 +436,9 @@ export function DemoConfigurePanel() {
                 step={1}
                 value={[stkdeParams.timeWindowHours]}
                 onValueChange={handleStkdeParamChange('timeWindowHours')}
+                disabled={isEvaluationLocked}
+                aria-disabled={isEvaluationLocked}
+                tabIndex={isEvaluationLocked ? -1 : undefined}
               />
             </div>
           </div>
