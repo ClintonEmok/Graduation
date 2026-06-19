@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: milestone
-status: paused
-stopped_at: 80-03 Task 3 (human-verify pilot) deferred until after Phase 81
-last_updated: "2026-06-19T10:50:00Z"
-last_activity: 2026-06-19 -- Phase 80 plans 80-01 + 80-02 + 80-03 (Tasks 1+2) executed; pilot verification deferred
+status: in_progress
+stopped_at: Phase 81 (memory pressure / overview-vs-detail) executing
+last_updated: "2026-06-19T11:00:00Z"
+last_activity: 2026-06-19 -- Autonomous `/gsd:autonomous --from 81 --to 81 --interactive` started; Phase 81 plans 81-01 + 81-02 + 81-03 queued
 progress:
   total_phases: 6
   completed_phases: 1
@@ -26,10 +26,10 @@ See: `.planning/PROJECT.md`
 ## Current Position
 
 Milestone: v3.3
-Phase: 80 (evaluation-readiness) — IN PROGRESS (pilot verification pending)
-Plans: 80-01 ✓, 80-02 ✓, 80-03 Tasks 1+2 ✓ (commits landed), Task 3 (human-verify) deferred
-Status: Paused — resume 80-03 Task 3 after Phase 81 completes
-Last activity: 2026-06-19 -- Phase 80 partial execution; user requested deferral
+Phase: 81 (memory pressure / overview-vs-detail) — IN PROGRESS
+Plans: 81-01 (wave 1), 81-02 (wave 2), 81-03 (wave 3) queued; worktrees auto-degraded to sequential on master (HEAD cf99f868 diverges from origin/HEAD e1b2d30c by 45+ commits)
+Status: Active — running `/gsd:autonomous --from 81 --to 81 --interactive`
+Last activity: 2026-06-19 -- Phase 81 started autonomously; 80-03 pilot verification still deferred until after Phase 81
 
 Progress: [██████████████░░░░░░] 56% (5/9 v3.3 plans complete — 80-01, 80-02, 80-03 partial, plus 3 from v3.2)
 
@@ -103,9 +103,10 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Run Phase 81 (memory pressure / overview vs detail)
+- Run Phase 81 (memory pressure / overview vs detail) — IN PROGRESS
 - Resume Phase 80 Task 3 (pilot verification) after Phase 81 completes
 - Write `80-03-SUMMARY.md` after pilot verification
+- After Phase 81: complete autonomous run (--to 81 gates lifecycle out), update STATE.md + ROADMAP.md
 
 ### Roadmap Evolution
 
