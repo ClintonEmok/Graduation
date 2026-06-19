@@ -43,6 +43,35 @@ const mapRange = (value: number, inMin: number, inMax: number, outMin: number, o
   return outMin + t * (outMax - outMin);
 };
 
+const buildDraftWindow = (
+  centerEpoch: number,
+  viewportStart: number,
+  viewportEnd: number,
+): { startEpoch: number; endEpoch: number } | null => {
+  if (!Number.isFinite(centerEpoch) || !Number.isFinite(viewportStart) || !Number.isFinite(viewportEnd) || viewportEnd <= viewportStart) {
+    return null;
+  }
+
+  const windowDuration = Math.min(viewportEnd - viewportStart, MIN_DRAFT_WINDOW_SEC * 2);
+  if (windowDuration <= 0) return null;
+
+  const halfWindow = windowDuration / 2;
+  let startEpoch = centerEpoch - halfWindow;
+  let endEpoch = centerEpoch + halfWindow;
+
+  if (startEpoch < viewportStart) {
+    endEpoch = Math.min(viewportEnd, endEpoch + (viewportStart - startEpoch));
+    startEpoch = viewportStart;
+  }
+
+  if (endEpoch > viewportEnd) {
+    startEpoch = Math.max(viewportStart, startEpoch - (endEpoch - viewportEnd));
+    endEpoch = viewportEnd;
+  }
+
+  return endEpoch > startEpoch ? { startEpoch, endEpoch } : null;
+};
+
 function MapTileSource({
   onTextureReady,
 }: {
@@ -307,9 +336,13 @@ export function Stkde3DScene({
     if (movedTooFar) return;
 
     const clickEpoch = yToEpoch(y);
-    const startEpoch = Math.max(viewportStart, clickEpoch - MIN_DRAFT_WINDOW_SEC);
-    const endEpoch = Math.min(viewportEnd, clickEpoch + MIN_DRAFT_WINDOW_SEC);
-    const draftId = addManualDraftRange({ startMs: startEpoch * 1000, endMs: endEpoch * 1000 });
+    const draftWindow = buildDraftWindow(clickEpoch, viewportStart, viewportEnd);
+    if (!draftWindow) return;
+
+    const draftId = addManualDraftRange({
+      startMs: draftWindow.startEpoch * 1000,
+      endMs: draftWindow.endEpoch * 1000,
+    });
     setActiveRailTab('slices');
     void computeManualDraftBin(draftId);
   }, [addManualDraftRange, computeManualDraftBin, setActiveRailTab, viewportEnd, viewportStart, yToEpoch]);
@@ -327,7 +360,8 @@ export function Stkde3DScene({
     removeSlice(sourceSliceId);
     if (sliceIndex === activeIndex) {
       setActiveSlice(null);
-      setActiveSliceIndex(0);
+      const remainingSliceCount = Math.max(0, slices.length - 1);
+      setActiveSliceIndex(remainingSliceCount > 0 ? Math.min(sliceIndex, remainingSliceCount - 1) : -1);
     }
   }, [activeIndex, removeSlice, setActiveSlice, setActiveSliceIndex, slices]);
 
