@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { RefreshCcw } from 'lucide-react';
 import { useStore } from 'zustand';
 import { useUIStore } from '@/store/ui';
@@ -38,7 +38,13 @@ export default function CubeVisualization({
   sliceStoreOverride,
 }: CubeVisualizationProps) {
   const { triggerReset } = useUIStore();
-  const { loadRealData, isLoading, columns } = useTimelineDataStore();
+  // Phase 81 (D-05, D-06): the dashboard must NOT eagerly load full detail
+  // data on mount. We expose `loadDetailOnIntent` for explicit user
+  // narrowing actions (e.g. brush/zoom) and the existing reset path; the
+  // store's mode field is the source of truth for whether `columns` will
+  // ever arrive. The component reads `mode` rather than guessing from a
+  // `columns === null` check.
+  const { loadDetailOnIntent, isLoading, mode } = useTimelineDataStore();
   const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
   const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
   const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
@@ -102,23 +108,43 @@ export default function CubeVisualization({
     return `${start.toFixed(1)}% → ${end.toFixed(1)}%`;
   };
 
-  useEffect(() => {
-    if (!columns && !isLoading) {
-      loadRealData();
-    }
-  }, [columns, isLoading, loadRealData]);
+  // Phase 81 (D-05, D-06): the dashboard mount no longer triggers a full
+  // detail preload. The 3D scene renders against summary-derived bounds
+  // until the user explicitly narrows via the reset→detail path below or
+  // a sibling consumer (e.g. MainScene brush handler) calls
+  // `loadDetailOnIntent()`. The store's `mode` field tracks whether
+  // detail is loaded; we keep `isLoading` for spinner display.
 
   const handleReset = () => {
     log('view_reset');
     triggerReset();
   };
 
+  // The reset button is one of the explicit user actions that may request
+  // detail. Triggering it as a "load detail on intent" preserves the
+  // historical "I want a fresh, full view" affordance without putting the
+  // load on the mount path.
+  const handleLoadDetail = () => {
+    if (mode === 'detail' || isLoading) return;
+    void loadDetailOnIntent();
+  };
+
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden relative">
       <div className="h-2" />
-      
-      <div className="absolute top-16 right-4 z-10">
+
+      <div className="absolute top-16 right-4 z-10 flex items-center gap-2">
+        {mode === 'summary' || mode === 'mock' ? (
+          <button
+            onClick={handleLoadDetail}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-background/80 backdrop-blur border rounded-md hover:bg-accent transition-colors shadow-sm text-xs font-medium"
+            title="Load full detail for this view (narrowed-window fetch)"
+          >
+            {isLoading ? 'Loading detail…' : 'Load detail'}
+          </button>
+        ) : null}
         <button
           onClick={handleReset}
           className="p-2 bg-background/80 backdrop-blur border rounded-md hover:bg-accent transition-colors shadow-sm"
