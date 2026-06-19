@@ -232,6 +232,40 @@ interface SliceTransition {
   startedAt: number;
 }
 
+interface OrderedSourceSlice {
+  sourceSliceId: string;
+  index: number;
+  startEpoch: number;
+  endEpoch: number;
+}
+
+function buildOrderedSourceSlices(
+  sourceSlices: TimeSlice[],
+  minTimestampSec: number | null,
+  maxTimestampSec: number | null,
+): OrderedSourceSlice[] {
+  if (minTimestampSec === null || maxTimestampSec === null) return [];
+
+  return sourceSlices
+    .filter((slice) => slice.isVisible && slice.type === 'range')
+    .map((slice, originalIndex) => {
+      const [startEpoch, endEpoch] = resolveSliceEpochRange(slice, minTimestampSec, maxTimestampSec);
+      return {
+        sourceSliceId: slice.id,
+        index: originalIndex,
+        startEpoch,
+        endEpoch,
+      };
+    })
+    .sort((left, right) => {
+      const startDelta = left.startEpoch - right.startEpoch;
+      if (startDelta !== 0) return startDelta;
+      const endDelta = left.endEpoch - right.endEpoch;
+      if (endDelta !== 0) return endDelta;
+      return left.sourceSliceId.localeCompare(right.sourceSliceId);
+    });
+}
+
 export function StkdeSliceStack({
   slices,
   sliceKdes,
@@ -263,27 +297,7 @@ export function StkdeSliceStack({
   const [dragState, setDragState] = useState<DragState | null>(null);
 
   const orderedSourceSliceIds = useMemo(() => {
-    if (minTimestampSec === null || maxTimestampSec === null) return [];
-
-    return sourceSlices
-      .filter((slice) => slice.isVisible && slice.type === 'range')
-      .map((slice, originalIndex) => {
-        const [startEpoch, endEpoch] = resolveSliceEpochRange(slice, minTimestampSec, maxTimestampSec);
-        return {
-          sourceSliceId: slice.id,
-          index: originalIndex,
-          startEpoch,
-          endEpoch,
-        };
-      })
-      .sort((left, right) => {
-        const startDelta = left.startEpoch - right.startEpoch;
-        if (startDelta !== 0) return startDelta;
-        const endDelta = left.endEpoch - right.endEpoch;
-        if (endDelta !== 0) return endDelta;
-        return left.sourceSliceId.localeCompare(right.sourceSliceId);
-      })
-      .map((slice) => slice.sourceSliceId);
+    return buildOrderedSourceSlices(sourceSlices, minTimestampSec, maxTimestampSec).map((slice) => slice.sourceSliceId);
   }, [maxTimestampSec, minTimestampSec, sourceSlices]);
 
   const adaptiveDomain = useMemo<[number, number]>(() => {
@@ -506,6 +520,8 @@ export function StkdeSliceStack({
     [nowMs, transition],
   );
 
+  const hasActiveSlice = activeIndex >= 0 && activeIndex < slices.length;
+
   const transitionTexture = useMemo(() => {
     if (!transition || !isPlaying || !isInterpolated) return null;
     const fromCells = sliceKdes[transition.fromIndex];
@@ -535,8 +551,8 @@ export function StkdeSliceStack({
         const i = slice.index;
         const y = resolveSliceY(slice);
         const diff = Math.abs(i - activeIndex);
-        const isActive = diff === 0;
-        const isAdjacent = diff === 1;
+        const isActive = hasActiveSlice && diff === 0;
+        const isAdjacent = hasActiveSlice && diff === 1;
         const agingWeight = trailEnabled ? 0.28 + agingOpacityMap[i]! * 0.72 : 1;
         const opacityMultiplier = isActive
           ? 1
