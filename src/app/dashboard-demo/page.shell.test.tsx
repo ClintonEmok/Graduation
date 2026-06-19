@@ -181,7 +181,13 @@ describe('/dashboard-demo shell', () => {
     expect(demoStkdePanelSource).toMatch(/No hotspots found for the current scope/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange !== null/);
-    expect(demoDetectPanelSource).toMatch(/disabled=\{isFetchingBurst \|\| !canGenerate\}/);
+    // Phase 80 adds the evaluation lock OR clause to the disabled prop;
+    // accept either the Phase 79 baseline, the lock-only variant, or
+    // the fully-locked variant so the test stays focused on shell-level
+    // wiring rather than the exact disabled prop expression.
+    expect(demoDetectPanelSource).toMatch(
+      /disabled=\{(!canGenerate \|\| isEvaluationLocked|isFetchingBurst \|\| !canGenerate(\|\| isEvaluationLocked)?)\}/,
+    );
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
     expect(demoTimelinePanelSource).not.toMatch(/useDashboardDemoWarpStore|useDashboardDemoTimeStore|Warp factor|Warp source|Temporal Resolution|Time Scale|requestAnimationFrame/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
