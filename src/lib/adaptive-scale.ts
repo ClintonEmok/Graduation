@@ -1,4 +1,5 @@
 import { max } from 'd3-array';
+import { ADAPTIVE_BURST_INFLUENCE } from './adaptive-utils';
 
 export interface TimePoint {
   timestamp: Date | number;
@@ -12,6 +13,23 @@ export interface AdaptiveScaleConfig {
 
 function getTime(t: Date | number): number {
   return t instanceof Date ? t.getTime() : t;
+}
+
+function computeBurstinessWeights(counts: Float64Array): Float64Array {
+  const burstiness = new Float64Array(counts.length);
+  if (counts.length < 2) return burstiness;
+
+  for (let i = 1; i < counts.length; i++) {
+    const previous = counts[i - 1] ?? 0;
+    const current = counts[i] ?? 0;
+    const mean = (previous + current) / 2;
+    const sigma = Math.sqrt((((previous - mean) ** 2) + ((current - mean) ** 2)) / 2);
+    const denom = sigma + mean;
+    const burst = denom > 0 ? (sigma - mean) / denom : 0;
+    burstiness[i] = Math.max(0, Math.min(1, (burst + 1) / 2));
+  }
+
+  return burstiness;
 }
 
 /**
@@ -56,12 +74,13 @@ export function getAdaptiveScaleConfig(
   
   // 2. Weights
   const maxDensity = max(counts) || 1;
+  const burstiness = computeBurstinessWeights(counts);
   const weights = new Float64Array(binCount);
   
   for (let i = 0; i < binCount; i++) {
-    const density = counts[i];
-    // Scale Logic: Base 1 + (density/max * 5)
-    weights[i] = 1 + (density / maxDensity) * 5;
+    const density = counts[i] / maxDensity;
+    const blended = ((1 - ADAPTIVE_BURST_INFLUENCE) * density) + (ADAPTIVE_BURST_INFLUENCE * (burstiness[i] ?? 0));
+    weights[i] = 1 + blended * 5;
   }
   
   const totalWeight = weights.reduce((a, b) => a + b, 0);
@@ -120,11 +139,13 @@ export function getAdaptiveScaleConfigColumnar(
   
   // 2. Weights
   const maxDensity = max(counts) || 1;
+  const burstiness = computeBurstinessWeights(counts);
   const weights = new Float64Array(binCount);
   
   for (let i = 0; i < binCount; i++) {
-    const density = counts[i];
-    weights[i] = 1 + (density / maxDensity) * 5;
+    const density = counts[i] / maxDensity;
+    const blended = ((1 - ADAPTIVE_BURST_INFLUENCE) * density) + (ADAPTIVE_BURST_INFLUENCE * (burstiness[i] ?? 0));
+    weights[i] = 1 + blended * 5;
   }
   
   const totalWeight = weights.reduce((a, b) => a + b, 0);
@@ -214,11 +235,13 @@ export function computeAdaptiveYColumnar(
   
   // 2. Weights
   const maxDensity = max(counts) || 1;
+  const burstiness = computeBurstinessWeights(counts);
   const weights = new Float64Array(binCount);
   
   for (let i = 0; i < binCount; i++) {
-    const density = counts[i];
-    weights[i] = 1 + (density / maxDensity) * 5;
+    const density = counts[i] / maxDensity;
+    const blended = ((1 - ADAPTIVE_BURST_INFLUENCE) * density) + (ADAPTIVE_BURST_INFLUENCE * (burstiness[i] ?? 0));
+    weights[i] = 1 + blended * 5;
   }
   
   const totalWeight = weights.reduce((a, b) => a + b, 0);
@@ -258,5 +281,3 @@ export function computeAdaptiveYColumnar(
   
   return result;
 }
-
-

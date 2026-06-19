@@ -37,7 +37,7 @@
 **State Management:**
 - **Zustand 5.0.10** — Global state management across all views
   - Single-store pattern with slice helpers in `src/store/`
-  - ~55 store files including coordinated stores, feature flags, layout, theme
+  - ~35 stores across 55 files including coordinated stores, feature flags, layout, theme, and test files
   - `persist` middleware used in `useStudyStore.ts` and `useDashboardDemoTimeslicingModeStore.ts`
   - No external middleware (no devtools, no immer, no redux)
 - **TanStack Query 5.90.21** — Server state management for API data fetching

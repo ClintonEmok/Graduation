@@ -18,7 +18,7 @@ The application is a desktop-first Next.js 16 prototype with a client-heavy visu
 |-------|-----------|---------|
 | Framework | Next.js 16.1.6 (App Router) | Pages, API routes, SSR/SSG |
 | UI Runtime | React 19.2.3 + React DOM | Component rendering |
-| State Management | Zustand 5.0.10 (~40 stores) | Client state, cross-view coordination |
+| State Management | Zustand 5.0.10 (~35 stores) | Client state, cross-view coordination |
 | Server State | TanStack Query 5.90.21 | Data fetching, caching, refetching |
 | 3D Rendering | Three.js 0.182.0 + React Three Fiber 9.5.0 + Drei 10.7.7 | Space-time cube visualization |
 | Map Rendering | MapLibre GL 5.17.0 + React Map GL 8.1.0 | 2D crime map |
@@ -69,25 +69,39 @@ src/
 │   ├── ui/                 # shadcn/ui primitives (button, card, slider, select, dialog, etc.)
 │   ├── onboarding/         # OnboardingTour (driver.js)
 │   ├── study/              # StudyControls
-│   └── settings/           # Feature flags, settings panel
+│   ├── settings/           # Feature flags, settings panel
+│   ├── binning/            # Binning strategy display components
+│   ├── stkde/              # STKDE-specific visualization components
+│   └── timeslicing/        # Time slicing controls UI
 │
-├── store/                  # Zustand state stores (~40 stores)
+├── store/                  # Zustand state stores (~35 stores)
 │   ├── slice-domain/       # Slice state slices (core, creation, selection, adjustment)
 │   ├── useCoordinationStore.ts  # Cross-panel coordination (selection, sync, brush)
 │   ├── useAdaptiveStore.ts      # Adaptive time scaling parameters
 │   ├── useFilterStore.ts        # Crime type, district, time, spatial filters
 │   ├── useTimeStore.ts          # Playback time, range, resolution, scale mode
 │   ├── useSliceDomainStore.ts   # Time slice CRUD (aliased as useSliceStore)
-│   └── ...                 # 40+ additional stores (aggregation, binning, cluster, STKDE, etc.)
+│   ├── useAggregationStore.ts   # Aggregated data caching
+│   ├── useClusterStore.ts       # DBSCAN cluster analysis state
+│   ├── useStkdeStore.ts         # STKDE hotspot computation state
+│   ├── useIntervalProposalStore.ts  # Auto-proposal interval management
+│   ├── useSuggestionStore.ts    # Interactive suggestion state
+│   ├── useWarpProposalStore.ts  # Warp proposal management
+│   ├── useTimelineDataStore.ts  # Timeline series data
+│   ├── useLayoutStore.ts        # Panel layout persistence
+│   ├── useStatsStore.ts         # Statistical summary state
+│   ├── useMapLayerStore.ts      # Map overlay layer toggles
+│   ├── useTimeslicingModeStore.ts # Time slicing mode controls
+│   └── ...                 # Additional stores (study, trajectory, heatmap, suggestions, etc.)
 │
 ├── lib/                    # Business logic and data layer
 │   ├── db.ts               # DuckDB initialization, CSV path resolution, mock data detection
 │   ├── queries/            # DuckDB query builders with SQL sanitization
-│   ├── binning/            # Time binning engine (strategies, rules, constraints, warp scaling)
-│   ├── stkde/              # STKDE computation (grid config, heatmap, hotspots, burst evolution)
+│   ├── binning/            # Time binning engine (strategies, rules, burst taxonomy, warp scaling)
+│   ├── stkde/              # STKDE computation (grid config, heatmap, hotspots, burst evolution, contracts)
 │   ├── kde/                # Slice-level KDE computation
-│   ├── adaptive/           # Adaptive binning mode logic
-│   ├── clustering/         # Cluster analysis
+│   ├── adaptive/           # Adaptive binning mode logic (route-binning-mode)
+│   ├── clustering/         # DBSCAN cluster analysis
 │   ├── neighbourhood/      # Chicago neighbourhood data, OSM integration
 │   ├── context-diagnostics/ # Spatial/temporal profile comparison
 │   ├── stats/              # Temporal pulse series, aggregation helpers
@@ -105,15 +119,48 @@ src/
 │   ├── duckdb-aggregator.ts         # 3D spatial bin aggregation
 │   ├── full-auto-orchestrator.ts    # Interval auto-proposal orchestration
 │   ├── logger.ts           # LoggerService (batch/flush via sendBeacon)
-│   └── ...                 # Additional utilities (projection, selection, stats, etc.)
+│   ├── time-range.ts       # Time range utilities and validation
+│   ├── time-domain.ts      # Domain bounds computation
+│   ├── warp-generation.ts  # Warp map boundary generation
+│   ├── slice-utils.ts      # Slice math helpers (range matching, tolerance)
+│   ├── slice-allocator.ts  # Automatic slice positioning
+│   ├── slice-geometry.ts   # Slice geometry computation
+│   ├── projection.ts       # Coordinate system bridging
+│   ├── selection.ts        # Point selection utilities
+│   ├── trajectories.ts     # Trajectory pillar construction
+│   ├── downsample.ts       # Spatial/temporal downsampling
+│   ├── formatting.ts       # Display formatting utilities
+│   ├── mockData.ts         # Synthetic crime data generation
+│   ├── bounds.ts           # Geographic bounds computation
+│   ├── stats.ts            # Statistical helpers
+│   ├── math.ts             # Shared math utilities
+│   ├── palettes.ts         # Color palette definitions
+│   ├── constants.ts        # Shared constants
+│   ├── feature-flags.ts    # Feature flag definitions
+│   ├── category-maps.ts    # Crime category color/shape maps
+│   ├── category-legend.ts  # Legend label generation
+│   ├── category-shapes.ts  # Category shape definitions
+│   ├── state-machine.ts    # Workflow state machine
+│   └── utils.ts            # General-purpose utilities
 │
 ├── hooks/                  # Custom React hooks
 │   ├── useCrimeData.ts     # TanStack Query wrapper for /api/crimes/range
+│   ├── useCrimeStream.ts   # Arrow IPC streaming hook
+│   ├── useViewportCrimeData.ts # Viewport-aware crime data fetching
+│   ├── useCrimePointCloud.ts   # 3D point cloud data preparation
 │   ├── useAdaptiveScale.ts # Adaptive scale computation
+│   ├── useDualTimelineScales.ts # Timeline d3 scale computation
 │   ├── useDebouncedDensity.ts  # Debounced density computation
 │   ├── useSelectionSync.ts # Cross-panel selection synchronization
 │   ├── useSuggestionGenerator.ts  # Interval proposal generation
-│   └── ...                 # 19 hooks total
+│   ├── useSmartProfiles.ts # Smart profile data hooks
+│   ├── useContextExtractor.ts   # Context extraction for selections
+│   ├── useSliceStats.ts    # Per-slice statistics
+│   ├── useDraggable.ts     # Drag interaction hook
+│   ├── useDebounce.ts      # Generic debounce hook
+│   ├── useMeasure.ts       # Element measurement hook
+│   ├── useLogger.ts        # LoggerService wrapper
+│   └── useURLFeatureFlags.ts   # URL-based feature flag overrides
 │
 ├── types/                  # TypeScript type definitions
 │   ├── crime.ts            # CrimeRecord (canonical), CrimeViewport, UseCrimeDataOptions

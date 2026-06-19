@@ -1,6 +1,6 @@
 # Architecture
 
-**Analysis Date:** 2026-06-01
+**Analysis Date:** 2026-06-10
 
 ## Pattern Overview
 
@@ -41,7 +41,7 @@
 **Stores (`src/store/`):**
 - Purpose: Client-side state management via Zustand
 - Location: `src/store/use*Store.ts`
-- Contains: ~40+ stores covering filters, time, slices, coordination, adaptive settings, STKDE, layout, feature flags, themes, heatmaps, clustering, suggestions, warping, trajectories, study state, presets, aggregation, binnning, cube constraints, intervals, and more
+- Contains: ~35 stores covering filters, time, slices, coordination, adaptive settings, STKDE, layout, feature flags, themes, heatmaps, clustering, suggestions, warping, trajectories, study state, presets, aggregation, binnning, cube constraints, intervals, and more
 - Subdir `slice-domain/`: Composite store pattern — `types.ts`, `selectors.ts`, `createSliceCoreSlice.ts`, `createSliceSelectionSlice.ts`, `createSliceCreationSlice.ts`, `createSliceAdjustmentSlice.ts`
 - Depends on: Types, lib (selectors, constants)
 - Used by: Components, hooks, other stores
@@ -113,7 +113,7 @@
 7. `panelNoMatch` map tracks per-panel reconciliation failures
 
 **State Management:**
-- **Zustand** for global/shared UI state (~40+ stores)
+- **Zustand** for global/shared UI state (~35 stores)
 - **TanStack Query** for server state (crime data, stats, adaptive maps)
 - **React `useState`/`useCallback`** for ephemeral component state
 - **`zustand/middleware/persist`** for persistent state (slice domain store persists slices to localStorage)

@@ -12,6 +12,11 @@ export function OnboardingTour() {
   const isDashboard = pathname.startsWith('/dashboard');
 
   useEffect(() => {
+    if (driverRef.current?.isActive()) {
+      driverRef.current.destroy();
+      driverRef.current = null;
+    }
+
     // Only show on dashboard pages
     if (!isDashboard) return;
     const hasSeenTour = localStorage.getItem("hasSeenTour");
@@ -76,6 +81,14 @@ export function OnboardingTour() {
     });
     
     driverRef.current.drive();
+
+    return () => {
+      if (driverRef.current?.isActive()) {
+        driverRef.current.destroy();
+      }
+
+      driverRef.current = null;
+    };
   }, [isDashboard]);
 
   return null;

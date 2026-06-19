@@ -1,9 +1,19 @@
 import { mkdirSync } from 'fs';
 import { dirname, isAbsolute, join, resolve } from 'path';
 
-let db: any = null;
+type DuckDbInstance = {
+  exec: (sql: string, callback: (err: Error | null) => void) => void;
+  all: (sql: string, callback: (err: Error | null, rows: unknown[]) => void) => void;
+  run: (sql: string, callback: (err: Error | null) => void) => void;
+};
+
+declare global {
+  var __quietTigerDuckDb: DuckDbInstance | undefined;
+  var __quietTigerDuckDbInitPromise: Promise<DuckDbInstance> | undefined;
+}
 
 const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'cache', 'crime.duckdb');
+const DEFAULT_DUCKDB_THREADS = '2';
 
 export const isMockDataEnabled = (): boolean => {
   const raw = (process.env.USE_MOCK_DATA ?? process.env.DISABLE_DUCKDB ?? '').trim();
@@ -25,6 +35,30 @@ export const getDbPath = (): string => {
   const configuredPath = process.env.DUCKDB_PATH?.trim();
   if (!configuredPath) return DEFAULT_DB_PATH;
   return isAbsolute(configuredPath) ? configuredPath : resolve(process.cwd(), configuredPath);
+};
+
+const getDuckDbThreads = (): string => {
+  return process.env.DUCKDB_THREADS?.trim() || DEFAULT_DUCKDB_THREADS;
+};
+
+const configureDatabase = async (database: DuckDbInstance): Promise<void> => {
+  const statements = [
+    `SET threads=${getDuckDbThreads()}`,
+    `SET preserve_insertion_order=false`,
+  ];
+
+  for (const statement of statements) {
+    await new Promise<void>((resolve, reject) => {
+      database.exec(statement, (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
 };
 
 /**
@@ -55,18 +89,47 @@ export const epochSeconds = (dateStr: string): number => {
   return Math.floor(parseDate(dateStr).getTime() / 1000);
 };
 
-export const getDb = async (): Promise<any> => {
+export const getDb = async (): Promise<DuckDbInstance> => {
   if (isMockDataEnabled()) {
     throw new Error('DuckDB disabled via USE_MOCK_DATA/DISABLE_DUCKDB');
   }
-  if (!db) {
-    const dbPath = getDbPath();
-    mkdirSync(dirname(dbPath), { recursive: true });
-    const duckdb = await import('duckdb');
-    db = new duckdb.default.Database(dbPath);
-    console.log(`DuckDB initialized at ${dbPath}`);
+
+  if (globalThis.__quietTigerDuckDb) {
+    return globalThis.__quietTigerDuckDb;
   }
-  return db;
+
+  if (!globalThis.__quietTigerDuckDbInitPromise) {
+    globalThis.__quietTigerDuckDbInitPromise = (async () => {
+      const dbPath = getDbPath();
+      mkdirSync(dirname(dbPath), { recursive: true });
+
+      const duckdb = await import('duckdb');
+      const database = await new Promise<DuckDbInstance>((resolve, reject) => {
+        const instance = new duckdb.default.Database(dbPath, (err?: Error | null) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(instance);
+        });
+      });
+
+      await configureDatabase(database as DuckDbInstance);
+
+      globalThis.__quietTigerDuckDb = database;
+      console.log(
+        `DuckDB initialized at ${dbPath} (threads=${getDuckDbThreads()})`,
+      );
+
+      return database;
+    })().catch((error) => {
+      globalThis.__quietTigerDuckDbInitPromise = undefined;
+      throw error;
+    });
+  }
+
+  return globalThis.__quietTigerDuckDbInitPromise;
 };
 
 /**

@@ -2,6 +2,7 @@ export interface WorkerConfig {
   binCount: number;
   kernelWidth?: number;
   binningMode?: 'uniform-time' | 'uniform-events';
+  burstInfluence?: number;
 }
 
 export interface WorkerInput {
@@ -64,7 +65,7 @@ export const computeAdaptiveMaps = (
   domain: [number, number],
   config: WorkerConfig
 ): Omit<WorkerOutput, 'requestId'> => {
-  const { binCount, kernelWidth = 1, binningMode = 'uniform-time' } = config;
+  const { binCount, kernelWidth = 1, binningMode = 'uniform-time', burstInfluence = 0 } = config;
   const safeBinCount = Math.max(1, Math.floor(binCount));
   const tStart = domain[0];
   const tEnd = domain[1];
@@ -167,30 +168,6 @@ export const computeAdaptiveMaps = (
     maxDensity = 1;
   }
 
-  const weights = new Float32Array(safeBinCount);
-  let totalWeight = 0;
-  for (let i = 0; i < safeBinCount; i++) {
-    const normalized = smoothedDensity[i] / maxDensity;
-    const finiteNormalized = Number.isFinite(normalized) ? normalized : 0;
-    const weight = 1 + finiteNormalized * 5;
-    weights[i] = weight;
-    totalWeight += weight;
-  }
-  if (totalWeight <= 0 || !Number.isFinite(totalWeight)) {
-    totalWeight = safeBinCount;
-    for (let i = 0; i < safeBinCount; i++) {
-      weights[i] = 1;
-    }
-  }
-
-  const warpMap = new Float32Array(safeBinCount);
-  let accumulated = 0;
-  for (let i = 0; i < safeBinCount; i++) {
-    const warped = tStart + (accumulated / totalWeight) * tSpan;
-    warpMap[i] = Number.isFinite(warped) ? warped : tStart;
-    accumulated += weights[i];
-  }
-
   const densityMap = new Float32Array(safeBinCount);
   for (let i = 0; i < safeBinCount; i++) {
     const normalized = smoothedDensity[i] / maxDensity;
@@ -227,6 +204,31 @@ export const computeAdaptiveMaps = (
     const burstiness = denom > 0 ? (sigma - mean) / denom : 0;
     const normalized = Math.max(0, Math.min(1, (burstiness + 1) / 2));
     burstinessMap[i] = Number.isFinite(normalized) ? normalized : 0;
+  }
+
+  const safeBurstInfluence = Math.max(0, Math.min(1, burstInfluence));
+  const weights = new Float32Array(safeBinCount);
+  let totalWeight = 0;
+  for (let i = 0; i < safeBinCount; i++) {
+    const blendedSignal = ((1 - safeBurstInfluence) * densityMap[i]) + (safeBurstInfluence * burstinessMap[i]);
+    const finiteSignal = Number.isFinite(blendedSignal) ? blendedSignal : 0;
+    const weight = 1 + finiteSignal * 5;
+    weights[i] = weight;
+    totalWeight += weight;
+  }
+  if (totalWeight <= 0 || !Number.isFinite(totalWeight)) {
+    totalWeight = safeBinCount;
+    for (let i = 0; i < safeBinCount; i++) {
+      weights[i] = 1;
+    }
+  }
+
+  const warpMap = new Float32Array(safeBinCount);
+  let accumulated = 0;
+  for (let i = 0; i < safeBinCount; i++) {
+    const warped = tStart + (accumulated / totalWeight) * tSpan;
+    warpMap[i] = Number.isFinite(warped) ? warped : tStart;
+    accumulated += weights[i];
   }
 
   return {

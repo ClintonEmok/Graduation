@@ -13,6 +13,7 @@ import {
 import type { FullPopulationStkdeInputs } from './full-population-pipeline';
 
 const METERS_PER_LAT_DEGREE = 111_320;
+const TEMPORAL_BUCKET_SIZE_SEC = 3600;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -115,7 +116,7 @@ function createHotspotId(row: number, col: number, peakStartEpochSec: number, pe
 }
 
 function buildIntensityFromSupport(
-  support: Float64Array,
+  signal: Float64Array,
   rows: number,
   cols: number,
   request: StkdeRequest,
@@ -132,7 +133,7 @@ function buildIntensityFromSupport(
       for (let r = Math.max(0, row - kernelRadius); r <= Math.min(rows - 1, row + kernelRadius); r += 1) {
         for (let c = Math.max(0, col - kernelRadius); c <= Math.min(cols - 1, col + kernelRadius); c += 1) {
           const neighborIndex = r * cols + c;
-          const count = support[neighborIndex];
+          const count = signal[neighborIndex];
           if (count <= 0) continue;
           const dr = r - row;
           const dc = c - col;
@@ -151,6 +152,55 @@ function buildIntensityFromSupport(
   }
   if (maxIntensity <= 0) maxIntensity = 1;
   return { intensity, maxIntensity };
+}
+
+function bucketizeTimestamps(timestamps: number[]): Array<{ bucketStartEpochSec: number; count: number }> {
+  if (timestamps.length === 0) return [];
+
+  const counts = new Map<number, number>();
+  for (const timestamp of timestamps) {
+    const bucketStartEpochSec = Math.floor(timestamp / TEMPORAL_BUCKET_SIZE_SEC) * TEMPORAL_BUCKET_SIZE_SEC;
+    counts.set(bucketStartEpochSec, (counts.get(bucketStartEpochSec) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([bucketStartEpochSec, count]) => ({ bucketStartEpochSec, count }))
+    .sort((a, b) => a.bucketStartEpochSec - b.bucketStartEpochSec);
+}
+
+function computeTemporalPeakSupportFromBuckets(
+  buckets: Array<{ bucketStartEpochSec: number; count: number }>,
+  temporalBandwidthSec: number,
+): number {
+  if (buckets.length === 0) return 0;
+  if (buckets.length === 1) return buckets[0]?.count ?? 0;
+
+  const safeBandwidthSec = Math.max(TEMPORAL_BUCKET_SIZE_SEC, temporalBandwidthSec);
+  let peak = 0;
+
+  for (let centerIdx = 0; centerIdx < buckets.length; centerIdx += 1) {
+    const center = buckets[centerIdx]?.bucketStartEpochSec ?? 0;
+    let weighted = 0;
+
+    for (let bucketIdx = 0; bucketIdx < buckets.length; bucketIdx += 1) {
+      const bucket = buckets[bucketIdx];
+      if (!bucket || bucket.count <= 0) continue;
+      const deltaSec = bucket.bucketStartEpochSec - center;
+      const weight = Math.exp(-0.5 * (deltaSec / safeBandwidthSec) ** 2);
+      weighted += bucket.count * weight;
+    }
+
+    if (weighted > peak) peak = weighted;
+  }
+
+  return peak;
+}
+
+function computeTemporalPeakSupportFromTimestamps(
+  timestamps: number[],
+  temporalBandwidthSec: number,
+): number {
+  return computeTemporalPeakSupportFromBuckets(bucketizeTimestamps(timestamps), temporalBandwidthSec);
 }
 
 function applyResponsePayloadGuard<T extends StkdeSurfaceResponse & { sliceResults?: Record<string, StkdeSurfaceResponse> }>(response: T): T {
@@ -269,6 +319,7 @@ function computeSingleStkdeSurfaceFromCrimes(
   const cellCount = grid.rows * grid.cols;
   const support = new Float64Array(cellCount);
   const cellTimestamps = Array.from({ length: cellCount }, () => [] as number[]);
+  const temporalPeakSupport = new Float64Array(cellCount);
 
   const toCellIndex = (lon: number, lat: number): number => {
     const col = clamp(Math.floor((lon - minLng) / grid.lonCellDegrees), 0, grid.cols - 1);
@@ -282,7 +333,12 @@ function computeSingleStkdeSurfaceFromCrimes(
     cellTimestamps[idx].push(crime.timestamp);
   }
 
-  const { intensity, maxIntensity } = buildIntensityFromSupport(support, grid.rows, grid.cols, request);
+  const temporalBandwidthSec = request.params.temporalBandwidthHours * 3600;
+  for (let idx = 0; idx < cellCount; idx += 1) {
+    temporalPeakSupport[idx] = computeTemporalPeakSupportFromTimestamps(cellTimestamps[idx], temporalBandwidthSec);
+  }
+
+  const { intensity, maxIntensity } = buildIntensityFromSupport(temporalPeakSupport, grid.rows, grid.cols, request);
 
   const cells: StkdeHeatmapCell[] = [];
   for (let row = 0; row < grid.rows; row += 1) {
@@ -414,7 +470,16 @@ export function computeStkdeFromAggregates(
   const [minLng, minLat] = [grid.minLng, grid.minLat];
   const cellCount = grid.rows * grid.cols;
   const support = inputs.cellSupport;
-  const { intensity, maxIntensity } = buildIntensityFromSupport(support, grid.rows, grid.cols, request);
+  const temporalPeakSupport = new Float64Array(cellCount);
+  const temporalBandwidthSec = request.params.temporalBandwidthHours * 3600;
+  for (let idx = 0; idx < cellCount; idx += 1) {
+    temporalPeakSupport[idx] = computeTemporalPeakSupportFromBuckets(
+      inputs.cellTemporalBuckets.get(idx) ?? [],
+      temporalBandwidthSec,
+    );
+  }
+
+  const { intensity, maxIntensity } = buildIntensityFromSupport(temporalPeakSupport, grid.rows, grid.cols, request);
 
   const cells: StkdeHeatmapCell[] = [];
   for (let row = 0; row < grid.rows; row += 1) {

@@ -60,8 +60,10 @@ Rule of thumb: start SBW at `~1.5x` to `3x` grid cell size.
 
 ### 3) `temporalBandwidthHours` (TBW)
 
-- Larger TBW (e.g. `48-168h`): smoother temporal behavior.
-- Smaller TBW (e.g. `4-24h`): more responsive to short spikes.
+- Larger TBW (e.g. `48-168h`): sustained activity contributes more strongly to hotspot intensity.
+- Smaller TBW (e.g. `4-24h`): short bursts are emphasized and time-diffuse cells are down-weighted.
+
+The prototype now applies TBW before spatial smoothing by building hourly temporal buckets per cell, estimating each cell's peak temporal density with a Gaussian time kernel, and then spatially smoothing that temporally-aware signal.
 
 ### 4) `timeWindowHours`
 

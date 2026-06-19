@@ -78,4 +78,33 @@ describe('computeAdaptiveMaps', () => {
       }
     },
   );
+
+  test('burst influence changes warp weights when density stays similar', () => {
+    const timestamps = Float32Array.from([
+      2, 3, 18, 19,
+      22, 26, 30, 34,
+    ]);
+    const domain: [number, number] = [0, 40];
+
+    const densityOnly = computeAdaptiveMaps(timestamps, domain, {
+      binCount: 2,
+      kernelWidth: 1,
+      binningMode: 'uniform-time',
+      burstInfluence: 0,
+    });
+
+    const hybrid = computeAdaptiveMaps(timestamps, domain, {
+      binCount: 2,
+      kernelWidth: 1,
+      binningMode: 'uniform-time',
+      burstInfluence: 0.25,
+    });
+
+    const densityWeights = Array.from(densityOnly.densityMap, (value) => 1 + value * 5);
+    const hybridWeights = Array.from(hybrid.densityMap, (value, index) => 1 + ((((1 - 0.25) * value) + (0.25 * (hybrid.burstinessMap[index] ?? 0))) * 5));
+
+    expect(hybrid.burstinessMap[0]).toBeGreaterThan(hybrid.burstinessMap[1] ?? 0);
+    expect(hybridWeights[0]).toBeGreaterThan(hybridWeights[1] ?? 0);
+    expect(hybrid.warpMap[1]).toBeGreaterThan(densityOnly.warpMap[1]);
+  });
 });

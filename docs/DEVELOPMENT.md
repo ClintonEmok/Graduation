@@ -17,10 +17,7 @@ This document describes the project's development conventions, architecture patt
    ```
    The `postinstall` script runs `patch-package` and creates a DuckDB native binding symlink automatically.
 4. **Environment configuration**:
-   ```bash
-   cp .env.example .env  # if .env.example exists
-   ```
-   By default, `USE_MOCK_DATA=false` enables real DuckDB queries. Set `USE_MOCK_DATA=true` or `DISABLE_DUCKDB=true` to use mock data instead.
+   A `.env` file is already present at the project root with `USE_MOCK_DATA=false` by default. Set `USE_MOCK_DATA=true` or `DISABLE_DUCKDB=true` to use mock data instead.
 5. **Data setup** (required for DuckDB mode):
    Place the Chicago crime dataset CSV at `data/sources/Crimes_-_2001_to_Present_20260114.csv`. DuckDB will create its cache database at `data/cache/crime.duckdb` on first query.
 6. **Start the dev server**:
@@ -468,7 +465,7 @@ refactor/what-is-changed
 docs/what-is-documented
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the pull request process.
+The project has no formal CONTRIBUTING.md. See [DEVELOPMENT.md](DEVELOPMENT.md) for code conventions and build commands.
 
 ## Error Handling
 

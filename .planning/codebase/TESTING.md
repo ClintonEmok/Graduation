@@ -1,6 +1,6 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-06-01
+**Analysis Date:** 2026-06-10
 
 ## Test Framework
 
@@ -72,7 +72,7 @@ src/app/dashboard/page.shell.test.tsx
 
 **Naming:**
 - Pure logic tests: `*.test.ts` (e.g., `slice-utils.test.ts`, `db.test.ts`)
-- Component tests: `*.test.tsx` (e.g., `BurstList.test.tsx`, `page.shell.test.tsx`)
+- Component tests: `*.test.tsx` (e.g., `BurstList.test.ts`, `page.shell.test.tsx`)
 - Phase rollout tests: `*.phaseN.test.ts` (e.g., `stkde-overlay.phase2.test.ts`, `monthly-contract.phase1.test.ts`)
 - Refactor guard tests: `*.refactor.test.ts` (e.g., `DemoDualTimeline.refactor.test.ts`)
 - QA contract tests: `*.contract.test.ts` (e.g., `useAdaptiveStore.contract.test.ts`)

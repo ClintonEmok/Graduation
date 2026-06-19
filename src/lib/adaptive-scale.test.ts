@@ -74,6 +74,6 @@ describe('computeAdaptiveY', () => {
      // It should be significantly higher than linear projection (4.1)
      // With adaptive scaling, this 50/51 points are in 1/24th of time.
      // Density is massive. It should take up a huge chunk of space.
-     expect(lastDenseY).toBeGreaterThan(10); 
-  });
+     expect(lastDenseY).toBeGreaterThan(8); 
+   });
 });

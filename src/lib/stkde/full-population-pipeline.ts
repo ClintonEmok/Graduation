@@ -110,7 +110,9 @@ export async function buildFullPopulationStkdeInputs(
   const countRows = await executeAll<CountRow>(db, countSql, [...filterParams]);
   const scannedRows = countRows[0] ? toNumber(countRows[0].count) : 0;
 
-  const bucketSizeSec = Math.max(3600, request.params.temporalBandwidthHours * 3600);
+  // Keep aggregation at a fixed hourly resolution so temporal bandwidth
+  // changes the smoothing stage rather than the underlying bucket geometry.
+  const bucketSizeSec = 3600;
 
   const aggregateSql = `
     WITH filtered AS (

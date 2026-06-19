@@ -6,16 +6,15 @@
 |----------|---------|-------------|
 | `USE_MOCK_DATA` | `false` | When `true`, bypasses DuckDB and uses mock crime data |
 | `DISABLE_DUCKDB` | (unset) | When set (any value), forces mock data regardless of `USE_MOCK_DATA` |
-| `DUCKDB_PATH` | (unset) | Custom path to DuckDB database file |
+| `DUCKDB_PATH` | `data/cache/crime.duckdb` | Custom path to DuckDB database file |
 
-<!-- VERIFY: DUCKDB_PATH usage — confirm from lib/db.ts -->
 All env vars are loaded from `.env` at the project root.
 
 ## Next.js Configuration
 
 **File:** `next.config.ts`
 
-Configures `serverExternalPackages: ["duckdb"]` to ensure the DuckDB native addon runs correctly on the server. No other Next.js options are currently set.
+Configures `serverExternalPackages: ["duckdb"]` to ensure the DuckDB native addon runs correctly on the server.
 
 ## TypeScript Configuration
 
@@ -23,7 +22,8 @@ Configures `serverExternalPackages: ["duckdb"]` to ensure the DuckDB native addo
 
 - Strict mode enabled (`"strict": true`)
 - Path alias: `@/*` maps to `./src/*`
-- Target: ES2017 (or later, check actual file)
+- Target: ES2017
+- Module resolution: `bundler`
 
 ## Tailwind CSS
 
@@ -31,13 +31,16 @@ Configures `serverExternalPackages: ["duckdb"]` to ensure the DuckDB native addo
 
 Uses `@tailwindcss/postcss` (Tailwind CSS v4). No custom `tailwind.config.*` file — v4 uses CSS-based configuration.
 
+Additional animation support via `tw-animate-css` in devDependencies.
+
 ## Vitest
 
 **File:** `vitest.config.mts`
 
-<!-- VERIFY: exact config details — check vitest.config.mts for environment, setup files, coverage settings -->
-
-Configured with jsdom environment. Check the file for exact settings.
+- **Environment:** `node`
+- **Include patterns:** `src/**/*.test.ts`, `src/**/*.test.tsx`
+- **Path alias:** `@/` maps to `./src/`
+- No global setup files or coverage configuration currently configured
 
 ## ESLint
 
@@ -49,7 +52,7 @@ Uses `eslint-config-next` with core-web-vitals and TypeScript rules. Flat config
 
 **File:** `components.json`
 
-Standard shadcn/ui configuration for component resolution and styling.
+Standard shadcn/ui configuration with New York style, `neutral` base color, and Lucide icon library.
 
 ## DuckDB
 

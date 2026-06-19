@@ -17,9 +17,11 @@ Help users understand dense vs sparse spatiotemporal crime patterns by keeping t
 | Maps | MapLibre GL 5.17, react-map-gl 8.1 |
 | State | Zustand 5, TanStack Query 5 |
 | Data | DuckDB 1.4, Apache Arrow 21 |
-| Visualization | Visx 3.12, deck.gl 9.3, GSAP 3.15 |
-| UI | Radix UI, shadcn/ui, Tailwind CSS 4 |
-| Testing | Vitest 4, jsdom, React Test Renderer |
+| 2D Charts | @visx 3.12 (axis, brush, scale, shape) |
+| GPU Heatmaps | deck.gl 9.3 |
+| Animation | GSAP 3.15 |
+| UI | Radix UI 1.4, shadcn/ui, Tailwind CSS 4 |
+| Testing | Vitest 4, jsdom 28, React Test Renderer 19 |
 
 ## Getting Started
 

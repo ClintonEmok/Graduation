@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
+import { ADAPTIVE_BIN_COUNT, ADAPTIVE_BURST_INFLUENCE, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { clampComparableWarpWeight, type ComparableWarpGranularity } from '@/lib/binning/warp-scaling';
 import { type AdaptiveBinningMode } from '@/types/adaptive';
 
@@ -196,6 +196,7 @@ export const useAdaptiveStore = create<AdaptiveState>((set) => {
           config: {
             binCount: ADAPTIVE_BIN_COUNT,
             kernelWidth: ADAPTIVE_KERNEL_WIDTH,
+            burstInfluence: ADAPTIVE_BURST_INFLUENCE,
             binningMode
           }
         }, [timestampsCopy.buffer]);
