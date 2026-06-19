@@ -50,35 +50,8 @@ export interface UseCrimeDataOptions {
   endEpoch: number
   crimeTypes?: string[]
   districts?: string[]
-  /**
-   * Phase 81 Wave 3: deprecated. The exact paged contract no longer
-   * applies buffer days — the client controls the exact range it
-   * wants. Kept for backward compatibility with existing dashboard
-   * consumers; the value is ignored server-side.
-   */
   bufferDays?: number
-  /**
-   * Phase 81 Wave 3: deprecated. The new exact paged contract uses
-   * `pageSize` instead. Kept for backward compatibility with existing
-   * consumers; if both are passed, `pageSize` wins.
-   */
   limit?: number
-  /**
-   * Phase 81 Wave 3: page size for the keyset paged read against
-   * the persisted fact table. Defaults to 5000 on the server.
-   * Values above 50000 will trigger `requiresNarrowing`.
-   */
-  pageSize?: number
-  /**
-   * Phase 81 Wave 3: opaque cursor returned by the previous page.
-   * Pass it back to fetch the next page in a stable order.
-   */
-  cursor?: string | null
-  /**
-   * Phase 81 Wave 3: optional target string (slice id, brush id, etc.)
-   * forwarded to the API for server-side tracing.
-   */
-  target?: string | null
 }
 
 /**
@@ -99,38 +72,8 @@ export interface CrimeDataMeta {
   returned: number
   limit: number
   totalMatches?: number
-  /**
-   * Phase 81 Wave 3: cursor metadata for keyset paged reads.
-   * `hasMore = true` indicates the client can call the API again
-   * with `nextCursor` to fetch the next page.
-   */
-  hasMore?: boolean
-  nextCursor?: string | null
-  /**
-   * Phase 81 Wave 3: structured narrowing prompt payload. When set,
-   * the client should surface a "narrow the range / filters" message
-   * instead of silently falling back to a broader read.
-   */
-  requiresNarrowing?: {
-    reason: 'range-too-broad' | 'page-size-too-large'
-    maxRangeSec: number
-    requestedRangeSec: number
-    maxPageSize: number
-    requestedPageSize: number
-    message: string
-  }
-  /**
-   * Legacy sampled-response fields. Phase 81 Wave 3 always returns
-   * unsampled exact rows from the persisted fact table, so these
-   * remain `undefined` for dashboard reads.
-   */
   sampled?: boolean
   sampleStride?: number
-  /**
-   * Phase 81 Wave 3: optional identifier of the originating target
-   * (slice id, brush id, etc.) for downstream tracing.
-   */
-  target?: string | null
 }
 
 /**
@@ -141,19 +84,9 @@ export interface UseCrimeDataResult {
   meta: CrimeDataMeta | null
   isLoading: boolean
   isFetching: boolean
-  isFetchingNextPage?: boolean
   error: Error | null
-  hasMore: boolean
-  nextCursor: string | null
-  requiresNarrowing: CrimeDataMeta['requiresNarrowing'] | null
   bufferedRange: {
     start: number
     end: number
   }
-  /**
-   * Fetch the next page using the `nextCursor` returned by the previous
-   * call. Returns the freshly fetched records; appends them to the
-   * internal cache (replaceable, not accumulate — D-09).
-   */
-  fetchNextPage: () => Promise<CrimeRecord[] | null>
 }

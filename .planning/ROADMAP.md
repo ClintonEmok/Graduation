@@ -101,8 +101,6 @@ Plans:
 | 77. Volumetric Duration + Depth Encoding | v3.2 | Complete | 6 | 5 |
 | 78. Temporal Evolution (Demo 3D STKDE Widget Only) | v3.2 | Complete | 4 | 4 |
 | **79. Adaptive 3D Visualization + Interactive Slices** | **v3.3** | **Complete (2026-06-19)** | **6** | **6** |
-| 80. Evaluation readiness | v3.3 | Implementation complete (2026-06-19); pilot verification (80-03 Task 3) deferred | 8 | 4 |
-| 81. Reduce dashboard memory pressure | v3.3 | Implementation complete (2026-06-19); pilot verification (81-03 Task 3) pending user | 4 | 3 |
 
 ### Phase 80: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 
@@ -113,9 +111,9 @@ Plans:
 
 Plans:
 
-- [x] 80-01-PLAN.md — Protocol/order contract, audited reset checklist, and structured DuckDB persistence
-- [x] 80-02-PLAN.md — `/evaluation` shell, header stepper, training tour, task card, and questionnaires
-- [x] 80-03-PLAN.md — Dashboard-demo evaluation locks, researcher-only warp controls, and end-to-end pilot verification (Tasks 1+2 landed 2026-06-19; Task 3 human-verify pilot deferred until after Phase 81 memory upgrade per user request)
+- [ ] 80-01-PLAN.md — Protocol/order contract, audited reset checklist, and structured DuckDB persistence
+- [ ] 80-02-PLAN.md — `/evaluation` shell, header stepper, training tour, task card, and questionnaires
+- [ ] 80-03-PLAN.md — Dashboard-demo evaluation locks, researcher-only warp controls, and end-to-end pilot verification
 
 ### Phase 81: Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads
 
@@ -126,6 +124,6 @@ Plans:
 
 Plans:
 
-- [x] 81-01-PLAN.md — Persist DuckDB fact/summary tables and cut `/api/crime/meta` + `/api/crime/overview` over to them
-- [x] 81-02-PLAN.md — Audit dashboard `useTimelineDataStore` consumers and enforce summary-first preview-safe startup
-- [x] 81-03-PLAN.md — Rebuild `/api/crimes/range` as exact paged detail and migrate active-slice-first consumers (Tasks 1+2 landed 2026-06-19; Task 3 human-verify pilot pending user verification)
+- [ ] 81-01-PLAN.md — Persist DuckDB fact/summary tables and cut `/api/crime/meta` + `/api/crime/overview` over to them
+- [ ] 81-02-PLAN.md — Audit dashboard `useTimelineDataStore` consumers and enforce summary-first preview-safe startup
+- [ ] 81-03-PLAN.md — Rebuild `/api/crimes/range` as exact paged detail and migrate active-slice-first consumers

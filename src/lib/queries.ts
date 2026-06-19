@@ -1,5 +1,5 @@
 import { CHICAGO_BOUNDS, lonLatToNormalized } from './coordinate-normalization';
-import { ensureCrimesFactTable, ensureSortedCrimesTable, getDb, isMockDataEnabled } from './db';
+import { ensureSortedCrimesTable, getDb, isMockDataEnabled } from './db';
 import type { AdaptiveBinningMode } from '@/types/adaptive';
 import {
   buildAdaptiveBurstQuery,
@@ -7,15 +7,12 @@ import {
   buildAdaptiveDomainQuery,
   buildAdaptiveTimestampQuery,
   buildCrimeCountQuery,
-  buildCrimesInRangePagedQuery,
   buildCrimesInRangeQuery,
   buildDensityBinsQuery,
   buildGlobalAdaptiveCacheQueries,
   clampAdaptiveBinCount,
   clampKernelWidth,
   computeWarpMap,
-  decodeRangeCursor,
-  encodeRangeCursor,
   sanitizeTableName,
   smoothSeries,
   toNumber,
@@ -26,14 +23,10 @@ import type {
   GlobalAdaptiveMaps,
   QueryCrimesOptions,
   QueryFilters,
-  RangePagedRequest,
-  RangePagedResult,
-  RangePagedRow,
 } from './queries/index';
 
-export type { CrimeRecord, DensityBin, GlobalAdaptiveMaps, QueryCrimesOptions, QueryFilters, RangePagedRow, RangePagedResult } from './queries/index';
+export type { CrimeRecord, DensityBin, GlobalAdaptiveMaps, QueryCrimesOptions, QueryFilters } from './queries/index';
 export { buildCrimeCoordinateSelectColumns } from './queries/index';
-export { encodeRangeCursor, decodeRangeCursor, buildCrimesInRangePagedQuery } from './queries/index';
 
 const MOCK_CRIME_TYPES = [
   'THEFT',
@@ -293,59 +286,6 @@ export const queryCrimesInRange = async (
     console.error('Error querying crimes in range:', error);
     throw error;
   }
-};
-
-export const queryCrimesInRangePaged = async (
-  request: Omit<RangePagedRequest, 'tableName'> & { tableName?: string }
-): Promise<RangePagedResult> => {
-  const tableName = request.tableName ?? (await ensureCrimesFactTable());
-  const built = buildCrimesInRangePagedQuery({ ...request, tableName });
-  const db = await getDb();
-  const requestedPageSize = Math.max(1, Math.floor(request.pageSize));
-  const decodedCursor = request.cursor
-    ? typeof request.cursor === 'string'
-      ? decodeRangeCursor(request.cursor)
-      : request.cursor
-    : null;
-
-  try {
-    const rows = await executeAll<Record<string, unknown>>(
-      db,
-      built.sql,
-      built.params
-    );
-    const hasMore = rows.length > requestedPageSize;
-    const trimmed = hasMore ? rows.slice(0, requestedPageSize) : rows;
-    const mapped: RangePagedRow[] = trimmed.map((row) => ({
-      timestamp: typeof row.timestamp === 'bigint' ? Number(row.timestamp) : Number(row.timestamp),
-      type: row.type as string,
-      lat: typeof row.lat === 'bigint' ? Number(row.lat) : Number(row.lat),
-      lon: typeof row.lon === 'bigint' ? Number(row.lon) : Number(row.lon),
-      x: typeof row.x === 'bigint' ? Number(row.x) : Number(row.x),
-      z: typeof row.z === 'bigint' ? Number(row.z) : Number(row.z),
-      iucr: row.iucr as string,
-      district: row.district as string,
-      year: typeof row.year === 'bigint' ? Number(row.year) : Number(row.year),
-      rowId: typeof row.row_id === 'bigint' ? Number(row.row_id) : Number(row.row_id),
-    }));
-    const lastRow = mapped[mapped.length - 1];
-    const nextCursor =
-      hasMore && lastRow
-        ? { ts: lastRow.timestamp, rowId: lastRow.rowId }
-        : null;
-    return {
-      rows: mapped,
-      hasMore,
-      nextCursor,
-    };
-  } catch (error) {
-    console.error('Error paging crimes in range:', error);
-    throw error;
-  }
-  // Reference decodedCursor to keep TS happy about the param being
-  // available even when the builder does not consume it (the API
-  // route decodes the cursor before calling this facade).
-  void decodedCursor;
 };
 
 export const queryCrimeCount = async (

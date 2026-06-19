@@ -158,99 +158,46 @@ const hasValidTimeWindow = (value: number | null): value is number => typeof val
 
 interface CrimeFetchResult {
   records: CrimeRecord[];
-  /**
-   * True if the API returned `hasMore = true` for at least one page,
-   * meaning the working window contains more rows than the client
-   * has loaded so far. Equivalent to the old "sampled" flag for the
-   * burst-generation warning path.
-   */
-  truncated: boolean;
-  /**
-   * Structured narrowing prompt, surfaced verbatim to the caller.
-   * The burst generation path treats this as a hard error (the user
-   * must narrow the working window) instead of a soft warning.
-   */
-  requiresNarrowing: { reason: string; message: string } | null;
+  sampled: boolean;
+  limit: number;
 }
-
-const BURST_PAGE_SIZE = 5000;
-const BURST_MAX_PAGES = 4; // cap at 4 pages (20k rows) per partition; further narrow via UI
 
 const fetchCrimeRecordsForRange = async (
   generationInputs: GenerationInputs,
   startMs: number,
   endMs: number,
-  pageSize: number = BURST_PAGE_SIZE,
-  maxPages: number = BURST_MAX_PAGES,
+  limit: number,
 ): Promise<CrimeFetchResult> => {
   if (!hasValidTimeWindow(startMs) || !hasValidTimeWindow(endMs)) {
-    return { records: [], truncated: false, requiresNarrowing: null };
+    return { records: [], sampled: false, limit };
   }
 
-  const baseParams = new URLSearchParams({
+  const searchParams = new URLSearchParams({
     startEpoch: String(Math.floor(Math.min(startMs, endMs) / 1000)),
     endEpoch: String(Math.floor(Math.max(startMs, endMs) / 1000)),
-    pageSize: String(pageSize),
+    bufferDays: '0',
+    limit: String(limit),
   });
 
   const crimeTypes = generationInputs.crimeTypes.filter((type) => type !== 'all-crime-types');
   if (crimeTypes.length > 0) {
-    baseParams.set('crimeTypes', crimeTypes.join(','));
+    searchParams.set('crimeTypes', crimeTypes.join(','));
   }
 
   if (generationInputs.neighbourhood) {
-    baseParams.set('districts', generationInputs.neighbourhood);
+    searchParams.set('districts', generationInputs.neighbourhood);
   }
 
-  const records: CrimeRecord[] = [];
-  let cursor: string | null = null;
-  let truncated = false;
-  let requiresNarrowing: { reason: string; message: string } | null = null;
-  let pagesFetched = 0;
+  const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Burst selection crime fetch failed with status ${response.status}`);
+  }
 
-  do {
-    const searchParams = new URLSearchParams(baseParams);
-    if (cursor) searchParams.set('cursor', cursor);
-
-    const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
-    if (!response.ok) {
-      throw new Error(`Burst selection crime fetch failed with status ${response.status}`);
-    }
-
-    const result = (await response.json()) as {
-      data?: CrimeRecord[];
-      meta?: {
-        hasMore?: boolean;
-        nextCursor?: string | null;
-        requiresNarrowing?: { reason?: string; message?: string };
-      };
-    };
-    const page = Array.isArray(result.data) ? result.data : [];
-    records.push(...page);
-    pagesFetched += 1;
-
-    if (result.meta?.requiresNarrowing) {
-      requiresNarrowing = {
-        reason: result.meta.requiresNarrowing.reason ?? 'unknown',
-        message: result.meta.requiresNarrowing.message ?? 'Narrow the burst window.',
-      };
-      break;
-    }
-
-    if (result.meta?.hasMore && result.meta.nextCursor && pagesFetched < maxPages) {
-      cursor = result.meta.nextCursor;
-    } else {
-      cursor = null;
-      if (result.meta?.hasMore) {
-        truncated = true;
-      }
-    }
-  } while (cursor);
-
+  const result = (await response.json()) as { data?: CrimeRecord[]; meta?: { sampled?: boolean } };
   return {
-    records,
-    truncated,
-    requiresNarrowing,
+    records: Array.isArray(result.data) ? result.data : [],
+    sampled: Boolean(result.meta?.sampled),
+    limit,
   };
 };
 
@@ -385,7 +332,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         set({
           pendingGeneratedBins: [],
           generationStatus: 'error',
-          generationError: 'Choose a valid time window before generating burst slices.',
+            generationError: 'Choose a valid time window before generating burst slices.',
         });
         return false;
       }
@@ -398,22 +345,11 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         const partitions = partitionSelectionByGranularity([activeStart, activeEnd], generationInputs.granularity);
         const fetchResults = await Promise.all(
           partitions.map((partition) =>
-            fetchCrimeRecordsForRange(generationInputs, partition.startTime, partition.endTime)
+            fetchCrimeRecordsForRange(generationInputs, partition.startTime, partition.endTime, 50000)
           )
         );
         const crimeRecords = fetchResults.flatMap((result) => result.records);
-        const truncated = fetchResults.some((result) => result.truncated);
-        const narrowing = fetchResults.find((result) => result.requiresNarrowing);
-
-        if (narrowing?.requiresNarrowing) {
-          set({
-            pendingGeneratedBins: [],
-            generationStatus: 'error',
-            generationError: `Narrow the burst window: ${narrowing.requiresNarrowing.message}`,
-          });
-          return false;
-        }
-
+        const sampled = fetchResults.some((result) => result.sampled || result.records.length >= result.limit);
         const generated = buildNonUniformDraftBinsFromSelection({
           ...generationInputs,
           eventTimestamps: crimeRecords.map((crime) => crime.timestamp * 1000),
@@ -432,8 +368,8 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         get().setPendingGeneratedBins(generated.bins, {
           binCount: generated.bins.length,
           eventCount: generated.eventCount,
-          warning: truncated
-            ? 'One or more partition fetches hit the paging cap; burstiness may be truncated. Narrow the working window for exact results.'
+          warning: sampled
+            ? 'One or more slice fetches hit the API limit; burstiness may be truncated.'
             : generated.warning,
           inputs: generationInputs,
         });
@@ -530,43 +466,18 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       set({ generationStatus: 'generating', generationError: null });
 
       try {
-        const baseParams = new URLSearchParams({
+        const searchParams = new URLSearchParams({
           startEpoch: String(Math.floor(Math.min(bin.startTime, bin.endTime) / 1000)),
           endEpoch: String(Math.floor(Math.max(bin.startTime, bin.endTime) / 1000)),
-          pageSize: '5000',
-          target: `manual-draft:${binId}`,
+          bufferDays: '0',
+          limit: '100000',
         });
 
-        const crimes: CrimeRecord[] = [];
-        let cursor: string | null = null;
-        let pagesFetched = 0;
-        const maxPages = 10; // 50k rows cap for manual drafts
+        const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
+        if (!response.ok) throw new Error(`Crime data fetch failed with status ${response.status}`);
 
-        do {
-          const searchParams = new URLSearchParams(baseParams);
-          if (cursor) searchParams.set('cursor', cursor);
-
-          const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
-          if (!response.ok) throw new Error(`Crime data fetch failed with status ${response.status}`);
-
-          const result = (await response.json()) as {
-            data?: CrimeRecord[];
-            meta?: { hasMore?: boolean; nextCursor?: string | null; requiresNarrowing?: { message?: string } };
-          };
-          const page = Array.isArray(result.data) ? result.data : [];
-          crimes.push(...page);
-          pagesFetched += 1;
-
-          if (result.meta?.requiresNarrowing?.message) {
-            throw new Error(`Narrow the manual draft: ${result.meta.requiresNarrowing.message}`);
-          }
-
-          if (result.meta?.hasMore && result.meta.nextCursor && pagesFetched < maxPages) {
-            cursor = result.meta.nextCursor;
-          } else {
-            cursor = null;
-          }
-        } while (cursor);
+        const result = (await response.json()) as { data?: CrimeRecord[] };
+        const crimes = Array.isArray(result.data) ? result.data : [];
 
         const typeSet = new Set<string>();
         crimes.forEach((c) => typeSet.add(c.type));

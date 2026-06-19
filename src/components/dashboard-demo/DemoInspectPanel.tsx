@@ -1,24 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Focus, Pause, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { useCrimeData } from '@/hooks/useCrimeData';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import {
-  pickActiveSliceFirst,
-  useDashboardDemoCoordinationStore,
-} from '@/store/useDashboardDemoCoordinationStore';
+import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { computeSliceKde } from '@/lib/kde';
 import { SliceScrubber } from '@/app/stkde-3d/components/SliceScrubber';
 import { SliceInspector } from '@/app/stkde-3d/components/SliceInspector';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
 import type { CrimeRecord } from '@/types/crime';
-
-const DETAIL_PAGE_SIZE = 5000;
 
 function resolveSliceEpochRange(
   slice: TimeSlice,
@@ -273,8 +268,8 @@ export function DemoInspectPanel() {
   const activeSliceCrimeData = useCrimeData({
     startEpoch: activeEvolvingSlice?.startEpoch ?? 0,
     endEpoch: activeEvolvingSlice?.endEpoch ?? 0,
-    pageSize: DETAIL_PAGE_SIZE,
-    target: activeEvolvingSlice ? `inspect-active:${activeEvolvingSlice.sourceSliceId}` : null,
+    bufferDays: 0,
+    limit: 50000,
   });
 
   const activeSliceKde = useMemo(
@@ -367,8 +362,6 @@ export function DemoInspectPanel() {
     [activeEvolvingSlice, setComparisonSliceId, setViewMode]
   );
 
-  const [refetchNarrowingMessage, setRefetchNarrowingMessage] = useState<string | null>(null);
-
   const handleRefetchCrimeCounts = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null) return;
 
@@ -379,9 +372,8 @@ export function DemoInspectPanel() {
 
     const sliceRows = storeSlices
       .filter((sl) => sl.isVisible && sl.type === 'range')
-      .map((sl, originalIndex) => ({
+      .map((sl) => ({
         sourceSliceId: sl.id,
-        index: originalIndex,
         startEpoch: resolveSliceEpochRange(sl, currentMin, currentMax)[0],
         endEpoch: resolveSliceEpochRange(sl, currentMin, currentMax)[1],
       }));
@@ -389,58 +381,34 @@ export function DemoInspectPanel() {
     if (sliceRows.length === 0) return;
 
     setCrimeFetchStatus('loading');
-    setRefetchNarrowingMessage(null);
-
-    // D-15: fetch the active slice first so the focused slice populates
-    // before background comparison slices.
-    const orderedSlices = pickActiveSliceFirst(
-      sliceRows,
-      activeEvolvingSlice?.sourceSliceId,
-      sliceRows.map((s) => s.sourceSliceId),
-    );
 
     const counts: Record<string, number> = {};
     let totalFetched = 0;
-    const narrowingMessages: string[] = [];
 
-    for (const slice of orderedSlices) {
+    for (const slice of sliceRows) {
       const params = new URLSearchParams({
         startEpoch: Math.floor(slice.startEpoch).toString(),
         endEpoch: Math.ceil(slice.endEpoch).toString(),
-        pageSize: String(DETAIL_PAGE_SIZE),
-        target: `inspect-recalc:${slice.sourceSliceId}`,
+        bufferDays: '0',
+        limit: '50000',
       });
 
-      let cursor: string | null = null;
       try {
-        do {
-          if (cursor) params.set('cursor', cursor);
-          const res = await fetch(`/api/crimes/range?${params.toString()}`);
-          if (!res.ok) break;
-          const result = (await res.json()) as {
-            data?: CrimeRecord[];
-            meta?: { hasMore?: boolean; nextCursor?: string | null; requiresNarrowing?: { message?: string } };
-          };
-          const crimes = result.data ?? [];
-          counts[slice.sourceSliceId] = (counts[slice.sourceSliceId] ?? 0) + crimes.length;
-          totalFetched += crimes.length;
-          if (result.meta?.requiresNarrowing?.message) {
-            narrowingMessages.push(`${slice.sourceSliceId}: ${result.meta.requiresNarrowing.message}`);
-          }
-          cursor = result.meta?.hasMore ? result.meta.nextCursor ?? null : null;
-        } while (cursor);
+        const res = await fetch(`/api/crimes/range?${params.toString()}`);
+        if (!res.ok) continue;
+        const result = (await res.json()) as { data?: CrimeRecord[] };
+        const crimes = result.data ?? [];
+        counts[slice.sourceSliceId] = crimes.length;
+        totalFetched += crimes.length;
       } catch {
-        counts[slice.sourceSliceId] = counts[slice.sourceSliceId] ?? 0;
+        counts[slice.sourceSliceId] = 0;
       }
     }
 
     console.debug('[InspectPanel] Recalc computed counts:', JSON.stringify(counts), 'total:', totalFetched);
     setSliceCrimeCounts(counts);
-    if (narrowingMessages.length > 0) {
-      setRefetchNarrowingMessage(narrowingMessages[0] ?? null);
-    }
     setCrimeFetchStatus('success');
-  }, [minTimestampSec, maxTimestampSec, setSliceCrimeCounts, setCrimeFetchStatus, activeEvolvingSlice?.sourceSliceId]);
+  }, [minTimestampSec, maxTimestampSec, setSliceCrimeCounts, setCrimeFetchStatus]);
 
   useEffect(() => {
     if (isFocusedView) {
@@ -472,9 +440,6 @@ export function DemoInspectPanel() {
       setActiveSliceIndex(0);
     }
   }, [visibleSlices.length, activeIndex, setActiveSliceIndex]);
-
-  const activeRequiresNarrowing = activeSliceCrimeData.requiresNarrowing;
-  const activeNarrowingMessage = activeRequiresNarrowing?.message;
 
   if (visibleSlices.length === 0) {
     return (
@@ -514,11 +479,6 @@ export function DemoInspectPanel() {
               <span className="text-destructive">
                 {' · '}crime fetch failed
                 <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-red-300">Retry</button>
-              </span>
-            )}
-            {refetchNarrowingMessage && (
-              <span className="text-amber-400">
-                {' · '}narrow the slice window: {refetchNarrowingMessage}
               </span>
             )}
             {crimeFetchStatus === 'success' && hasZeroCountSlices && (
@@ -630,18 +590,12 @@ export function DemoInspectPanel() {
               )}
             </section>
 
-              <div className="mt-1.5 text-[10px] text-muted-foreground">
-                {comparisonSelectionSummary}
-              </div>
-            </section>
+            <div className="mt-1.5 text-[10px] text-muted-foreground">
+              {comparisonSelectionSummary}
+            </div>
+          </section>
 
-            {activeNarrowingMessage ? (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
-                Narrow the active slice window: {activeNarrowingMessage}
-              </div>
-            ) : null}
-
-            {crimeFetchStatus === 'loading' ? (
+          {crimeFetchStatus === 'loading' ? (
             <InspectLoadingSkeleton />
           ) : (
             <>

@@ -9,10 +9,6 @@ describe('/dashboard-demo shell', () => {
     const demoStatsSource = readFileSync(new URL('../../components/dashboard-demo/DemoStatsPanel.tsx', import.meta.url), 'utf8');
     const demoStkdePanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoStkdePanel.tsx', import.meta.url), 'utf8');
     const demoDetectPanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoDetectPanel.tsx', import.meta.url), 'utf8');
-    const demo3dSpatialViewSource = readFileSync(
-      new URL('../../components/dashboard-demo/Demo3dSpatialView.tsx', import.meta.url),
-      'utf8'
-    );
     const demoAnalysisStoreSource = readFileSync(new URL('../../store/useDashboardDemoCoordinationStore.ts', import.meta.url), 'utf8');
     const demoNeighborhoodStatsSource = readFileSync(
       new URL('../../components/dashboard-demo/lib/useDemoNeighborhoodStats.ts', import.meta.url),
@@ -110,21 +106,9 @@ describe('/dashboard-demo shell', () => {
     expect(demoAnalysisStoreSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoAnalysisStoreSource).toMatch(/selectedDistricts/);
     expect(demoAnalysisStoreSource).toMatch(/stkdeParams/);
-    // Phase 81 Wave 3 (D-15): active-slice-first helper is exported
-    // and used by the dashboard consumers.
-    expect(demoAnalysisStoreSource).toMatch(/pickActiveSliceFirst/);
-    // Phase 81 Wave 3: 3D view uses the paged contract and D-15
-    // active-first ordering. No more `limit: '50000'`.
-    expect(demo3dSpatialViewSource).toMatch(/pickActiveSliceFirst/);
-    expect(demo3dSpatialViewSource).toMatch(/pageSize/);
-    expect(demo3dSpatialViewSource).not.toMatch(/limit:\s*'50000'/);
     expect(demoNeighborhoodStatsSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoNeighborhoodStatsSource).toMatch(/aggregateStats/);
     expect(demoNeighborhoodStatsSource).toMatch(/transformStatsSummary/);
-    // Phase 81 Wave 3: highest-priority consumer. No more eager
-    // `limit: 1_000_000` preload; the hook now uses keyset paging.
-    expect(demoNeighborhoodStatsSource).not.toMatch(/limit:\s*1_000_000/);
-    expect(demoNeighborhoodStatsSource).toMatch(/pageSize/);
     expect(demoStkdeHookSource).toMatch(/callerIntent: 'dashboard-demo'/);
     expect(demoStkdeHookSource).toMatch(/buildStkdeViewModel/);
     expect(demoStkdeHookSource).toMatch(/DEFAULT_STKDE_BBOX/);
@@ -188,12 +172,6 @@ describe('/dashboard-demo shell', () => {
     expect(demoInspectPanelSource).toMatch(/setViewMode\('focus'\)/);
     expect(demoInspectPanelSource).toMatch(/hasDefaultedFocusRef/);
     expect(demoInspectPanelSource).toMatch(/comparisonSelectionOrder/);
-    // Phase 81 Wave 3: per-slice detail now goes through the paged
-    // contract. The legacy `limit: 50000` field is gone from the
-    // active-slice fetch.
-    expect(demoInspectPanelSource).not.toMatch(/limit:\s*50000/);
-    expect(demoInspectPanelSource).toMatch(/pickActiveSliceFirst/);
-    expect(demoInspectPanelSource).toMatch(/pageSize/);
     expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
     expect(demoStkdePanelSource).toMatch(/Applied slices/);
     expect(demoStkdePanelSource).toMatch(/Full viewport/);
@@ -252,10 +230,6 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimeslicingModeStoreSource).toMatch(/buildNonUniformDraftBinsFromSelection/);
     expect(demoTimeslicingModeStoreSource).toMatch(/\/api\/crimes\/range/);
     expect(demoTimeslicingModeStoreSource).toMatch(/maxSlices/);
-    // Phase 81 Wave 3: burst generation uses the paged contract and
-    // honors requiresNarrowing as a hard error.
-    expect(demoTimeslicingModeStoreSource).toMatch(/pageSize/);
-    expect(demoTimeslicingModeStoreSource).toMatch(/requiresNarrowing/);
     expect(timeslicingModeStoreSource).not.toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
     expect(timeslicingModeStoreSource).not.toMatch(/generateBinsFromActivePresetBias|PRESET_GENERATION_PROFILES|resolvePresetBiasBinTarget/);
     expect(timesliceToolbarSource).not.toMatch(/Bias|Active|Reset preset|Reset all/);
