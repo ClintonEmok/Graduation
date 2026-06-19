@@ -374,6 +374,7 @@ export function StkdeSliceStack({
   const commitResize = useCallback((state: DragState) => {
     const startEpoch = Math.min(state.previewStartEpoch, state.previewEndEpoch);
     const endEpoch = Math.max(state.previewStartEpoch, state.previewEndEpoch);
+    const midpointEpoch = (startEpoch + endEpoch) / 2;
     const normalizedStart = minTimestampSec !== null && maxTimestampSec !== null
       ? epochSecondsToNormalized(startEpoch, minTimestampSec, maxTimestampSec)
       : null;
@@ -384,10 +385,23 @@ export function StkdeSliceStack({
     updateSlice(state.sliceId, {
       startDateTimeMs: startEpoch * 1000,
       endDateTimeMs: endEpoch * 1000,
-      time: startEpoch,
+      time: normalizedStart !== null && normalizedEnd !== null
+        ? (normalizedStart + normalizedEnd) / 2
+        : midpointEpoch,
       ...(normalizedStart !== null && normalizedEnd !== null ? { range: [normalizedStart, normalizedEnd] as [number, number] } : {}),
     });
-  }, [maxTimestampSec, minTimestampSec, updateSlice]);
+
+    setActiveSlice(state.sliceId);
+    const nextOrderedSliceIds = buildOrderedSourceSlices(
+      useSliceDomainStore.getState().slices,
+      minTimestampSec,
+      maxTimestampSec,
+    ).map((slice) => slice.sourceSliceId);
+    const nextIndex = nextOrderedSliceIds.indexOf(state.sliceId);
+    if (nextIndex >= 0) {
+      setActiveSliceIndex(compact ? 0 : nextIndex);
+    }
+  }, [compact, maxTimestampSec, minTimestampSec, setActiveSlice, setActiveSliceIndex, updateSlice]);
 
   const handleSliceSelect = useCallback((sliceIndex: number) => {
     const sourceSliceId = resolveSourceSliceId(sliceIndex);
