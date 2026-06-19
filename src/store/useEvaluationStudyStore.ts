@@ -49,6 +49,8 @@ import {
   isResetSuccessful,
   type ResetOutcome,
 } from '@/lib/study/resetTargets';
+import { logger } from '@/lib/logger';
+import type { StudyIntent } from '@/lib/study/storage';
 import {
   useDashboardDemoCoordinationStore,
 } from '@/store/useDashboardDemoCoordinationStore';
@@ -154,6 +156,16 @@ export interface EvaluationStudyState {
   completeQuestionnaire: (block: 'A' | 'B') => void;
   setSaveStatus: (intentId: string, status: SaveStatus, error?: string | null) => void;
   clearSaveStatus: (intentId: string) => void;
+  /**
+   * Submit a study intent to the server with per-write save-status
+   * tracking. The intent is mirrored through `logger.submit` (which
+   * requeues on failure). Returns the server acknowledgement so later
+   * UI plans can block unsafe advancement on persistence failure.
+   */
+  submitStudyIntent: <TIntent extends StudyIntent>(
+    intentId: string,
+    intent: TIntent,
+  ) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const ensureBlockTaskProgress = (
@@ -445,6 +457,17 @@ export const useEvaluationStudyStore = create<EvaluationStudyState>()(
           delete nextErrors[intentId];
           return { saveStatus: nextStatus, saveErrors: nextErrors };
         });
+      },
+
+      submitStudyIntent: async (intentId, intent) => {
+        get().setSaveStatus(intentId, 'pending');
+        const result = await logger.submit(intent as unknown as Record<string, unknown>);
+        if (result.ok) {
+          get().setSaveStatus(intentId, 'saved', null);
+        } else {
+          get().setSaveStatus(intentId, 'error', result.error ?? 'submission failed');
+        }
+        return result;
       },
     }),
     {
