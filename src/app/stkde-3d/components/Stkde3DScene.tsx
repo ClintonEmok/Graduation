@@ -222,7 +222,7 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {false ? <AdaptiveWarpAxis /> : null}
+      <AdaptiveWarpAxis />
 
       <StkdeSliceStack
         slices={viewMode === 'focus' ? focusedSlices : slices}
