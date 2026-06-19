@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: milestone
-status: ready
-stopped_at: Completed 79-03-PLAN.md
-last_updated: "2026-06-19T08:28:11Z"
-last_activity: 2026-06-19 -- Completed 79-03 adaptive 3D visualization polish
+status: paused
+stopped_at: 80-03 Task 3 (human-verify pilot) deferred until after Phase 81
+last_updated: "2026-06-19T10:50:00Z"
+last_activity: 2026-06-19 -- Phase 80 plans 80-01 + 80-02 + 80-03 (Tasks 1+2) executed; pilot verification deferred
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 9
-  completed_plans: 3
-  percent: 33
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -21,25 +21,42 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** Phase 80 — evaluation readiness planning/execution
+**Current focus:** Phase 81 — reduce dashboard memory pressure (deferred from Phase 80 pilot verification)
 
 ## Current Position
 
 Milestone: v3.3
-Phase: 79 (adaptive-3d-visualization) — COMPLETE
-Plan: 3 of 3
-Status: Ready for Phase 80
-Last activity: 2026-06-19 -- Completed 79-03-PLAN.md
+Phase: 80 (evaluation-readiness) — IN PROGRESS (pilot verification pending)
+Plans: 80-01 ✓, 80-02 ✓, 80-03 Tasks 1+2 ✓ (commits landed), Task 3 (human-verify) deferred
+Status: Paused — resume 80-03 Task 3 after Phase 81 completes
+Last activity: 2026-06-19 -- Phase 80 partial execution; user requested deferral
 
-Progress: [███████░░░░░░░░░░░░] 33% (3/9 v3.3 plans complete)
+Progress: [██████████████░░░░░░] 56% (5/9 v3.3 plans complete — 80-01, 80-02, 80-03 partial, plus 3 from v3.2)
+
+### 80-03 Pending Handoff
+
+After Phase 81 completes, resume Phase 80 by running the 80-03 Task 3 pilot verification:
+1. Sequencing A→B / B→A in `/evaluation` header stepper
+2. In-block task order T4→T1→T2→T3 with confidence gating
+3. Focus isolation — Tab/Shift+Tab skips locked participant controls
+4. Logging distinction — condition-toggle vs warp-adjustment are distinct DuckDB rows
+5. Reset safety — audited reset clears all named targets
+6. Phase 79 compatibility — `/dashboard-demo` still works after pilot
+
+Commits landed for 80-03 (no SUMMARY.md yet — write after Task 3 approval):
+- `1c98780` feat(80-03): add evaluation locks to dashboard-demo rail tabs and panels
+- `c4f4189` feat(80-03): add researcher-only warp factor controls with acknowledged event logging
+- `f3f4582` test(80-03): relax demo detect panel disabled-prop assertion to accept lock variant
+
+Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.shell test pass, 4/4 storage test pass (warp vs condition distinction), 13/13 /api/study/log test pass, dev server smoke pass on both /dashboard-demo (200, no lock strip) and /evaluation (200, researcher warp control rendered once, lock strip present).
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9 (v3.2 milestone)
+- Total plans completed (v3.2 + v3.3): 9 + 5 = 14
 - Average duration: ~30m
-- Total execution time: ~2h 55m
+- Total execution time: ~3h 30m (incl. 80 partial)
 
 **By Phase:**
 
@@ -49,11 +66,12 @@ Progress: [███████░░░░░░░░░░░░] 33% (3/9 v
 | 77 Volumetric Duration | 2 | 2 | — |
 | 78 Temporal Evolution | 2 | 2 | ~30m |
 | 79 Adaptive 3D | 3 | 3 | ~6m |
+| 80 Evaluation Readiness | 3 | 2.6/3 | ~12m (80-03 partial — pilot deferred) |
 
 **Recent Trend:**
 
-- Last 5 plans: 79-03, 79-02, 79-01, 77-02, 77-01
-- Trend: Adaptive 3D visualization is complete; evaluation-readiness work is next
+- Last 5 plans: 80-02, 80-01, 79-03, 79-02, 79-01
+- Trend: Phase 80 implementation work landed; pilot verification deferred to after Phase 81 memory upgrade.
 
 ## Accumulated Context
 
@@ -61,6 +79,16 @@ Progress: [███████░░░░░░░░░░░░] 33% (3/9 v
 
 Recent decisions affecting current work:
 
+- [Phase 80]: Study task order is fixed T4 → T1 → T2 → T3 (not natural ordering).
+- [Phase 80]: Researcher flow is fixed 8-step: Welcome → Training → Tasks-A → Questionnaire-A → Tasks-B → Questionnaire-B → Interview → Done.
+- [Phase 80]: Questionnaire is 6 NASA-RTLX + 6 interpretability items (overrides the 12 NASA-RTLX draft in `EVALUATION_PROTOCOL.md`).
+- [Phase 80]: Reset targets must be explicit and named (no vague global reset).
+- [Phase 80]: `/api/study/log` writes are acknowledged — HTTP 200 with `ok: true` or per-row error.
+- [Phase 80]: Evaluation lock is route-scoped via `usePathname().startsWith('/evaluation')` — `/dashboard-demo` is fully unaffected.
+- [Phase 80]: Locked controls are visible-but-disabled: `disabled`, `aria-disabled`, `tabIndex={-1}` plus `pointer-events-none opacity-40` for visual muting. Single `Setup locked during evaluation.` helper strip per panel.
+- [Phase 80]: Researcher-only warp controls live in the researcher's zone of `EvaluationHeader` (not in participant-facing panels).
+- [Phase 80]: Warp-factor and condition-toggle events are distinct rows in `study_condition_events` — `event_type` values are `'warp-adjustment'` vs `'condition-toggle'`.
+- [Phase 80]: Pilot verification (Task 3) deferred until after Phase 81 memory upgrade to avoid re-piloting under load.
 - [Phase 79]: Adaptive warp map renders as a volumetric 1024-bin colored axis behind the slice stack in Stkde3DScene.
 - [Phase 79]: Applied slice Y-positions come from the warp map instead of fixed yForIndex spacing when in adaptive mode.
 - [Phase 79]: Treat `activeSliceIndex = -1` as a true deselected state so empty-space clicks remove all 3D slice emphasis.
@@ -75,7 +103,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Start Phase 80: Evaluation readiness
+- Run Phase 81 (memory pressure / overview vs detail)
+- Resume Phase 80 Task 3 (pilot verification) after Phase 81 completes
+- Write `80-03-SUMMARY.md` after pilot verification
 
 ### Roadmap Evolution
 
@@ -84,7 +114,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-None.
+- Phase 80 Task 3 (pilot verification) intentionally deferred per user request — not a blocker, just paused.
 
 ### Quick Tasks Completed
 
