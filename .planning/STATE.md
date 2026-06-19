@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: milestone
 status: executing
-stopped_at: Phase 80 context gathered
-last_updated: "2026-06-19T08:08:30Z"
-last_activity: 2026-06-19 -- Completed 79-01 volumetric adaptive axis + spacing
+stopped_at: Completed 79-02-PLAN.md
+last_updated: "2026-06-19T08:17:12Z"
+last_activity: 2026-06-19 -- Completed 79-02 3D slice interaction
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 9
-  completed_plans: 1
-  percent: 11
+  completed_plans: 2
+  percent: 22
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md`
 
 Milestone: v3.3
 Phase: 79 (adaptive-3d-visualization) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Executing Phase 79
-Last activity: 2026-06-19 -- Completed 79-01-PLAN.md
+Last activity: 2026-06-19 -- Completed 79-02-PLAN.md
 
-Progress: [██░░░░░░░░░░░░░░░░] 11% (1/9 v3.3 plans complete)
+Progress: [████░░░░░░░░░░░░░░] 22% (2/9 v3.3 plans complete)
 
 ## Performance Metrics
 
@@ -63,7 +63,9 @@ Recent decisions affecting current work:
 
 - [Phase 79]: Adaptive warp map renders as a volumetric 1024-bin colored axis behind the slice stack in Stkde3DScene.
 - [Phase 79]: Applied slice Y-positions come from the warp map instead of fixed yForIndex spacing when in adaptive mode.
-- [Phase 79]: Slices are interactive in 3D: click to select, drag to resize, double-click to create, warp weight slider, delete button.
+- [Phase 79]: Treat `activeSliceIndex = -1` as a true deselected state so empty-space clicks remove all 3D slice emphasis.
+- [Phase 79]: Resize commits must write normalized midpoint time back to the slice store and refresh the ordered active index after resorting.
+- [Phase 79]: Empty-space 3D draft creation should clamp a centered default window inside the current viewport.
 - [Phase 79]: All slice edits sync through shared stores (useSliceDomainStore, useDashboardDemoCoordinationStore, useDashboardDemoTimeslicingModeStore) — no new coordination channel.
 - [Phase 79]: The timeline gets a density strip matching the 3D warp axis colors when in adaptive mode.
 - [Phase 79]: Study infrastructure (task runner, NASA-TLX, structured logging) is deferred to a future milestone after adaptive 3D visualization is stable.
@@ -71,7 +73,6 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Execute 79-02: Add 3D slice selection, drag-to-resize, double-click-to-create
 - Execute 79-03: Add warp weight slider, delete button, timeline density strip, cross-view sync verification
 
 ### Roadmap Evolution
@@ -100,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-16T15:28:01.710Z
-Stopped at: Completed 79-01-PLAN.md
+Last session: 2026-06-19T08:17:12Z
+Stopped at: Completed 79-02-PLAN.md
 Resume file: None

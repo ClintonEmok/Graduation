@@ -38,8 +38,8 @@
 
 - [x] **ADP-01**: Render the adaptive warp map as a semi-transparent volumetric 1024-bin colored axis in the demo 3D widget, with bin height proportional to warped duration and color from density
 - [x] **ADP-02**: Position applied slices in StkdeSliceStack based on the warp map instead of fixed spacing using the current viewport time window — dense periods spread apart, sparse periods compress
-- [ ] **ADP-03**: Support applied-slice interaction in the 3D view: click to select, drag top/bottom edge to resize time range, double-click empty space to create a new pending draft
-- [ ] **ADP-04**: Sync all 3D slice edits through shared stores so timeline and Slices tab reflect changes in real-time
+- [x] **ADP-03**: Support applied-slice interaction in the 3D view: click to select, drag top/bottom edge to resize time range, double-click empty space to create a new pending draft
+- [x] **ADP-04**: Sync all 3D slice edits through shared stores so timeline and Slices tab reflect changes in real-time
 - [ ] **ADP-05**: Adjust per-slice warp weight from the 3D view when a slice is selected, and delete slices from the 3D view
 - [ ] **ADP-06**: Toggle linear/adaptive mode updates the 3D view, timeline axis, and slice spacing consistently
 
@@ -79,7 +79,7 @@
 | TME-04 | 78 | Complete |
 | ADP-01 | 79 | Complete |
 | ADP-02 | 79 | Complete |
-| ADP-03 | 79 | Planned |
-| ADP-04 | 79 | Planned |
+| ADP-03 | 79 | Complete |
+| ADP-04 | 79 | Complete |
 | ADP-05 | 79 | Planned |
 | ADP-06 | 79 | Planned |
