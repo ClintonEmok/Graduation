@@ -27,7 +27,7 @@
  * the warp effect inside the wrapped demo shell actually changes.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Play, RotateCcw, Square } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { submitConditionToggle } from '@/lib/logger';
 import {
   selectActiveBlock,
   useEvaluationStudyStore,
@@ -50,7 +51,9 @@ import {
   ALL_BLOCK_ORDERS,
   type BlockOrder,
   conditionForBlock,
+  type ConditionId,
 } from '@/lib/study/condition-order';
+import { ResearcherWarpControls } from '@/components/evaluation/ResearcherWarpControls';
 import { RESET_TARGETS, type ResetOutcome } from '@/lib/study/resetTargets';
 
 const STAGE_TRAINING_TOUR_EVENT = 'gsd:start-evaluation-training-tour';
@@ -108,6 +111,7 @@ export function EvaluationHeader({ readOnlyStepper = false }: EvaluationHeaderPr
 
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const setTimeScaleMode = useDashboardDemoCoordinationStore((state) => state.setTimeScaleMode);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -127,6 +131,42 @@ export function EvaluationHeader({ readOnlyStepper = false }: EvaluationHeaderPr
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new CustomEvent(STAGE_TRAINING_TOUR_EVENT));
   };
+
+  // Map the time-scale mode used by the demo coordination store to the
+  // study protocol's condition id (`linear` => `uniform`, `adaptive`
+  // stays `adaptive`). Used to log every condition toggle through the
+  // acknowledged study event path so the unlabeled toggle and the
+  // researcher warp adjustments remain distinct in `study_condition_events`.
+  const timeScaleModeToCondition = (mode: 'linear' | 'adaptive'): ConditionId =>
+    mode === 'adaptive' ? 'adaptive' : 'uniform';
+
+  const handleConditionToggle = useCallback(
+    (checked: boolean) => {
+      const fromMode = timeScaleMode;
+      const toMode = checked ? 'adaptive' : 'linear';
+      if (fromMode === toMode) return;
+
+      setTimeScaleMode(toMode);
+
+      // The `block` column is required by the API route. Suppress the
+      // log entry when the researcher toggles during a non-block step
+      // (welcome / training / interview / done) — the demo shell still
+      // observes the change but the study event log is block-scoped.
+      if (!activeBlock) return;
+      if (!sessionId || !participantId) return;
+
+      void submitConditionToggle({
+        sessionId,
+        participantId,
+        block: activeBlock,
+        fromCondition: timeScaleModeToCondition(fromMode),
+        toCondition: timeScaleModeToCondition(toMode),
+        warpFactorAtEvent: warpFactor,
+        occurredAt: Date.now(),
+      });
+    },
+    [activeBlock, participantId, sessionId, setTimeScaleMode, timeScaleMode, warpFactor],
+  );
 
   return (
     <header
@@ -269,11 +309,16 @@ export function EvaluationHeader({ readOnlyStepper = false }: EvaluationHeaderPr
           <Switch
             aria-label="Change time-scale view"
             checked={timeScaleMode === 'adaptive'}
-            onCheckedChange={(checked) => {
-              setTimeScaleMode(checked ? 'adaptive' : 'linear');
-            }}
+            onCheckedChange={handleConditionToggle}
           />
         </div>
+
+        {/* Researcher-only warp factor control path (80-03). Mounted
+            inside the researcher zone so the participant cannot reach
+            the deeper warp tuning from any rail panel. Every adjustment
+            is logged via `submitWarpAdjustment` so the analysis step
+            can reconstruct the per-condition warp history. */}
+        <ResearcherWarpControls compact />
 
         <Separator orientation="vertical" className="h-10 bg-slate-700/70" />
 
