@@ -11,7 +11,7 @@ import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildAgingOpacityMap, computeTrailIntensity } from '@/lib/motion/aging';
 import { easeInOutCubic, interpolateKdeCells } from '@/lib/motion/easing';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
-import { sampleWarpSeconds, toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
+import { toDisplaySeconds, toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import type { KdeCell, EvolvingSlice } from '../lib/types';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import type { TimeSlice } from '@/store/slice-domain/types';
@@ -303,7 +303,7 @@ export function StkdeSliceStack({
       }
 
       const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
-      const displayEpoch = sampleWarpSeconds(midEpoch, warpMap, adaptiveDomain);
+      const displayEpoch = toDisplaySeconds(midEpoch, warpFactor, warpMap, adaptiveDomain);
       return mapRange(displayEpoch, adaptiveDomain[0], adaptiveDomain[1], START_Y, stackEndY);
     },
     [adaptiveDomain, compact, stackEndY, timeScaleMode, warpFactor, warpMap]
