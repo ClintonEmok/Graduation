@@ -91,7 +91,7 @@ Plans:
 
 - [x] 79-01-PLAN.md — Volumetric adaptive axis + variable slice spacing (ADP-01, ADP-02)
 - [x] 79-02-PLAN.md — 3D slice interaction: select, resize, create (applied slices only) (ADP-03, ADP-04)
-- [ ] 79-03-PLAN.md — Warp weight, delete, timeline density strip, cross-view verification (ADP-05, ADP-06)
+- [x] 79-03-PLAN.md — Warp weight, delete, timeline density strip, cross-view verification (ADP-05, ADP-06)
 
 ## Progress
 
@@ -100,7 +100,7 @@ Plans:
 | 76. Foundation Cleanup + Motion Scaffolding | v3.2 | Complete | 7 | 4 |
 | 77. Volumetric Duration + Depth Encoding | v3.2 | Complete | 6 | 5 |
 | 78. Temporal Evolution (Demo 3D STKDE Widget Only) | v3.2 | Complete | 4 | 4 |
-| **79. Adaptive 3D Visualization + Interactive Slices** | **v3.3** | **In progress** | **6** | **6** |
+| **79. Adaptive 3D Visualization + Interactive Slices** | **v3.3** | **Complete (2026-06-19)** | **6** | **6** |
 
 ### Phase 80: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 

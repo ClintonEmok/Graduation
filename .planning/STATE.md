@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: milestone
-status: executing
-stopped_at: Completed 79-02-PLAN.md
-last_updated: "2026-06-19T08:17:12Z"
-last_activity: 2026-06-19 -- Completed 79-02 3D slice interaction
+status: ready
+stopped_at: Completed 79-03-PLAN.md
+last_updated: "2026-06-19T08:28:11Z"
+last_activity: 2026-06-19 -- Completed 79-03 adaptive 3D visualization polish
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 9
-  completed_plans: 2
-  percent: 22
+  completed_plans: 3
+  percent: 33
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** Phase 79 — adaptive-3d-visualization execution
+**Current focus:** Phase 80 — evaluation readiness planning/execution
 
 ## Current Position
 
 Milestone: v3.3
-Phase: 79 (adaptive-3d-visualization) — EXECUTING
+Phase: 79 (adaptive-3d-visualization) — COMPLETE
 Plan: 3 of 3
-Status: Executing Phase 79
-Last activity: 2026-06-19 -- Completed 79-02-PLAN.md
+Status: Ready for Phase 80
+Last activity: 2026-06-19 -- Completed 79-03-PLAN.md
 
-Progress: [████░░░░░░░░░░░░░░] 22% (2/9 v3.3 plans complete)
+Progress: [███████░░░░░░░░░░░░] 33% (3/9 v3.3 plans complete)
 
 ## Performance Metrics
 
@@ -48,12 +48,12 @@ Progress: [████░░░░░░░░░░░░░░] 22% (2/9 v3.3
 | 76 Foundation | 5 | 5 | — |
 | 77 Volumetric Duration | 2 | 2 | — |
 | 78 Temporal Evolution | 2 | 2 | ~30m |
-| 79 Adaptive 3D | 3 | 0 | — |
+| 79 Adaptive 3D | 3 | 3 | ~6m |
 
 **Recent Trend:**
 
-- Last 5 plans: 77-01, 77-02, 76-05, 76-04, 76-03
-- Trend: Foundation is complete; volumetric depth encoding is approved; Temporal Evolution is next
+- Last 5 plans: 79-03, 79-02, 79-01, 77-02, 77-01
+- Trend: Adaptive 3D visualization is complete; evaluation-readiness work is next
 
 ## Accumulated Context
 
@@ -68,12 +68,14 @@ Recent decisions affecting current work:
 - [Phase 79]: Empty-space 3D draft creation should clamp a centered default window inside the current viewport.
 - [Phase 79]: All slice edits sync through shared stores (useSliceDomainStore, useDashboardDemoCoordinationStore, useDashboardDemoTimeslicingModeStore) — no new coordination channel.
 - [Phase 79]: The timeline gets a density strip matching the 3D warp axis colors when in adaptive mode.
+- [Phase 79]: Deleting the active 3D slice should clear selection instead of implicitly activating a neighbor.
+- [Phase 79]: Interactive Drei Html overlays in the cube must stop pointer bubbling so slider/button controls remain usable.
 - [Phase 79]: Study infrastructure (task runner, NASA-TLX, structured logging) is deferred to a future milestone after adaptive 3D visualization is stable.
 - [Phase 79]: 3 plans split by foundation (axis + spacing), interaction (select/resize/create), and polish (warp weight, delete, density strip, cross-view verification).
 
 ### Pending Todos
 
-- Execute 79-03: Add warp weight slider, delete button, timeline density strip, cross-view sync verification
+- Start Phase 80: Evaluation readiness
 
 ### Roadmap Evolution
 
@@ -101,6 +103,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-19T08:17:12Z
-Stopped at: Completed 79-02-PLAN.md
+Last session: 2026-06-19T08:28:11Z
+Stopped at: Completed 79-03-PLAN.md
 Resume file: None
