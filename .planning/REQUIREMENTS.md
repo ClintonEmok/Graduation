@@ -29,18 +29,32 @@
 - [x] **TME-03**: Implement opt-in smooth KDE interpolation between consecutive slices in the demo 3D STKDE widget, clearly labeled as estimated/interpolated state
 - [x] **TME-04**: Expose temporal evolution controls in the demo Inspect/3D widget pair so users can toggle playback, trail decay, and interpolation mode
 
+## Milestone v3.3 Requirements: Adaptive 3D Visualization
+
+**Generated:** 2026-06-09
+**Status:** In progress
+
+## Adaptive 3D
+
+- [x] **ADP-01**: Render the adaptive warp map as a semi-transparent volumetric 1024-bin colored axis in the demo 3D widget, with bin height proportional to warped duration and color from density
+- [x] **ADP-02**: Position applied slices in StkdeSliceStack based on the warp map instead of fixed spacing using the current viewport time window — dense periods spread apart, sparse periods compress
+- [ ] **ADP-03**: Support applied-slice interaction in the 3D view: click to select, drag top/bottom edge to resize time range, double-click empty space to create a new pending draft
+- [ ] **ADP-04**: Sync all 3D slice edits through shared stores so timeline and Slices tab reflect changes in real-time
+- [ ] **ADP-05**: Adjust per-slice warp weight from the 3D view when a slice is selected, and delete slices from the 3D view
+- [ ] **ADP-06**: Toggle linear/adaptive mode updates the 3D view, timeline axis, and slice spacing consistently
+
 ## Future (Deferred)
 
+- Study & Evaluation — interaction logging, task timing, NASA-TLX, participant routing
 - Multi-Scale Temporal — dynamic aggregation windows, zoom-linked cube resolution, comparison presets
 - Dense Data Readability — adaptive transparency, saliency map, LOD switching
-- Evaluation Readiness — interaction logging, state serialization, undo/redo, task timing
 
 ## Out of Scope
 
-- Multi-Scale Temporal (aggregation windows, zoom-linked resolution) — depends on Temporal Evolution
-- Dense Data Readability (adaptive transparency, saliency) — deferred to future milestone
-- Evaluation Readiness (logging, state serialization, undo/redo) — makes sense only after visualization is stable
-- Any stack additions beyond the 6 identified packages — existing Three.js/R3F/MapLibre stack covers remaining needs
+- Study & Evaluation infrastructure — depends on Adaptive 3D Visualization being stable
+- Multi-Scale Temporal (aggregation windows, zoom-linked resolution) — deferred
+- Dense Data Readability (adaptive transparency, saliency) — deferred
+- Any stack additions beyond the existing Three.js/R3F/MapLibre stack
 
 # Traceability
 
@@ -63,3 +77,9 @@
 | TME-02 | 78 | Complete |
 | TME-03 | 78 | Complete |
 | TME-04 | 78 | Complete |
+| ADP-01 | 79 | Complete |
+| ADP-02 | 79 | Complete |
+| ADP-03 | 79 | Planned |
+| ADP-04 | 79 | Planned |
+| ADP-05 | 79 | Planned |
+| ADP-06 | 79 | Planned |

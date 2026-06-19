@@ -89,7 +89,7 @@ Plans:
 
 Plans:
 
-- [ ] 79-01-PLAN.md — Volumetric adaptive axis + variable slice spacing (ADP-01, ADP-02)
+- [x] 79-01-PLAN.md — Volumetric adaptive axis + variable slice spacing (ADP-01, ADP-02)
 - [ ] 79-02-PLAN.md — 3D slice interaction: select, resize, create (applied slices only) (ADP-03, ADP-04)
 - [ ] 79-03-PLAN.md — Warp weight, delete, timeline density strip, cross-view verification (ADP-05, ADP-06)
 
