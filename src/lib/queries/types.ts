@@ -40,3 +40,58 @@ export interface DensityBin {
   count: number;
   dominantType: string;
 }
+
+/**
+ * Phase 81: persisted analytics types.
+ *
+ * The overview response replaces the legacy sampled-timestamp contract with
+ * server-side pre-binned counts plus explicit domain metadata so downstream
+ * UI can render without rebucketing a large raw timestamp payload.
+ */
+export interface OverviewBin {
+  binIndex: number;
+  startEpoch: number;
+  endEpoch: number;
+  count: number;
+}
+
+export interface OverviewDomain {
+  startEpoch: number;
+  endEpoch: number;
+  binCount: number;
+  binSizeSec: number;
+}
+
+export interface OverviewFilter {
+  crimeTypes: string[];
+  districts: string[];
+}
+
+export interface OverviewResponse {
+  domain: OverviewDomain;
+  bins: OverviewBin[];
+  filter: OverviewFilter;
+  fingerprint: string;
+  builtAt: string;
+}
+
+/**
+ * Phase 81: persisted dataset metadata response shape.
+ *
+ * Extends the legacy metadata response with a `fingerprint` so callers can
+ * reason about when the persisted tables were last rebuilt.
+ */
+export interface DatasetMetadata {
+  minTime: number;
+  maxTime: number;
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+  count: number;
+  yearMin: number;
+  yearMax: number;
+  crimeTypes: string[];
+  fingerprint: string;
+  builtAt: string;
+}

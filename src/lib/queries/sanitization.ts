@@ -1,4 +1,10 @@
-const TABLE_NAME_ALLOWLIST = new Set(['crimes_sorted', 'adaptive_global_cache']);
+const TABLE_NAME_ALLOWLIST = new Set([
+  'crimes_sorted',
+  'adaptive_global_cache',
+  'crimes_fact',
+  'crime_dataset_meta',
+  'crime_overview_bins_medium',
+]);
 
 const ADAPTIVE_BIN_COUNT_RANGE = { min: 1, max: 5000 };
 const KERNEL_WIDTH_RANGE = { min: 0, max: 200 };
