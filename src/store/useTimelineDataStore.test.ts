@@ -26,6 +26,7 @@ beforeEach(() => {
     data: [],
     columns: null,
     overviewTimestampSec: [],
+    overviewBins: [],
     crimeTypes: [],
     minX: null,
     maxX: null,
@@ -206,7 +207,25 @@ describe('useTimelineDataStore.loadRealData', () => {
       if (url.endsWith('/api/crime/overview?maxPoints=5')) {
         return {
           ok: true,
-          json: async () => ({ timestampsSec: [1_700_000_000, 1_700_043_200, 1_700_086_400] }),
+          // Phase 81: server-binned counts replace the legacy timestampsSec
+          // payload. The store derives `overviewTimestampSec` from bin
+          // midpoints for legacy consumers.
+          json: async () => ({
+            domain: {
+              startEpoch: 1_700_000_000,
+              endEpoch: 1_700_086_400,
+              binCount: 3,
+              binSizeSec: 28_800,
+            },
+            bins: [
+              { binIndex: 0, startEpoch: 1_700_000_000, endEpoch: 1_700_028_800, count: 1 },
+              { binIndex: 1, startEpoch: 1_700_028_800, endEpoch: 1_700_057_600, count: 1 },
+              { binIndex: 2, startEpoch: 1_700_057_600, endEpoch: 1_700_086_400, count: 0 },
+            ],
+            filter: { crimeTypes: [], districts: [] },
+            fingerprint: 'mtime:0:size:0',
+            builtAt: '2026-06-19T00:00:00.000Z',
+          }),
         } as Response;
       }
 
@@ -217,11 +236,20 @@ describe('useTimelineDataStore.loadRealData', () => {
 
     await useTimelineDataStore.getState().loadSummaryData({ maxPoints: 5 });
 
-    const { columns, overviewTimestampSec, minTimestampSec, maxTimestampSec, crimeTypes, dataCount } =
+    const { columns, overviewTimestampSec, overviewBins, minTimestampSec, maxTimestampSec, crimeTypes, dataCount } =
       useTimelineDataStore.getState();
 
     expect(columns).toBeNull();
-    expect(overviewTimestampSec).toEqual([1_700_000_000, 1_700_043_200, 1_700_086_400]);
+    // Legacy `overviewTimestampSec` is derived from bin midpoints (only bins
+    // with count > 0 contribute a timestamp).
+    expect(overviewTimestampSec).toEqual([1_700_014_400, 1_700_043_200]);
+    expect(overviewBins).toHaveLength(3);
+    expect(overviewBins[0]).toEqual({
+      binIndex: 0,
+      startEpoch: 1_700_000_000,
+      endEpoch: 1_700_028_800,
+      count: 1,
+    });
     expect(minTimestampSec).toBe(1_700_000_000);
     expect(maxTimestampSec).toBe(1_700_086_400);
     expect(crimeTypes).toEqual(['ASSAULT', 'THEFT']);

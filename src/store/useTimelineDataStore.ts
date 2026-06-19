@@ -39,10 +39,18 @@ function getBounds(values: ArrayLike<number>): { min: number; max: number } | nu
   return { min, max };
 }
 
+export interface OverviewBinState {
+  binIndex: number;
+  startEpoch: number;
+  endEpoch: number;
+  count: number;
+}
+
 export interface TimelineDataState {
   data: DataPoint[];
   columns: ColumnarData | null;
   overviewTimestampSec: number[];
+  overviewBins: OverviewBinState[];
   crimeTypes: string[];
   minX: number | null;
   maxX: number | null;
@@ -64,6 +72,7 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
   data: [],
   columns: null,
   overviewTimestampSec: [],
+  overviewBins: [],
   crimeTypes: [],
   minX: null,
   maxX: null,
@@ -100,6 +109,7 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       data,
       columns: null,
       overviewTimestampSec: data.map((point) => point.timestamp / 1000),
+      overviewBins: [],
       crimeTypes,
       minTimestampSec: MOCK_START_SEC,
       maxTimestampSec: MOCK_END_SEC,
@@ -117,6 +127,9 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
     set({ isLoading: true });
 
     try {
+      // Phase 81: legacy `maxPoints` is now a no-op for the server contract
+      // (the server returns pre-binned counts at a fixed medium resolution)
+      // but the query param is kept on the wire for backward compatibility.
       const maxPoints = Math.max(1, Math.floor(options?.maxPoints ?? TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS));
       const [metaRes, overviewRes] = await Promise.all([
         fetch('/api/crime/meta'),
@@ -142,10 +155,40 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         );
       }
 
+      // Phase 81: overview is now server-binned counts. We materialize the
+      // bins as a new `overviewBins` field AND derive a one-timestamp-per-bin
+      // midpoint array for legacy consumers (e.g. DemoDualTimeline density
+      // strip derivation). 81-02 will replace the derived array with direct
+      // bin consumption.
+      const rawBins = Array.isArray(overview?.bins) ? overview.bins : [];
+      const normalizedBins: OverviewBinState[] = [];
+      const derivedTimestamps: number[] = [];
+      for (const raw of rawBins) {
+        if (!raw) continue;
+        const startEpoch = Number(raw.startEpoch);
+        const endEpoch = Number(raw.endEpoch);
+        const count = Number(raw.count);
+        const binIndex = Number(raw.binIndex);
+        if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch) || !Number.isFinite(count)) {
+          continue;
+        }
+        const midpoint = (startEpoch + endEpoch) / 2;
+        normalizedBins.push({
+          binIndex: Number.isFinite(binIndex) ? binIndex : normalizedBins.length,
+          startEpoch,
+          endEpoch,
+          count,
+        });
+        if (count > 0) {
+          derivedTimestamps.push(midpoint);
+        }
+      }
+
       set({
         data: [],
         columns: null,
-        overviewTimestampSec: Array.isArray(overview?.timestampsSec) ? overview.timestampsSec.map((value: number) => Number(value)).filter(Number.isFinite) : [],
+        overviewTimestampSec: derivedTimestamps,
+        overviewBins: normalizedBins,
         crimeTypes: Array.isArray(meta?.crimeTypes) ? meta.crimeTypes.filter((value: string) => typeof value === 'string') : [],
         minTimestampSec: minTimeSec,
         maxTimestampSec: maxTimeSec,
@@ -273,6 +316,7 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       set({
         columns,
         overviewTimestampSec: [],
+        overviewBins: [],
         crimeTypes: meta?.crimeTypes || [],
         minTimestampSec: effectiveMinTimeSec,
         maxTimestampSec: effectiveMaxTimeSec,
