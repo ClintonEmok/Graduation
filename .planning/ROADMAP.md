@@ -104,14 +104,16 @@ Plans:
 
 ### Phase 80: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** The `dashboard-demo` prototype can run as a controlled within-subjects evaluation route with explicit counterbalanced participant order, locked participant-facing controls, researcher-only warp adjustment, in-app task/questionnaire flow, structured DuckDB logging, and audited session reset between participants.
+**Requirements**: D-01, D-03, D-07, D-10, D-12, D-14, D-15, D-16
 **Depends on:** Phase 79
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 80 to break down)
+- [ ] 80-01-PLAN.md — Protocol/order contract, audited reset checklist, and structured DuckDB persistence
+- [ ] 80-02-PLAN.md — `/evaluation` shell, header stepper, training tour, task card, and questionnaires
+- [ ] 80-03-PLAN.md — Dashboard-demo evaluation locks, researcher-only warp controls, and end-to-end pilot verification
 
 ### Phase 81: Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads
 

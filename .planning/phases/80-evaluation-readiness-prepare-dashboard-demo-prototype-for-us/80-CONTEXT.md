@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-This phase builds the evaluation shell, task management UI, in-app forms, condition visibility, and structured logging needed to run a 5-participant within-subjects user study comparing uniform vs. adaptive temporal scaling in the dashboard-demo prototype, addressing RQ1–RQ4.
+This phase builds the evaluation shell, task management UI, in-app forms, condition visibility, and structured logging needed to run a 5-participant within-subjects pilot study comparing uniform vs. adaptive temporal scaling in the dashboard-demo prototype, focused on RQ2–RQ4. RQ1 remains covered by the methodology and prototype chapters rather than the user study itself.
 
 It does **not** add new visualization features, modify the adaptive scaling algorithm, change the data pipeline, or refactor the dashboard-demo shell. The core visualization (adaptive scaling, 3D STKDE cube, 2D map, dual timeline, burst detection pipeline) is assumed stable from prior phases (76–79).
 
@@ -33,7 +33,7 @@ It does **not** add new visualization features, modify the adaptive scaling algo
 - **D-09:** The existing study logging system (`useStudyStore`, `logger.ts`, `/api/study/log`) can be fully redesigned to support structured form responses and DuckDB storage.
 
 ### Task Management + Phase Flow
-- **D-10:** Four experimental tasks from the thesis (not the original 8 from EVALUATION_PROTOCOL.md): T1 — Peak Activity (RQ2), T2 — Burst Detection (RQ2), T3 — Compare Time Periods (RQ3), T4 — Most Active Region (RQ4/spatial baseline).
+- **D-10:** Four experimental tasks from the thesis (not the original 8 from EVALUATION_PROTOCOL.md), kept in fixed progressive order within each condition (`T4 -> T1 -> T2 -> T3`): T4 — Most Active Region (control / spatial baseline), T1 — Peak Activity (RQ2), T2 — Burst Detection (RQ2), T3 — Compare Time Periods (RQ2 + RQ3).
 - **D-11:** Floating task card overlay in the corner of the evaluation view shows the current task text. After the participant responds, an in-app 1–5 confidence slider appears before advancing.
 - **D-12:** Researcher-controlled 7-phase stepper: Welcome → Training → Tasks-A → Questionnaire-A → Tasks-B → Questionnaire-B → Interview → Done. Each phase shows the appropriate UI surface.
 - **D-13:** The existing `OnboardingTour` (driver.js) is updated to cover: 3D cube rotation, timeline brushing, slice label interpretation, density coloring, and the unlabeled time-scale toggle. Provides consistent training across participants.
@@ -115,7 +115,7 @@ It does **not** add new visualization features, modify the adaptive scaling algo
 - Task cards should be non-blocking — participants interact with the visualization while the task text stays visible
 - The confidence slider (1-5) should capture both the rating and the timestamp for per-trial analysis
 - The unlabeled toggle should look like a subtle control (perhaps just an icon or a slider without text) so participants can experiment without being primed
-- The DuckDB trials table should include a `trial_order` column to account for within-condition task randomisation
+- The DuckDB trials table should include a `trial_order` column to preserve the fixed within-condition task sequence for later paired/descriptive analysis
 - SUS is collected once at session end (overall usability), while NASA-TLX is collected per-condition (workload comparison)
 
 </specifics>
