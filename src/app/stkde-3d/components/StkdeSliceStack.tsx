@@ -296,6 +296,10 @@ export function StkdeSliceStack({
 
   const [dragState, setDragState] = useState<DragState | null>(null);
 
+  const sourceSliceById = useMemo(() => {
+    return new Map(sourceSlices.map((slice) => [slice.id, slice]));
+  }, [sourceSlices]);
+
   const orderedSourceSliceIds = useMemo(() => {
     return buildOrderedSourceSlices(sourceSlices, minTimestampSec, maxTimestampSec).map((slice) => slice.sourceSliceId);
   }, [maxTimestampSec, minTimestampSec, sourceSlices]);
@@ -600,6 +604,7 @@ export function StkdeSliceStack({
         const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;
         const sourceSliceId = resolveSourceSliceId(i);
         const isDraggingThisSlice = dragState?.sliceId === sourceSliceId;
+        const sourceSlice = sourceSliceId ? sourceSliceById.get(sourceSliceId) : undefined;
         const labelText = isDraggingThisSlice && dragState
           ? formatRangeLabel(dragState.previewStartEpoch, dragState.previewEndEpoch)
           : slice.label;
@@ -769,6 +774,8 @@ export function StkdeSliceStack({
 
             <Html position={[52, 0, 0]} center className="pointer-events-none select-none">
               <div
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
                 className={`rounded-md border px-2 py-1 text-[10px] leading-tight shadow-sm ${
                   isActive
                     ? 'border-sky-400/60 bg-slate-950/95 text-sky-100'
@@ -797,7 +804,7 @@ export function StkdeSliceStack({
                     <div className="flex items-center justify-between gap-3 text-sky-100">
                       <span className="uppercase tracking-[0.14em] text-sky-300">Warp weight</span>
                       <span className="font-mono text-sky-200">
-                        {(sourceSlices.find((sourceSlice) => sourceSlice.id === sourceSliceId)?.warpWeight ?? 1).toFixed(2)}x
+                        {(sourceSlice?.warpWeight ?? 1).toFixed(2)}x
                       </span>
                     </div>
                     <input
@@ -805,7 +812,9 @@ export function StkdeSliceStack({
                       min={0}
                       max={3}
                       step={0.05}
-                      value={sourceSlices.find((sourceSlice) => sourceSlice.id === sourceSliceId)?.warpWeight ?? 1}
+                      value={sourceSlice?.warpWeight ?? 1}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={(event) => {
                         onUpdateSliceWarpWeight?.(i, parseFloat(event.target.value));
                       }}
@@ -813,7 +822,11 @@ export function StkdeSliceStack({
                     />
                     <button
                       type="button"
-                      onClick={() => onDeleteSlice?.(i)}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteSlice?.(i);
+                      }}
                       className="w-full rounded border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-rose-200 transition hover:border-rose-400/40 hover:bg-rose-500/20"
                     >
                       Delete slice
