@@ -48,6 +48,8 @@ const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 
 const clamp = clampToRange;
 
+const normalizeWarpBlend = (value: number) => Math.min(1, Math.max(0, value / 3));
+
 const buildDensityWarpMap = (
   densityMap: Float32Array | null,
   domain: [number, number]
@@ -328,6 +330,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const effectiveWarpMap = usingDensitySource ? precomputedWarpMap : authoredWarpMap;
   const effectiveWarpDomain = usingDensitySource ? precomputedMapDomain : warpDomain;
   const effectiveWarpFactor = shouldForceAdaptiveFromSlices ? (warpFactor > 0 ? warpFactor : 1) : warpFactor;
+  const effectiveWarpBlend = useMemo(() => normalizeWarpBlend(effectiveWarpFactor), [effectiveWarpFactor]);
   const effectiveTimeScaleMode = shouldForceAdaptiveFromSlices ? 'adaptive' : timeScaleMode;
 
   const overviewBins = useMemo(() => {
@@ -388,7 +391,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     overviewInnerWidth,
     detailInnerWidth,
     timeScaleMode: effectiveTimeScaleMode,
-    warpFactor: effectiveWarpFactor,
+    warpFactor: effectiveWarpBlend,
     warpMap: effectiveWarpMap,
     warpDomain: effectiveWarpDomain,
   });
@@ -408,7 +411,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     overviewInnerWidth,
     detailInnerWidth,
     timeScaleMode: effectiveTimeScaleMode,
-    warpFactor: effectiveWarpFactor,
+    warpFactor: effectiveWarpBlend,
     warpMap: effectiveWarpMap,
     warpDomain: effectiveWarpDomain,
     tickLabelStrategy,

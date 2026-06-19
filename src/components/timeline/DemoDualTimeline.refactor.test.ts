@@ -15,9 +15,11 @@ describe('DemoDualTimeline refactor wiring', () => {
     const source = readFileSync(new URL('./DemoDualTimeline.tsx', import.meta.url), 'utf8');
 
     expect(source).toMatch(/buildDemoSliceAuthoredWarpMap/);
+    expect(source).toMatch(/normalizeWarpBlend/);
     expect(source).toMatch(/useDashboardDemoCoordinationStore/);
     expect(source).toMatch(/overviewSliceBoxes/);
     expect(source).toMatch(/detailInteractionScale/);
+    expect(source).toMatch(/warpFactor: effectiveWarpBlend/);
     expect(source).toMatch(/return <DualTimelineSurface \{\.\.\.surfaceProps\} \/>;/);
   });
 
