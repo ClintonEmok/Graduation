@@ -185,6 +185,47 @@ interface DashboardDemoCoordinationState {
   resetAnalysis: () => void;
 }
 
+export interface OrderedSlice {
+  sourceSliceId: string;
+  index: number;
+}
+
+/**
+ * Phase 81 Wave 3 (D-15): active/visible slice first.
+ *
+ * Reorders a list of slices so the user's actively focused slice is
+ * fetched first, then the currently visible ones, then the rest.
+ * Used by the dashboard's per-slice detail loaders (`DemoInspectPanel`,
+ * `Demo3dSpatialView`) to populate the active slice before background
+ * pages or comparison requests run.
+ *
+ * Pure function. Does not mutate the input array.
+ */
+export function pickActiveSliceFirst<T extends OrderedSlice>(
+  orderedSlices: T[],
+  activeSliceId: string | null | undefined,
+  visibleSliceIds?: string[] | null,
+): T[] {
+  if (orderedSlices.length <= 1) return orderedSlices;
+
+  const active = activeSliceId
+    ? orderedSlices.find((slice) => slice.sourceSliceId === activeSliceId)
+    : undefined;
+  const visibleSet = visibleSliceIds ? new Set(visibleSliceIds) : null;
+  const visible: T[] = [];
+  const rest: T[] = [];
+  for (const slice of orderedSlices) {
+    if (active && slice.sourceSliceId === active.sourceSliceId) continue;
+    if (visibleSet && visibleSet.has(slice.sourceSliceId)) {
+      visible.push(slice);
+    } else {
+      rest.push(slice);
+    }
+  }
+  if (active) return [active, ...visible, ...rest];
+  return [...visible, ...rest];
+}
+
 export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinationState>((set) => ({
   selectedIndex: null,
   selectedSource: null,

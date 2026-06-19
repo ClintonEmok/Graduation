@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
-import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import {
+  pickActiveSliceFirst,
+  useDashboardDemoCoordinationStore,
+} from '@/store/useDashboardDemoCoordinationStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { Stkde3DScene } from '@/app/stkde-3d/components/Stkde3DScene';
 import { buildDurationVolumeProfile } from '@/app/stkde-3d/lib/volume-encoding';
 import type { KdeCell } from '@/lib/kde';
 import type { CrimeRecord } from '@/types/crime';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
+
+const SLICE_3D_PAGE_SIZE = 5000;
 
 interface SceneSlice {
   sourceSliceId: string;
@@ -49,6 +54,63 @@ function resolveSliceEpochRange(
 
   const time = normalizedToEpochSeconds(slice.time, minTimestampSec, maxTimestampSec);
   return [time, time];
+}
+
+interface PagedSliceResult {
+  rows: CrimeRecord[];
+  error: string | null;
+  narrowingMessage: string | null;
+}
+
+/**
+ * Phase 81 Wave 3: page through the exact paged detail contract for a
+ * single slice. The inner loop is isolated so the parent effect does
+ * not have a nested control flow that React's set-state-in-effect lint
+ * flags. `cancelled` is a boolean that flips to true when the parent
+ * effect is unmounting; we honour it between page fetches.
+ *
+ * Returns `null` when the parent effect was cancelled mid-page so the
+ * caller can short-circuit and avoid touching state on a stale effect.
+ */
+async function fetchSliceCrimesPaged(
+  slice: SceneSlice,
+  cancelled: boolean,
+): Promise<PagedSliceResult | null> {
+  const collected: CrimeRecord[] = [];
+  let cursor: string | null = null;
+  let error: string | null = null;
+  let narrowingMessage: string | null = null;
+
+  while (true) {
+    if (cancelled) return null;
+    const params = new URLSearchParams({
+      startEpoch: Math.floor(slice.startEpoch).toString(),
+      endEpoch: Math.ceil(slice.endEpoch).toString(),
+      pageSize: String(SLICE_3D_PAGE_SIZE),
+      target: `slice3d:${slice.sourceSliceId}`,
+    });
+    if (cursor) params.set('cursor', cursor);
+
+    const res = await fetch(`/api/crimes/range?${params.toString()}`);
+    if (!res.ok) {
+      error = `HTTP ${res.status}`;
+      break;
+    }
+    const result = (await res.json()) as {
+      data?: CrimeRecord[];
+      meta?: { hasMore?: boolean; nextCursor?: string | null; requiresNarrowing?: { message?: string } };
+    };
+    const page = Array.isArray(result.data) ? result.data : [];
+    for (const row of page) collected.push(row);
+    if (result.meta?.requiresNarrowing?.message) {
+      narrowingMessage = result.meta.requiresNarrowing.message;
+      break;
+    }
+    if (!result.meta?.hasMore) break;
+    cursor = result.meta.nextCursor ?? null;
+    if (cursor === null) break;
+  }
+  return { rows: collected, error, narrowingMessage };
 }
 
 export function Demo3dSpatialView() {
@@ -109,6 +171,7 @@ export function Demo3dSpatialView() {
 
   useEffect(() => {
     if (orderedSlices.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronize local state with empty slice set
       setCrimesBySlice([]);
       setCrimesError(null);
       setCrimeFetchStatus('idle');
@@ -120,50 +183,57 @@ export function Demo3dSpatialView() {
     setCrimeFetchStatus('loading');
 
     (async () => {
-      const results: CrimeRecord[][] = [];
+      // Build a results array keyed by the original orderedSlices
+      // order. The fetch loop walks a D-15-prioritized order
+      // (active first, then visible, then the rest) but always
+      // writes into the slot matching the source slice's original
+      // index, so downstream consumers can index by `orderedSlices[i]`.
+      const results: CrimeRecord[][] = orderedSlices.map(() => []);
 
-      for (const slice of orderedSlices) {
+      // D-15: active/visible slice first. Read the current active
+      // index from the store snapshot rather than subscribing, so
+      // the effect only re-runs when the slice set changes (not on
+      // every activeIndex change).
+      const snapshotActiveIndex = useDashboardDemoCoordinationStore.getState().activeSliceIndex;
+      const activeSlice = orderedSlices[snapshotActiveIndex] ?? orderedSlices[0];
+      const prioritized = pickActiveSliceFirst(
+        orderedSlices,
+        activeSlice?.sourceSliceId,
+        orderedSlices.map((s) => s.sourceSliceId),
+      );
+
+      for (const slice of prioritized) {
+        if (cancelled) return;
+        const slotIndex = orderedSlices.findIndex((x) => x.sourceSliceId === slice.sourceSliceId);
+        if (slotIndex < 0) continue;
+
+        const paged = await fetchSliceCrimesPaged(slice, cancelled);
+        if (paged === null) return;
+        results[slotIndex] = paged.rows;
+        if (paged.narrowingMessage) {
+          console.debug(`[3DFetch] slice ${slice.label}: narrowing prompt — ${paged.narrowingMessage}`);
+        }
+        console.debug(`[3DFetch] slice ${slice.label}: fetched ${paged.rows.length} crimes`);
+        if (paged.rows.length > 0) {
+          console.debug(`[3DFetch]  first crime x=${paged.rows[0]!.x.toFixed(2)} z=${paged.rows[0]!.z.toFixed(2)}`);
+        }
+        if (paged.error) {
+          setCrimesError(paged.error);
+        }
         if (cancelled) return;
 
-        const params = new URLSearchParams({
-          startEpoch: Math.floor(slice.startEpoch).toString(),
-          endEpoch: Math.ceil(slice.endEpoch).toString(),
-          bufferDays: '0',
-          limit: '50000',
-        });
-
-        try {
-          const res = await fetch(`/api/crimes/range?${params.toString()}`);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const result = (await res.json()) as { data?: CrimeRecord[] };
-          const crimeBatch = result.data ?? [];
-          console.debug(`[3DFetch] slice ${slice.label}: fetched ${crimeBatch.length} crimes`);
-          if (crimeBatch.length > 0) {
-            console.debug(`[3DFetch]  first crime x=${crimeBatch[0]!.x.toFixed(2)} z=${crimeBatch[0]!.z.toFixed(2)}`);
-          }
-          results.push(crimeBatch);
-
-          if (!cancelled) {
-            setSliceCrimeCounts(
-              orderedSlices.reduce((acc, s, i) => {
-                acc[s.sourceSliceId] = (results[i] ?? []).length;
-                return acc;
-              }, {} as Record<string, number>),
-            );
-          }
-        } catch (err) {
-          if (!cancelled) {
-            setCrimesError(err instanceof Error ? err.message : 'Fetch failed');
-            results.push([]);
-          }
-        }
+        setSliceCrimeCounts(
+          orderedSlices.reduce((acc, s, i) => {
+            acc[s.sourceSliceId] = (results[i] ?? []).length;
+            return acc;
+          }, {} as Record<string, number>),
+        );
       }
 
-      if (!cancelled) {
-        setCrimesBySlice(results);
-        setCrimesError(null);
-        setCrimeFetchStatus('success');
-      }
+      if (cancelled) return;
+      setCrimesBySlice(results);
+      setCrimesError(null);
+      setCrimeFetchStatus('success');
     })();
 
     return () => { cancelled = true; };
@@ -190,6 +260,7 @@ export function Demo3dSpatialView() {
 
   useEffect(() => {
     if (crimesBySlice.length === 0 || orderedSlices.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronize slice-kde with crimes availability
       setSliceKdes([]);
       return;
     }
