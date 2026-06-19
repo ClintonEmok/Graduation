@@ -22,6 +22,7 @@ const TEXTURE_SIZE = 256;
 const TRAIL_HISTORY_LIMIT = 4;
 const TRANSITION_DURATION_MS = 240;
 const MIN_RESIZE_DURATION_SEC = 3600;
+const normalizeWarpBlend = (warpFactor: number): number => Math.min(1, Math.max(0, warpFactor / 3));
 
 export function yForIndex(index: number): number {
   return START_Y + index * SLICE_SPACING;
@@ -203,8 +204,6 @@ interface StkdeSliceStackProps {
   activeIndex: number;
   compact?: boolean;
   sliceOpacity?: number;
-  onUpdateSliceWarpWeight?: (index: number, weight: number) => void;
-  onDeleteSlice?: (index: number) => void;
 }
 
 interface ActiveTrailEntry {
@@ -273,8 +272,6 @@ export function StkdeSliceStack({
   activeIndex,
   compact = false,
   sliceOpacity = 1,
-  onUpdateSliceWarpWeight,
-  onDeleteSlice,
 }: StkdeSliceStackProps) {
   const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
   const isInterpolated = useDashboardDemoCoordinationStore((state) => state.inspectInterpolation);
@@ -283,6 +280,8 @@ export function StkdeSliceStack({
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const warpBlend = useMemo(() => normalizeWarpBlend(warpFactor), [warpFactor]);
+  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
   const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
   const updateSlice = useSliceDomainStore((state) => state.updateSlice);
   const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
@@ -296,10 +295,6 @@ export function StkdeSliceStack({
 
   const [dragState, setDragState] = useState<DragState | null>(null);
 
-  const sourceSliceById = useMemo(() => {
-    return new Map(sourceSlices.map((slice) => [slice.id, slice]));
-  }, [sourceSlices]);
-
   const orderedSourceSliceIds = useMemo(() => {
     return buildOrderedSourceSlices(sourceSlices, minTimestampSec, maxTimestampSec).map((slice) => slice.sourceSliceId);
   }, [maxTimestampSec, minTimestampSec, sourceSlices]);
@@ -310,21 +305,33 @@ export function StkdeSliceStack({
     }
     return [viewportStart, viewportEnd];
   }, [viewportEnd, viewportStart]);
+  const warpDomain = useMemo<[number, number]>(() => (
+    mapDomain[1] > mapDomain[0] ? mapDomain : adaptiveDomain
+  ), [mapDomain, adaptiveDomain]);
+  const warpDomainDisplay = useMemo<[number, number]>(() => {
+    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
+      return warpDomain;
+    }
+
+    return [
+      toDisplaySeconds(warpDomain[0], warpBlend, warpMap, warpDomain),
+      toDisplaySeconds(warpDomain[1], warpBlend, warpMap, warpDomain),
+    ];
+  }, [timeScaleMode, warpDomain, warpBlend, warpMap]);
 
   const stackEndY = useMemo(() => START_Y + SLICE_SPACING * Math.max(1, slices.length - 1), [slices.length]);
 
   const resolveSliceY = useMemo(
     () => (slice: EvolvingSlice): number => {
-      if (compact) return 0;
-      if (timeScaleMode !== 'adaptive' || warpFactor <= 0 || !warpMap || warpMap.length < 2) {
-        return yForIndex(slice.index);
+      if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
+        return compact ? 0 : yForIndex(slice.index);
       }
 
       const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
-      const displayEpoch = toDisplaySeconds(midEpoch, warpFactor, warpMap, adaptiveDomain);
-      return mapRange(displayEpoch, adaptiveDomain[0], adaptiveDomain[1], START_Y, stackEndY);
+      const displayEpoch = toDisplaySeconds(midEpoch, warpBlend, warpMap, warpDomain);
+      return mapRange(displayEpoch, warpDomainDisplay[0], warpDomainDisplay[1], START_Y, stackEndY);
     },
-    [adaptiveDomain, compact, stackEndY, timeScaleMode, warpFactor, warpMap]
+    [compact, warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]
   );
 
   const resolveSourceSliceId = useCallback(
@@ -340,14 +347,14 @@ export function StkdeSliceStack({
 
   const yToEpoch = useCallback(
     (y: number): number => {
-      if (timeScaleMode === 'adaptive' && warpMap && warpFactor > 0 && warpMap.length > 1) {
-        const displayEpoch = mapRange(y, START_Y, stackEndY, adaptiveDomain[0], adaptiveDomain[1]);
-        return toLinearSeconds(displayEpoch, adaptiveDomain, warpFactor, warpMap, adaptiveDomain);
+      if (timeScaleMode === 'adaptive' && warpMap && warpBlend > 0 && warpMap.length > 1) {
+        const displayEpoch = mapRange(y, START_Y, stackEndY, warpDomainDisplay[0], warpDomainDisplay[1]);
+        return toLinearSeconds(displayEpoch, warpDomain, warpBlend, warpMap, warpDomain);
       }
 
-      return mapRange(y, START_Y, stackEndY, adaptiveDomain[0], adaptiveDomain[1]);
+      return mapRange(y, START_Y, stackEndY, warpDomain[0], warpDomain[1]);
     },
-    [adaptiveDomain, stackEndY, timeScaleMode, warpFactor, warpMap]
+    [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]
   );
 
   const resolvePointerY = useCallback(
@@ -604,7 +611,6 @@ export function StkdeSliceStack({
         const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;
         const sourceSliceId = resolveSourceSliceId(i);
         const isDraggingThisSlice = dragState?.sliceId === sourceSliceId;
-        const sourceSlice = sourceSliceId ? sourceSliceById.get(sourceSliceId) : undefined;
         const labelText = isDraggingThisSlice && dragState
           ? formatRangeLabel(dragState.previewStartEpoch, dragState.previewEndEpoch)
           : slice.label;
@@ -799,40 +805,6 @@ export function StkdeSliceStack({
                     {slice.crimeCount} ev
                   </span>
                 </div>
-                {isActive && sourceSliceId ? (
-                  <div className="pointer-events-auto mt-2 space-y-2 rounded-md border border-sky-400/15 bg-slate-950/90 p-2 text-[9px]">
-                    <div className="flex items-center justify-between gap-3 text-sky-100">
-                      <span className="uppercase tracking-[0.14em] text-sky-300">Warp weight</span>
-                      <span className="font-mono text-sky-200">
-                        {(sourceSlice?.warpWeight ?? 1).toFixed(2)}x
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={3}
-                      step={0.05}
-                      value={sourceSlice?.warpWeight ?? 1}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={(event) => {
-                        onUpdateSliceWarpWeight?.(i, parseFloat(event.target.value));
-                      }}
-                      className="h-1 w-full accent-cyan-400"
-                    />
-                    <button
-                      type="button"
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDeleteSlice?.(i);
-                      }}
-                      className="w-full rounded border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-rose-200 transition hover:border-rose-400/40 hover:bg-rose-500/20"
-                    >
-                      Delete slice
-                    </button>
-                  </div>
-                ) : null}
                 {isDraggingThisSlice && dragState ? (
                   <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-cyan-200">
                     {dragState.handle === 'start' ? 'Resizing start boundary' : 'Resizing end boundary'}
