@@ -41,6 +41,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DashboardDemoShell } from "@/components/dashboard-demo/DashboardDemoShell";
 import { EvaluationHeader } from "@/components/evaluation/EvaluationHeader";
 import { EvaluationTrainingGate } from "@/components/evaluation/EvaluationTrainingGate";
+import { EvaluationTaskCard } from "@/components/evaluation/EvaluationTaskCard";
+import { EvaluationQuestionnaire } from "@/components/evaluation/EvaluationQuestionnaire";
 import { useEvaluationStudyStore } from "@/store/useEvaluationStudyStore";
 import { useDashboardDemoCoordinationStore } from "@/store/useDashboardDemoCoordinationStore";
 
@@ -115,12 +117,10 @@ export function EvaluationShell() {
         <DashboardDemoShell />
 
         {/* Step-aware overlays — pointer-events-none on the wrapper, the
-            overlay content re-enables pointer events as needed. The
-            task card and questionnaire surfaces are added in a later
-            plan step; this shell owns the route chrome (header,
-            training gate, welcome / interview / done screens) so the
-            researcher can navigate the 8-step flow. */}
+            overlay content re-enables pointer events as needed. */}
         <EvaluationTrainingGate />
+        <EvaluationTaskCard />
+        <EvaluationQuestionnaire />
         {currentStep === "interview" ? <InterviewPrompt /> : null}
         {currentStep === "done" ? (
           <DoneScreen
