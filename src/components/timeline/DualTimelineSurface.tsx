@@ -39,6 +39,7 @@ interface DualTimelineSurfaceProps {
   detailInnerWidth: number;
   isComputing: boolean;
   densityMap: Float32Array | null;
+  showAdaptiveDensityStrip: boolean;
   overviewScale: (date: Date) => number;
   detailScale: (date: Date) => number;
   overviewSvgRef: React.RefObject<SVGSVGElement | null>;
@@ -86,6 +87,12 @@ const AXIS_HEIGHT = 28;
 const DENSITY_DOMAIN: [number, number] = [0, 1];
 const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
 const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
+const DENSITY_COLOR_STOPS = [
+  { offset: 0, color: [34, 76, 255] as [number, number, number] },
+  { offset: 0.5, color: [0, 212, 255] as [number, number, number] },
+  { offset: 0.8, color: [255, 214, 64] as [number, number, number] },
+  { offset: 1, color: [255, 64, 96] as [number, number, number] },
+];
 const TIME_CURSOR_COLOR = '#10b981';
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
@@ -143,6 +150,7 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     detailInnerWidth,
     isComputing,
     densityMap,
+    showAdaptiveDensityStrip,
     overviewScale,
     detailScale,
     overviewSvgRef,
@@ -186,42 +194,47 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     <div ref={containerRef} className="relative w-full" aria-busy={isTimelineLoading}>
       <div className="flex flex-col gap-4 sm:gap-6">
         <div className="px-2 py-2" style={{ marginLeft: OVERVIEW_MARGIN.left, marginRight: OVERVIEW_MARGIN.right }}>
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:justify-end">
-            <span className="leading-none">Low</span>
-            <span
-              className="h-2 min-w-[4rem] flex-1 rounded-sm border border-foreground/15 sm:w-20 sm:flex-none"
-              style={{
-                background: `linear-gradient(90deg, rgb(${DENSITY_COLOR_LOW.join(',')}) 0%, rgb(${DENSITY_COLOR_HIGH.join(',')}) 100%)`,
-              }}
-              aria-hidden="true"
-            />
-            <span className="leading-none">High</span>
-          </div>
-
-          <div className="relative mt-2 w-full">
-            {width > 0 ? (
-              <DensityHeatStrip
-                densityMap={densityMap}
-                width={overviewInnerWidth}
-                scale={overviewDensityScale}
-                height={12}
-                isLoading={isComputing}
-                densityDomain={DENSITY_DOMAIN}
-                colorLow={DENSITY_COLOR_LOW}
-                colorHigh={DENSITY_COLOR_HIGH}
-              />
-            ) : (
-              <div className="h-3" />
-            )}
-            {stripSelection ? (
-              <div className="pointer-events-none absolute inset-0">
-                <div
-                  className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
-                  style={{ left: stripSelection.left, width: stripSelection.width }}
+          {showAdaptiveDensityStrip ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:justify-end">
+                <span className="leading-none">Sparse</span>
+                <span
+                  className="h-2 min-w-[4rem] flex-1 rounded-sm border border-foreground/15 sm:w-24 sm:flex-none"
+                  style={{
+                    background: `linear-gradient(90deg, ${DENSITY_COLOR_STOPS.map((stop) => `rgb(${stop.color.join(',')}) ${Math.round(stop.offset * 100)}%`).join(', ')})`,
+                  }}
+                  aria-hidden="true"
                 />
+                <span className="leading-none">Dense</span>
               </div>
-            ) : null}
-          </div>
+
+              <div className="relative mt-2 w-full">
+                {width > 0 ? (
+                  <DensityHeatStrip
+                    densityMap={densityMap}
+                    width={overviewInnerWidth}
+                    scale={overviewDensityScale}
+                    height={10}
+                    isLoading={isComputing}
+                    densityDomain={DENSITY_DOMAIN}
+                    colorLow={DENSITY_COLOR_LOW}
+                    colorHigh={DENSITY_COLOR_HIGH}
+                    colorStops={DENSITY_COLOR_STOPS}
+                  />
+                ) : (
+                  <div className="h-3" />
+                )}
+                {stripSelection ? (
+                  <div className="pointer-events-none absolute inset-0">
+                    <div
+                      className="absolute top-0 h-full rounded-sm border border-primary/60 bg-primary/15"
+                      style={{ left: stripSelection.left, width: stripSelection.width }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </div>
 
         <svg ref={overviewSvgRef} width={width} height={OVERVIEW_HEIGHT + AXIS_HEIGHT}>
@@ -264,9 +277,11 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
         </svg>
 
         <div className="relative">
-          <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
-            {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailDensityScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} /> : <div className="h-2" />}
-          </div>
+          {showAdaptiveDensityStrip ? (
+            <div className="mb-2" style={{ paddingLeft: DETAIL_MARGIN.left, paddingRight: DETAIL_MARGIN.right }}>
+              {width > 0 ? <DensityHeatStrip densityMap={detailDensityMap} width={detailInnerWidth} scale={detailDensityScale} height={10} isLoading={isComputing} densityDomain={DENSITY_DOMAIN} colorLow={DENSITY_COLOR_LOW} colorHigh={DENSITY_COLOR_HIGH} colorStops={DENSITY_COLOR_STOPS} /> : <div className="h-2" />}
+            </div>
+          ) : null}
 
           <svg ref={detailSvgRef} width={width} height={DETAIL_HEIGHT + AXIS_HEIGHT}>
             <defs>

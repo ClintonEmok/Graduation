@@ -19,7 +19,6 @@ import {
 import type { DemoDetailPeriodSelection } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { resolvePointByIndex } from '@/lib/selection';
-import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildDemoSliceAuthoredWarpMap } from '@/components/dashboard-demo/lib/demo-warp-map';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
@@ -39,20 +38,10 @@ import {
   resolveSelectionX,
 } from './lib/interaction-guards';
 import { type TickLabelStrategy } from './lib/tick-ux';
-import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
 import { DualTimelineSurface, type SurfaceBurstWindow } from '@/components/timeline/DualTimelineSurface';
 import { useDualTimelineViewModel } from './hooks/useDualTimelineViewModel';
 import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { useDemoBurstWindows } from '@/components/dashboard-demo/lib/useDemoBurstWindows';
-
-const OVERVIEW_HEIGHT = 42;
-const DETAIL_HEIGHT = 60;
-const AXIS_HEIGHT = 28;
-
-const DENSITY_DOMAIN: [number, number] = [0, 1];
-const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
-const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
-const TIME_CURSOR_COLOR = '#10b981';
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
@@ -577,30 +566,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return { left, width: widthSpan };
   }, [detailRangeSec, overviewInnerWidth, overviewScale]);
 
-  const userWarpOverlayBands = useMemo(
-    () =>
-      slices
-        .filter((slice) => slice.isVisible && (slice.warpEnabled ?? true))
-        .map((slice) => {
-          const [normalizedStart, normalizedEnd] =
-            slice.type === 'range' && slice.range
-              ? [Math.min(slice.range[0], slice.range[1]), Math.max(slice.range[0], slice.range[1])]
-              : [Math.max(0, slice.time - (slice.isBurst ? 2.5 : 1.5)), Math.min(100, slice.time + (slice.isBurst ? 2.5 : 1.5))];
-
-          const startSec = normalizedToEpochSeconds(normalizedStart, domainStart, domainEnd);
-          const endSec = normalizedToEpochSeconds(normalizedEnd, domainStart, domainEnd);
-
-          return {
-            id: slice.id,
-            startSec: Math.min(startSec, endSec),
-            endSec: Math.max(startSec, endSec),
-            isDebugPreview: false,
-          };
-        })
-        .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec),
-    [domainEnd, domainStart, slices]
-  );
-
   const overviewSliceBoxes = useMemo(
     () =>
       slices
@@ -809,6 +774,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     detailInnerWidth,
     isComputing,
     densityMap,
+    showAdaptiveDensityStrip: effectiveTimeScaleMode === 'adaptive',
     overviewScale,
     detailScale,
     overviewSvgRef,

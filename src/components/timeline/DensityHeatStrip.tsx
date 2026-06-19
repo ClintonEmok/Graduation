@@ -6,6 +6,12 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 
 export type DensityDomain = [number, number];
 type DensityStripScale = ScaleLinear<number, number> | ScaleTime<number, number>;
+type DensityColor = [number, number, number];
+
+export interface DensityColorStop {
+  offset: number;
+  color: DensityColor;
+}
 
 export interface DensityHeatStripProps {
   densityMap: Float32Array | null;
@@ -13,20 +19,51 @@ export interface DensityHeatStripProps {
   scale?: DensityStripScale;
   height?: number;
   isLoading?: boolean;
-  colorLow?: [number, number, number];
-  colorHigh?: [number, number, number];
+  colorLow?: DensityColor;
+  colorHigh?: DensityColor;
+  colorStops?: DensityColorStop[];
   densityDomain?: DensityDomain;
   legendLabels?: { low: string; high: string };
   showLegend?: boolean;
 }
 
-const DEFAULT_COLOR_LOW: [number, number, number] = [59, 130, 246];
-const DEFAULT_COLOR_HIGH: [number, number, number] = [239, 68, 68];
+const DEFAULT_COLOR_LOW: DensityColor = [59, 130, 246];
+const DEFAULT_COLOR_HIGH: DensityColor = [239, 68, 68];
 export const DEFAULT_DENSITY_DOMAIN: DensityDomain = [0, 1];
 export const DEFAULT_DENSITY_LEGEND = { low: 'Low density', high: 'High density' } as const;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const resolveGradientColor = (normalized: number, colorStops: DensityColorStop[]): DensityColor => {
+  if (colorStops.length === 0) {
+    return DEFAULT_COLOR_LOW;
+  }
+
+  const safeNormalized = clamp01(normalized);
+  const sortedStops = [...colorStops].sort((left, right) => left.offset - right.offset);
+  let left = sortedStops[0]!;
+  let right = sortedStops[sortedStops.length - 1]!;
+
+  for (let index = 0; index < sortedStops.length - 1; index += 1) {
+    const current = sortedStops[index]!;
+    const next = sortedStops[index + 1]!;
+    if (safeNormalized >= current.offset && safeNormalized <= next.offset) {
+      left = current;
+      right = next;
+      break;
+    }
+  }
+
+  if (left.offset === right.offset) {
+    return right.color;
+  }
+
+  const localT = (safeNormalized - left.offset) / (right.offset - left.offset);
+  return [0, 1, 2].map((channel) => {
+    return Math.round(left.color[channel] + (right.color[channel] - left.color[channel]) * localT);
+  }) as DensityColor;
+};
 
 export function DensityHeatStrip({
   densityMap,
@@ -36,6 +73,7 @@ export function DensityHeatStrip({
   isLoading = false,
   colorLow = DEFAULT_COLOR_LOW,
   colorHigh = DEFAULT_COLOR_HIGH,
+  colorStops,
   densityDomain,
   legendLabels = DEFAULT_DENSITY_LEGEND,
   showLegend = false
@@ -54,6 +92,17 @@ export function DensityHeatStrip({
     if (rawMin === rawMax) return DEFAULT_DENSITY_DOMAIN;
     return rawMin < rawMax ? [rawMin, rawMax] : [rawMax, rawMin];
   }, [densityDomain]);
+
+  const resolvedColorStops = useMemo<DensityColorStop[]>(() => {
+    if (colorStops && colorStops.length >= 2) {
+      return colorStops;
+    }
+
+    return [
+      { offset: 0, color: colorLow },
+      { offset: 1, color: colorHigh },
+    ];
+  }, [colorHigh, colorLow, colorStops]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -81,9 +130,7 @@ export function DensityHeatStrip({
     const rowImage = ctx.createImageData(logicalWidth, 1);
     const pixels = rowImage.data;
     const fillPixel = (x: number, normalized: number) => {
-      const red = Math.round(colorLow[0] + normalized * (colorHigh[0] - colorLow[0]));
-      const green = Math.round(colorLow[1] + normalized * (colorHigh[1] - colorLow[1]));
-      const blue = Math.round(colorLow[2] + normalized * (colorHigh[2] - colorLow[2]));
+      const [red, green, blue] = resolveGradientColor(normalized, resolvedColorStops);
       const offset = x * 4;
       pixels[offset] = red;
       pixels[offset + 1] = green;
@@ -143,7 +190,7 @@ export function DensityHeatStrip({
     tempContext.putImageData(rowImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(tempCanvas, 0, 0, logicalWidth, 1, 0, 0, logicalWidth, logicalHeight);
-  }, [activeDensityMap, colorHigh, colorLow, logicalHeight, logicalWidth, resolvedDomain, scale]);
+  }, [activeDensityMap, colorHigh, colorLow, logicalHeight, logicalWidth, resolvedColorStops, resolvedDomain, scale]);
 
   return (
     <div className="flex flex-col gap-1 mb-1">
@@ -152,11 +199,13 @@ export function DensityHeatStrip({
           <span className="leading-none">{legendLabels.low}</span>
           <span
             className="h-2 w-20 rounded-sm border border-foreground/15"
-            style={{
-              background: `linear-gradient(90deg, rgb(${colorLow.join(',')}) 0%, rgb(${colorHigh.join(',')}) 100%)`
-            }}
-            aria-hidden="true"
-          />
+              style={{
+                background: `linear-gradient(90deg, ${resolvedColorStops
+                  .map((stop) => `rgb(${stop.color.join(',')}) ${Math.round(stop.offset * 100)}%`)
+                  .join(', ')})`
+              }}
+              aria-hidden="true"
+            />
           <span className="leading-none">{legendLabels.high}</span>
         </div>
       )}
