@@ -34,7 +34,9 @@ export const getDataPath = (): string => {
 export const getDbPath = (): string => {
   const configuredPath = process.env.DUCKDB_PATH?.trim();
   if (!configuredPath) return DEFAULT_DB_PATH;
-  return isAbsolute(configuredPath) ? configuredPath : resolve(process.cwd(), configuredPath);
+  return isAbsolute(configuredPath)
+    ? configuredPath
+    : resolve(/* turbopackIgnore: true */ process.cwd(), configuredPath);
 };
 
 const getDuckDbThreads = (): string => {
