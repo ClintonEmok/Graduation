@@ -106,6 +106,7 @@ Recent decisions affecting current work:
 - Run Phase 81 (memory pressure / overview vs detail)
 - Resume Phase 80 Task 3 (pilot verification) after Phase 81 completes
 - Write `80-03-SUMMARY.md` after pilot verification
+- [ ] Audit dashboard demo vs thesis design alignment — cross-reference Space_time_cube_V36.md against demo impl; address 2 gaps found (T2 trajectory missing, sync-nav vs toggle)
 
 ### Roadmap Evolution
 
