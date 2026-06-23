@@ -15,6 +15,7 @@ import { MapTrajectoryLayer } from './MapTrajectoryLayer';
 import { MapHotspotTrajectoryLayer } from './MapHotspotTrajectoryLayer';
 import { MapTypeLegend } from './MapTypeLegend';
 import { MapStkdeHeatmapLayer } from './MapStkdeHeatmapLayer';
+import { MapPoiLayer } from './MapPoiLayer';
 import DeckGlHeatmapOverlay from './DeckGlHeatmapOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -197,6 +198,14 @@ export default function MapVisualization({
         ) : null}
         {isStkdeVisible ? (
           <MapHotspotTrajectoryLayer sliceResults={stkdeResponse?.sliceResults ?? null} />
+        ) : null}
+        {visibility.poi ? (
+          <div className="pointer-events-auto" style={{ opacity: opacity.poi }}>
+            <MapPoiLayer
+              visible
+              categories={['police', 'schools', 'transit', 'parks']}
+            />
+          </div>
         ) : null}
         <MapSelectionOverlay selectedBounds={selectedBounds} dragBounds={null} />
         <MapDebugOverlay clickPoint={lastClick} selectedPoint={selectionPoint} />

@@ -48,6 +48,7 @@ export function DemoMapVisualization({
 }: DemoMapVisualizationProps) {
   const [showStkde, setShowStkde] = useState(true);
   const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
+  const poiVisible = useDashboardDemoMapLayerStore((state) => state.visibility.poi);
   const toggleVisibility = useDashboardDemoMapLayerStore((state) => state.toggleVisibility);
   const storeStkdeResponse = useDashboardDemoCoordinationStore((state) => state.stkdeResponse);
   const storeSelectedHotspotId = useDashboardDemoCoordinationStore((state) => state.selectedHotspotId);
@@ -98,6 +99,19 @@ export function DemoMapVisualization({
       >
         <Layers3 className="size-3.5" />
         {showStkde ? 'Hide STKDE' : 'Show STKDE'}
+      </Button>
+
+      <Button
+        type="button"
+        onClick={() => toggleVisibility('poi')}
+        aria-label={poiVisible ? 'Hide POI overlay' : 'Show POI overlay'}
+        title={poiVisible ? 'Hide POI overlay' : 'Show POI overlay'}
+        variant={poiVisible ? 'destructive' : 'outline'}
+        size="sm"
+        className="absolute right-4 top-4 z-40 gap-2 rounded-full text-[11px]"
+      >
+        <Layers3 className="size-3.5" />
+        {poiVisible ? 'Hide POIs' : 'Show POIs'}
       </Button>
 
       <Button
