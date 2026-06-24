@@ -130,6 +130,8 @@ interface DashboardDemoCoordinationState {
   spatialFilter: StkdeSpatialFilter | null;
   temporalFilter: StkdeTemporalFilter | null;
   stkdeResponse: StkdeResponse | null;
+  selectedPoiId: string | null;
+  setSelectedPoi: (poiId: string | null) => void;
   setActiveRailTab: (tab: string) => void;
   setActiveSliceIndex: (index: number) => void;
   setSliceCrimeCounts: (counts: Record<string, number>) => void;
@@ -234,6 +236,7 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   },
   selectedHotspotId: null,
   hoveredHotspotId: null,
+  selectedPoiId: null,
   spatialFilter: null,
   temporalFilter: null,
   stkdeResponse: null,
@@ -401,6 +404,7 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   setSpatialFilter: (spatialFilter) => set({ spatialFilter }),
   setTemporalFilter: (temporalFilter) => set({ temporalFilter }),
   setStkdeResponse: (stkdeResponse) => set({ stkdeResponse }),
+  setSelectedPoi: (selectedPoiId) => set({ selectedPoiId }),
   resetAnalysis: () =>
     set({
       selectedDistricts: [],
