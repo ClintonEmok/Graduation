@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Map, Box, Sparkles } from 'lucide-react';
+import { Map, Box, Sparkles, Flame, Layers3, MapPin } from 'lucide-react';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Demo3dSpatialView } from '@/components/dashboard-demo/Demo3dSpatialView
 import { useDemoStkde } from '@/components/dashboard-demo/lib/useDemoStkde';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
+import { useDashboardDemoMapLayerStore } from '@/store/useDashboardDemoMapLayerStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { toast } from 'sonner';
@@ -27,6 +28,7 @@ function DemoStkdeTrigger() {
 
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
+  const [showStkde, setShowStkde] = useState(true);
   const loadSummaryData = useTimelineDataStore((state) => state.loadSummaryData);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -34,6 +36,9 @@ export function DashboardDemoShell() {
   const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
   const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
+  const poiVisible = useDashboardDemoMapLayerStore((state) => state.visibility.poi);
+  const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
+  const toggleLayer = useDashboardDemoMapLayerStore((state) => state.toggleVisibility);
 
   useEffect(() => {
     void (async () => {
@@ -138,7 +143,7 @@ export function DashboardDemoShell() {
               type="button"
               onClick={() => setActiveViewport('map')}
               aria-label="Show map viewport"
-              title="Show map viewport"
+              title="Map"
               variant={activeViewport === 'map' ? 'secondary' : 'ghost'}
               size="icon-sm"
               className="rounded-full"
@@ -149,18 +154,56 @@ export function DashboardDemoShell() {
               type="button"
               onClick={() => setActiveViewport('3d')}
               aria-label="Show 3D viewport"
-              title="Show 3D viewport"
+              title="3D"
               variant={activeViewport === '3d' ? 'secondary' : 'ghost'}
               size="icon-sm"
               className="rounded-full"
             >
               <Box className="size-3.5" />
             </Button>
+            {activeViewport === 'map' ? (
+              <>
+                <div className="mx-1 h-5 w-px bg-slate-700/70" aria-hidden="true" />
+                <Button
+                  type="button"
+                  onClick={() => toggleLayer('poi')}
+                  aria-label={poiVisible ? 'Hide POIs' : 'Show POIs'}
+                  title={poiVisible ? 'Hide POIs' : 'Show POIs'}
+                  variant={poiVisible ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="rounded-full"
+                >
+                  <MapPin className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setShowStkde((current) => !current)}
+                  aria-label={showStkde ? 'Hide STKDE hotspots' : 'Show STKDE hotspots'}
+                  title={showStkde ? 'Hide STKDE hotspots' : 'Show STKDE hotspots'}
+                  variant={showStkde ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="rounded-full"
+                >
+                  <Flame className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => toggleLayer('heatmap')}
+                  aria-label={heatmapVisible ? 'Hide heatmap' : 'Show heatmap'}
+                  title={heatmapVisible ? 'Hide heatmap' : 'Show heatmap'}
+                  variant={heatmapVisible ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="rounded-full"
+                >
+                  <Layers3 className="size-3.5" />
+                </Button>
+              </>
+            ) : null}
           </div>
 
           <div className="h-full w-full transition-opacity duration-200 ease-out">
             {activeViewport === 'map' ? (
-              <DemoMapVisualization />
+              <DemoMapVisualization stkdeVisible={showStkde} />
             ) : (
               <Demo3dSpatialView />
             )}

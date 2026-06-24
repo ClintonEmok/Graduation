@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
-import { Layers3 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useMemo } from 'react';
 import MapVisualization from '@/components/map/MapVisualization';
 import { DemoStatsMapOverlay } from '@/components/dashboard-demo/DemoStatsMapOverlay';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
@@ -40,16 +38,14 @@ function resolveSliceEpochRange(
 interface DemoMapVisualizationProps {
   stkdeResponse?: StkdeResponse | null;
   stkdeSelectedHotspotId?: string | null;
+  stkdeVisible?: boolean;
 }
 
 export function DemoMapVisualization({
   stkdeResponse = null,
   stkdeSelectedHotspotId = null,
+  stkdeVisible = true,
 }: DemoMapVisualizationProps) {
-  const [showStkde, setShowStkde] = useState(true);
-  const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
-  const poiVisible = useDashboardDemoMapLayerStore((state) => state.visibility.poi);
-  const toggleVisibility = useDashboardDemoMapLayerStore((state) => state.toggleVisibility);
   const storeStkdeResponse = useDashboardDemoCoordinationStore((state) => state.stkdeResponse);
   const storeSelectedHotspotId = useDashboardDemoCoordinationStore((state) => state.selectedHotspotId);
 
@@ -78,7 +74,7 @@ export function DemoMapVisualization({
       <MapVisualization
         stkdeResponse={stkdeResponse ?? storeStkdeResponse}
         stkdeSelectedHotspotId={stkdeSelectedHotspotId ?? storeSelectedHotspotId}
-        stkdeVisibleOverride={showStkde}
+        stkdeVisibleOverride={stkdeVisible}
         disableHeatmapOverlay
         statsOverlay={<DemoStatsMapOverlay />}
         filterStoreOverride={useDashboardDemoFilterStore}
@@ -87,45 +83,6 @@ export function DemoMapVisualization({
         sliceTimeRange={sliceTimeRange}
         activeSliceLabel={activeSliceLabel}
       />
-
-      <Button
-        type="button"
-        onClick={() => setShowStkde((current) => !current)}
-        aria-label={showStkde ? 'Hide STKDE overlay' : 'Show STKDE overlay'}
-        title={showStkde ? 'Hide STKDE overlay' : 'Show STKDE overlay'}
-        variant={showStkde ? 'destructive' : 'outline'}
-        size="sm"
-        className="absolute right-4 top-14 z-40 gap-2 rounded-full text-[11px]"
-      >
-        <Layers3 className="size-3.5" />
-        {showStkde ? 'Hide STKDE' : 'Show STKDE'}
-      </Button>
-
-      <Button
-        type="button"
-        onClick={() => toggleVisibility('poi')}
-        aria-label={poiVisible ? 'Hide POI overlay' : 'Show POI overlay'}
-        title={poiVisible ? 'Hide POI overlay' : 'Show POI overlay'}
-        variant={poiVisible ? 'destructive' : 'outline'}
-        size="sm"
-        className="absolute right-4 top-4 z-40 gap-2 rounded-full text-[11px]"
-      >
-        <Layers3 className="size-3.5" />
-        {poiVisible ? 'Hide POIs' : 'Show POIs'}
-      </Button>
-
-      <Button
-        type="button"
-        onClick={() => toggleVisibility('heatmap')}
-        aria-label={heatmapVisible ? 'Hide heatmap overlay' : 'Show heatmap overlay'}
-        title={heatmapVisible ? 'Hide heatmap overlay' : 'Show heatmap overlay'}
-        variant={heatmapVisible ? 'destructive' : 'outline'}
-        size="sm"
-        className="absolute right-4 top-24 z-40 gap-2 rounded-full text-[11px]"
-      >
-        <Layers3 className="size-3.5" />
-        {heatmapVisible ? 'Hide Heatmap' : 'Show Heatmap'}
-      </Button>
     </div>
   );
 }
