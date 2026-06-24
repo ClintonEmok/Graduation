@@ -127,3 +127,14 @@ Plans:
 - [ ] 81-01-PLAN.md — Persist DuckDB fact/summary tables and cut `/api/crime/meta` + `/api/crime/overview` over to them
 - [ ] 81-02-PLAN.md — Audit dashboard `useTimelineDataStore` consumers and enforce summary-first preview-safe startup
 - [ ] 81-03-PLAN.md — Rebuild `/api/crimes/range` as exact paged detail and migrate active-slice-first consumers
+
+### Phase 82: add poi to 2d map on dashboard demo
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 81
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 82 to break down)

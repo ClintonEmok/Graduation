@@ -112,6 +112,7 @@ Recent decisions affecting current work:
 
 - Phase 80 added: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 - Phase 81 added: Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads
+- Phase 82 added: add poi to 2d map on dashboard demo
 
 ### Blockers/Concerns
 
