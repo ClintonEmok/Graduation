@@ -50,3 +50,16 @@ next-env.d.ts
 
 # study logs
 /logs/*.jsonl
+
+# dev server output
+/dev.log
+/dev-*.log
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# thesis figure generation outputs
+/scripts/output/

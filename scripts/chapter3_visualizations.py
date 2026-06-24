@@ -635,7 +635,7 @@ def main() -> None:
     args = parse_args()
     configure_matplotlib()
     ensure_dir(args.output_dir)
-    community_geojson = Path(__file__).resolve().parents[1] / 'public' / 'data' / 'chicago-community-areas.geojson'
+    district_geojson = Path(__file__).resolve().parents[1] / 'public' / 'data' / 'chicago-police-districts.geojson'
 
     generated = FigureSet(
         dataset_overview=build_dataset_overview(args.output_dir),
@@ -644,7 +644,7 @@ def main() -> None:
         yearly_crime_types=build_yearly_crime_types(args.output_dir, args.crime_csv),
         yearly_district_concentration=build_yearly_district_concentration(args.output_dir, args.crime_csv),
         yearly_monthly_seasonality=build_yearly_monthly_seasonality(args.output_dir, args.crime_csv),
-        spatial_distribution=build_spatial_distribution(args.output_dir, args.crime_csv, community_geojson),
+        spatial_distribution=build_spatial_distribution(args.output_dir, args.crime_csv, district_geojson),
         district_map=build_district_map(args.output_dir),
         crime_types=build_crime_types(args.output_dir),
         weekday_heatmap=build_weekday_heatmap(args.output_dir),

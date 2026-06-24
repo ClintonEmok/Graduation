@@ -62,14 +62,14 @@ def _load_counts(csv_path: Path, column: str) -> dict[int, int]:
 
 
 def build_spatial_distribution(outdir: Path, csv_path: Path, geojson_path: Path) -> Path:
-    counts = _load_counts(csv_path, 'Community Area')
+    counts = _load_counts(csv_path, 'District')
     total = sum(counts.values())
 
     with geojson_path.open('r', encoding='utf-8') as f:
         geojson = json.load(f)
 
     features = geojson.get('features', [])
-    ordered = sorted(features, key=lambda feature: int(float(feature.get('properties', {}).get('area_numbe', 0) or 0)))
+    ordered = sorted(features, key=lambda feature: int(float(feature.get('properties', {}).get('dist_num', 0) or 0)))
 
     shares = {area_num: (count / total) * 100.0 for area_num, count in counts.items() if total}
     fig = plt.figure(figsize=(9.8, 8.6))
@@ -86,8 +86,8 @@ def build_spatial_distribution(outdir: Path, csv_path: Path, geojson_path: Path)
     for feature in ordered:
         geometry = feature.get('geometry', {})
         properties = feature.get('properties', {})
-        area_num = int(float(properties.get('area_numbe', 0) or 0))
-        share = shares.get(area_num, 0.0)
+        district_num = int(float(properties.get('dist_num', 0) or 0))
+        share = shares.get(district_num, 0.0)
         color = '#edf2f7' if share <= 0 else cmap(norm(share))
 
         if geometry.get('type') == 'MultiPolygon':
