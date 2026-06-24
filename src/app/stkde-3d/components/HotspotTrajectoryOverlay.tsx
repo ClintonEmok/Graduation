@@ -12,11 +12,13 @@ interface HotspotTrajectoryOverlayProps {
   slices: Array<EvolvingSlice & { sourceSliceId?: string }>;
   sliceResults?: Record<string, StkdeSurfaceResponse> | null;
   viewMode?: 'stack' | 'focus';
+  yOffset?: number;
+  resolveSliceY?: (slice: EvolvingSlice & { sourceSliceId?: string }) => number;
 }
 
 const TRACK_COLORS = ['#67e8f9', '#60a5fa', '#a78bfa', '#34d399', '#f472b6'];
 
-export function HotspotTrajectoryOverlay({ slices, sliceResults, viewMode }: HotspotTrajectoryOverlayProps) {
+export function HotspotTrajectoryOverlay({ slices, sliceResults, viewMode, yOffset = 0, resolveSliceY }: HotspotTrajectoryOverlayProps) {
   const sliceById = useMemo(() => {
     const map = new Map<string, number>();
     for (const slice of slices) {
@@ -43,7 +45,7 @@ export function HotspotTrajectoryOverlay({ slices, sliceResults, viewMode }: Hot
             if (sliceIndex === undefined) return null;
 
             const [x, z] = project(snapshot.centroidLat, snapshot.centroidLng);
-            const y = yForIndex(sliceIndex) + 0.38;
+            const y = yForIndex(sliceIndex) + 0.38 + yOffset;
             return [x, y, z] as [number, number, number];
           })
           .filter((point): point is [number, number, number] => point !== null);

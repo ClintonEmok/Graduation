@@ -143,6 +143,7 @@ interface Stkde3DSceneProps {
   showRawEvents?: boolean;
   sliceOpacity?: number;
   onCreateDraftAtPoint?: (payload: { y: number; clientX: number; clientY: number }) => void;
+  yOffset?: number;
 }
 
 function RawEventPoints({
@@ -207,6 +208,7 @@ function SceneContent({
   sliceOpacity = 1,
   onCreateDraftAtPoint,
   resolveSliceY,
+  yOffset = 0,
   }: Stkde3DSceneProps & {
     resolveSliceY: (slice: EvolvingSlice & { sourceSliceId?: string }) => number;
   }) {
@@ -270,6 +272,7 @@ function SceneContent({
         sliceResults={hotspotSliceResults}
         viewMode={viewMode}
         resolveSliceY={resolveSliceY}
+        yOffset={yOffset}
       />
 
       {showRawEvents ? (
@@ -302,6 +305,7 @@ export function Stkde3DScene({
   viewMode = 'stack',
   showRawEvents = false,
   sliceOpacity = 1,
+  yOffset = 0,
 }: Stkde3DSceneProps) {
   const [mapTexture, setMapTexture] = useState<THREE.CanvasTexture | null>(null);
   const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
@@ -337,13 +341,13 @@ export function Stkde3DScene({
 
   const resolveSliceY = useCallback((slice: EvolvingSlice & { sourceSliceId?: string }): number => {
     if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
-      return yForIndex(slice.index);
+      return yForIndex(slice.index) + yOffset;
     }
 
     const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
     const displayEpoch = toDisplaySeconds(midEpoch, warpBlend, warpMap, warpDomain);
-    return mapRange(displayEpoch, warpDomainDisplay[0], warpDomainDisplay[1], START_Y, stackEndY);
-  }, [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]);
+    return mapRange(displayEpoch, warpDomainDisplay[0], warpDomainDisplay[1], START_Y, stackEndY) + yOffset;
+  }, [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap, yOffset]);
 
   const yToEpoch = useCallback((y: number): number => {
     if (timeScaleMode === 'adaptive' && warpMap && warpBlend > 0 && warpMap.length > 1) {
@@ -412,6 +416,7 @@ export function Stkde3DScene({
           sliceOpacity={sliceOpacity}
           resolveSliceY={resolveSliceY}
           onCreateDraftAtPoint={handleCreateDraftAtPoint}
+          yOffset={yOffset}
           />
 
           {mapTexture ? (

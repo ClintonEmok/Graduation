@@ -112,6 +112,7 @@ export function EvaluationHeader({ readOnlyStepper = false }: EvaluationHeaderPr
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const setTimeScaleMode = useDashboardDemoCoordinationStore((state) => state.setTimeScaleMode);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const setWarpFactor = useDashboardDemoCoordinationStore((state) => state.setWarpFactor);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -147,6 +148,15 @@ export function EvaluationHeader({ readOnlyStepper = false }: EvaluationHeaderPr
       if (fromMode === toMode) return;
 
       setTimeScaleMode(toMode);
+
+      // Auto-activate warp when entering adaptive mode, matching every
+      // other toggle in the codebase (TimelinePanel, DemoTimelineSettingsCard,
+      // DemoSlicePanel). Without this the short-circuit in
+      // applyAdaptiveWarping (warpFactor <= 0 returns linear scale) makes
+      // the toggle appear to do nothing.
+      if (toMode === 'adaptive' && warpFactor === 0) {
+        setWarpFactor(1);
+      }
 
       // The `block` column is required by the API route. Suppress the
       // log entry when the researcher toggles during a non-block step

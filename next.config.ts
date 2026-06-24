@@ -1,6 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  serverExternalPackages: ["duckdb"],
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  serverExternalPackages: ['duckdb'],
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

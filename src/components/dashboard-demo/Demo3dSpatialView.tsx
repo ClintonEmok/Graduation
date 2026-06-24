@@ -7,6 +7,8 @@ import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoord
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { Stkde3DScene } from '@/app/stkde-3d/components/Stkde3DScene';
 import { buildDurationVolumeProfile } from '@/app/stkde-3d/lib/volume-encoding';
+import { Slider } from '@/components/ui/slider';
+import { MoveHorizontal } from 'lucide-react';
 import type { KdeCell } from '@/lib/kde';
 import type { CrimeRecord } from '@/types/crime';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
@@ -71,6 +73,7 @@ export function Demo3dSpatialView() {
   const [crimesBySlice, setCrimesBySlice] = useState<CrimeRecord[][]>([]);
   const [crimesError, setCrimesError] = useState<string | null>(null);
   const [sliceKdes, setSliceKdes] = useState<KdeCell[][]>([]);
+  const [yOffset, setYOffset] = useState(0);
   const hasLoadedRef = useRef(false);
   const kdeWorkerRef = useRef<Worker | null>(null);
   const kdeRequestIdRef = useRef(0);
@@ -319,7 +322,32 @@ export function Demo3dSpatialView() {
         activeIndex={activeIndex}
         viewMode={viewMode}
         sliceOpacity={sliceOpacity}
+        yOffset={yOffset}
       />
+
+      <div className="pointer-events-auto absolute right-3 top-3 z-20 w-64 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-50 shadow-sm backdrop-blur">
+        <div className="flex items-center gap-1.5 text-amber-200/90">
+          <MoveHorizontal className="size-3.5" aria-hidden />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">
+            Y offset (diag)
+          </span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-2">
+          <Slider
+            min={-20}
+            max={20}
+            step={0.1}
+            value={[yOffset]}
+            onValueChange={(value) => setYOffset(value[0] ?? 0)}
+            aria-label="Diagnostic Y offset"
+            className="flex-1 [&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-range]]:bg-amber-400 [&_[data-slot=slider-thumb]]:size-3.5"
+          />
+          <span className="w-12 text-right font-mono">{yOffset.toFixed(1)}</span>
+        </div>
+        <p className="mt-1 text-[10px] text-amber-200/70">
+          If slices move smoothly here, instability is from the base mapping switch.
+        </p>
+      </div>
     </div>
   );
 }
