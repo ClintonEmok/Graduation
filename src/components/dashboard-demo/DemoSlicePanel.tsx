@@ -673,7 +673,7 @@ export function DemoSlicePanel() {
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst / warp</div>
                   <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
                   <div className="mt-1 text-xs text-slate-400">
-                    Confidence {formatNormalizedScore(selectedSlice.burstConfidence) ?? '—'} · Coefficient {formatCoefficient(selectedSlice.burstinessCoefficient ?? selectedSlice.burstScore) ?? '—'}
+                    Coefficient {formatCoefficient(selectedSlice.burstinessCoefficient ?? selectedSlice.burstScore) ?? '—'}
                   </div>
                   <div className="mt-1 text-xs text-slate-400">
                     Warp {(selectedSlice.warpEnabled ?? true) ? 'enabled' : 'disabled'} · Strength {(selectedSlice.warpWeight ?? 1).toFixed(2)}
@@ -744,12 +744,6 @@ export function DemoSlicePanel() {
                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Warp / state</div>
                 <div className="mt-2 text-sm text-slate-100">Warp weight {(selectedDraft.warpWeight ?? 1).toFixed(2)}</div>
                 <div className="mt-1 text-xs text-slate-400">{selectedDraft.isNeutralPartition ? 'Fallback partition' : 'Expanded partition'}</div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst confidence</div>
-                <div className="mt-2 text-sm text-slate-100">{formatNormalizedScore(selectedDraft.burstConfidence) ?? '—'}</div>
-                <div className="mt-1 text-xs text-slate-400">{selectedDraft.count} events</div>
               </div>
 
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
