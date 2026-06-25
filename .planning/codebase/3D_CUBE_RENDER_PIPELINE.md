@@ -1,297 +1,211 @@
-# 3D Cube Rendering Pipeline — Deep Dive
+# 3D Cube Render Pipeline
 
-**Analysis Date:** 2026-06-09  
-**Focus:** Volumetric adaptive time slice integration points  
-**Prerequisite:** Read `VIZ_ANALYSIS.md` for broader visualization context
+**Analysis Date:** 2026-06-25
 
----
+## Pipeline Overview
 
-## 1. Coordinate System
+The 3D space-time cube uses a dual-mode rendering pipeline: **columnar data mode** (GPU-optimized, production) and **data object mode** (fallback for mock/test data). Both modes render into a single `<Canvas>` managed by React Three Fiber (R3F).
 
-### Axis Convention
-| Axis | Meaning | Range | Notes |
-|------|---------|-------|-------|
-| **X** | Spatial (Easting / Longitude) | `[-50, +50]` | Centered at 0; 100-unit cube |
-| **Y** | **Time** (vertical axis, UP) | `[-50, +50]` | Normalized time mapped to Y |
-| **Z** | Spatial (Northing / Latitude) | `[-50, +50]` | Centered at 0; 100-unit cube |
+**Scene container:** `src/components/viz/Scene.tsx`
+**Main scene orchestrator:** `src/components/viz/MainScene.tsx`
+**Canvas dimensions:** Full viewport, `gl={{ alpha: true }}` for map overlay mode
 
-### Camera Setup (`src/components/viz/Scene.tsx`)
+## Coordinate System
+
+- **Y-axis:** Time (vertical, 0-100 normalized range)
+- **X-axis:** Longitude/East-West (-50 to +50 normalized range)
+- **Z-axis:** Latitude/North-South (-50 to +50 normalized range)
+- **Cube volume:** 100x100x100 world units centered at origin
+
+### Normalization
+
+Crime coordinates are normalized in `src/lib/coordinate-normalization.ts`:
+
+```
+Chicago bounds: lon [-87.9, -87.5], lat [41.6, 42.1]
+Normalized range: -50 to +50 on both X and Z axes
+```
+
+SQL-level normalization in `buildNormalizedSqlExpression()`:
 ```typescript
-camera={{ position: [50, 50, 50], fov: 45 }}
+// src/lib/coordinate-normalization.ts
+(((${column} - ${min}) / ${span}) * ${normalizedSpan}) + ${normalizedMin}
 ```
-- PerspectiveCamera at (50, 50, 50) looking at origin (0,0,0)
-- Fog: background color, near=10, far=500
-- `CameraControls` from `@react-three/drei`: smoothTime=0.25, minDist=1, maxDist=500, maxPolarAngle=π/2
 
-### Time → Y Mapping (Two Modes)
+### Projection
 
-**Linear Mode:**  
-Time is normalized to `[0, 100]` then positioned at `(time_normalized - 50)` to center in the cube.  
-A point at t=0% → Y=-50 (bottom), t=100% → Y=+50 (top).
+Geographic-to-scene projection in `src/lib/projection.ts`:
+- Uses `@math.gl/web-mercator` with Chicago center `[-87.6298, 41.8781]` at zoom 12
+- `project(lat, lon)` → `[x, z]` in scene units (pixels at zoom 12)
+- `unproject(x, z)` → `[lat, lon]`
 
-**Adaptive Mode:**  
-The Web Worker (`src/workers/adaptiveTime.worker.ts`) computes a warp map — a 1D texture of `binCount` samples mapping normalised time percent → warped Y position.  
-The vertex shader samples this texture and mixes:
-```glsl
-float currentY = mix(linearY, adaptiveY, uWarpFactor);
-```
-- `uWarpFactor = 0` → fully linear (no warp)
-- `uWarpFactor = 1` → fully adaptive (density-proportional spacing)
+## Rendering Modes
 
-### Coordinate Normalization Pipeline
+### Mode 1: Columnar Data (Production)
 
-**For columnar (Apache Arrow) mode** (`DataPoints.tsx` lines 464-467):
+Used when `columns` is available from `useTimelineDataStore`. Data is stored in typed arrays:
+- `columns.x` (`Float32Array`), `columns.z` (`Float32Array`), `columns.timestamp` (`Float32Array`)
+- `columns.type` (`Uint8Array`), `columns.district` (`Uint8Array`)
+- `columns.lat`, `columns.lon` (optional `Float32Array`)
+
+**Rendering:** Single `InstancedMesh` with a `SphereGeometry` of radius 0.5 (8 segments). Each crime is an instance with:
+- `instanceMatrix` positioned via shader (no CPU matrix update per frame)
+- `instanceColor` for per-instance vertex coloring
+- Custom `instancedBufferAttribute` for `filterType`, `filterDistrict`, `colX`, `colZ`, `colLinearY`
+
+### Mode 2: Data Objects (Fallback)
+
+Used when `columns` is null (mock/test data from `data: DataPoint[]`). Each point has `{ x, y, z, type, block }`.
+
+**Rendering:** Same `InstancedMesh` but CPU-updating `instanceMatrix` in `useLayoutEffect`:
 ```typescript
-x = ((colX[i] - minX) / xRange * 100) - 50;  // Project to [-50, +50]
-z = ((colZ[i] - minZ) / zRange * 100) - 50;  // Project to [-50, +50]
-```
-Same logic in vertex shader (`ghosting.ts` lines 110-113):
-```glsl
-float wx = ((colX - uDataBoundsMin.x) / (uDataBoundsMax.x - uDataBoundsMin.x) * 100.0) - 50.0;
-float wz = ((colZ - uDataBoundsMin.y) / (uDataBoundsMax.y - uDataBoundsMin.y) * 100.0) - 50.0;
-```
-
-**For point data mode**: `point.x`, `point.y`, `point.z` are used directly — assumed to already be in the [-50, +50] range.
-
----
-
-## 2. R3F Canvas / Component Tree
-
-```
-<Scene transparent={mode === 'map'}>                    // R3F Canvas (camera @ [50,50,50], FOV 45)
-  <color attach="background" />                         // Theme background (only if transparent=false)
-  <fog attach="fog" />                                  // Fog for depth cues
-  <Grid />                                              // gridHelper(200, 20, 'cyan', 'gray') + axesHelper(10)
-  <TimePlane />                                         // Cyan plane at Y=0 (ground/cut plane)
-  <TimeGrid />                                          // Horizontal grid lines along Y axis
-  <DataPoints data={filteredCrimes} />                  // InstancedMesh crime points (ghosting shader)
-  <AggregatedBars />                                    // InstancedMesh 3D bars (LOD-aware)
-  <HeatmapOverlay />                                    // Two-pass GPGPU density heatmap on ground
-  <TimeSlices>                                          // Interactive time slice planes + cluster overlays
-    <SlicePlane slice={s} y={scale(s.time)} />          // Point slice (plane) or Range slice (box)
-    <SliceClusterOverlay />                             // Cluster rectangles on slice plane
-    <SliceCrimePoints />                                // Points within slice
-  </TimeSlices>
-  <BurstEvolutionOverlay />                             // Burst window overlays
-  <EvolutionFlowOverlay />                              // Evolution flow arrows
-  <ClusterHighlights />                                 // Cluster volume boxes (wireframe + fill)
-  <ClusterLabels />                                     // Cluster text labels (HTML)
-  <SpatialConstraintOverlay />                          // Spatial constraint boxes
-  <SelectedWarpSliceOverlay />                          // Highlighted warp slice band
-  <LODController />                                     // Updates LOD factor based on camera distance
-  <CameraControls />                                    // Orbit controls
-  <Controls />                                          // Floating toolbar (re-exported)
-</Scene>
+// src/components/viz/DataPoints.tsx (lines 224-238)
+data.forEach((point, i) => {
+  tempObject.position.set(point.x, point.y, point.z);
+  tempObject.updateMatrix();
+  meshRef.current!.setMatrixAt(i, tempObject.matrix);
+  tempColor.set(colorHex);
+  meshRef.current!.setColorAt(i, tempColor);
+});
 ```
 
-### Rendering Order (stacked in scene):
-1. **Grid** — spatial reference on ground (XZ plane at Y=0)
-2. **TimePlane** — ground plane (Y=0)
-3. **TimeGrid** — temporal grid lines at various Y levels
-4. **AggregatedBars** — 3D bins (histogram)
-5. **DataPoints** — crime event points (instanced with shader)
-6. **HeatmapOverlay** — density overlay on ground
-7. **ClusterHighlights** — cluster volume boxes
-8. **TimeSlices** — interactive slice planes (from separate group)
-9. **SpatialConstraintOverlay** — spatial boundary boxes
-10. **SelectedWarpSliceOverlay** — warp band highlight
-11. **LODController** — pure logic (returns null)
-12. **CameraControls** — user input handling
+## Shader System
 
----
+### Ghosting Shader (Points)
 
-## 3. "Floor" / Ground of the Cube
+**File:** `src/components/viz/shaders/ghosting.ts`
 
-There is **no explicit cubic bounding box** with walls. The scene is a free-floating point cloud.
-
-### Ground Elements
-
-| Element | File | Details |
-|---------|------|---------|
-| **gridHelper** | `Grid.tsx` | 200×200 grid with 20 divisions, cyan/gray lines. Positioned at origin Y=0. |
-| **axesHelper** | `Grid.tsx` | Small 10-unit axis indicator at origin |
-| **TimePlane (cyan)** | `TimePlane.tsx` | 100×100 plane at Y=0, rot X:-90°, 20% cyan, DoubleSide |
-| **HeatmapOverlay** | `HeatmapOverlay.tsx` | Two-pass GPGPU heatmap rendered onto a 100×100 plane at Y=0.015 (just above ground) |
-
-### Missing Visual Elements
-- No cube edges/wireframe bounding the 100×100×100 volume
-- No cube face labels (X, Y, Z axis labels)
-- No grid on the time axis (only horizontal lines at discrete time intervals)
-- The scene is "floating" — no explicit bottom/top visual boundary
-
----
-
-## 4. Time-Related Visual Elements
-
-### TimeGrid (`src/components/viz/TimeGrid.tsx`)
-
-Renders **horizontal ring lines** at specific Y levels (time intervals):
-- Each ring is a square perimeter: `(-50, y, -50) → (50, y, -50) → (50, y, 50) → (-50, y, 50) → (-50, y, -50)`
-- Line color: `#94a3b8` (slate), 20% opacity
-- **Interval selection** based on `timeResolution`:
-  - `hours` → 6-hour intervals (`timeHour.every(6)`)
-  - `days` → daily (`timeDay.every(1)`)
-  - `weeks` → weekly (`timeWeek.every(1)`)
-  - `months` → monthly (`timeMonth.every(1)`)
-  - `years` → yearly (`timeYear.every(1)`)
-- Max 40 lines pruned via modulo
-- Y positions computed from `epochSecondsToNormalized()` using `minTimestampSec` / `maxTimestampSec`
-
-**Burst bands** (orange highlights):
-- Computed from densityMap or burstinessMap
-- Shows horizontal orange rings at Y positions where burst metric exceeds `burstCutoff`
-- Color: `#f97316` at 60% opacity
-
-### TimePlane (`src/components/viz/TimePlane.tsx`)
-- Static ground plane at Y=0
-- Cyan (`#00FFFF`), 20% opacity, DoubleSide
-- Used as a visual "cut plane" reference at the bottom
-
-### SlicePlane (`src/components/viz/SlicePlane.tsx`)
-**Point slices:** Thin cyan plane (100×100) at the slice's Y position, rotated flat (X:-90°).
-**Range slices:** Purple box (100 × height × 100) spanning the Y range.
-- Drag handle sphere at edge for vertical repositioning
-- STKDE heatmap texture can be overlaid (when `stkdeSurface` is provided)
-
----
-
-## 5. Shader Architecture
-
-### Ghosting Shader (`src/components/viz/shaders/ghosting.ts`)
-
-Applied to `DataPoints`'s `meshStandardMaterial` via `onBeforeCompile`.
+Applied via custom `onBeforeCompile` hook on `meshStandardMaterial`. The shader is injected by replacing `#include <common>` and `#include <project_vertex>` and `#include <dithering_fragment>`.
 
 **Vertex shader modifications:**
-1. Position computation via warp texture sampling
-2. Columnar data projection (X,Z from colX/colZ)
-3. Adaptive Y mixing based on `uWarpFactor`
-4. LOD scaling of point size
-5. Varyings for fragment (vWorldX/Y/Z, vLinearY, vFilterType, vFilterDistrict, vInstanceId)
+
+1. **Coordinate projection** — Maps columnar data to world space:
+   ```glsl
+   float wx = ((colX - uDataBoundsMin.x) / (uDataBoundsMax.x - uDataBoundsMin.x) * 100.0) - 50.0;
+   float wz = ((colZ - uDataBoundsMin.y) / (uDataBoundsMax.y - uDataBoundsMin.y) * 100.0) - 50.0;
+   worldPos = vec3(wx, currentY, wz);
+   ```
+
+2. **Adaptive time warping** — Samples a 1D data texture for warped Y position:
+   ```glsl
+   float normalizedTime = clamp((linearY - uWarpDomainMin) / warpSpan, 0.0, 1.0);
+   float adaptiveY = texture2D(uWarpTexture, vec2(normalizedTime, 0.5)).r;
+   float currentY = mix(linearY, adaptiveY, uWarpFactor);
+   ```
+
+3. **LOD scaling** — Shrinks points at zoom-out:
+   ```glsl
+   vec3 transformedCopy = transformed * (1.0 - uLodFactor);
+   ```
 
 **Fragment shader modifications:**
-1. Time-plane focus glow (smoothstep near `uTimePlane`)
-2. Filter masking (type + district via selection maps)
-3. Spatial bounds culling
-4. Focus+Context dimming (desaturation, dither discard, brush-range extra dimming)
-5. Burst highlighting (orange tint)
-6. Selection highlight (brighten single point)
-7. Slice highlighting (white tint for points within any active slice range)
-8. LOD checkerboard dithering
 
-**Key uniforms for volumetric time slices:**
-```glsl
-uniform vec2 uSliceRanges[20];   // 20 slice ranges (flat float32[40])
-uniform int uSliceCount;         // Number of active slices
-uniform float uWarpFactor;       // 0=linear, 1=adaptive
-uniform sampler2D uWarpTexture;  // 1D warp map (N×1)
-uniform float uTimeMin;          // Filter time range min
-uniform float uTimeMax;          // Filter time range max
-```
+1. **Focus+Context** — Points near `uTimePlane` get brighter; far points get dimmer
+2. **Filter gating** — Type, district, spatial bounds, and time range filtering via discard
+3. **Context dithering** — Points outside filters get dithered based on `uContextOpacity`:
+   ```glsl
+   float ditherValue = mod(gl_FragCoord.x * 0.37 + gl_FragCoord.y * 0.73, 1.0);
+   if (ditherValue < threshold) discard;
+   ```
+4. **Burst highlighting** — Orange overlay when `burstDensity >= uBurstThreshold`
+5. **Selection highlight** — Brightens the specific `vInstanceId` matching `uSelectedIndex`
+6. **Slice highlighting** — Whitens points within any active slice range
 
-### Heatmap Shaders (`src/components/viz/shaders/heatmap.ts`)
+### GPGPU Heatmap Shader
 
-Two-pass GPGPU:
-- **Pass 1 (aggregation):** Renders crime points as Gaussian splats into a Float32 RenderTarget (1024×1024). Accumulates density in additive blending.
-- **Pass 2 (rendering):** Maps density values through logarithmic scale → cyan-white gradient → overlays on ground plane.
+**File:** `src/components/viz/shaders/heatmap.ts`
 
----
+**Component:** `src/components/viz/HeatmapOverlay.tsx`
 
-## 6. Volumetric Adaptive Time Slice Integration Points
+**Two-pass architecture:**
 
-### Where Volumes Would Render
+1. **Pass 1 — Aggregation (Offscreen FBO):**
+   - Renders all points as `THREE.Points` into a 1024x1024 `FloatType` `RedFormat` render target
+   - Uses orthographic camera aligned to -50/+50 spatial grid
+   - Vertex shader projects points spatially and gates them with filters
+   - Fragment shader applies Gaussian falloff: `exp(-d * d * 20.0)` via `gl_PointCoord`
+   - Uses `AdditiveBlending` for density accumulation
 
-**Option A — Box geometry in the TimeSlices group** (recommended):
-Currently `SlicePlane.tsx` already renders range slices as box geometries:
+2. **Pass 2 — Heatmap rendering:**
+   - Renders the FBO texture onto a flat plane at `y=0.015` with rotation `[-PI/2, 0, 0]`
+   - Fragment shader applies logarithmic scaling: `log(1.0 + density) / log(1.0 + maxIntensity)`
+   - Color mapping: cyan-to-white gradient based on log density
+   - Controllable via `intensity` and `opacity` uniforms from `useHeatmapStore`
+   - Blending mode configurable (default: `NormalBlending`)
+
+### Warp Texture (1D Data Texture)
+
+**Lifecycle in `src/components/viz/DataPoints.tsx`:**
+
 ```typescript
-// SlicePlane.tsx lines 178-181
-<mesh>
-  <boxGeometry args={[100, height, 100]} />
-  <meshBasicMaterial color={color} transparent opacity={opacity} depthWrite={false} />
-</mesh>
+// Lines 89-97: Texture creation from Float32Array
+const warpTexture = useMemo(
+  () => createTexture(warpMap?.length > 0 ? warpMap : new Float32Array([0, 100])),
+  [warpMap]
+);
+const densityTexture = useMemo(
+  () => createTexture(selectedDensityMap?.length > 0 ? selectedDensityMap : new Float32Array([0, 0])),
+  [selectedDensityMap]
+);
 ```
-A volumetric adaptive time slice could use a similar `boxGeometry` spanning the full XZ extent (100×100) with Y-dependent opacity or color mapped from a 3D density texture.
 
-**Option B — Custom mesh with volumetric shader:**
-A new component could render a volume using a custom shader with ray-marching or 3D texture lookup. This would sit at the TimeSlices level or alongside DataPoints, using the same warp/uniform infrastructure.
+Returns `THREE.DataTexture` with `RedFormat`, `FloatType`, `LinearFilter`. Automatically disposed via `useEffect` cleanup.
 
-### Data Flow for Volumetric Slices
+## Raycasting & Interaction Pipeline
 
-The existing pipeline already provides:
-1. **Warp map** (Float32Array from adaptive worker) — provides the Y↔time mapping
-2. **Slice ranges** (from `useSliceStore`) — defines time intervals
-3. **Density/burstiness maps** — per-bin density values that could drive volume opacity
-4. **Ghosting shader uniforms** — the infrastructure for passing slice data to the GPU
+**File:** `src/components/viz/DataPoints.tsx` (lines 514-633)
 
-To add volumetric rendering, you would need:
-1. A **3D density texture** (or 2D slices at discrete Y intervals)
-2. A **volume rendering component** that samples this texture
-3. **Uniforms** for the new shader (volume opacity, transfer function, etc.)
-4. **Integration** with the existing adaptive pipeline (warp map, slice ranges)
+Uses R3F's built-in raycasting on `instancedMesh` events:
+- `onPointerDown` — Tracks drag start position for click-vs-drag disambiguation (5px threshold)
+- `onPointerUp` — On click (no drag): sets `selectedIndex` in coordination store, optionally activates slice panel
+- `onPointerMove` — Tracks drag state
+- `onPointerMissed` — Clears selection
 
-### Specific Integration Points
+**CPU matrix sync for raycasting:** A debounced (500ms) `useEffect` computes the final Y positions (linear + warp mix) and updates `instanceMatrix` so raycasting hits the correct locations. This is needed because the shader does the actual warping, but Three.js raycasting operates on CPU matrices.
 
-| Hook Point | File | What to add |
-|------------|------|-------------|
-| Main Scene | `MainScene.tsx` | Mount new `VolumetricSlice` component inside the `<Scene>` |
-| Slice data | `useSliceStore` | Add `volumetricEnabled`, `volumeOpacity` fields to `TimeSlice` |
-| Density data | `useAdaptiveStore` | The existing `densityMap`/`burstinessMap` can drive volume opacity per-bin |
-| Shader uniforms | `ghosting.ts` | Could reuse or create a new material for volume rendering |
-| Camera interaction | `CameraControls` | Ensure volume meshes don't block orbit controls (set `renderOrder` appropriately) |
-| LOD | `LODController` / `uLodFactor` | Volumes should simplify or hide at far distances |
+## Slice Plane Rendering
 
-### Coordinate Mapping for Volumes
+**File:** `src/components/viz/SlicePlane.tsx`
 
-Time slices in the 3D cube use the same coordinate convention as everything else:
-- X: `[-50, 50]` (spatial)
-- Y: warped time (0–100 normalized, shifted to [-50, 50])
-- Z: `[-50, 50]` (spatial)
+Each slice is rendered as:
+- **Point slice:** A `planeGeometry(100,100)` rotated to horizontal at Y position, with a `gridHelper` overlay
+- **Range slice:** A `boxGeometry(100, height, 100)` spanning the time range
+- **Opacity/color:** Based on `isLocked`, evolution state, and slice type
+- **Drag handle:** A `sphereGeometry(1.5)` at corner for interactive repositioning
+- **STKDE heatmap:** Optionally rendered as a `CanvasTexture` on an elevated plane at `y + 0.08`
+- **HTML label:** Via `@react-three/drei` `<Html>` component for time label overlay
 
-For a volumetric slice spanning a time range `[t0, t1]`:
+Drag interaction uses window-level pointer events with raycasting to a camera-facing plane:
 ```typescript
-const y0 = scale(t0) - 50;  // Convert time percent to cube Y coordinate
-const y1 = scale(t1) - 50;
-const height = Math.abs(y1 - y0);
-const centerY = (y0 + y1) / 2;
-// Box: position=[0, centerY, 0], size=[100, height, 100]
+// src/components/viz/SlicePlane.tsx (lines 106-156)
+const planeNormal = cameraDir.clone().negate();
+const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, new THREE.Vector3(0, centerY, 0));
 ```
 
+## Evolution Flow & Burst Lines
+
+**File:** `src/components/viz/EvolutionFlowOverlay.tsx` — `THREE.Line` segments between slice centers with cone arrowheads
+
+**File:** `src/components/viz/BurstEvolutionOverlay.tsx` — `THREE.Line` connectors with `sphereGeometry` nodes at endpoints, color-coded by burst class
+
+**File:** `src/components/viz/Trajectory.tsx` — Uses `@react-three/drei` `<Line>` component with animated vertex colors and trail effect, plus coneGeometry arrowhead
+
+## Spatial Constraint Overlays
+
+**File:** `src/components/viz/SpatialConstraintOverlay.tsx`
+
+Renders axis-aligned bounding boxes from `useCubeSpatialConstraintsStore` as `boxGeometry` meshes with `Edges` from drei. Color tokens support named colors (amber, blue, cyan, emerald, etc.) mapped to CSS-like hex values.
+
+**File:** `src/components/viz/spatialConstraintGeometry.ts` — Normalizes bounds, computes center/size, handles degenerate axes with `MIN_AXIS_SIZE = 0.5`.
+
+## Cluster Rendering
+
+**File:** `src/components/viz/ClusterHighlights.tsx` — Each cluster rendered as a `boxGeometry` with `meshBasicMaterial` (fill + wireframe), color-coded by dominant crime type, opacity scales by selection/hover state.
+
+**File:** `src/components/viz/ClusterLabels.tsx` — Top 5 clusters get `<Html>` labels with crime type, count, time range. Clicking sets spatial bounds filter and optionally fits camera to cluster bounding box via `controls.fitToBox()`.
+
+**File:** `src/components/viz/SliceClusterOverlay.tsx` — Per-slice cluster overlay at `SLICE_CLUSTER_OVERLAY_ELEVATION` (0.16) above slice plane, using `planeGeometry` fills and `Line` borders.
+
 ---
 
-## 7. Performance Notes
-
-- **DataPoints** uses a single `instancedMesh` with up to 8.5M crime records (typically limited to ~500K via LOD/tiling)
-- **AggregatedBars** uses an instanced mesh with 20,000 max instances
-- **Ghosting shader** handles all fragment-level effects in one pass — no post-processing
-- **LODController** tracks camera distance (100–300 range) and applies progressive point removal via checkerboard dithering and fragment discarding
-- **HeatmapOverlay** uses a 1024×1024 Float RenderTarget — resolution could be a bottleneck for very large datasets
-
----
-
-## 8. Key Files Index
-
-| File | Lines | Role in Pipeline |
-|------|-------|------------------|
-| `src/components/viz/Scene.tsx` | 30 | R3F Canvas + camera setup |
-| `src/components/viz/MainScene.tsx` | 208 | Scene composition + adaptive data hydration |
-| `src/components/viz/Grid.tsx` | 10 | gridHelper + axesHelper |
-| `src/components/viz/TimePlane.tsx` | 23 | Ground plane (Y=0) |
-| `src/components/viz/TimeGrid.tsx` | 145 | Temporal ring grid lines |
-| `src/components/viz/DataPoints.tsx` | 692 | Core crime point rendering (instanced + shader) |
-| `src/components/viz/SimpleCrimePoints.tsx` | 485 | Alternative point rendering (buffer geometry) |
-| `src/components/viz/shaders/ghosting.ts` | 297 | Custom ghosting shader (adaptive Y, focus+context) |
-| `src/components/viz/shaders/heatmap.ts` | 108 | Two-pass GPGPU heatmap shaders |
-| `src/components/viz/AggregatedBars.tsx` | 116 | 3D histogram bars (instanced) |
-| `src/components/viz/HeatmapOverlay.tsx` | 168 | GPGPU heatmap engine |
-| `src/components/viz/TimeSlices.tsx` | 173 | Slice orchestration |
-| `src/components/viz/SlicePlane.tsx` | 239 | Individual slice plane/box |
-| `src/components/viz/SliceClusterOverlay.tsx` | 71 | Cluster rectangles on slice |
-| `src/components/viz/ClusterHighlights.tsx` | 57 | Cluster volume boxes |
-| `src/components/viz/SpatialConstraintOverlay.tsx` | 80 | Spatial constraint boxes |
-| `src/components/viz/SelectedWarpSliceOverlay.tsx` | 242 | Warp slice band highlight |
-| `src/components/viz/spatialConstraintGeometry.ts` | 77 | Constraint → overlay box conversion |
-| `src/components/viz/LODController.tsx` | 34 | Level-of-detail based on camera distance |
-| `src/components/viz/CubeVisualization.tsx` | 225 | Top-level container |
-| `src/store/useAdaptiveStore.ts` | 204 | Adaptive state (warp maps, density, burstiness) |
-| `src/store/useTimeStore.ts` | 83 | Time mode & playback state |
-| `src/store/useSliceStore.ts` | — | Slice definitions (time, range, visibility) |
-| `src/workers/adaptiveTime.worker.ts` | 246 | Web Worker: density + warp computation |
+*Pipeline analysis: 2026-06-25*

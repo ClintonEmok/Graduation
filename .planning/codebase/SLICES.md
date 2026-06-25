@@ -1,30 +1,26 @@
-# Slice System Analysis
+# Slices — Data Model, Generation, and State Management
 
-**Analysis Date:** 2026-06-01
+**Analysis Date:** 2026-06-25
 
 ---
 
-## 1. Slice Data Structures (Types/Interfaces)
+## 1. Slice Data Model
 
-### Core Slice Type
-**Location:** `src/store/slice-domain/types.ts`
+### TimeSlice (Canonical Type)
+
+**File:** `src/store/slice-domain/types.ts`, line 7
 
 ```typescript
-export type TimeSliceSource = 'manual' | 'generated-applied' | 'suggestion';
-
-export interface TimeSlice {
+interface TimeSlice {
   id: string;
   name?: string;
   color?: string;
   notes?: string;
-  source?: TimeSliceSource;
-  type: 'point' | 'range';
-  time: number;           // Normalized time position (0-100)
-  range?: [number, number]; // For range slices: [start, end] normalized
-  isBurst?: boolean;       // Auto-generated from burst detection
-  burstSliceId?: string;   // Deterministic ID for burst deduplication
+  source?: 'manual' | 'generated-applied' | 'suggestion';
   warpEnabled?: boolean;
   warpWeight?: number;
+  
+  // Burst taxonomy fields (populated by binning engine)
   burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
   burstRuleVersion?: string;
   burstScore?: number;
@@ -34,346 +30,242 @@ export interface TimeSlice {
   tieBreakReason?: string;
   thresholdSource?: string;
   neighborhoodSummary?: string;
+  
+  // Temporal geometry
+  type: 'point' | 'range';
+  time: number;           // Center position (normalized 0-100)
+  range?: [number, number]; // [start, end] normalized 0-100
+  startDateTimeMs?: number | null;  // Absolute epoch ms
+  endDateTimeMs?: number | null;    // Absolute epoch ms
+  
+  // Burst relationship
+  isBurst?: boolean;
+  burstSliceId?: string;
+  
+  // UI state
   isLocked: boolean;
   isVisible: boolean;
-  startDateTimeMs?: number | null;
-  endDateTimeMs?: number | null;
 }
 ```
 
-### Slice Domain State (Combined Store State)
-**Location:** `src/store/slice-domain/types.ts` (lines 148-153)
+### TimeBin (Binning Engine Output)
+
+**File:** `src/lib/binning/types.ts`, line 9
 
 ```typescript
-export type SliceDomainState =
-  & SliceCoreState        // Core slice operations
-  & SliceSelectionState   // Multi-select functionality
-  & SliceCreationState    // Drag-to-create new slices
-  & SliceAdjustmentState; // Handle dragging for resize
-```
-
-### Burst Window Type
-**Location:** `src/store/useDashboardDemoCoordinationStore.ts`
-
-```typescript
-export interface DemoBurstWindowSelection {
+interface TimeBin {
   id: string;
-  start: number;           // Epoch seconds
-  end: number;             // Epoch seconds
-  metric: 'density' | 'burstiness';
-  peak: number;            // Normalized density/burstiness value
+  startTime: number;    // epoch ms
+  endTime: number;      // epoch ms
   count: number;
-  duration: number;         // Seconds
-  burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
-  burstConfidence?: number;
-  burstScore?: number;
-  burstRationale: string;
-  burstRuleVersion: string;
-  burstProvenance: string;
-  tieBreakReason: string;
-  thresholdSource: string;
-  neighborhoodSummary: string;
+  crimeTypes: string[];
+  districts?: string[];
+  avgTimestamp: number;
+  isModified?: boolean;
+  mergedFrom?: string[];
+  // Burst taxonomy fields
+  burstClass?, burstRuleVersion?, burstScore?, burstinessCoefficient?,
+  burstinessFormula?, burstinessCalculation?, burstinessByType?,
+  burstConfidence?, warpWeight?, isNeutralPartition?, burstProvenance?,
+  tieBreakReason?, thresholdSource?, neighborhoodSummary?
+}
+```
+
+### WarpSlice (Separate Slice Model for Warp Profiles)
+
+**File:** `src/store/useWarpSliceStore.ts`, line 3
+
+```typescript
+interface WarpSlice {
+  id: string;
+  label: string;
+  range: [number, number];  // normalized 0-100
+  weight: number;           // 0-3, clamped
+  enabled: boolean;
+  source: 'manual' | 'suggestion';
+  warpProfileId: string | null;
 }
 ```
 
 ---
 
-## 2. Slice Store Architecture
+## 2. Slice Generation Pipeline
 
-### Main Store: `useSliceDomainStore`
-**Location:** `src/store/useSliceDomainStore.ts`
+### Flow: Binning Engine → TimeBin → TimeSlice
 
-```typescript
-// Composed from 4 slices using Zustand's slice pattern:
-export const useSliceDomainStore = create<SliceDomainState>()(
-  persist(
-    (...args) => ({
-      ...createSliceCoreSlice(...args),         // Slice CRUD
-      ...createSliceSelectionSlice(...args),     // Multi-select
-      ...createSliceCreationSlice(...args),      // New slice creation
-      ...createSliceAdjustmentSlice(...args),    // Resize handles
-    }),
-    { name: 'slice-domain-v1', partialize: (state) => ({ slices: state.slices }) }
-  )
-);
+```
+Crime data → generateBins() → TimeBin[]
+  ↓
+useTimeslicingModeStore / useDashboardDemoTimeslicingModeStore
+  ↓ (applyGeneratedBins)
+useSliceDomainStore.addSliceFromBin() / replaceSlicesFromBins()
+  ↓
+TimeSlice[] in store
 ```
 
-### Wrapper Hook: `useSliceStore`
-**Location:** `src/store/useSliceStore.ts`
+### `addSliceFromBin()` — Single bin → Slice
 
-Exposes `useSliceDomainStore` with additional auto-burst functionality:
-- `useAutoBurstSlices(burstWindows)` - Auto-creates slices from detected burst windows
-- Handles range normalization (epoch ↔ normalized 0-100)
-- Deduplication using burst window signatures
+**File:** `src/store/slice-domain/createSliceCoreSlice.ts`, line 311
 
-### Key Store Selectors
-**Location:** `src/store/slice-domain/selectors.ts`
+1. Normalize bin range to 0-100 via `toNormalizedBinRange()`: `((bin.startTime - domainStart) / span) * 100`
+2. If bin has burst taxonomy → create `Burst N` slice with `isBurst: true`, `warpWeight: 1.25` (or `bin.warpWeight`)
+3. Else → create `Slice N` with `warpWeight: 1`
+4. Both populate `startDateTimeMs`, `endDateTimeMs` from `bin.startTime`/`bin.endTime`
+5. Sort slices by start time and set as active
 
-```typescript
-selectSlices              // All slices
-selectVisibleSlices       // Filtered by isVisible
-selectActiveSliceId       // Currently focused slice
-selectActiveSlice         // The active slice object
-selectSelectedIds         // Multi-selected slice IDs
-selectIsCreating          // Whether in slice creation mode
-selectCreationPreviewRange // Drag preview coordinates
-selectDraggingSliceId     // Which slice is being resized
-selectHoverSliceId        // Which slice is hovered
-```
+### `replaceSlicesFromBins()` — Bulk replace
+
+**File:** `src/store/slice-domain/createSliceCoreSlice.ts`, line 374
+
+Same bin-to-slice conversion, but replaces ALL existing slices. Sets first slice as active.
+
+### `addBurstSlice()` — Auto-created from burst windows
+
+**File:** `src/store/slice-domain/createSliceCoreSlice.ts`, line 192
+
+1. `toNormalizedStoreRange()` to normalize burst window
+2. Check `findMatchingSlice()` with tolerance to avoid duplicates (0.5% range tolerance)
+3. Create slice with `warpWeight: 1.25`, `isBurst: true`, auto-named `Burst {n}`
 
 ---
 
-## 3. Slice Generation Logic
+## 3. Manual Slice Creation
 
-### 3.1 Burst Window Detection
-**Source:** `src/lib/binning/burst-taxonomy.ts`, `src/lib/interval-detection.ts`
+**File:** `src/store/slice-domain/createSliceCreationSlice.ts`
 
-1. Crime data is binned into time windows via DuckDB queries
-2. Burst windows are detected via density peaks or burstiness coefficient
-3. Taxonomy classification assigns classes (`prolonged-peak`, `isolated-spike`, `valley`, `neutral`)
+### Workflow
 
-**Taxonomy Classification:**
-**Location:** `src/lib/binning/burst-taxonomy.ts`
+1. `startCreation('click' | 'drag')` → sets `isCreating: true`, resets preview
+2. `updatePreview(start, end)` → clamps to 0-100, sets `ghostPosition { x, width }`
+3. `setPreviewFeedback(feedback)` → validation, duration label, snap interval
+4. `commitCreation()` → creates `TimeSlice` (point if same start/end, else range), calls `addSlice()`, resets state
+5. `cancelCreation()` → resets to idle, preserves `snapEnabled`
 
-```typescript
-classifyBurstWindow(input: BurstTaxonomyInput): BurstTaxonomyResult
+### Date Time Resolution
 
-// Burst classes:
-// - 'prolonged-peak': High density + sustained over multiple windows
-// - 'isolated-spike': High density + brief + no neighborhood support
-// - 'valley': Low density relative to neighbors
-// - 'neutral': Default for ambiguous cases
-```
-
-### 3.2 Auto-Burst Slice Creation
-**Source:** `src/store/useSliceStore.ts` → `useAutoBurstSlices()`
-
-```typescript
-// Hook that auto-creates TimeSlices from burstWindows
-useAutoBurstSlices(burstWindows: { start: number; end: number }[])
-
-// Flow:
-// 1. Deduplicate using window signature (rounded start-end)
-// 2. For each new window, call addBurstSlice()
-// 3. Normalize ranges from epoch seconds → normalized 0-100
-// 4. Update existing burst slices if ranges need renormalization
-```
-
-### 3.3 Interval Boundary Detection
-**Source:** `src/lib/interval-detection.ts`
-
-```typescript
-detectBoundaries(crimes, timeRange, options): BoundarySuggestion
-
-// Detection methods:
-// - 'peak': Local maxima above mean + stdDev threshold
-// - 'change-point': Sliding window comparison for density shifts
-// - 'rule-based': Equal-density or equal-time intervals
-
-// Output:
-interface BoundarySuggestion {
-  boundaries: number[];  // Epoch seconds
-  method: BoundaryMethod;
-  confidence: number;
-  metadata: { peaks?, changePoints?, ruleBasedBoundaries? }
-}
-```
-
-### 3.4 Adaptive Time Warp
-**Source:** `src/store/useAdaptiveStore.ts`, `src/workers/adaptiveTime.worker.ts`
-
-```typescript
-// Computes density map, burstiness map, and warp map
-// warpFactor: 0 = linear, 1 = fully adaptive
-
-interface AdaptiveState {
-  warpFactor: number;
-  densityMap: Float32Array;
-  burstinessMap: Float32Array;
-  countMap: Float32Array;
-  warpMap: Float32Array;  // Time warping function
-  isComputing: boolean;
-  burstMetric: 'density' | 'burstiness';
-  burstThreshold: number;  // 0.7 default
-}
-```
+`toDateTimeMs()` → converts normalized 0-100 value to epoch ms using `useTimelineDataStore` min/max timestamps via `normalizedToEpochSeconds()`.
 
 ---
 
-## 4. Timeline Rendering of Slices
+## 4. Auto Burst Slices (Hook)
 
-### DualTimeline Component
-**Location:** `src/components/timeline/DualTimeline.tsx`
-
-#### Slice Geometry Calculation
-Computes pixel positions for each slice from normalized range → pixel coordinates via domain scaling.
-
-#### Rendering Styles
-
-| Slice Type | Fill Color | Stroke | Special Effects |
-|------------|------------|--------|----------------|
-| Burst | `rgba(251, 146, 60, 0.26)` | `rgba(251, 146, 60, 0.85)` | Orange tint |
-| Suggestion | `rgba(139, 92, 246, 0.2)` | `rgba(167, 139, 250, 0.85)` | Violet tint |
-| Generated Applied | `rgba(16, 185, 129, 0.18)` | `rgba(74, 222, 128, 0.92)` | Green tint |
-| Active | + pulsing glow animation | +2.3px stroke | Pulsing opacity |
-| Overlap ≥2 | Hatching pattern overlay | Dashed stroke | Hatch fill |
-
-#### Stacking Order
-Active slices render on top; higher overlap count = lower in stack.
-
----
-
-## 5. Cube/Map Synchronization
-
-### 5.1 Cube Slice Planes
-**Location:** `src/components/viz/TimeSlices.tsx`
+**File:** `src/store/useSliceStore.ts`, line 46 — `useAutoBurstSlices()`
 
 ```typescript
-export function TimeSlices() {
-  const slices = useSliceStore((state) => state.slices);
-  const addSlice = useSliceStore((state) => state.addSlice);
-  const updateSlice = useSliceStore((state) => state.updateSlice);
-  
-  // Maps normalized time → Y position in cube using adaptive or linear scale
-  const scale = useMemo(() => {
-    if (timeScaleMode === 'linear') {
-      return scaleLinear().domain([0, 100]).range([0, 100]);
-    }
-    // Adaptive relational projection
-    let config;
-    if (columns) {
-      config = getAdaptiveScaleConfigColumnar(columns.timestamp, [0, 100], [0, 100]);
-    } else {
-      config = getAdaptiveScaleConfig(data, [0, 100], [0, 100]);
-    }
-    return scaleLinear().domain(config.domain).range(config.range);
-  }, [timeScaleMode, data, columns]);
-  
-  return (
-    <group>
-      {slices.map((slice) => (
-        <group key={slice.id}>
-          <SlicePlane .../>
-          <SliceClusterOverlay slice={slice} y={scale(slice.time)} />
-          <SliceCrimePoints points={...} />
-        </group>
-      ))}
-      <BurstEvolutionOverlay .../>
-      <EvolutionFlowOverlay .../>
-    </group>
-  );
-}
+export const useAutoBurstSlices = (burstWindows: { start: number; end: number }[]) => {
+  // Uses a processedRef Set to avoid duplicate creation
+  // Skips if isComputing (avoid mid-computation races)
+  // Auto-normalizes burst slices outside 0-100 range
+};
 ```
 
-### 5.2 DataPoints Shader Integration
-**Location:** `src/components/viz/DataPoints.tsx`
-
-Slices are passed to shader uniforms to highlight points within slice ranges:
-- `uSliceCount` uniform — number of active slices
-- `uSliceRanges` uniform — array of [start, end] normalized values
-
-### 5.3 Coordination via Shared Store
-**Location:** `src/store/useDashboardDemoCoordinationStore.ts`
-
-```typescript
-interface DashboardDemoCoordinationState {
-  selectedIndex: number | null;
-  selectedSource: DemoSelectionSource;  // 'cube' | 'timeline' | 'map'
-  brushRange: [number, number] | null;
-  selectedBurstWindows: DemoBurstWindowSelection[];
-  syncStatus: DemoSyncStatus;
-  // ... warp, STKDE, volume, inspect, comparison state
-}
-```
-
-Selection sync flow:
-1. Any component calls `setSelectedIndex(index, source)`
-2. Coordination store tracks which component initiated
-3. Other components subscribe and react to changes
-
-### 5.4 Active Slice Focus
-**Multiple locations sync via `activeSliceId`:**
-
-| Component | Behavior on Active Slice |
-|-----------|-------------------------|
-| `DualTimeline.tsx` | Renders pulsing highlight |
-| `TimeSlices.tsx` | 3D plane gets enhanced rendering via `evolutionState` |
-| `DataPoints.tsx` | Shader highlights points within slice |
-| `DemoSlicePanel.tsx` | Opens analysis panel for selected slice |
+- Creates burst slices reactively when burst windows change
+- Deduplicates via window signature `{rounded(start)}-{rounded(end)}`
+- Clears processed set when all burst slices are removed
 
 ---
 
-## 6. Key Files Reference
+## 5. Slice Merging
 
-| Purpose | File Path |
-|---------|-----------|
-| Core Types | `src/store/slice-domain/types.ts` |
-| Main Store | `src/store/useSliceDomainStore.ts` |
-| Store Wrapper + Auto-Burst | `src/store/useSliceStore.ts` |
-| Core Slice Operations | `src/store/slice-domain/createSliceCoreSlice.ts` |
-| Selection Logic | `src/store/slice-domain/createSliceSelectionSlice.ts` |
-| Creation Mode | `src/store/slice-domain/createSliceCreationSlice.ts` |
-| Resize Handles | `src/store/slice-domain/createSliceAdjustmentSlice.ts` |
-| Selectors | `src/store/slice-domain/selectors.ts` |
-| Slice Utilities | `src/lib/slice-utils.ts` |
-| Interval Detection | `src/lib/interval-detection.ts` |
-| Burst Taxonomy | `src/lib/binning/burst-taxonomy.ts` |
-| Timeline Rendering | `src/components/timeline/DualTimeline.tsx` |
-| Cube Slice Planes | `src/components/viz/TimeSlices.tsx` |
-| Shader Integration | `src/components/viz/DataPoints.tsx` |
-| Demo Coordination Store | `src/store/useDashboardDemoCoordinationStore.ts` |
-| Adaptive Store | `src/store/useAdaptiveStore.ts` |
-| Demo Slice Panel | `src/components/dashboard-demo/DemoSlicePanel.tsx` |
-| Demo Timeslicing Mode | `src/store/useDashboardDemoTimeslicingModeStore.ts` |
+**File:** `src/store/slice-domain/createSliceCoreSlice.ts`, line 236 — `mergeSlices()`
+
+1. Validate ≥ 2 slices provided
+2. Normalize all ranges to 0-100
+3. Check adjacency: gap between consecutive slices ≤ `MERGE_TOUCH_TOLERANCE` (0.5)
+4. Compute merged range: `min(start...)` to `max(end...)`
+5. Create new slice named `Merged Slice {n}`
+6. Remove originals, add merged
 
 ---
 
-## 7. Data Flow Summary
+## 6. Slice CRUD Operations
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    CRIME DATA PIPELINE                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  CSV Files → DuckDB → Arrow → TimelineDataStore                  │
-│                            ↓                                    │
-│                   useAdaptiveStore                              │
-│                   ┌───────────────────────┐                    │
-│                   │ densityMap            │                    │
-│                   │ burstinessMap         │                    │
-│                   │ warpMap               │                    │
-│                   │ (computed in worker)  │                    │
-│                   └───────────────────────┘                    │
-│                            ↓                                    │
-│                   Burst window detection                        │
-│                   ┌───────────────────────┐                    │
-│                   │ Detects contiguous    │                    │
-│                   │ high-density regions │                    │
-│                   │ Classifies taxonomy  │                    │
-│                   └───────────────────────┘                    │
-│                            ↓                                    │
-│                   useAutoBurstSlices()                          │
-│                   ┌───────────────────────┐                    │
-│                   │ Creates TimeSlices   │                    │
-│                   │ Normalizes ranges     │                    │
-│                   │ Deduplicates          │                    │
-│                   └───────────────────────┘                    │
-│                            ↓                                    │
-│                   useSliceDomainStore                           │
-│                   ┌───────────────────────┐                    │
-│                   │ slices[]             │                    │
-│                   │ activeSliceId        │                    │
-│                   │ selectedIds           │                    │
-│                   └───────────────────────┘                    │
-│                            ↓                                    │
-│         ┌────────────────┬────────────────┐                    │
-│         ↓                ↓                ↓                     │
-│   DualTimeline     TimeSlices      DataPoints                   │
-│   (2D rendering)   (3D planes)     (shader)                     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+All in `createSliceCoreSlice`:
+
+| Operation | Method | Behavior |
+|---|---|---|
+| Add | `addSlice(initial)` | Generates UUID, applies defaults, hydrates date fields, sorts |
+| Remove | `removeSlice(id)` | Clears active if removed |
+| Update | `updateSlice(id, updates)` | Partial update, re-sorts |
+| Clear | `clearSlices()` | Empties all, nulls active |
+| Toggle lock | `toggleLock(id)` | Flips `isLocked` |
+| Toggle visible | `toggleVisibility(id)` | Flips `isVisible` |
+| Set active | `setActiveSlice(id)` | Updates `activeSliceId` + timestamp |
+| Find matching | `findMatchingSlice(start, end, tolerance?)` | Uses `rangesMatch()` with tolerance |
+
+### Sorting
+
+Slices sorted by start time, then non-burst before burst, then insertion order (`src/store/slice-domain/createSliceCoreSlice.ts`, line 50).
+
+### Range Normalization
+
+`toNormalizedStoreRange()` (`src/store/slice-domain/createSliceCoreSlice.ts`, line 16):
+- If already 0-100 → use as-is
+- Else if `minTimestampSec` available → convert via `epochSecondsToNormalized()`
+- Else if `mapDomain` available → linear scale to 0-100
+- Else → clamp to 0-100
 
 ---
 
-*Slice system analysis: 2026-06-01*
+## 7. Pending Generation Workflow
+
+**File:** `src/store/useTimeslicingModeStore.ts` and `src/store/useDashboardDemoTimeslicingModeStore.ts`
+
+### State Machine
+
+```
+idle → generating → ready → applied
+                       ↓
+                    error
+```
+
+### Key states:
+- `generationInputs`: Crime types, neighbourhood, time window, granularity
+- `pendingGeneratedBins: TimeBin[]` — editable before applying
+- `generationStatus`: `'idle' | 'generating' | 'ready' | 'applied' | 'error'`
+- `lastGeneratedMetadata`: Bin count, event count, warning, inputs
+
+### Bin Editing (pending):
+- `mergePendingGeneratedBins(binIds)` — merge adjacent (preserves burst metadata)
+- `splitPendingGeneratedBin(binId, splitPoint)` — split at point
+- `deletePendingGeneratedBin(binId)` — remove bin
+- `replacePendingGeneratedBins(bins)` — full replacement
+
+### Apply:
+- `applyGeneratedBins(domain)` → calls `useSliceDomainStore.getState().replaceSlicesFromBins()`
+- Clears pending, sets `generationStatus: 'applied'`
+
+---
+
+## 8. Slice Templates
+
+**File:** `src/store/useTimeslicingModeStore.ts`, line 246
+
+Pre-defined duration templates for quick manual slice creation:
+- `1h`: 1 hour
+- `4h`: 4 hours
+- `8h`: 8 hours (Workday)
+- `24h`: 24 hours (Day)
+- `7d`: 7 days (Week)
+
+Custom templates addable via `addSliceTemplate()`.
+
+---
+
+## 9. Preset Time Interval Definitions
+
+**File:** `src/store/useTimeslicingModeStore.ts`, line 183 — `PRESET_DEFINITIONS`
+
+| Preset | Intervals |
+|---|---|
+| `hourly` | 24 × 1-hour blocks |
+| `daily` | 4 × 6-hour blocks (00-06, 06-12, 12-18, 18-24) |
+| `weekly` | Mon-Thu, Fri, Sat-Sun |
+| `monthly` | 4 weekly blocks |
+| `weekday-weekend` | Mon-Fri, Sat-Sun |
+| `morning-afternoon-evening-night` | 6-12, 12-18, 18-24, 0-6 |
+| `business-hours` | 9-17, 17-24, 0-9 |
+
+---
+
+*Slice analysis: 2026-06-25*

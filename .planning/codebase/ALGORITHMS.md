@@ -1,485 +1,323 @@
-# Algorithm Catalog & Analysis
+# Core Algorithms
 
-**Analysis Date:** 2026-06-01
-
-## Scope
-
-Complete audit of STKDE, KDE, clustering, hotspot detection, density estimation, temporal boundary detection, binning, burst classification, adaptive time warping, and statistical aggregation algorithms. All in-memory algorithms are in TypeScript; database-accelerated operations run via DuckDB SQL.
+**Analysis Date:** 2026-06-25
 
 ---
 
-## Algorithm 1: Grid-Based 2D Spatial Gaussian KDE (STKDE)
+## 1. Adaptive Time Warping
 
-| Property | Value |
-|----------|-------|
-| **Function** | `buildIntensityFromSupport()` |
-| **File** | `src/lib/stkde/compute.ts` |
-| **Lines** | 117–154 |
-| **Approach** | Manual grid-convolution with truncated Gaussian kernel. For each grid cell, iterates over neighbors within `kernelRadius = ceil(3 * sigmaCells)` and accumulates `count * exp(-0.5 * (distance / sigmaCells)^2)`. |
-| **Time** | O(rows × cols × K²) where K = kernel radius in cells. K ≈ 3 × (bandwidth / cellSize) / 2. Typical: K=6–20. Worst case (max grid): 12K × 400 ≈ 4.8M weight evaluations. |
-| **Space** | O(rows × cols) — two `Float64Array` arrays for support and intensity |
-| **Data Structures** | `Float64Array` linearized 2D array (row-major), scalar kernel radius |
-| **Bottlenecks** | (1) Brute-force convolution — no FFT, no separable kernel, no integral image. (2) `Math.sqrt` + `Math.exp` evaluated per neighbor cell in nested loops. (3) Gaussian kernel is separable (exp(-0.5×(dr²+dc²)/σ²) = exp(-0.5×dr²/σ²) × exp(-0.5×dc²/σ²)) but not exploited. (4) `r * cols + c` recalculated inside inner loop. |
-| **Improvements** | 1. **Separable convolution**: Row pass then column pass reduces O(R·C·K²) → O(R·C·K). 2. **Precompute kernel weights**: Build a 1D Gaussian weight array of size K+1. 3. **Hoist `cols` to local const** and cache `sigmaCells²`. 4. Replace sqrt-based distance with squared distance using `distSq * invTwoSigmaSq`. |
+**File:** `src/workers/adaptiveTime.worker.ts`
 
----
+### Density Map
+1. Assign timestamps to bins (uniform-time or uniform-events mode)
+2. Smooth with running average kernel (width = 3 bins)
+3. Normalize to [0, 1]
 
-## Algorithm 2: Full STKDE Surface Pipeline (raw crimes)
+### Burstiness Map (K-S Derived Measure)
+```
+burstiness = (σ - μ) / (σ + μ)
+normalized = clamp((burstiness + 1) / 2, 0, 1)
+```
+- **0 (Poisson):** σ = μ → burstiness = 0
+- **> 0 (Bursty):** σ > μ → burstiness > 0
+- **< 0 (Regular):** σ < μ → burstiness < 0
 
-| Property | Value |
-|----------|-------|
-| **Function** | `computeSingleStkdeSurfaceFromCrimes()` |
-| **File** | `src/lib/stkde/compute.ts` |
-| **Lines** | 238–391 |
-| **Approach** | Filter → sort → bin → KDE → hotspot detection → slice sub-computation. Filters crimes by domain, type, bbox; sorts; assigns to grid cells; runs KDE; normalizes; generates hotspots with temporal peak detection; optionally re-runs pipeline for each slice. |
-| **Time** | O(N log N) sorting + O(N) binning + O(R·C·K²) KDE + O(C·M log M) peak detection. Dominated by KDE. |
-| **Space** | O(N + R·C) for crimes copy + grid arrays + per-cell timestamp arrays |
-| **Bottlenecks** | (1) `Array.from({length: cellCount}, () => [])` pre-allocates 12000+ empty arrays. (2) Full crime array copy via `filter` + `sort` + `slice`. (3) Slice sub-computation re-runs entire KDE for each slice. (4) `stableCrimeSort` compares 4 fields when only timestamp is needed. (5) Sorts all crimes globally when peak detection only needs per-cell timestamp order. |
-| **Improvements** | 1. **Lazy cell allocation**: Use `Map<number, number[]>` for populated cells only. 2. **Skip global sort**: Data arrives sorted from DuckDB; sort only per-cell arrays. 3. **Share KDE across slices**: Compute full-domain KDE once, then slice results are re-normalization. 4. **Use `Int32Array` for support counts** (integer values). |
+### Warp Map
+```
+weight = 1 + blendedSignal × 5
+warpMap[i] = domainStart + (accumulatedWeight / totalWeight) × domainSpan
+```
+
+### Kernel Smoothing
+Running average over 2*kernelWidth+1 neighboring bins. Simple uniform kernel — no Gaussian weight falloff.
 
 ---
 
-## Algorithm 3: Sliding-Window Temporal Peak Detection
+## 2. Comparable Peer-Relative Warp Scoring
 
-| Property | Value |
-|----------|-------|
-| **Function** | `computePeakWindow()` |
-| **File** | `src/lib/stkde/compute.ts` |
-| **Lines** | 82–111 |
-| **Approach** | Sort timestamps, sliding window of `windowSeconds`. Two-pointer scan — expand `endIdx`, advance `startIdx` while `endValue - sorted[startIdx] > windowSeconds`. Track max count and its start time. |
-| **Time** | O(M log M) dominated by sort; two-pointer scan is O(M). |
-| **Space** | O(M) for sorted copy |
-| **Bottlenecks** | (1) Called per populated cell (up to 12000×), each sorts its own sub-array. (2) Degenerate zero-width window if `bestStart + windowSeconds` is at domain edge. (3) `sorted[0] ?? sorted[0]` is a no-op (line 97). |
-| **Improvements** | 1. **Timestamps arrive sorted** from DuckDB aggregation; pass a `preSorted` flag. 2. **Batch adjacent cells** with low counts. 3. **Return early** for M ≤ 2. |
+**File:** `src/lib/binning/warp-scaling.ts`
 
----
+### Scoring
+```
+peerAverage = totalCount / binCount
+peerRelativeScore = bin.count / peerAverage
+warpWeight = clamp(peerRelativeScore × hintWeight, 0.25, 4.0)
+normalizedScore = clamp01(0.5 + (peerRelativeScore - 1) × 0.5)
+```
 
-## Algorithm 4: Bucket-Based Temporal Peak Detection
+### Boundary Construction
+```
+minimumWidthShare = clamp(0.08, [0, min(0.45, 1/(2×binCount))])
+remainingShare = 1 - minimumWidthShare × binCount
+widthShare = minimumWidthShare + (weight / totalWeight) × remainingShare
+```
 
-| Property | Value |
-|----------|-------|
-| **Function** | `computePeakWindowFromBuckets()` |
-| **File** | `src/lib/stkde/compute.ts` |
-| **Lines** | 187–219 |
-| **Approach** | Same two-pointer technique on pre-bucketed `{bucketStartEpochSec, count}` objects. Tracks `runningWeight` (weighted count) not event count. |
-| **Time** | O(B log B) sorting + O(B) scan. B ≤ M (fewer items than raw timestamps). |
-| **Bottlenecks** | (1) Sorting object arrays (comparator overhead). (2) Same per-cell invocation as Algorithm 3. (3) `sorted[endIdx] ?? sorted[0]` repeated in loop. |
-| **Improvements** | 1. **Buckets arrive sorted** from DuckDB `ORDER BY row_idx, col_idx, bucket_start`. 2. Use `Uint32Array` pair storage instead of object arrays. 3. Same batching as Algorithm 3. |
+The minimum width guarantee ensures sparse bins retain visual presence.
 
 ---
 
-## Algorithm 5: Grid Configuration Builder with Coarsening
+## 3. Burst Taxonomy Classification
 
-| Property | Value |
-|----------|-------|
-| **Function** | `buildStkdeGridConfig()` |
-| **File** | `src/lib/stkde/compute.ts` |
-| **Lines** | 44–80 |
-| **Approach** | Computes lat/lon cell degrees from `gridCellMeters`, adjusts for Mercator distortion via `cos(lat)`, coarsens grid via `ceil(sqrt(totalCells / maxCells))` if limits exceeded. |
-| **Time** | O(1) |
-| **Bottlenecks** | Uniform coarsening — all cells resize equally, losing resolution uniformly even in data-dense areas. |
-| **Improvements** | Adaptive coarsening: fine grid in dense regions, coarse in sparse regions. |
+**File:** `src/lib/binning/burst-taxonomy.ts`
 
----
+### Decision Tree
+```
+1. Is highContrast (value ≥ 0.72 OR value ≥ neighborMedian + 0.16)?
+   ├── Yes, sustainedShape → prolongued-peak
+   ├── Yes, isolatedShape AND no neighbor support → isolated-spike
+   └── Yes, ambiguous → prolongued-peak (default)
+2. Is lowContrast (value ≤ 0.3 OR value ≤ neighborMedian - 0.16)?
+   ├── AND lowNeighborContrast → valley
+   └── No → neutral
+3. Near threshold tie-breaks:
+   ├── value ≥ 0.68, isolated, no support → isolated-spike
+   └── value ≤ 0.34, low neighbor contrast → valley
+4. Default → neutral
+```
 
-## Algorithm 6: Full Population DuckDB Aggregation Pipeline
-
-| Property | Value |
-|----------|-------|
-| **Function** | `buildFullPopulationStkdeInputs()` |
-| **File** | `src/lib/stkde/full-population-pipeline.ts` |
-| **Lines** | 89–198 |
-| **Approach** | SQL grid + temporal bucketing in DuckDB: `GROUP BY FLOOR((lon-minLng)/lonCellDeg), FLOOR((lat-minLat)/latCellDeg), FLOOR(ts/bucketSize)`. Paginated via `LIMIT/OFFSET` (20K rows/chunk). |
-| **Time** | O(N) DuckDB table scan + aggregation. Pages: ceil(N/20000) round-trips. |
-| **Space** | O(R·C + B) — `Float64Array` + `Map<number, FullPopulationBucket[]>` |
-| **Bottlenecks** | (1) **Pagination overhead**: For 8.5M records, ~425 round-trips. (2) Object allocation per bucket row (`existing.push(nextBucket)`). (3) Separate COUNT query before aggregation. (4) SQL `FLOOR(ts / ?) * ?` not indexable. (5) Throws `'full-population-aborted'` on signal but signal checking only happens between chunks, not mid-chunk. |
-| **Improvements** | 1. **Remove pagination**: DuckDB can return all rows in one result if memory permits. 2. **Use `Int32Array` pairs** for bucket storage instead of object arrays. 3. **Combine COUNT and aggregation** via `COUNT(*) OVER()`. 4. **Use `epoch_ms("Date")`** instead of `EXTRACT(EPOCH FROM "Date")` for integer arithmetic. 5. Check AbortSignal inside row processing loop for responsiveness. |
-
----
-
-## Algorithm 7: 2D Grid KDE for 3D Cube Visualization
-
-| Property | Value |
-|----------|-------|
-| **Function** | `computeSliceKde()` |
-| **File** | `src/lib/kde/compute-slice-kde.ts` |
-| **Lines** | 9–94 |
-| **Approach** | Same grid-convolution Gaussian KDE as Algorithm 1 but in normalized (-50,50) space. Default 32×32=1024 cells. Uses `Float32Array`. |
-| **Time** | O(P) binning + O(R·C·K²) convolution. 32×32 with K=6 → ~173K weight evals. |
-| **Bottlenecks** | (1) Same brute-force as Algorithm 1. (2) Square grid only — `gridRows = gridCols = gridSize`. (3) `Math.sqrt` + `Math.exp` per neighbor. |
-| **Improvements** | 1. Separable convolution (see Algorithm 1). 2. Precompute 2D kernel LUT (K×K < 169 entries). 3. Accept non-square grids. 4. Remove sqrt: `Math.exp(distSq * invTwoSigmaSq)`. |
+### Confidence
+```
+contrast = min(1, |value - neighborMedian| + neighborSpread × 0.35)
+support = neighborCount > 0 ? clamp01(average(neighborValues) + 0.15) : 0.45
+shapeBonus = { prolonged-peak: 0.22, isolated-spike: 0.18, valley: 0.16, neutral: 0.08 }
+confidence = round(clamp01(0.46 × contrast + 0.34 × support + shapeBonus) × 100)
+```
 
 ---
 
-## Algorithm 8: DBSCAN Spatial-Temporal Clustering
+## 4. STKDE — Space-Time Kernel Density Estimation
 
-| Property | Value |
-|----------|-------|
-| **Function** | `analyzeClusters()` |
-| **File** | `src/lib/clustering/cluster-analysis.ts` |
-| **Lines** | 81–184 |
-| **Approach** | Wraps `density-clustering` DBSCAN. Projects to 3D `[x, y*0.5, z]` (y halved to reduce temporal influence). Sensitivity → epsilon via `max(2, 15 - s*12)`. Computes per-cluster bounds, type counts, dominant type. |
-| **Time** | O(P²) worst case — `density-clustering` uses naive O(n²) DBSCAN without spatial index. |
-| **Space** | O(P) for dataset + cluster membership |
-| **Bottlenecks** | (1) **O(P²) complexity** on full point dataset. (2) `readNoiseIndexes()` accesses private `noise` property via `(dbscan as unknown as {noise?: number[]}).noise` — fragile cast. (3) `stabilizeNumber` called redundantly on every bound/center/size value. (4) `point.y * 0.5` scaling is arbitrary — hardcoded rather than parameterized. |
-| **Improvements** | 1. **Replace with `supercluster` or implement kd-tree-accelerated DBSCAN** for O(P log P) expected case. 2. Expose `noise` properly or subclass `DBSCAN`. 3. Hoist `stabilizeNumber` calls to only the final output path. 4. Make y-scaling a parameter (`timeWeight`). 5. Consider OPTICS instead of DBSCAN for variable-density clusters. |
+**File:** `src/lib/stkde/compute.ts`
 
----
+### Grid Construction
+```
+latCellDegrees = gridCellMeters / 111320
+lonCellDegrees = gridCellMeters / (111320 × cos(meanLat × π/180))
+rows = ceil(latSpan / latCellDegrees)
+cols = ceil(lonSpan / lonCellDegrees)
+```
 
-## Algorithm 9: Adjacent Slice Evolution Flow
+If `rows × cols > maxGridCells (12000)`:
+```
+coarsenFactor = ceil(sqrt(totalCells / maxGridCells))
+rows = ceil(rows / coarsenFactor)
+cols = ceil(cols / coarsenFactor)
+```
 
-| Property | Value |
-|----------|-------|
-| **Function** | `buildEvolutionFlowModel()` |
-| **File** | `src/lib/evolution/evolution-flow.ts` |
-| **Lines** | 40–89 |
-| **Approach** | Filters visible slices, sorts by time, generates linear flow segments from adjacent pairs. Strength decays with temporal distance: `max(0.15, 1 - min(0.85, |diff| / 100))`. |
-| **Time** | O(M log M) for sorting + O(M) for segments. M = visible slices. |
-| **Bottlenecks** | (1) Strength formula `100` is a magic number — hardcodes assumption about the coordinate scale. (2) `activeIndex` defaults to 0 when activeSliceId not found (silent fallback). |
-| **Improvements** | 1. Make strength decay factor a parameter. 2. Log or surface active-slice-not-found condition. |
+### Temporal Peak Support
+**From timestamps (computeStkdeFromCrimes path):**
+1. Bucketize into 1-hour buckets: `floor(timestamp / 3600) × 3600`
+2. For each cell, compute weighted peak count using Gaussian kernel:
+```
+weight = exp(-0.5 × (deltaSec / temporalBandwidthSec)²)
+temporalPeakSupport = max over centerIdx of (sum of weighted bucket counts)
+```
 
----
+**From aggregates (computeStkdeFromAggregates, full-population path):**
+- Same computation but uses pre-bucketed `cellTemporalBuckets` data from DuckDB
 
-## Algorithm 10: Burst Evolution Model (Slices ↔ Windows)
+### Spatial Intensity (Gaussian KDE)
+```
+sigmaCells = max(0.5, spatialBandwidthMeters / gridCellMeters / 2)
+kernelRadius = ceil(3 × sigmaCells)
 
-| Property | Value |
-|----------|-------|
-| **Function** | `buildBurstEvolutionModel()` |
-| **File** | `src/lib/stkde/burst-evolution.ts` |
-| **Lines** | 84–167 |
-| **Approach** | Finds strongest burst score across slices + windows, builds graph: slice nodes with normalized scores, connector segments between overlapping-slice pairs sharing a burst window. |
-| **Time** | O(M·B) where M = visible slices, B = burst windows. For each window, iterates all nodes to find overlapping slices. |
-| **Bottlenecks** | (1) **O(M·B)** can be O(M²·B) worst-case because `matchedNodes` is union of overlapping slices, then nested pair iteration (`for index; index < matchedNodes.length-1`). (2) `seenSegmentKeys` Set grows with each pair — O(B·M²). (3) Normalizes to strongest score, losing relative scale when score differs significantly across windows. |
-| **Improvements** | 1. Use interval tree for overlap queries (O(log M) per window instead of O(M)). 2. Deduplicate segment keys at the algorithm level rather than a growing Set. 3. Winsorize extreme scores before normalization. |
+For each cell (row, col):
+  sum = 0
+  For each neighbor (r, c) within kernelRadius:
+    distance = sqrt((r-row)² + (c-col)²)
+    weight = exp(-0.5 × (distance/sigmaCells)²)
+    sum += temporalPeakSupport[neighbor] × weight
+  intensity[row,col] = sum
 
----
+Normalize: intensity / maxIntensity
+```
 
-## Algorithm 11: Adjacent Slice Statistical Comparison
+### Hotspot Detection
+```
+For each cell with support >= minSupport:
+  peakWindow = sliding window (timeWindowHours) over cell timestamps
+  → finds max-count window via two-pointer scan
+  hotspot = { centroid, intensityScore, supportCount, peakStart, peakEnd, radius }
 
-| Property | Value |
-|----------|-------|
-| **Function** | `compareAdjacentSlices()` |
-| **File** | `src/lib/stkde/adjacent-slice-comparison.ts` |
-| **Lines** | 121–166 |
-| **Approach** | Computes count delta, density ratio, dominant type shift, district overlap (Jaccard-like ratio) between two adjacent time slices. |
-| **Time** | O(T + D) where T = type keys, D = district keys. |
-| **Bottlenecks** | (1) `JSON.stringify(left.typeCounts) === JSON.stringify(right.typeCounts)` for identity check — creates string representations of entire maps. (2) Set operations construct multiple intermediate arrays (`shared`, `leftOnly`, `rightOnly`). (3) `densityRatio` defaults to `right.totalCount` when left = 0, which can produce misleading ratios. |
-| **Improvements** | 1. Replace `JSON.stringify` identity check with a rolling hash or `Object.keys` length + sentinel comparisons. 2. Compute all Set operations in one pass. 3. Use `Infinity` sentinel for zero-denominator ratio instead of the right-hand count. |
+Sort: intensityScore DESC → supportCount DESC → centroidLat ASC → centroidLng ASC
+Slice: top K (topK parameter)
+```
 
----
-
-## Algorithm 12: Adaptive Time Warp Map
-
-| Property | Value |
-|----------|-------|
-| **Function** | `computeAdaptiveMaps()` |
-| **File** | `src/workers/adaptiveTime.worker.ts` |
-| **Lines** | 62–238 |
-| **Approach** | Computes four maps: (1) **density**: count events per time bin (uniform-time or uniform-events binning), smoothed with box filter. (2) **warp**: integrates density weights to create non-linear time mapping. (3) **burstiness**: inter-event-interval coefficient of variation per bin, normalized to [0,1]. (4) **count**: raw event counts. |
-| **Time** | O(N log N) for sorting (if uniform-time) + O(N) binning + O(B·K) smoothing + O(B) warp + O(N) burstiness. |
-| **Space** | O(N + B) — arrays for timestamps, boundaries, maps. |
-| **Bottlenecks** | (1) **`Array.from(timestamps)` copies entire Float32Array** to regular array (line 91), then `validTimestamps.sort()` — double allocation. (2) Burstiness loop (lines 203–213) re-normalizes each sorted[i] to bin index, recomputing `norm * safeBinCount` per event — redundant because sorted timestamps are in order, so bin index can be tracked incrementally. (3) Smoothing uses box filter (equal-weight neighbors) instead of Gaussian — less accurate density estimate. (4) Three separate passes over bin data: smoothing→max density, density→weights→warp, and density→normalize. |
-| **Improvements** | 1. **Sort in-place on the Float32Array** using `Float32Array.prototype.sort` (available in modern JS) or sort indexes to avoid array copy. 2. **Incremental bin computation** for burstiness — track when bin changes instead of recomputing norm for every event. 3. **Gaussian smoothing** with precomputed weights for better density fidelity. 4. **Single-pass combined** density normalization, weight calculation, and warp accumulation. |
+### Slice Sub-Computation
+When `filters.slices` are provided, each slice gets its own STKDE surface computed independently using filtered events from the parent dataset. Results returned in `sliceResults` map.
 
 ---
 
-## Algorithm 13: Comparable Warp Binning Scoring
+## 5. Full Population Pipeline
 
-| Property | Value |
-|----------|-------|
-| **Function** | `scoreComparableWarpBins()` |
-| **File** | `src/lib/binning/warp-scaling.ts` |
-| **Lines** | 108–163 |
-| **Approach** | Computes peer-relative scores: `bin.count / (totalCount / binCount)`. Maps to normalized [0,1] via `0.5 + (score - 1) * 0.5`. Clamps warp weights to [minWarpWeight, maxWarpWeight]. |
-| **Time** | O(B) |
-| **Bottlenecks** | (1) Validation loop runs `isValidComparableWarpBin` on every bin (8 checks each). (2) Object spread in `toComparableScore` creates new objects per bin — functional style but allocates. |
-| **Improvements** | 1. Validate once and return neutral early before scoring loop. 2. Mutate and return modified objects to avoid spread overhead. |
+**File:** `src/lib/stkde/full-population-pipeline.ts`
 
----
+### DuckDB Aggregation Query
+```sql
+WITH filtered AS (
+  SELECT EXTRACT(EPOCH FROM "Date") as ts,
+         "Latitude" as lat, "Longitude" as lon
+  FROM crimes
+  WHERE <filters>
+), aggregated AS (
+  SELECT
+    CAST(FLOOR((lon - minLng) / lonCellDegrees) AS INTEGER) as col_idx,
+    CAST(FLOOR((lat - minLat) / latCellDegrees) AS INTEGER) as row_idx,
+    CAST(FLOOR(ts / 3600) * 3600 AS BIGINT) as bucket_start,
+    COUNT(*) as bucket_count
+  FROM filtered
+  GROUP BY 1, 2, 3
+)
+SELECT row_idx, col_idx, bucket_start, bucket_count
+FROM aggregated
+WHERE row_idx >= 0 AND col_idx >= 0
+  AND row_idx < rows AND col_idx < cols
+ORDER BY row_idx, col_idx, bucket_start
+LIMIT ? OFFSET ?
+```
 
-## Algorithm 14: Comparable Warp Map Construction
+Chunks of 20,000 rows at a time. Hourly bucket resolution is fixed (`3600` seconds).
 
-| Property | Value |
-|----------|-------|
-| **Function** | `buildComparableWarpMap()` |
-| **File** | `src/lib/binning/warp-scaling.ts` |
-| **Lines** | 165–226 |
-| **Approach** | Converts warp scores to normalized width shares with minimum-width guarantee. Builds cumulative `Float32Array` boundaries. |
-| **Time** | O(B) |
-| **Bottlenecks** | (1) `'peerRelativeScore' in (scoredInput[0] ?? {})` for type discrimination — fragile duck-typing. (2) `totalShare / normalizedShares` correction loop can produce FP rounding errors at boundaries. |
-| **Improvements** | 1. Use explicit discriminated union instead of duck-typing. 2. Push final boundary to exact domainEnd after normalization (already done for last index, but earlier boundaries may drift). |
-
----
-
-## Algorithm 15: Burst Taxonomy Classification
-
-| Property | Value |
-|----------|-------|
-| **Function** | `classifyBurstWindow()` |
-| **File** | `src/lib/binning/burst-taxonomy.ts` |
-| **Lines** | 104–182 |
-| **Approach** | Rule-based: compares window density against global thresholds (0.72 high, 0.3 low) and neighborhood stats. Outputs prolonged-peak, isolated-spike, valley, or neutral with confidence and rationale. |
-| **Time** | O(N) for neighborhood analysis. |
-| **Bottlenecks** | (1) **`median()` sorts a copy** on every call — invoked 5+ times per classification (lines 113–117). Each sorts a fresh copy = O(N log N) × 5. (2) Hardcoded thresholds (0.72, 0.3) — not data-adaptive. (3) `deriveBurstConfidence()` redundantly recomputes neighbor median. (4) Complex 6-branch conditional. |
-| **Improvements** | 1. **Pre-sort neighbors once** and reuse for all median computations. 2. Compute neighbor stats in one pass (mean, max, min, median via quickselect). 3. Derive thresholds from data percentiles. 4. Replace conditional tree with a scoring function. |
+### Compute Modes
+| Mode | Path | Data Source |
+|------|------|-------------|
+| `sampled` | `computeStkdeFromCrimes` | In-memory CrimeRecord[] |
+| `full-population` | `buildFullPopulationStkdeInputs → computeStkdeFromAggregates` | DuckDB-aggregated buckets |
 
 ---
 
-## Algorithm 16: Hotspot Worker Filtering
+## 6. Interval Boundary Detection
 
-| Property | Value |
-|----------|-------|
-| **Function** | `projectHotspots()` |
-| **File** | `src/workers/stkdeHotspot.worker.ts` |
-| **Lines** | 28–60 |
-| **Approach** | Four chained `.filter()` calls (intensity, support, temporal, spatial) then sort by intensity→support→id. |
-| **Time** | O(H log H) — sorting dominates; filtering is O(H). |
-| **Bottlenecks** | (1) **Four chained `.filter()` calls** iterate the array 4 times. (2) Temporal overlap test is correct but non-obvious. |
-| **Improvements** | 1. Single-pass loop with combined predicate. 2. Accept pre-sorted data flag. |
+**File:** `src/lib/interval-detection.ts`
 
----
+### Method: Peak Detection
+Finds local maxima in normalized density array with sensitivity-controlled amplitude threshold.
 
-## Algorithm 17: Boundary Detection Orchestrator
+### Method: Change Point Detection
+Sliding window mean comparison — detects where distribution shifts significantly.
 
-| Property | Value |
-|----------|-------|
-| **Function** | `detectBoundaries()` |
-| **File** | `src/lib/interval-detection.ts` |
-| **Lines** | 224–328 |
-| **Approach** | Bins crimes into density histogram (bin count = max(20, min(100, N/50))), normalizes, dispatches to method, deduplicates, snaps to hour/day. |
-| **Time** | O(N) binning + method-specific complexity. |
-| **Bottlenecks** | (1) Fallback merge uses `[...all].sort()` — O(F log F). (2) `snapToBoundary` creates Date objects. (3) Triple-nested `Math.min(Math.max(Math.floor(...)))`. |
-| **Improvements** | 1. Integer math for epoch snapping. 2. Early exit on sufficient boundaries. 3. Merge via sorted pass instead of full sort. |
+### Method: Rule-Based
+Equal-time interval division — creates evenly spaced boundaries.
+
+### Fallback
+When primary method yields <2 boundaries, supplement with rule-based boundaries, merge, deduplicate (5% minimum gap).
 
 ---
 
-## Algorithm 18: Peak Detection (Density-Based)
+## 7. Confidence Scoring System
 
-| Property | Value |
-|----------|-------|
-| **Function** | `detectPeaks()` |
-| **File** | `src/lib/interval-detection.ts` |
-| **Lines** | 57–98 |
-| **Approach** | Local maxima: `density[i] > density[i-1] && density[i] > density[i+1] && density[i] >= threshold`. |
-| **Time** | O(N) for stats + O(N) for scan. |
-| **Bottlenecks** | (1) Two-pass variance. (2) `Math.pow(v - mean, 2)` over multiplication. (3) Plateaus not detected. |
-| **Improvements** | 1. Single-pass Welford variance. 2. `(v - mean) * (v - mean)`. 3. Handle plateaus (pick midpoint). |
+**File:** `src/lib/confidence-scoring.ts`
 
----
-
-## Algorithm 19: Change Point Detection (Sliding Window)
-
-| Property | Value |
-|----------|-------|
-| **Function** | `detectChangePoints()` |
-| **File** | `src/lib/interval-detection.ts` |
-| **Lines** | 110–159 |
-| **Approach** | Sliding window: left vs right window mean comparison. Threshold = stdDev × sensitivity multiplier. |
-| **Time** | O(N·W) — `.slice()` creates arrays per iteration + reduce each. |
-| **Bottlenecks** | (1) **O(N·W) array allocation from `.slice()`** in every loop iteration. (2) `.some()` linear scan for dedup. (3) Dedup only checks previous point. |
-| **Improvements** | 1. Sliding window with running sums (subtract outgoing, add incoming). 2. Replace `.some()` with sorted lastChangePoint pointer. 3. Deduplicate against all accepted points. |
+Three-component composite:
+| Component | Weight | What It Measures |
+|-----------|--------|------------------|
+| Data Clarity | 40% | Variance in density distribution (peaks vs uniform) |
+| Coverage | 30% | Temporal span, data density (log scale), uniformity (Gini) |
+| Statistical | 30% | SNR, peak prominence, distribution entropy |
 
 ---
 
-## Algorithm 20: Rule-Based Equal-Time Partitioning
+## 8. Warp Profile Generation
 
-| Property | Value |
-|----------|-------|
-| **Function** | `applyRuleBased()` |
-| **File** | `src/lib/interval-detection.ts` |
-| **Lines** | 170–189 |
-| **Approach** | Even split into `boundaryCount` segments. |
-| **Time** | O(B). |
-| **Bottlenecks** | Floor truncation can drift final boundary. |
-| **Improvements** | Use `Math.round` for even spacing. |
+**File:** `src/lib/warp-generation.ts`
 
----
+### Event Detection
+Sliding window density change detection:
+```
+windowSize = max(2, floor(N/10))
+threshold = 1.5 × stdDev
+change > threshold → event detected
+min gap: 5% of range
+```
 
-## Algorithm 21: Data Clarity Score
-
-| Property | Value |
-|----------|-------|
-| **Function** | `calculateDataClarity()` |
-| **File** | `src/lib/confidence-scoring.ts` |
-| **Lines** | 46–93 |
-| **Approach** | Bins crimes, computes CV=σ/μ, maps to 0–100. |
-| **Time** | O(N). |
-| **Bottlenecks** | (1) `Math.pow(count-mean, 2)`. (2) Duplicates binning from `stats/aggregation.ts`. |
-| **Improvements** | 1. Reuse shared binning. 2. Inline squared difference. |
+### Profile Construction
+```
+1. Bin data into 50 equal-width bins
+2. Normalize to [0, 1]
+3. Detect events for boundary hints
+4. Generate 3 profiles (aggressive, balanced, conservative)
+   Each with different interval count and strength range
+5. Strength = minStrength + (1 - avgDensity) × (maxStrength - minStrength)
+```
 
 ---
 
-## Algorithm 22: Coverage Score
+## 9. Full Auto Proposal Ranking
 
-| Property | Value |
-|----------|-------|
-| **Function** | `calculateCoverage()` |
-| **File** | `src/lib/confidence-scoring.ts` |
-| **Lines** | 105–168 |
-| **Approach** | Three factors: temporal span, log-density, Gini coefficient. |
-| **Time** | O(N). |
-| **Bottlenecks** | (1) Two crime passes (min/max then bins). (2) Gini sorts 20 bins (fine). (3) Duplicated binning. |
-| **Improvements** | 1. Single-pass for min/max and bins. 2. Reuse shared binner. |
+**File:** `src/lib/full-auto-orchestrator.ts`
 
----
+### Scoring Dimensions
+```
+relevance  (40%): confidence × emphasisMultiplier
+continuity (30%): 100 - avgStrengthStep × 50
+overlapMin (20%): 100 × (1 - overlapLength / totalIntervalLength)
+coverage   (10%): 100 if intervals ≥ 3, else 70
 
-## Algorithm 23: Statistical Confidence (SNR + Prominence + Entropy)
+overlap penalty: total × 0.5 (if any overlap detected)
+```
 
-| Property | Value |
-|----------|-------|
-| **Function** | `calculateStatisticalConfidence()` |
-| **File** | `src/lib/confidence-scoring.ts` |
-| **Lines** | 179–218 |
-| **Approach** | SNR×0.4 + prominence×0.35 + entropy×0.25. |
-| **Time** | O(N). |
-| **Bottlenecks** | (1) `Math.log2(v)` slower than `Math.log(v)*LOG2E`. (2) `.map()` for normalization creates array. |
-| **Improvements** | 1. Compute entropy in same pass as mean. 2. Inline normalization. |
+### Pipeline
+1. Generate warp profiles (up to 6)
+2. Build shared interval set via peak detection
+3. Score each profile
+4. Apply overlap penalty
+5. Sort → top 3 → rank 1 is recommended
+6. Generate `whyRecommended` text from top-2 contributing dimensions
 
 ---
 
-## Algorithm 24: Composite Confidence Score
+## 10. Cube Sandbox Proposal Engines
 
-| Property | Value |
-|----------|-------|
-| **Function** | `calculateConfidence()` |
-| **File** | `src/lib/confidence-scoring.ts` |
-| **Lines** | 228–277 |
-| **Approach** | Orchestrates clarity + coverage + statistical scoring. |
-| **Time** | O(N) — crimes binned up to 3 times. |
-| **Bottlenecks** | (1) **Crimes binned three times** (clarity, coverage, fallback). (2) Weights object merge per call. |
-| **Improvements** | 1. Bin once, pass through all functions. 2. Share binner utility. 3. Hoist default weights. |
+### Warp Proposal (`src/app/cube-sandbox/lib/warpProposalEngine.ts`)
 
----
+Generates proposals from 3D spatial constraints:
+```
+densityConcentration = clamp((1 / (1 + volume/160)) × 100, 0, 100)
+hotspotCoverage = clamp((footprint/(footprint+60)) × hotspotBase × 130, 0, 100)
+blendedScore = densityConcentration × 0.58 + hotspotCoverage × 0.42
+warpFactor = currentWarpFactor × 0.45 + densityConc/100 × 0.35 + hotspotCov/100 × 0.2
+```
 
-## Algorithm 25: Statistical Aggregation Functions
+Range width = `clamp(spanY × 6 + 8, 10, 48)` where spanY is the Y-axis span of the constraint.
 
-| Property | Value |
-|----------|-------|
-| **Functions** | `aggregateStats()`, `aggregateByDistrict()`, `aggregateByType()`, `aggregateByHour()`, `aggregateByDayOfWeek()`, `aggregateByMonth()` |
-| **File** | `src/lib/stats/aggregation.ts` |
-| **Lines** | 32–210 |
-| **Approach** | Single-pass per aggregation. `aggregateStats()` runs 5 iterations. |
-| **Time** | O(5×N). |
-| **Bottlenecks** | (1) **5 iterations over same array**. (2) `new Date(timestamp*1000)` called 3× per crime. |
-| **Improvements** | 1. Single-pass for all aggregations. 2. Cache `Date` per crime. |
+### Interval Proposal (`src/app/cube-sandbox/lib/intervalProposalEngine.ts`)
 
----
+Generates range proposals from spatial constraints × burst windows:
+```
+densityConcentration = clamp(peak × 72 + (1/(1+volume/180)) × 28, 0, 100)
+hotspotCoverage = clamp(peak × 55 + (footprint/(footprint+70)) × 45, 0, 100)
+intervalSharpness = clamp((16/(16+intervalLength)) × 100, 0, 100)
+score = densityConc × 0.5 + hotspotCoverage × 0.35 + intervalSharpness × 0.15
 
-## Algorithm 26: Temporal Pulse Builder
-
-| Property | Value |
-|----------|-------|
-| **Function** | `buildTemporalPulseSeries()` |
-| **File** | `src/lib/stats/temporal-pulses.ts` |
-| **Lines** | 33–50 |
-| **Approach** | Converts raw arrays to labeled points. |
-| **Time** | O(1) — 24+7+12. |
-| **Bottlenecks** | None significant. |
+Suppression: skip if overlap ≥ 55% with existing proposal for same constraint
+```
 
 ---
 
-## Algorithm 27: Basic Statistics (mean, stddev, burstiness)
+## 11. Heatmap Color Scale (`src/lib/stkde/heatmap-scale.ts`)
 
-| Property | Value |
-|----------|-------|
-| **Functions** | `mean()`, `stddev()`, `coefficientOfVariation()`, `burstiness()` |
-| **File** | `src/lib/stats.ts` |
-| **Lines** | 6–31 |
-| **Approach** | Textbook definitions. Two-pass stddev. |
-| **Time** | O(2N) for stddev. |
-| **Bottlenecks** | (1) Two-pass variance. (2) `burstiness` and `coefficientOfVariation` are identical. (3) `.map().reduce()` creates intermediate array. |
-| **Improvements** | 1. Single-pass Welford. 2. Merge duplicate functions. 3. Inline squared differences. |
+6-stop linear interpolation color ramp:
+```
+0.0 → rgba(30, 64, 175, 0)      (transparent blue)
+0.2 → rgba(59, 130, 246, 0.35)  (blue)
+0.4 → rgba(16, 185, 129, 0.5)   (green)
+0.6 → rgba(234, 179, 8, 0.7)    (yellow)
+0.8 → rgba(249, 115, 22, 0.8)   (orange)
+1.0 → rgba(239, 68, 68, 0.9)    (red)
+```
 
----
-
-## Algorithm 28: Binning Engine (generateBins + all strategies)
-
-| Property | Value |
-|----------|-------|
-| **Function** | `generateBins()` + 10 strategy implementations |
-| **File** | `src/lib/binning/engine.ts` |
-| **Lines** | 26–513 |
-| **Approach** | Switch dispatch. Strategies: daytime-heavy, nighttime-heavy, crime-type-specific, burstiness, uniform-distribution, uniform-time, weekday-weekend, interval, monthly, auto-adaptive. |
-| **Bottlenecks** | (1) Most strategies iterate data 2–4 times. (2) daytimeHeavy/nighttimeHeavy are nearly identical. (3) crimeTypeSpecific sorts each type group separately. (4) weekdayWeekend splits then re-sorts each half. (5) autoAdaptive computes CV then re-iterates. |
-| **Improvements** | 1. Merge daytime/nighttime into one parameterized function. 2. Single-pass split+compute. 3. Pass pre-computed stats to sub-strategies. |
+Uses linear interpolation (`lerp`) between consecutive stops for continuous coloring.
 
 ---
 
-## Algorithm 29: Burstiness Binning (Gap-Based)
+## 12. Hotspot Worker Filtering (`src/workers/stkdeHotspot.worker.ts`)
 
-| Property | Value |
-|----------|-------|
-| **Function** | `generateBurstinessBins()` |
-| **File** | `src/lib/binning/engine.ts` |
-| **Lines** | 228–260 |
-| **Approach** | New bin when gap > 1h or bin > maxEvents. |
-| **Time** | O(N log N) sort + O(N). |
-| **Bottlenecks** | (1) `createBinFromEvents` re-sorts per bin (already sorted). (2) 1h default can over-merge. |
-| **Improvements** | 1. Use existing sorted order. 2. Adaptive gap threshold. |
+Off-main-thread filtering/sorting of hotspot results:
+```
+filters: minIntensity, minSupport, temporalWindow, spatialBbox
+sort: intensityScore DESC → supportCount DESC → id ASC
+```
 
 ---
 
-## Algorithm 30: Auto-Adaptive Strategy Selection
-
-| Property | Value |
-|----------|-------|
-| **Function** | `generateAutoAdaptiveBins()` |
-| **File** | `src/lib/binning/engine.ts` |
-| **Lines** | 431–468 |
-| **Approach** | CV > 2 → burstiness. N > 1000 → uniform-distribution. Else → uniform-time. |
-| **Time** | O(N) CV + O(N log N) dispatched. |
-| **Bottlenecks** | (1) Two-pass variance. (2) Arbitrary thresholds. (3) Dispatched strategy re-sorts. |
-| **Improvements** | 1. Single-pass Welford. 2. Configurable thresholds. 3. Pass sorted data. |
-
----
-
-## Algorithm 31: Box Smoothing (Adaptive Time Worker)
-
-| Property | Value |
-|----------|-------|
-| **Function** | `computeAdaptiveMaps()` kernelWidth branch |
-| **File** | `src/workers/adaptiveTime.worker.ts` |
-| **Lines** | 139–157 |
-| **Approach** | Uniform kernel: average of ±kernelWidth neighbors. |
-| **Time** | O(B·K). |
-| **Bottlenecks** | (1) Box filter produces blocky density. (2) Bounds check per bin×K. (3) K=1 enters branch unnecessarily. |
-| **Improvements** | 1. Gaussian kernel. 2. Precompute neighbor indices. 3. Skip branch when K≤1. |
-
----
-
-## Cross-Cutting Concerns
-
-| # | Concern | Impact | Files |
-|---|---------|--------|-------|
-| C1 | **No FFT for any KDE** | All 2D KDE is brute-force O(R·C·K²). ~4.8M evals at max grid. FFT is O(R·C·log(R·C)). | `compute.ts`, `compute-slice-kde.ts` |
-| C2 | **Duplicated binning** | 3 functions in confidence-scoring.ts reimplement same logic. | `confidence-scoring.ts`, `aggregation.ts` |
-| C3 | **No memoization** | STKDE slices recompute KDE from scratch. | `compute.ts` |
-| C4 | **Object allocation in hot paths** | Per-cell arrays, per-bucket objects, functional chains create GC pressure. | `compute.ts`, `full-population-pipeline.ts` |
-| C5 | **Magic numbers** | y-scale 0.5, strength 100, CV>2, 0.72/0.3 thresholds. | Multiple files |
-| C6 | **Two-pass statistics** | stddev, detectPeaks, detectChangePoints all compute mean first. | `stats.ts`, `interval-detection.ts` |
-| C7 | **Degenerate input handling** | densityRatio uses right count when left=0. | `adjacent-slice-comparison.ts`, `burst-evolution.ts` |
-| C8 | **Fragile library interface** | `readNoiseIndexes` accesses private `.noise` via cast. | `cluster-analysis.ts` |
-
----
-
-## Algorithm Count Summary
-
-| Category | Count | Key Files |
-|----------|-------|-----------|
-| **KDE / Density** | 2 | `compute.ts`, `compute-slice-kde.ts` |
-| **STKDE Pipelines** | 3 | `compute.ts` (×2), `full-population-pipeline.ts` |
-| **Peak / Temporal Detection** | 4 | `compute.ts` (×2), `interval-detection.ts` (×2) |
-| **Clustering** | 1 | `cluster-analysis.ts` |
-| **Burst / Evolution Models** | 3 | `burst-evolution.ts`, `evolution-flow.ts`, `burst-taxonomy.ts` |
-| **Adaptive Time / Warp** | 4 | `adaptiveTime.worker.ts`, `warp-scaling.ts` (×2) |
-| **Boundary Detection** | 2 | `interval-detection.ts` (rule-based + orchestrator) |
-| **Confidence Scoring** | 4 | `confidence-scoring.ts` |
-| **Statistical Aggregation** | 7 | `stats.ts`, `aggregation.ts`, `temporal-pulses.ts` |
-| **Binning Engine** | 9 | `engine.ts` (8 strategies + dispatch) |
-| **Worker Filtering** | 1 | `stkdeHotspot.worker.ts` |
-| **Utils** | 2 | `gridConfig`, `responseGuard` |
-| **Total** | **41 algorithms** across ~2,800 LOC | |
-
----
-
-*Algorithm audit: 2026-06-01*
+*Core algorithms reference: 2026-06-25*

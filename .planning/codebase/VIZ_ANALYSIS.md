@@ -1,417 +1,164 @@
-# Frontend Visualization Analysis
+# Visualization Analysis
 
-**Analysis Date:** 2026-06-09
-**Context:** Mapping thesis Section 4.4 requirements to actual implementation
+**Analysis Date:** 2026-06-25
 
----
+## Component Inventory
 
-## 1. Dashboard Layout (`src/app/dashboard/page.tsx`)
+All visualization components in `src/components/viz/`:
 
-**What it renders:**
-- Full-screen layout (h-screen w-screen) with black background
-- `DashboardHeader` (top bar, suspense-wrapped)
-- `DashboardLayout` with three resizable panels (via `react-resizable-panels`):
-  - **Left panel** → `MapVisualization` (2D map)
-  - **Top-right panel** → `CubeVisualization` (3D scene)
-  - **Bottom-right panel** → `TimelinePanel` (dual timeline + temporal controls)
-- Overlays: `StudyControls` + `ContextualSlicePanel`
+| Component | File | Type | Purpose |
+|-----------|------|------|---------|
+| Scene | `Scene.tsx` | Container | R3F Canvas setup (camera, fog, background) |
+| MainScene | `MainScene.tsx` | Orchestrator | Composes all 3D layers, manages data loading |
+| CubeVisualization | `CubeVisualization.tsx` | Layout | Dashboard wrapper with legend, reset, info overlay |
+| DataPoints | `DataPoints.tsx` | Core | InstancedMesh crime point cloud with ghosting shader |
+| HeatmapOverlay | `HeatmapOverlay.tsx` | Overlay | GPGPU two-pass density heatmap |
+| TimeSlices | `TimeSlices.tsx` | Group | Slice planes + cluster/evolution overlays |
+| SlicePlane | `SlicePlane.tsx` | Element | Individual slice with drag, label, STKDE surface |
+| SliceCrimePoints | `SliceCrimePoints.tsx` | Element | Points renderer for slice-local crime dots |
+| ClusterHighlights | `ClusterHighlights.tsx` | Overlay | 3D cluster bounding boxes |
+| ClusterLabels | `ClusterLabels.tsx` | Overlay | HTML labels for clusters |
+| ClusterManager | `ClusterManager.tsx` | Logic | DBSCAN clustering engine (returns null) |
+| SliceClusterOverlay | `SliceClusterOverlay.tsx` | Overlay | Per-slice cluster rectangles |
+| BurstEvolutionOverlay | `BurstEvolutionOverlay.tsx` | Overlay | Burst connector lines + nodes |
+| EvolutionFlowOverlay | `EvolutionFlowOverlay.tsx` | Overlay | Evolution flow lines + arrows |
+| TrajectoryLayer | `TrajectoryLayer.tsx` | Group | Trajectory management |
+| Trajectory | `Trajectory.tsx` | Element | Individual trajectory line with animation |
+| TrajectoryTooltip | `TrajectoryTooltip.tsx` | Overlay | Tooltip for trajectory hover |
+| RaycastLine | `RaycastLine.tsx` | Debug | Temporary raycast visualization |
+| SpatialConstraintOverlay | `SpatialConstraintOverlay.tsx` | Overlay | Spatial constraint boxes |
+| SpatialConstraintGeometry | `spatialConstraintGeometry.ts` | Utility | Constraint box geometry computation |
+| SelectedWarpSliceOverlay | `SelectedWarpSliceOverlay.tsx` | Overlay | Warp slice highlight band |
+| Grid | `Grid.tsx` | Element | Grid helper + axes |
+| FilterOverlay | `FilterOverlay.tsx` | UI | Filter controls (portal) |
+| FloatingToolbar | `FloatingToolbar.tsx` | UI | Floating toolbar with actions |
+| SimpleCrimeLegend | `SimpleCrimeLegend.tsx` | UI | Crime type color legend |
+| PointInspector | `PointInspector.tsx` | UI | Point detail inspector |
+| BurstList | `BurstList.tsx` | UI | Burst window list panel |
+| BurstDetails | `BurstDetails.tsx` | UI | Burst detail panel |
+| PresetManager | `PresetManager.tsx` | UI | Filter preset management |
+| SliceStats | `SliceStats.tsx` | UI | Slice statistics display |
+| ContextualSlicePanel | `ContextualSlicePanel.tsx` | UI | Slice context panel |
+| CrimeCategoryLegend | `CrimeCategoryLegend.tsx` | UI | Category legend |
+| FilterOverlay | `FilterOverlay.tsx` | UI | Portal-based filter overlay |
 
-**Layout config** (`src/components/layout/DashboardLayout.tsx`):
-- Outer group: vertical split (top area ≈70% / bottom panel ≈30%)
-- Inner group: horizontal split (map ≈50% / cube ≈50%)
-- Resizable panels with drag separators
-- Uses `useLayoutStore` for persisted layout
+## Rendering Performance Analysis
 
----
+### Current Performance Characteristics
 
-## 2. 3D Cube (`src/components/viz/`)
+**GPU-bound operations:**
+- Single `InstancedMesh` draw call for all crime points (potentially millions)
+- Ghosting shader in fragment: per-pixel filtering, burst highlighting, slice highlighting, context dithering
+- GPGPU heatmap: 1024x1024 FBO render per frame (768K fragments per pass, ~1.5M total with Gaussian falloff)
+- Adaptive time warping texture lookup per vertex (negligible)
 
-### Main Entry: `CubeVisualization.tsx`
-- Wraps `MainScene` inside a `div` with a reset button and debug overlay
-- Debug overlay shows: warp source, warp factor, active constraint, linked selection, proposal story, cluster info
-- Crime type legend (`SimpleCrimeLegend`) in bottom-left corner
-- "No slices active" empty state shown when no slices or clusters exist
-- Filter indicator badge in bottom-right
+**CPU-bound operations:**
+- Debounced (500ms) CPU matrix sync for raycasting — iterates all points, computes warp sampling
+- Cluster re-analysis on filter changes (debounced 400ms)
+- Trajectory per-frame vertex updates (animated lines)
+- Per-frame uniform updates for slices, warp, LOD
 
-### `MainScene.tsx`
-- Creates `Scene` (R3F Canvas) with transparent background support (for overlay on map)
-- Contains key 3D elements:
-  - `TimeSlices` — renders slice planes in 3D
-  - `ClusterManager`, `ClusterHighlights`, `ClusterLabels` — cluster analysis
-  - `SpatialConstraintOverlay` — spatial bounds visualization
-  - `SelectedWarpSliceOverlay` — warp slice visualization in 3D
-  - `CameraControls` — orbit controls (orbit, zoom, pan)
-- **Adaptive map computation**: Two modes:
-  - `viewport` scope: computes maps from current viewport crime data
-  - `global` scope: fetches from `/api/adaptive/global` or falls back to local CPU compute
-- Uses `useSelectionSync()` hook to coordinate cross-view selections
+### Bottlenecks
 
-### `Scene.tsx`
-- Three.js `Canvas` with camera at `(50, 50, 50)`, FOV 45
-- Background color from theme palette, fog for depth cues
+1. **CPU matrix sync** (`DataPoints.tsx` lines 430-497): Walking all crime points every 500ms to update instance matrices. At 500K+ points, this blocks main thread for 50-100ms.
 
-### `DataPoints.tsx` (692 lines) — Core 3D point rendering
-- **GPU-instanced rendering** via `instancedMesh` with `sphereGeometry` (radius 0.5)
-- **Custom `ghosting` shader** applied via `onBeforeCompile`
-- **Adaptive Y positioning**: Vertex shader samples a 1D warp texture (`uWarpTexture`) and mixes `linearY` ↔ `adaptiveY` based on `uWarpFactor` (0=linear, 1=adaptive)
-- **Time on vertical axis**: YES — Y-axis is time (normalized 0-100%). Points positioned at `(x, y, z)` where `y` = time.
-- **Columnar data support**: Separate code path for `columns` (Apache Arrow) vs `data` arrays
-- **Color per point**: By crime type via palette (or white in dark mode)
-- **Raycasting**: Pointer events for point selection with drag/click discrimination
-- **CPU matrix sync**: Debounced 500ms — recomputes matrix positions using warp map sampling for accurate raycasting
+2. **ClusterManager** (`src/components/viz/ClusterManager.tsx`): DBSCAN on main thread with O(n²) worst-case complexity. The `density-clustering` library runs synchronously on the render thread.
 
-### Ghosting Shader (`src/components/viz/shaders/ghosting.ts`, 297 lines)
-**Advanced GPU fragment-level rendering with multiple effects:**
+3. **Trajectory per-frame updates** (`Trajectory.tsx` lines 80-128): Rebuilding line geometry every frame with per-vertex colors. Uses `setPoints`/`setColors` which triggers geometry re-upload.
 
-1. **Time-plane focus**: Points near `uTimePlane` get brighter, farther points get dimmer (smoothstep)
-2. **Type/District filtering**: Array-based lookup to mask out non-selected types/districts
-3. **Spatial bounds culling**: Points outside spatial bounds can be hidden
-4. **Opacity modulation (focus+context)**:
-   - Context points (outside filter) get: desaturation (70%), dimming (0.3-0.7×), and dither discarding
-   - Brush-range dimming: points outside brush range get extra 0.1× opacity multiplier
-   - Hash-based dithering masks points probabilistically based on opacity threshold
-5. **Burst highlighting**: Points in high-density regions (>= burst threshold) get orange tint
-6. **Selection highlight**: Single selected point gets brightened
-7. **Slice highlighting**: Points inside active slice ranges get white highlight
-8. **LOD**: Checkerboard dithering on fragment based on `uLodFactor`, progressive point removal
+4. **HeatmapOverlay per-frame FBO render** (`HeatmapOverlay.tsx` lines 137-146): Full 1024x1024 render every frame even when no data changes.
 
-### `SimpleCrimePoints.tsx` (485 lines)
-- Alternative point rendering for dashboard demo / non-DuckDB scenarios
-- Uses simple Points geometry vs instanced mesh
-- Also supports adaptive Y via warp texture sampling in vertex transformation
-- Slice-authored warp map support (user-defined density boosts)
+### Optimization Opportunities
 
-### `SlicePlane.tsx` — Time slices in 3D
-- Range slices: semi-transparent purple box (100×height×100)
-- Point slices: cyan plane at Y position
-- Drag handles (sphere) with labels showing time range
-- STKDE heatmap texture overlaid on slice plane
-- Evolution state: active/previous/next/distant with opacity multipliers
+1. **Matrix sync offloading:** Move the debounced CPU position computation to a Web Worker that returns updated matrices as `Float32Array` for direct buffer upload.
 
-### `TimeSlices.tsx`
-- Orchestrates `SlicePlane`, `SliceClusterOverlay`, `SliceCrimePoints`, `BurstEvolutionOverlay`, `EvolutionFlowOverlay`
-- Scales time to Y position (linear or adaptive)
-- Cluster analysis per slice via `analyzeClusters()` with DBSCAN-style clustering
+2. **Cluster computation in Worker:** Move `density-clustering` DBSCAN to a Web Worker (already pattern established with `adaptiveTime.worker.ts` and `stkdeHotspot.worker.ts`).
 
-### GPU Heatmap (`HeatmapOverlay.tsx`)
-- Two-pass GPGPU engine:
-  - Pass 1: Aggregates spatial density into Float RenderTarget (1024×1024)
-  - Pass 2: Renders with logarithmic scaling + color mapping
-- Configurable intensity, radius, opacity
+3. **Heatmap FBO throttling:** Gate the per-frame render on actual data changes (filter/time changes) using a dirty flag pattern. Currently renders every frame unconditionally.
 
-### TimeGrid (`TimeGrid.tsx`)
-- Grid lines on the Y-axis (time axis) in the 3D scene
+4. **Trajectory optimized updates:** Use `BufferGeometry` with pre-allocated `Float32Array` and `needsUpdate` flags instead of `setPoints` which creates new arrays.
 
-### Trajectory in 3D (`Trajectory.tsx`, `TrajectoryLayer.tsx`)
-- Lines connecting crime points grouped by block
-- Color-coded by time progression, arrow markers
-- Adaptive Y positioning support via `computeAdaptiveYColumnar()`
-- Auto-focus camera on selected trajectory block (via `controls.fitToBox`)
+5. **InstancedMesh frustum culling:** Currently `frustumCulled` uses default. The sphere geometry with `radius=0.5` may cause incorrect frustum culling with the 100x100x100 spatial extent (all points in one mesh).
 
----
+### Memory Considerations
 
-## 3. 2D Map (`src/components/map/`)
+- **Warp texture:** Two `DataTexture` instances (warp + density) with `RedFormat` + `FloatType`. Each is `N x 1` pixels (N = up to 1024 bin count). ~16KB total.
+- **Columnar data:** Held in `useTimelineDataStore` as typed arrays. A full 8.5M crime dataset would use roughly:
+  - `x`, `z`, `timestamp`: 3 × 8.5M × 4 bytes = ~100MB
+  - `type`, `district`: 2 × 8.5M × 1 byte = ~17MB
+  - `timestampSec`: 8.5M × 8 bytes = ~68MB
+  - `block`: 8.5M string references (variable)
+  - Total: ~200MB+ for full dataset
+- **Downsampling:** `src/lib/downsample.ts` provides `downsampleByStride()` but it's not automatically applied before rendering.
 
-### `MapVisualization.tsx` (271 lines)
-- **Crime data query**: Uses `useCrimeData()` hook with viewport time range
-- **Layers** (toggleable via `useMapLayerStore`):
-  - `MapEventLayer` — circle markers for individual crime events
-  - `MapHeatmapOverlay` — canvas heatmap
-  - `DeckGlHeatmapOverlay` — Deck.gl GPU heatmap
-  - `MapTrajectoryLayer` — trajectory line paths
-  - `MapClusterHighlights` — cluster visualization
-  - `MapStkdeHeatmapLayer` — STKDE hotspot heatmap
-- **Interactions**: Click-to-select (projects lat/lon to scene coordinates, finds nearest point by index), spatial bounds selection (rectangle drag), type legend toggling
-- **Filter passthrough**: Receives filter state (selected types, districts, time range, spatial bounds)
-- **Slice time range filtering**: `sliceTimeRange` prop filters map events
-- **'Clear' button** for spatial bounds
-- Debug overlay showing click coordinates and selected point info
+## Tradeoffs
 
-### `MapEventLayer.tsx` (295 lines)
-- **Renders crime events as MapLibre circle layer**
-- Uses GeoJSON source built from filtered crime records
-- Supports up to 20,000 points (MAX_POINTS)
-- **Filtering**: Time range, crime type, district, spatial bounds all applied in client-side filter pass
-- Color-coded by crime type (via palette)
-- Optional hovered type highlighting
-- Supports both `records` prop and columnar data (`columns` from store)
+### InstancedMesh vs PointsMaterial
 
-### `MapTrajectoryLayer.tsx` (94 lines)
-- Renders block-based crime trajectories as MapLibre `LineString` features
-- Blue line (4px) with white circle markers at each point
-- Visible only when a block is selected via `useTrajectoryStore`
+**Current:** `InstancedMesh` with `SphereGeometry` + custom shader
+- Pros: Supports per-instance colors and custom attributes, onBeforeCompile hook for shader injection
+- Cons: Sphere geometry overhead (8x8 segments = 64 triangles per point), CPU matrix sync needed for raycasting
 
-### `MapStkdeHeatmapLayer.tsx`
-- Renders STKDE heatmap cells as filled circles on the map
-- Color-mapped by intensity, configurable opacity
-- Supports active hotspot centroid highlight
+**Alternative:** `THREE.Points` with `PointsMaterial`
+- Pros: Native GPU instancing, no CPU matrix overhead, simpler setup
+- Cons: Limited to 1-pixel or fixed-size sprites, no per-point color via custom attributes easily, no `onBeforeCompile` patching
 
-### `DeckGlHeatmapOverlay.tsx`
-- Deck.gl heatmap layer for smooth density visualization
-- Wraps data as Deck.GeoJsonLayer-compatible points
+**Verdict:** `InstancedMesh` is correct for this use case because of the complex shader injection needed for ghosting, warp, and filtering.
 
-### `MapBase.tsx`
-- MapLibre GL instance with Singapore-focused initial view
-- Base map style (streets/vintage)
+### GPGPU Heatmap vs CPU Density Grid
 
----
+**Current:** GPU-accelerated density accumulation via FBO
+- Pros: Real-time, leverages GPU parallelism, no data transfer
+- Cons: Fixed resolution (1024x1024), per-frame render cost, blending artifacts at very high densities
 
-## 4. Timeline (`src/components/timeline/`)
+**Alternative:** Compute density on CPU, upload as texture
+- Pros: Precise control over accumulation, no GPU blending artifacts
+- Cons: Data transfer overhead, CPU-bound on large datasets
 
-### `DualTimeline.tsx` (725 lines) — Main timeline orchestrator
-- **Two levels**: Overview (histogram bars, 42px) + Detail (point/bins view, 60px)
-- **Density context**: `DensityHeatStrip` above both overview and detail
-- **Brushing**: Overview has an SVG brush (d3-brush style) to select detail window
-- **Zoom**: Pointer interactions on detail view for zoom/pan
-- **Adaptive time scaling**:
-  - When `timeScaleMode === 'adaptive'`, the detail scale is replaced with a warped scale
-  - Warp mapping: linear seconds → warped display seconds via density warp map
-  - Invert uses binary search (24 iterations) to convert display positions back to linear time
-  - `tickLabelStrategy='span-aware'` adjusts label density based on visible span
-- **Slice display**: 
-  - `CommittedSliceLayer` — committed slices (generated-applied) as colored bands
-  - `SliceBoundaryHandlesLayer` — drag handles for slice boundary adjustment
-  - `SliceCreationLayer` — slice creation via drag interaction
-  - `BurstList` hook provides burst windows
-- **Interactions**:
-  - Overview brush to set detail range
-  - Detail pointer: click/drag to select time range
-  - Slice creation: click/drag on detail panel
-  - Slice boundary drag handles
+**Verdict:** GPGPU approach is appropriate for this interactive prototype where real-time responsiveness is valued over pixel-perfect accuracy.
 
-### `DualTimelineSurface.tsx` (430 lines) — SVG rendering surface
-- **Overview SVG**: Histogram bars, warp bands (slice-authored/proposal), brush, ticks
-- **Detail SVG**: Points (circles) or histogram bins, slice geometries (colored bands by burst taxonomy), time cursor, hover state
-- **Slice geometries**:
-  - `prolonged-peak` → cyan fill
-  - `isolated-spike` → purple fill
-  - `valley` → green fill
-  - `neutral` → slate fill
-  - Generated drafts → amber outline
-  - Applied slices → emerald outline
-- **Hovered detail**: Shows timestamp tooltip
-- **Empty state**: "No crimes in this range" fallback
-- Overlap hatch pattern for overlapping slices
+### Columnar Data vs Object Arrays
 
-### `DensityHeatStrip.tsx`
-- Canvas-based density strip with blue-to-red gradient interpolation
-- Configurable height (default 12px overview, 10px detail)
+**Current:** Columnar typed arrays (`Float32Array`, `Uint8Array`) for data transfer between API, stores, and GPU
+- Pros: Zero-copy transfer to GPU via `BufferAttribute`, efficient memory, compatible with Web Workers (transferable)
+- Cons: Requires special handling for per-point lookups, more complex code
 
-### `DensityAreaChart.tsx`
-- 72px SVG gradient-filled area chart
-- Loading fade animation
+**Alternative:** Object arrays (`CrimeRecord[]`)
+- Pros: Simpler code, natural JS patterns, easier to debug
+- Cons: Higher memory overhead, no direct GPU upload, slower filter iteration
 
-### `TimelinePanel.tsx` (224 lines)
-- Temporal controls: Play/Pause, Step Forward/Back, Speed selector (0.5x–5x)
-- Time Scale toggle (Linear ↔ Adaptive)
-- Current time display (formatted date)
-- Active window label
-- Resolution slider: seconds → minutes → hours → days → weeks → months → years
-- Contains `DualTimeline` for the main timeline view
+**Verdict:** Columnar format is essential for performance at scale. The API route (`/api/crime/stream`) returns columnar data directly from DuckDB+Arrow.
 
----
+## Color Pipeline
 
-## 5. Timeslicing Route (`src/app/timeslicing/page.tsx`)
+**File:** `src/lib/palettes.ts`
 
-A full user-driven timeslicing workflow page:
-- **Data loading**: Crime data via `useCrimeData()` with buffer support
-- **Adaptive store hydration**: Computes density/warp maps from timestamps
-- **`BinningControls`** component: Configurable bin generation with strategy, merge, split, delete
-- **`SuggestionToolbar`**: Auto-suggestion panel for time scale profiles
-- **Two timeline views**:
-  1. Main timeline: With generated draft bins and applied slice overlays
-  2. Selection timeline: Read-only detailed view of selected time range
-- **Workflow state machine**: No result → Generating → Draft review → Applied
-- **QA model**: `TimelineQaContextCard` shows data fidelity/domain alignment checks
+Three theme palettes:
+1. **Dark** (default): Vibrant colors on black, Earth tones for crime categories
+2. **Light**: Muted, lower-contrast colors for white background
+3. **Colorblind**: Okabe-Ito palette for accessibility
 
----
-
-## 6. Timeline Test Route (`src/app/timeline-test/page.tsx`)
-
-Isolated development/testing route for timeline features:
-- Mock density data generation (multi-modal Gaussian variants)
-- `DensityAreaChart` + `DensityHeatStrip` comparison
-- `DualTimeline` with adaptive warp map override
-- Slice creation/debug tools: `SliceToolbar`, `WarpSliceEditor`, `SliceList`
-- Slice creation layer, boundary handles, committed slice layer
-- Debug info: density stats, computing status, snap intervals, boundary snap mode, preview validity
-
----
-
-## 7. Timeline Test 3D Route (`src/app/timeline-test-3d/page.tsx`)
-
-Integration route connecting timeline + 3D cube:
-- Loads real crime data via `useCrimeData()`
-- Hydrates `useTimelineDataStore` and `useAdaptiveStore`
-- Left panel: `DualTimeline` + `BurstList`
-- Right panel: `TimelineTest3DScene` (3D visualization)
-- **Full auto-acceptance workflow**: Accept warp profiles, interval boundaries, or full-auto packages via custom DOM events
-- Suggestion panel integration
-
----
-
-## Thesis Section 4.4 Mapping
-
-### 4.4.1 Space-Time Cube (3D representation)
-| Requirement | Status | Implementation |
-|---|---|---|
-| XZ plane = spatial coordinates | ✅ YES | Projected lat/lon to (x,z) via `src/lib/projection.ts`, normalized to [-50,50] |
-| Y axis = time | ✅ YES | Time normalized to [0,100] range, Y position computed via shader |
-| Points as visual elements | ✅ YES | Sphere instances via `instancedMesh` with custom shader |
-| Volume visualization | ⚠️ PARTIAL | No explicit cube bounding box/walls, just free-floating point cloud with grid lines |
-| Legend/labels | ✅ YES | `SimpleCrimeLegend`, debug overlay with metadata, `CrimeCategoryLegend` |
-
-### 4.4.2 2D Density Projection
-| Requirement | Status | Implementation |
-|---|---|---|
-| 2D density overlay on map | ✅ YES | `MapHeatmapOverlay` (canvas), `DeckGlHeatmapOverlay` (GPU) |
-| 3D heatmap overlay | ✅ YES | `HeatmapOverlay` (two-pass GPGPU) in 3D scene |
-| STKDE hotspot visualization | ✅ YES | `MapStkdeHeatmapLayer`, `SlicePlane` heatmap texture overlay |
-| Dedicated density panel | ⚠️ PARTIAL | Density shown as `DensityHeatStrip` and histogram in timeline; no separate 2D density projection panel |
-| Category shapes | ✅ YES | `SimpleCrimePoints` uses `resolveCategoryShape` for shape-coded points |
-
-### 4.4.3 Opacity Modulation (Clutter Reduction)
-| Requirement | Status | Implementation |
-|---|---|---|
-| Focus+Context dimming | ✅ YES | Ghosting shader: context points desaturated, dimmed, dithered |
-| Brush-based dimming | ✅ YES | Points outside brush range get 0.1× extra opacity multiplier |
-| Spatial filter ghosting | ✅ YES | Points outside spatial bounds get context dimming treatment |
-| LOD progressive removal | ✅ YES | Checkerboard dithering based on LOD factor (0-1) |
-| Burst highlighting | ✅ YES | Orange tint for points above burst threshold |
-| Slice highlighting | ✅ YES | White tint for points inside active slices |
-| Configurable context opacity | ✅ YES | `uContextOpacity` uniform (via `useUIStore.state.contextOpacity`) |
-
-### 4.4.4 Trajectory Rendering
-| Requirement | Status | Implementation |
-|---|---|---|
-| 3D trajectory lines | ✅ YES | `Trajectory.tsx` — Three.js Line with color-coded segments, arrow markers |
-| 2D map trajectories | ✅ YES | `MapTrajectoryLayer.tsx` — MapLibre LineString + circle markers |
-| Block-based grouping | ✅ YES | `groupToTrajectories()` in `src/lib/trajectories.ts` |
-| Selection/focus on trajectory | ✅ YES | Click selects trajectory, camera auto-focuses via `fitToBox` |
-| Adaptive Y on trajectories | ⚠️ PARTIAL | `adaptiveYValues` prop passed but computation uses `computeAdaptiveYColumnar` (may not match full warp pipeline) |
-| Hover/selection states | ✅ YES | Hovered state (cursor), selected state (highlight + camera focus) |
-
-### 4.4.5 Interaction Mechanisms
-| Requirement | Status | Implementation |
-|---|---|---|
-| **Timeline Brushing** | ✅ YES | Overview brush sets detail window → syncs to `useFilterStore.selectedTimeRange` |
-| **Detail Zoom/Pan** | ✅ YES | Pointer interactions on `DualTimelineSurface` detail SVG |
-| **Point Selection** | ✅ YES | Click on map points → `useCoordinationStore.selectedIndex` |
-| **3D Orbit** | ✅ YES | `CameraControls` (orbit, pan, zoom, min/max distance, polar angle limit) |
-| **Cross-view coordination** | ✅ YES | `useSelectionSync()` hook ties together map, cube, and timeline selections |
-| **Filter Panels** | ✅ YES | `FilterOverlay`: type + district + time range + spatial bounds filtering |
-| **Time Playback** | ✅ YES | Play/pause/step with configurable speed (0.5x-5x) |
-| **Resolution Control** | ✅ YES | Temporal resolution slider (seconds → years) |
-| **Slice Creation** | ✅ YES | Drag on timeline to create time slices, 3D double-click to create point slices |
-| **Spatial Selection** | ✅ YES | Rectangle drag selection on map (`MapSelectionOverlay`) |
-| **Slice Editing** | ✅ YES | Drag handles on timeline + 3D, merge/split/delete in `BinningControls` |
-
-### 4.4.6 Adaptive Time Scaling
-| Requirement | Status | Implementation |
-|---|---|---|
-| Density-based time warping | ✅ YES | Web Worker computes warp map; GPU shader applies adaptive Y; timeline scale adapts |
-| Linear ↔ Adaptive toggle | ✅ YES | Toggle button in `TimelinePanel`, stored in `useTimeStore.timeScaleMode` |
-| Web Worker computation | ✅ YES | `src/workers/adaptiveTime.worker.ts` — computes density, burstiness, and warp maps |
-| Slice-authored warping | ✅ YES | User-defined warp slices with falloff weighting produce authored warp maps |
-| STKDE hotspot detection | ✅ YES | `src/lib/stkde/` — density-clustering algorithms for hotspot detection |
-| Adaptive timeline axis | ✅ YES | `DualTimeline` detail scale uses warped mapping with binary-search invert |
-| Smooth transition | ✅ YES | `MathUtils.damp` in `useFrame` smoothly interpolates `uWarpFactor` uniform |
-| Burst metrics | ✅ YES | Configurable: `density` or `burstiness` as burst metric |
-| Precomputed maps | ✅ YES | `/api/adaptive/global` endpoint for server-computed maps |
-
----
-
-## Known Issues & Incomplete Features
-
-### `DataPoints.tsx`
-1. **CPU matrix sync lag**: 500ms debounce on `warpFactor`/`warpMap` changes for CPU-side position sync means raycasting may hit wrong positions during animation
-2. **Unused `uTransition` uniform**: Legacy uniform maintained in shader but replaced by `uWarpFactor` in vertex
-3. **PointInspector integration**: Comment at line 593 indicates point inspection inside slice panel is TODO
-
-### `Trajectory.tsx`
-4. **Adaptive Y values**: `computeAdaptiveYColumnar()` (line 52 in TrajectoryLayer) is called but the full adaptive warp pipeline (density-based warp map) isn't applied — only the columnar adaptive scale
-5. **LOD threshold commented out**: Lines 113-115 show commented LOD traversal threshold logic
-
-### `SelectedWarpSliceOverlay.tsx`
-6. **Overlay positioning**: Uses fixed `DATA_MIN_TIMESTAMP`/`DATA_MAX_TIMESTAMP` constants which may not align with actual data domain
-
-### `SimpleCrimePoints.tsx`
-7. **Two implementations of same concept**: `DataPoints.tsx` (instancedMesh + shader) and `SimpleCrimePoints.tsx` (Points geometry) — potential confusion over which is canonical
-8. **Duplicate warp map logic**: `buildSliceAuthoredWarpMap` duplicated across at least 3 files (SimpleCrimePoints, SelectedWarpSliceOverlay, timeline-test page) — should be extracted to shared lib
-
-### Timeline
-9. **`detailPointsOverride` vs auto mode**: Timeline has multiple rendering paths that may produce inconsistent results
-10. **Burst list integration**: `useBurstWindows` hook imports from `@/components/viz/BurstList` creating circular-ish dependency
-
-### General
-11. **No explicit cube volume boundary**: The 3D scene is a point cloud without visual cube edges/faces — hard to read spatial boundaries
-12. **Adaptive axis labels on cube**: No visual indicator in the 3D scene showing whether time axis is linear or adaptive (the debug overlay text shows it but the visual grid doesn't reflect the warp)
-13. **Dual point rendering paths**: `DataPoints` (instanced) vs `SimpleCrimePoints` (buffer geometry) vs `SliceCrimePoints` (within slices) — three ways to render crime points
-14. **Demo/Test page duplication**: `timeline-test`, `timeline-test-3d`, `timeslicing` all contain overlapping orchestration logic for loading data and hydrating stores
-
----
-
-## Component Interaction Map
-
+Colors assigned per crime category via uppercase key lookup:
 ```
-┌──────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│  FilterOverlay│────>│  useFilterStore  │────>│  DataPoints       │
-│  (type,dist)  │     │  (selectedTypes, │     │  (GPU ghosting    │
-│               │     │   selectedTime,  │     │   shader, adaptive│
-│               │     │   spatialBounds) │     │   Y positioning)  │
-└──────────────┘     └────────┬─────────┘     └───────────────────┘
-                              │                       ▲
-┌──────────────┐              │                       │
-│ MapVisualize │<─────────────┤              ┌────────┴─────────┐
-│ (MapLibre)   │              │              │ useSelectionSync │
-│              │              │              │ (cross-view      │
-│ Click select │──────────────┤              │  coordination)   │
-└──────────────┘              │              └──────────────────┘
-                              │
-┌──────────────┐     ┌────────┴─────────┐     ┌──────────────────┐
-│ TimelinePanel│────>│  useTimeStore     │     │  useAdaptiveStore│
-│ (playback,   │     │  (timeScaleMode,  │     │  (warpFactor,    │
-│  resolution, │     │   currentTime,    │     │   densityMap,    │
-│  scale mode) │     │   timeRange)      │     │   warpMap)       │
-└──────────────┘     └──────────────────┘     └────────┬─────────┘
-                                                       │
-                                              ┌────────┴─────────┐
-                                              │ adaptiveTime.    │
-                                              │ worker.ts        │
-                                              │ (Web Worker:     │
-                                              │  density + warp  │
-                                              │  computation)    │
-                                              └──────────────────┘
+'THEFT' → '#FFD700', 'BATTERY' → '#F59E0B', 'NARCOTICS' → '#38BDF8', etc.
+```
+
+In the 3D cube, colors are stored per-instance in `instanceColor` attribute. In dark mode, all points can be switched to white (`useWhitePoints`) for a minimalist aesthetic.
+
+## STKDE Color Scale
+
+**File:** `src/lib/stkde/heatmap-scale.ts`
+
+6-stop color gradient for heatmap intensity:
+```
+0.0 → rgba(30, 64, 175, 0)    (transparent dark blue)
+0.2 → rgba(59, 130, 246, 0.35)  (semi-transparent blue)
+0.4 → rgba(16, 185, 129, 0.5)   (semi-transparent green)
+0.6 → rgba(234, 179, 8, 0.7)    (yellow)
+0.8 → rgba(249, 115, 22, 0.8)   (orange)
+1.0 → rgba(239, 68, 68, 0.9)    (red)
 ```
 
 ---
 
-## Key File Index
-
-| File | Lines | Purpose |
-|---|---|---|
-| `src/app/dashboard/page.tsx` | 32 | Main dashboard layout |
-| `src/components/viz/CubeVisualization.tsx` | 225 | 3D cube container with debug overlay |
-| `src/components/viz/MainScene.tsx` | 208 | 3D scene orchestration (adaptive compute, scene setup) |
-| `src/components/viz/DataPoints.tsx` | 692 | GPU-instanced crime point rendering with ghosting shader |
-| `src/components/viz/shaders/ghosting.ts` | 297 | Custom Three.js shader for adaptive Y + focus+context |
-| `src/components/viz/SimpleCrimePoints.tsx` | 485 | Alternative point rendering (buffer geometry) |
-| `src/components/viz/TimeSlices.tsx` | 173 | 3D time slice orchestration |
-| `src/components/viz/SlicePlane.tsx` | 239 | Individual time slice plane in 3D |
-| `src/components/viz/HeatmapOverlay.tsx` | 168 | Two-pass GPU heatmap |
-| `src/components/viz/Trajectory.tsx` | 197 | 3D trajectory rendering |
-| `src/components/viz/TrajectoryLayer.tsx` | 100 | Trajectory layer orchestration |
-| `src/components/map/MapVisualization.tsx` | 271 | 2D map visualization container |
-| `src/components/map/MapEventLayer.tsx` | 295 | MapLibre crime event circle layer |
-| `src/components/map/MapTrajectoryLayer.tsx` | 94 | Map trajectory line layer |
-| `src/components/map/MapStkdeHeatmapLayer.tsx` | — | STKDE hotspot heatmap on map |
-| `src/components/timeline/DualTimeline.tsx` | 725 | Main dual timeline (overview + detail) |
-| `src/components/timeline/DualTimelineSurface.tsx` | 430 | SVG rendering surface for timeline |
-| `src/components/timeline/TimelinePanel.tsx` | 224 | Temporal controls panel |
-| `src/components/timeline/DensityHeatStrip.tsx` | — | Canvas density strip |
-| `src/components/timeline/DensityAreaChart.tsx` | — | SVG area chart for density |
-| `src/store/useAdaptiveStore.ts` | 204 | Adaptive time state management |
-| `src/store/useFilterStore.ts` | — | Filter state (types, districts, time, space) |
-| `src/store/useCoordinationStore.ts` | — | Cross-view selection coordination |
-| `src/store/useTimeStore.ts` | — | Playback/time mode state |
-| `src/workers/adaptiveTime.worker.ts` | — | Web Worker for density/warp computation |
+*Visualization analysis: 2026-06-25*

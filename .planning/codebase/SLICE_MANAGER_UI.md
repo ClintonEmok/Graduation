@@ -1,256 +1,206 @@
-# DemoSlicePanel: Slice Management UI Analysis
+# Slice Manager UI — State, Controls, and Interaction Patterns
 
-**Analysis Date:** 2026-06-01
-
----
-
-## Overview
-
-A single slice management UI exists in the codebase: `DemoSlicePanel`. The `SliceManagerUI` component at `src/components/viz/SliceManagerUI.tsx` was **removed** — it no longer exists.
-
-| Component | File | Lines | Store Used | Purpose |
-|-----------|------|-------|------------|---------|
-| `DemoSlicePanel` | `src/components/dashboard-demo/DemoSlicePanel.tsx` | 667 | `useSliceDomainStore`, `useDashboardDemoCoordinationStore`, `useDashboardDemoTimeslicingModeStore`, `useDashboardDemoTimeStore`, `useTimelineDataStore` | Slice review-and-apply companion in demo dashboard |
+**Analysis Date:** 2026-06-25
 
 ---
 
-## Store Dependencies
+## 1. Slice Selection State
 
-### DemoSlicePanel
+**File:** `src/store/slice-domain/createSliceSelectionSlice.ts`
 
-**Stores read (5):**
-- `useSliceDomainStore` — slices, removeSlice, clearSlices
-- `useDashboardDemoCoordinationStore` — timeScaleMode, warpFactor, setTimeScaleMode, setWarpFactor, resetWarp, clearSelectedBurstWindows
-- `useDashboardDemoTimeslicingModeStore` — pendingGeneratedBins, generationError, mergePendingGeneratedBins, splitPendingGeneratedBin, deletePendingGeneratedBin, clearPendingGeneratedBins, lastGeneratedMetadata, lastAppliedAt, addManualDraftRange, computeManualDraftBin, applySingleGeneratedBin
-- `useDashboardDemoTimeStore` — currentTime, timeRange, timeResolution
-- `useTimelineDataStore` — minTimestampSec, maxTimestampSec
-
-**Store operations used from useSliceDomainStore:**
+### State:
 ```typescript
-slices.find((slice) => slice.id === selectedSliceId)  // Read selected slice
-removeSlice(slice.id)                                   // Remove slice
-clearSlices()                                          // Clear all
+selectedIds: Set<string>
+selectedCount: number
 ```
 
-**No direct slice creation via addSlice.** All slice creation goes through draft bins → `applySingleGeneratedBin`.
+### Actions:
+| Action | Behavior |
+|---|---|
+| `selectSlice(id)` | Sets selected to SINGLE id (Set with 1 entry) |
+| `deselectSlice(id)` | Removes id from Set |
+| `toggleSlice(id)` | Toggle membership in Set |
+| `clearSelection()` | Empty Set |
+| `selectAll(ids)` | Replaces Set with all given ids |
+| `isSelected(id)` | Returns boolean |
+
+### Selectors (`src/store/slice-domain/selectors.ts`):
+- `selectSelectedIds`, `selectSelectedCount`, `selectHasSelection`
+
+### UI Pattern:
+- Single click → `selectSlice()` (replaces selection)
+- Ctrl+click / cmd+click → `toggleSlice()` (multi-select)
+- "Select All" / "Clear" buttons → `selectAll()` / `clearSelection()`
 
 ---
 
-## TimeSlice Interface
+## 2. Slice Adjustment (Drag Interaction)
 
-**File:** `src/store/slice-domain/types.ts` (lines 7-33)
+**File:** `src/store/slice-domain/createSliceAdjustmentSlice.ts`
 
+### State:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `draggingSliceId` | `string \| null` | Currently dragged slice |
+| `draggingHandle` | `'left' \| 'right' \| 'center' \| null` | Which edge |
+| `liveBoundarySec` | `number \| null` | Live boundary in epoch seconds |
+| `liveBoundaryX` | `number \| null` | Live boundary pixel position |
+| `hoverSliceId` | `string \| null` | Hovered slice |
+| `hoverHandle` | `AdjustmentHandle \| null` | Hovered handle |
+| `tooltip` | `TooltipPayload \| null` | Position/context tooltip |
+| `limitCue` | `'none' \| 'min-size' \| 'max-size' \| 'time-range'` | Visual cue |
+| `modifierBypass` | `boolean` | Alt key to bypass snap |
+| `snapEnabled` | `boolean` | Snap to grid/points |
+| `snapMode` | `'adaptive' \| 'fixed'` | Snap mode |
+| `fixedSnapPresetSec` | `number \| null` | For fixed snap |
+
+### Drag Workflow:
+
+1. `beginDrag({ sliceId, handle })` → sets dragging state, clears tooltip
+2. `updateDrag({ limitCue, liveBoundarySec, liveBoundaryX })` → partial update during mouse move
+3. `endDrag()` → clears all drag state
+
+### Hover:
+- `setHover(sliceId, handle)` — called on mouse enter/leave on slice edges
+- Drives highlight rendering and tooltip display
+
+### Tooltip Payload:
 ```typescript
-interface TimeSlice {
-  id: string;
-  name?: string;
-  color?: string;
-  notes?: string;
-  source?: TimeSliceSource;  // 'manual' | 'generated-applied' | 'suggestion'
-  warpEnabled?: boolean;
-  warpWeight?: number;
-  burstClass?: 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
-  burstRuleVersion?: string;
-  burstScore?: number;
-  burstConfidence?: number;
-  burstProvenance?: string;
-  burstinessCoefficient?: number;
-  tieBreakReason?: string;
-  thresholdSource?: string;
-  neighborhoodSummary?: string;
-  type: 'point' | 'range';
-  time: number;              // normalized 0-100
-  range?: [number, number];   // normalized 0-100
-  startDateTimeMs?: number | null;
-  endDateTimeMs?: number | null;
-  isBurst?: boolean;
-  burstSliceId?: string;
-  isLocked: boolean;
-  isVisible: boolean;
+{
+  x: number;          // pixel position
+  y: number;          // pixel position
+  boundarySec: number; // epoch second at boundary
+  durationSec: number; // slice duration
+  label: string;       // formatted label
+  snapState: 'snapped' | 'free' | 'bypass';
 }
 ```
 
-### Fields DemoSlicePanel accesses:
-
-| Field | Read | Write | Notes |
-|-------|------|-------|-------|
-| `id` | ✓ | | |
-| `name` | ✓ | | Display in label |
-| `type` | ✓ | | |
-| `time` | ✓ | | |
-| `range` | ✓ | | |
-| `isVisible` | ✓ | | |
-| `isLocked` | ✓ | | |
-| `source` | ✓ | | Display in detail dialog |
-| `warpEnabled` | ✓ | | Display warp label |
-| `warpWeight` | ✓ | | Display in badge |
-| `isBurst` | ✓ | | Display burst badge |
-| `burstScore` | ✓ | | Display in detail dialog |
-| `burstConfidence` | ✓ | | Display in detail dialog |
-| `burstClass` | ✓ | | Display in detail dialog |
-| `burstProvenance` | ✓ | | Display in detail dialog |
-| `burstinessCoefficient` | ✓ | | Display in list and dialog |
-| `tieBreakReason` | ✓ | | Display in detail dialog |
-| `thresholdSource` | ✓ | | Display in detail dialog |
-| `neighborhoodSummary` | ✓ | | Display in detail dialog |
-| `startDateTimeMs` | ✓ | | Display in detail dialog |
-| `endDateTimeMs` | ✓ | | Display in detail dialog |
+### Snap Controls:
+- `setSnap({ snapEnabled, snapMode, fixedSnapPresetSec })` — toggle snap behavior
+- `modifierBypass` = true when Alt key held → temporarily disables snap
 
 ---
 
-## Key Operations
+## 3. Slice Creation Preview
 
-### Creating Slices (via draft bins)
+**File:** `src/store/slice-domain/createSliceCreationSlice.ts` and `selectors.ts`
 
-The panel does NOT call `addSlice` directly. Instead:
+### Preview State:
+- `previewStart`, `previewEnd`: Normalized 0-100 range
+- `ghostPosition`: `{ x, width }` for rendering ghost rect
+- `previewIsValid`, `previewReason`, `previewDurationLabel`, `previewTimeRangeLabel`
+- `snapInterval`: Snap grid size in normalized units
 
+### Caching (selectors.ts, line 39):
+`selectCreationPreviewFeedback()` caches preview feedback object reference to prevent unnecessary re-renders when values haven't changed.
+
+---
+
+## 4. Comparison Slice System
+
+**File:** `src/store/useDashboardDemoCoordinationStore.ts`
+
+### State:
 ```typescript
-const handleAddRangeSlice = useCallback(() => {
-  const stepSize = resolutionToNormalizedStep(timeResolution, minTimestampSec, maxTimestampSec);
-  const start = Math.max(timeRange[0], currentTime - stepSize * 2);
-  const end = Math.min(timeRange[1], currentTime + stepSize * 2);
-  const normalizedRange: [number, number] = start <= end ? [start, end] : [end, start];
-  const startDateTimeMs = ...;
-  const endDateTimeMs = ...;
-
-  if (startDateTimeMs === null || endDateTimeMs === null) return;
-  const binId = addManualDraftRange({ startMs: startDateTimeMs, endMs: endDateTimeMs });
-  computeManualDraftBin(binId);  // generates burst metadata
-}, [...]);
+comparisonSliceIds: { left: string | null, right: string | null }
+comparisonSelectionOrder: DemoComparisonSlot[]  // ['left', 'right'] or reverse
 ```
 
-### Applying a Single Draft
+### Actions:
+| Action | Behavior |
+|---|---|
+| `pushComparisonSlice(sliceId)` | Fills left first, then right; replaces oldest if full |
+| `swapComparisonSlices()` | Swaps left ↔ right |
+| `clearComparisonSlices()` | Both to null |
+| `setComparisonSliceId(slot, sliceId)` | Explicit set for specific slot |
 
-```typescript
-const handleApplySingleDraft = useCallback((binId: string) => {
-  const [windowStart, windowEnd] = timeRange;
-  const domainStartMs = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
-  const domainEndMs = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
-  const applied = applySingleGeneratedBin(binId, [domainStartMs, domainEndMs]);
-  if (applied) {
-    toast.success('Slice applied', { description: 'Slice activated from Detect.' });
-    // Set active slice index to the newly applied slice
-    const storeSlices = useSliceDomainStore.getState().slices;
-    const visibleRange = storeSlices.filter(s => s.isVisible && s.type === 'range')
-      .sort((a, b) => (a.startDateTimeMs ?? 0) - (b.startDateTimeMs ?? 0));
-    const newIndex = Math.max(0, visibleRange.length - 1);
-    useDashboardDemoCoordinationStore.getState().setActiveSliceIndex(newIndex);
-  }
-}, [applySingleGeneratedBin, maxTimestampSec, minTimestampSec, timeRange]);
+### UI Pattern:
+- "Compare" button fills next available slot
+- Side-by-side slice view renders content for `comparisonSliceIds`
+- Order tracked by `comparisonSelectionOrder` for replacement policy
+
+---
+
+## 5. Slice View Mode & Inspection
+
+**File:** `src/store/useDashboardDemoCoordinationStore.ts`
+
+### View Modes:
+| Mode | Description |
+|---|---|
+| `'stack'` | Slices stacked vertically in timeline |
+| `'focus'` | Focus on single selected slice |
+
+### Inspection State:
+- `inspectIsPlaying`: Auto-play through slices
+- `inspectPlaybackSpeed`: 0.25–4x
+- `inspectInterpolation`: Smooth transition between slices
+- `inspectTrailEnabled`: Show trail of previous slice(s)
+- `inspectTrailDecay`: 0.12–0.9
+- `inspectIsScrubbing`: Manual scrub mode
+- `inspectSliceOpacity`: 0–1
+
+### Rail Tabs (`DemoRailTab`):
 ```
-
-### Managing Draft Bins
-
-| Operation | Method | Notes |
-|-----------|--------|-------|
-| Merge | `mergePendingGeneratedBins(binIds)` | Merges adjacent draft bins |
-| Split | `splitPendingGeneratedBin(binId, splitPoint)` | Splits at midpoint epoch |
-| Delete | `deletePendingGeneratedBin(binId)` | Removes draft (with selected ID cleanup) |
-| Apply | `applySingleGeneratedBin(binId, domain)` | Writes to `useSliceDomainStore.replaceSlicesFromBins` |
-
-### Clearing All State
-
-```typescript
-const handleClearAll = useCallback(() => {
-  setSelectedSliceId(null);
-  setSelectedDraftId(null);
-  clearSlices();
-  clearPendingGeneratedBins();
-  clearSelectedBurstWindows();
-}, [...]);
+'scan' | 'detect' | 'slices' | 'inspect' | 'configure'
 ```
 
 ---
 
-## Warp Controls
+## 6. Slice Templates (Quick Creation)
 
-The panel includes adaptive warp control (lines 257-303):
+**File:** `src/store/useTimeslicingModeStore.ts`, line 246  
+**File:** `src/store/useDashboardDemoTimeslicingModeStore.ts`, line 280
 
-- **Linear/Adaptive toggle** — switches `timeScaleMode` in `useDashboardDemoCoordinationStore`
-- **Warp factor slider** (0-3 range, 0.05 step) — sets `warpFactor`
-- Status badge showing `{mode} · {factor}x` or `—`
-
-**Auto-activation effect** (lines 111-124): When `visibleWarpSliceCount > 0`, the effect auto-switches to adaptive mode with warp factor 1. When all warp slices are removed, it resets to linear.
-
----
-
-## Detail Dialogs
-
-### Slice Details Dialog
-
-The dialog (lines 474-556) displays a 3-column grid with:
-- Name / type
-- Burst class + coefficient + confidence
-- Warp enabled/disabled + strength
-- Visibility / lock state
-- Burst provenance
-- Tie-break / threshold reason
-- Neighborhood summary
-- Start / end datetimes
-
-### Draft Details Dialog
-
-The draft dialog (lines 557-663) displays:
-- Draft ID and time span
-- Burst class + coefficient
-- Warp weight + neutral partition state
-- Burst confidence + event count
-- Crime types + districts
-- Provenance / threshold
-- Tie-break / neighborhood
-- Burstiness formula + calculation
-- Per-type burstiness breakdown
-
----
-
-## Time Normalization Analysis
-
-### Functions in `src/lib/time-domain.ts`
-
+### Predefined:
 ```typescript
-export const epochSecondsToNormalized = (
-  epochSeconds: number, minEpochSeconds: number, maxEpochSeconds: number
-): number => {
-  const span = maxEpochSeconds - minEpochSeconds || 1;
-  return ((epochSeconds - minEpochSeconds) / span) * 100;
-};
-
-export const normalizedToEpochSeconds = (
-  normalized: number, minEpochSeconds: number, maxEpochSeconds: number
-): number => {
-  const span = maxEpochSeconds - minEpochSeconds || 1;
-  return minEpochSeconds + (normalized / 100) * span;
-};
+[
+  { id: '1h', name: '1 Hour', duration: 3600000, color: '#3b82f6' },
+  { id: '4h', name: '4 Hours', duration: 14400000, color: '#10b981' },
+  { id: '8h', name: '8 Hours (Workday)', duration: 28800000, color: '#f59e0b' },
+  { id: '24h', name: '24 Hours (Day)', duration: 86400000, color: '#8b5cf6' },
+  { id: '7d', name: '7 Days (Week)', duration: 604800000, color: '#ec4899' },
+]
 ```
 
-**Correctness:** These are mathematically correct. Both use `span = max - min` and the mapping is bijective.
-
-### DemoSlicePanel time handling functions
-
-**`formatDateTime` (line 30-35):** Formats ms timestamp for display. Falls back to `—` for null/undefined/infinite.
-
-**`formatCompactDate` (line 37-42):** Formats ms timestamp as compact date (e.g., "Jan 23, 2024"). Falls back to `—`.
-
-**`formatCoefficient` (line 44-49):** Formats burstiness coefficient to 2 decimal places. Returns `null` for invalid values.
-
-**`formatNormalizedScore` (line 51-56):** Formats normalized score as `NN / 100`. Returns `null` for invalid values.
+### UI Pattern:
+User clicks a template name → `setIsCreatingSlice(true)` + `setCreationStart(normalizedTime)` → drag to set range → commit
 
 ---
 
-## Summary of Behavior
+## 7. Slice Visibility & Locking
 
-| Aspect | DemoSlicePanel |
-|--------|----------------|
-| Slice creation | Via draft bins only (`addManualDraftRange` → `computeManualDraftBin` → `applySingleGeneratedBin`) |
-| Warp controls | Linear/Adaptive toggle + warp factor slider (0-3) |
-| Burst metadata | Full display: class, coefficient, score, confidence, provenance, breakdown |
-| Source field | Set via draft metadata |
-| Persistence | Slices persisted via `useSliceDomainStore` (key `slice-domain-v1`) |
-| Comparison slots | Not present in UI |
-| Detail dialog | Rich metadata display for both slices and drafts |
-| Draft management | Merge, split, delete, apply |
-| Auto-warp | Auto-switches to adaptive mode when warp slices are present |
+- `toggleVisibility(id)` — Show/hide slice in timeline and 3D cube
+- `toggleLock(id)` — Lock prevents accidental adjustment/deletion
+- `selectVisibleSlices` selector filters to only visible slices
 
 ---
 
-*Slice management UI analysis: 2026-06-01*
+## 8. Overlap Detection
+
+**File:** `src/store/slice-domain/createSliceCoreSlice.ts`, line 117 — `getOverlapCounts()`
+
+Calculates how many slices overlap with each visible range slice:
+- Pairs of visible range slices checked for `start < otherEnd && otherStart < end`
+- Returns `Record<sliceId, overlapCount>` for UI indicators
+
+---
+
+## 9. Workflow Phase
+
+**File:** `src/store/useCoordinationStore.ts`
+
+```typescript
+type WorkflowPhase = 'generate' | 'review' | 'applied' | 'refine';
+```
+
+1. **generate** — Proposals/bins are being created
+2. **review** — User inspects generated intervals
+3. **applied** — Slices committed to store
+4. **refine** — User adjusts applied slices
+
+---
+
+*UI analysis: 2026-06-25*
