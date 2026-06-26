@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.3
-milestone_name: milestone
-status: paused
-stopped_at: 80-03 Task 3 (human-verify pilot) deferred until after Phase 81
-last_updated: "2026-06-19T10:50:00Z"
-last_activity: 2026-06-19 -- Phase 80 plans 80-01 + 80-02 + 80-03 (Tasks 1+2) executed; pilot verification deferred
+milestone: v3.4
+milestone_name: Burstiness-First Adaptive Timeline
+status: planning
+stopped_at: Milestone v3.4 started
+last_updated: "2026-06-26T14:28:02Z"
+last_activity: 2026-06-26 -- Milestone v3.4 started
 progress:
-  total_phases: 6
-  completed_phases: 1
-  total_plans: 9
-  completed_plans: 5
-  percent: 56
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,21 +21,19 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** Phase 81 — reduce dashboard memory pressure (deferred from Phase 80 pilot verification)
+**Current focus:** Not started (defining requirements)
 
 ## Current Position
 
-Milestone: v3.3
-Phase: 80 (evaluation-readiness) — IN PROGRESS (pilot verification pending)
-Plans: 80-01 ✓, 80-02 ✓, 80-03 Tasks 1+2 ✓ (commits landed), Task 3 (human-verify) deferred
-Status: Paused — resume 80-03 Task 3 after Phase 81 completes
-Last activity: 2026-06-19 -- Phase 80 partial execution; user requested deferral
-
-Progress: [██████████████░░░░░░] 56% (5/9 v3.3 plans complete — 80-01, 80-02, 80-03 partial, plus 3 from v3.2)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-26 -- Milestone v3.4 started
 
 ### 80-03 Pending Handoff
 
 After Phase 81 completes, resume Phase 80 by running the 80-03 Task 3 pilot verification:
+
 1. Sequencing A→B / B→A in `/evaluation` header stepper
 2. In-block task order T4→T1→T2→T3 with confidence gating
 3. Focus isolation — Tab/Shift+Tab skips locked participant controls
@@ -44,6 +42,7 @@ After Phase 81 completes, resume Phase 80 by running the 80-03 Task 3 pilot veri
 6. Phase 79 compatibility — `/dashboard-demo` still works after pilot
 
 Commits landed for 80-03 (no SUMMARY.md yet — write after Task 3 approval):
+
 - `1c98780` feat(80-03): add evaluation locks to dashboard-demo rail tabs and panels
 - `c4f4189` feat(80-03): add researcher-only warp factor controls with acknowledged event logging
 - `f3f4582` test(80-03): relax demo detect panel disabled-prop assertion to accept lock variant

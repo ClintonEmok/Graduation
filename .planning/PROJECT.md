@@ -10,7 +10,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 
 ## Current Status
 
-**v3.2 Visualization Level Up** is complete. The `dashboard-demo` route now ships with a stronger rendering foundation, volumetric slice depth, and controlled temporal evolution inside the 3D STKDE widget.
+**v3.4 Burstiness-First Adaptive Timeline** is the active milestone. The `dashboard-demo` route keeps burstiness as the primary adaptive signal, preserves density as a configurable fallback, and keeps the detail timeline histogram-based with clearer burst onset/ramp-up cues.
 
 ## Requirements
 
@@ -25,10 +25,10 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 
 ### Active
 
-- **v3.2 Visualization Level Up** — foundation cleanup, volumetric duration, and temporal evolution inside the demo 3D STKDE widget.
-- The remaining visualization stack additions (`@react-three/postprocessing`, `deck.gl`, `GSAP`) stay scoped to the 3D widget and map density path.
-- Slice duration is encoded as depth/volume so longer durations read clearly in the 3D stack.
-- Playback transitions, aging trails, and opt-in interpolation are contained within the demo 3D STKDE widget.
+- **BFT-01/BFT-02** — adaptive warp can switch between burstiness and density through one shared parameterized signal contract.
+- **BFT-03/BFT-04/BFT-05** — the detail timeline stays histogram-based and reads adaptive change as bin spacing/aggregation, not a points-mode switch.
+- **BFT-06/BFT-07/BFT-08** — the overview stays a stable context frame while the detail view emphasizes burst onset and ramp-up cues.
+- **BFT-09/BFT-10/BFT-11/BFT-12** — the dashboard-demo timeline exposes a toggle/parameter for burstiness vs density weighting and keeps the density fallback available for comparison.
 
 ### Out of Scope
 
@@ -71,6 +71,7 @@ Help users understand dense vs sparse spatiotemporal crime patterns through a sy
 | Slices owns review/apply | Separates draft-state from applied-state actions; pending drafts before applied slices | ✓ Good |
 | Inspect immediacy | Active-slice context and comparison controls visible without extra clicks | ✓ Good |
 | Minimal chrome | Shell stays quiet enough to support the analysis loop; auto-switch on apply, no stepper | ✓ Good |
+| Parameterized adaptive signal | Burstiness becomes the default driver, but density stays available as a first-class fallback/compare path | ✓ New |
 
 ## Evolution
 
@@ -90,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-31 for v3.2 Visualization Level Up*
+*Last updated: 2026-06-26 for v3.4 Burstiness-First Adaptive Timeline*

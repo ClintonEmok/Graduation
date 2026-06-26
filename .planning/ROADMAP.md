@@ -2,13 +2,14 @@
 
 ## Overview
 
-v3.2 levels up the visualization quality of the `dashboard-demo` experience by tightening the rendering foundation, restoring spatial legibility, and adding interpolation- and aging-driven temporal motion only inside the demo 3D STKDE widget. This milestone deliberately stops short of the deferred work on Multi-Scale Temporal, Dense Data Readability, and Evaluation Readiness.
+v3.2 levels up the visualization quality of the `dashboard-demo` experience by tightening the rendering foundation, restoring spatial legibility, and adding interpolation- and aging-driven temporal motion only inside the demo 3D STKDE widget. The next milestone, v3.4, makes burstiness the primary adaptive signal while preserving density as a configurable fallback and keeping the detail timeline histogram-based.
 
 ## Milestones
 
 - ✅ **v3.1 Workflow Finalization** — Phases 72-75, complete
-- 🚧 **v3.2 Visualization Level Up** — Phases 76-78, current milestone
-- 📋 **Future milestones** — Study & Evaluation, Multi-Scale Temporal, Dense Data Readability
+- ✅ **v3.2 Visualization Level Up** — Phases 76-78, complete
+- 🚧 **v3.4 Burstiness-First Adaptive Timeline** — Phases 83-85, current milestone
+- 📋 **Future milestones** — Study & Evaluation follow-ups, POI map work, memory-pressure cleanup
 
 ## Phase Details
 
@@ -101,6 +102,12 @@ Plans:
 | 77. Volumetric Duration + Depth Encoding | v3.2 | Complete | 6 | 5 |
 | 78. Temporal Evolution (Demo 3D STKDE Widget Only) | v3.2 | Complete | 4 | 4 |
 | **79. Adaptive 3D Visualization + Interactive Slices** | **v3.3** | **Complete (2026-06-19)** | **6** | **6** |
+| 80. Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4 | v3.3 | In progress | 8 | 3 |
+| 81. Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads | v3.3 | Planned | TBD | 3 |
+| 82. add poi to 2d map on dashboard demo | v3.3 | Planned | TBD | 0 |
+| 83. Burstiness Signal Contract + Density Fallback | v3.4 | Planned | 3 | 4 |
+| 84. Histogram Timeline Warping | v3.4 | Planned | 3 | 4 |
+| 85. Burst Onset + Ramp-Up Readability | v3.4 | Planned | 4 | 4 |
 
 ### Phase 80: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 
@@ -138,3 +145,60 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 82 to break down)
+
+### Phase 83: Burstiness Signal Contract + Density Fallback
+
+**Goal:** Adaptive scaling is burstiness-first under the hood, but density remains selectable as a toggleable/parameterized fallback without breaking the existing adaptive pipeline.
+**Depends on**: Existing adaptive store/warp pipeline and burst taxonomy outputs
+**Requirements**: BFT-01, BFT-02, BFT-03
+**Plans**: 2 plans
+
+Success criteria:
+
+1. Users can switch the adaptive driver between burstiness and density without changing the surrounding timeline workflow.
+2. Density mode remains available as an explicit fallback/compare option, not removed or hardwired away.
+3. The overview frame stays visually stable when adaptive settings change.
+4. The active signal source is visible/inspectable so analysts know what is driving spacing.
+
+Plans:
+
+- [ ] 83-01-PLAN.md — Define the burstiness/density adaptive signal contract (BFT-01, BFT-02)
+- [ ] 83-02-PLAN.md — Wire the parameterized fallback into the shared warp pipeline (BFT-03)
+
+### Phase 84: Histogram Timeline Warping
+
+**Goal:** The detail timeline continues to read as a histogram, with adaptive time expressed through spacing and aggregation changes.
+**Depends on**: Phase 83
+**Requirements**: BFT-04, BFT-05, BFT-06
+**Plans**: 2 plans
+
+Success criteria:
+
+1. The detail timeline still renders as bins/bars in both linear and adaptive modes.
+2. Adaptive mode changes the spacing/width of bins rather than switching the view into a point-cloud or scatter style.
+3. Bursty intervals become more legible through redistribution of horizontal space, not through a different visualization type.
+4. Users can compare event concentration before and after warping without losing histogram structure.
+
+Plans:
+
+- [ ] 84-01-PLAN.md — Keep detail rendering histogram-based in both modes (BFT-04, BFT-05)
+- [ ] 84-02-PLAN.md — Tune bin spacing and aggregation behavior for bursty windows (BFT-06)
+
+### Phase 85: Burst Onset + Ramp-Up Readability
+
+**Goal:** Analysts can answer “when did it start?” by reading onset and ramp-up cues directly in the detail view.
+**Depends on**: Phase 84
+**Requirements**: BFT-07, BFT-08, BFT-09, BFT-10, BFT-11, BFT-12
+**Plans**: 2 plans
+
+Success criteria:
+
+1. The detail view highlights burst starts clearly enough to identify onset without switching panels.
+2. Ramp-up cues make it obvious whether activity is building, peaking, or fading.
+3. The overview remains a stable reference frame while the detail view carries the adaptive emphasis.
+4. Selecting a burst keeps its temporal context visible across the synchronized timeline views.
+
+Plans:
+
+- [ ] 85-01-PLAN.md — Add onset and ramp-up cues to the detail timeline (BFT-07, BFT-08, BFT-09)
+- [ ] 85-02-PLAN.md — Add toggle/compare controls and validation coverage for burstiness vs density (BFT-10, BFT-11, BFT-12)
