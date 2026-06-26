@@ -67,27 +67,37 @@ export async function GET(request: Request) {
     const db = await getDb();
     const dataPath = getDataPath();
 
-    // Build query filters
-    let dateFilter = '';
+    // Build parameterized query filters
+    const conditions: string[] = ['"Date" IS NOT NULL', '"Latitude" IS NOT NULL', '"Longitude" IS NOT NULL'];
+    const params: unknown[] = [];
+
     if (startDate && endDate) {
-      // Parse as epoch seconds and convert to date range
       const startTs = parseInt(startDate, 10);
       const endTs = parseInt(endDate, 10);
-      dateFilter = `AND EXTRACT(EPOCH FROM "Date") >= ${startTs} AND EXTRACT(EPOCH FROM "Date") <= ${endTs}`;
+      if (Number.isFinite(startTs) && Number.isFinite(endTs)) {
+        conditions.push('EXTRACT(EPOCH FROM "Date") >= ? AND EXTRACT(EPOCH FROM "Date") <= ?');
+        params.push(startTs, endTs);
+      }
     }
 
-    let typeFilter = '';
     if (crimeTypes) {
-      const types = crimeTypes.split(',').map(t => `"${t}"`).join(', ');
-      typeFilter = `AND "Primary Type" IN (${types})`;
+      const types = crimeTypes.split(',').map(t => t.trim()).filter(Boolean);
+      if (types.length > 0) {
+        conditions.push(`"Primary Type" IN (${types.map(() => '?').join(', ')})`);
+        params.push(...types);
+      }
     }
 
-    const rowLimitClause = Number.isFinite(maxRows) && maxRows !== null && maxRows > 0
-      ? `LIMIT ${Math.floor(maxRows)}`
-      : '';
+    const whereClause = conditions.join(' AND ');
+    const limitClause = Number.isFinite(maxRows) && maxRows !== null && maxRows > 0
+      ? 'LIMIT ?'
+      : -1;
+
+    if (limitClause === 'LIMIT ?') {
+      params.push(Math.floor(maxRows!));
+    }
 
     // Query the CSV file directly with date parsing and coordinate filtering.
-    // If this endpoint needs to scale further, add paging instead of a hard cap.
     // Using read_csv_auto for automatic type inference
     // Date column is already parsed as TIMESTAMP, extract epoch directly
     const query = `
@@ -100,21 +110,19 @@ export async function GET(request: Request) {
         "District" as district,
         "Year" as year
       FROM read_csv_auto('${dataPath}')
-      WHERE "Date" IS NOT NULL 
-        AND "Latitude" IS NOT NULL 
-        AND "Longitude" IS NOT NULL
-        ${dateFilter}
-        ${typeFilter}
-      ${rowLimitClause}
+      WHERE ${whereClause}
+      ${limitClause}
     `;
 
-     // Manually fetch data and serialize to Arrow
-     const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-        db.all(query, (err: Error | null, res: unknown[]) => {
-          if (err) reject(err);
-          else resolve(res as Record<string, unknown>[]);
-        });
-     });
+    // Manually fetch data and serialize to Arrow
+    // DuckDB node driver accepts (sql, ...params, callback) but TS types only declare (sql, callback)
+    const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DuckDB param overloads not in TS types
+      (db.all as any)(query, ...params, (err: Error | null, res: unknown[]) => {
+        if (err) reject(err);
+        else resolve(res as Record<string, unknown>[]);
+      });
+    });
 
     const normalizedRows = rows.map((row) => {
       const lon = Number(row.lon);

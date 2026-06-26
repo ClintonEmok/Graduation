@@ -1,30 +1,146 @@
 "use client";
 
-import { Lock } from 'lucide-react';
+import {
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  Focus,
+  GitCompareArrows,
+  Layers,
+  Lock,
+  Sparkles,
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { DemoStatsPanel } from '@/components/dashboard-demo/DemoStatsPanel';
 import { DemoDetectPanel } from '@/components/dashboard-demo/DemoDetectPanel';
 import { DemoSlicePanel } from '@/components/dashboard-demo/DemoSlicePanel';
 import { DemoInspectPanel } from '@/components/dashboard-demo/DemoInspectPanel';
-import { DemoConfigurePanel } from '@/components/dashboard-demo/DemoConfigurePanel';
+import { DemoComparePanel } from '@/components/dashboard-demo/DemoComparePanel';
+import { GlobalWarpControls } from '@/components/dashboard-demo/GlobalWarpControls';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
 
-export function DashboardDemoRailTabs() {
+type TabSpec = {
+  value: 'scan' | 'detect' | 'slices' | 'inspect' | 'compare';
+  label: string;
+  icon: typeof BarChart3;
+};
+
+const TAB_SPECS: TabSpec[] = [
+  { value: 'scan', label: 'Overview', icon: BarChart3 },
+  { value: 'detect', label: 'Detect', icon: Sparkles },
+  { value: 'slices', label: 'Slices', icon: Layers },
+  { value: 'inspect', label: 'Inspect', icon: Focus },
+  { value: 'compare', label: 'Compare', icon: GitCompareArrows },
+];
+
+export interface DashboardDemoRailTabsProps {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+export function DashboardDemoRailTabs({ collapsed, onToggleCollapse }: DashboardDemoRailTabsProps) {
   const tab = useDashboardDemoCoordinationStore((state) => state.activeRailTab);
   const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
-  // The rail tabs themselves stay visible and navigable (they are
-  // navigation, not editing controls). The lock status is surfaced once
-  // at the rail level; the actual controls inside each panel are
-  // disabled and removed from tab order by the per-panel lock pattern.
   const isEvaluationLocked = useIsEvaluationLocked();
 
+  if (collapsed) {
+    return <CollapsedRail tab={tab} setTab={setActiveRailTab} onExpand={onToggleCollapse} />;
+  }
+
   return (
-    <aside className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 p-2 shadow-2xl backdrop-blur">
+    <ExpandedRail
+      tab={tab}
+      setTab={setActiveRailTab}
+      onCollapse={onToggleCollapse}
+      isEvaluationLocked={isEvaluationLocked}
+    />
+  );
+}
+
+function CollapsedRail({
+  tab,
+  setTab,
+  onExpand,
+}: {
+  tab: string;
+  setTab: (tab: string) => void;
+  onExpand: () => void;
+}) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <aside
+        aria-label="dashboard demo sidebar (collapsed)"
+        className="fixed right-0 top-0 z-20 flex h-full w-12 flex-col items-center gap-1 border-l border-slate-800 bg-slate-950/95 py-2 shadow-2xl backdrop-blur"
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onExpand}
+              aria-label="Expand sidebar"
+              className="mb-2 rounded-md text-slate-400 hover:text-slate-100"
+            >
+              <ChevronLeft className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Expand sidebar</TooltipContent>
+        </Tooltip>
+
+        <div className="h-px w-6 bg-slate-800" />
+
+        {TAB_SPECS.map((spec) => {
+          const Icon = spec.icon;
+          const isActive = tab === spec.value;
+          return (
+            <Tooltip key={spec.value}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setTab(spec.value)}
+                  aria-label={spec.label}
+                  aria-pressed={isActive}
+                  className={`flex h-9 w-9 items-center justify-center rounded-md transition ${
+                    isActive
+                      ? 'bg-sky-500/20 text-sky-100'
+                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                  }`}
+                >
+                  <Icon className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left">{spec.label}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </aside>
+    </TooltipProvider>
+  );
+}
+
+function ExpandedRail({
+  tab,
+  setTab,
+  onCollapse,
+  isEvaluationLocked,
+}: {
+  tab: string;
+  setTab: (tab: string) => void;
+  onCollapse: () => void;
+  isEvaluationLocked: boolean;
+}) {
+  return (
+    <aside
+      aria-label="dashboard demo sidebar"
+      className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur"
+    >
       {isEvaluationLocked ? (
         <div
-          className="mb-2 flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+          className="mx-2 mt-2 flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
           role="note"
           aria-label="setup locked during evaluation"
         >
@@ -32,46 +148,74 @@ export function DashboardDemoRailTabs() {
           Setup locked during evaluation.
         </div>
       ) : null}
-      <Tabs value={tab} onValueChange={setActiveRailTab} className="w-full">
-        <Card className="border-slate-700/70 bg-slate-900/80 p-0 shadow-sm">
-          <CardContent className="p-1.5">
-            <TabsList className="grid h-auto w-full grid-cols-5 rounded-md bg-slate-800 p-0.5">
-              <TabsTrigger value="scan" className="rounded-sm px-2.5 py-1.5 text-[11px] font-medium">
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="detect" className="rounded-sm px-2.5 py-1.5 text-[11px] font-medium">
-                Detect
-              </TabsTrigger>
-              <TabsTrigger value="slices" className="rounded-sm px-2.5 py-1.5 text-[11px] font-medium">
-                Slices
-              </TabsTrigger>
-              <TabsTrigger value="inspect" className="rounded-sm px-2.5 py-1.5 text-[11px] font-medium">
-                Inspect
-              </TabsTrigger>
-              <TabsTrigger value="configure" className="rounded-sm px-2.5 py-1.5 text-[11px] font-medium">
-                Configure
-              </TabsTrigger>
-            </TabsList>
-          </CardContent>
-        </Card>
 
-        <TabsContent value="detect" className="mt-2">
+      <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/60 px-3 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          Rail
+        </span>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={onCollapse}
+                aria-label="Collapse sidebar"
+                className="rounded-md text-slate-400 hover:text-slate-100"
+              >
+                <ChevronRight className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Collapse sidebar</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <div className="px-2 pt-2">
+          <TabsList className="grid h-auto w-full grid-cols-5 rounded-md bg-slate-800 p-0.5">
+            {TAB_SPECS.map((spec) => {
+              const Icon = spec.icon;
+              return (
+                <TooltipProvider key={spec.value} delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value={spec.value}
+                        aria-label={spec.label}
+                        className="rounded-sm px-1 py-1.5"
+                      >
+                        <Icon className="size-3.5" />
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{spec.label}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            })}
+          </TabsList>
+        </div>
+
+        <GlobalWarpControls />
+
+        <TabsContent value="detect" className="mt-2 px-2">
           <DemoDetectPanel />
         </TabsContent>
 
-        <TabsContent value="slices" className="mt-2">
+        <TabsContent value="slices" className="mt-2 px-2">
           <DemoSlicePanel />
         </TabsContent>
 
-        <TabsContent value="inspect" className="mt-2">
+        <TabsContent value="inspect" className="mt-2 px-2">
           <DemoInspectPanel />
         </TabsContent>
 
-        <TabsContent value="configure" className="mt-2">
-          <DemoConfigurePanel />
+        <TabsContent value="compare" className="mt-2 px-2">
+          <DemoComparePanel />
         </TabsContent>
 
-        <TabsContent value="scan" className="mt-2">
+        <TabsContent value="scan" className="mt-2 px-2">
           <DemoStatsPanel />
         </TabsContent>
       </Tabs>

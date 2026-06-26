@@ -114,7 +114,7 @@ describe('resetTargets: executeResetChecklist', () => {
 
     // Mutate the coordination store so we can prove the reset ran.
     useDashboardDemoCoordinationStore.setState({
-      activeRailTab: 'configure',
+      activeRailTab: 'inspect',
       activeSliceIndex: 7,
       timeScaleMode: 'adaptive',
       warpFactor: 2.4,

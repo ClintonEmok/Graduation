@@ -1,5 +1,30 @@
 import { create } from 'zustand';
+import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { normalizedToEpochSeconds } from '@/lib/time-domain';
 import { normalizeTimeRange } from '@/lib/time-range';
+
+const isLikelyNormalizedPercent = (value: number) =>
+  Number.isFinite(value) && value >= 0 && value <= 100;
+
+const normalizeTimeRangeToEpochSeconds = (range: [number, number]): [number, number] => {
+  const [start, end] = normalizeTimeRange(range) ?? range;
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+
+  if (
+    minTimestampSec !== null &&
+    maxTimestampSec !== null &&
+    maxTimestampSec > minTimestampSec &&
+    isLikelyNormalizedPercent(start) &&
+    isLikelyNormalizedPercent(end)
+  ) {
+    return [
+      normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec),
+      normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec),
+    ];
+  }
+
+  return [start, end];
+};
 
 export interface FilterPreset {
   id: string;
@@ -62,6 +87,15 @@ const isValidPresetName = (name: string) => {
 interface DashboardDemoFilterState {
   selectedTypes: number[];
   selectedDistricts: number[];
+  /**
+   * Canonical unit: **epoch seconds** (`[start, end]`).
+   * Matches `useFilterStore.selectedTimeRange` and the rest of the data layer
+   * (e.g. `useTimelineDataStore.{minTimestampSec,maxTimestampSec}`,
+   * `useViewportStore.{startDate,endDate}`).
+   * Do NOT store normalized 0-100 brush percentages here — those live in
+   * `useDashboardDemoCoordinationStore.brushRange` and
+   * `useDashboardDemoTimeStore.timeRange`.
+   */
   selectedTimeRange: [number, number] | null;
   selectedSpatialBounds: SpatialBounds | null;
   presets: FilterPreset[];
@@ -124,13 +158,27 @@ export const useDashboardDemoFilterStore = create<DashboardDemoFilterState>((set
   setDistricts: (ids) => set({ selectedDistricts: ids }),
   setTimeRange: (range) => {
     const normalizedRange = normalizeTimeRange(range);
+    if (
+      typeof console !== 'undefined' &&
+      normalizedRange !== null &&
+      normalizedRange.every((value) => isLikelyNormalizedPercent(value))
+    ) {
+      // Guard against the historical foot-gun where callers passed the
+      // 0–100 normalized brush range. Canonical unit is epoch seconds.
+      console.warn(
+        '[useDashboardDemoFilterStore] setTimeRange received values that look like normalized 0–100 percentages. ' +
+        'The canonical unit is epoch seconds — pass `useDashboardDemoCoordinationStore.brushRange` through ' +
+          '`normalizedToEpochSeconds` first, or set `selectedTimeRange` directly from epoch-second sources.',
+      );
+    }
     set((state) => {
       const current = state.selectedTimeRange;
-      if (current === null && normalizedRange === null) return state;
-      if (current && normalizedRange && current[0] === normalizedRange[0] && current[1] === normalizedRange[1]) {
+      const nextRange = normalizedRange ? normalizeTimeRangeToEpochSeconds(normalizedRange) : null;
+      if (current === null && nextRange === null) return state;
+      if (current && nextRange && current[0] === nextRange[0] && current[1] === nextRange[1]) {
         return state;
       }
-      return { selectedTimeRange: normalizedRange };
+      return { selectedTimeRange: nextRange };
     });
   },
   clearTimeRange: () => set({ selectedTimeRange: null }),
@@ -168,9 +216,9 @@ export const useDashboardDemoFilterStore = create<DashboardDemoFilterState>((set
     set({
       selectedTypes: [...preset.types],
       selectedDistricts: [...preset.districts],
-      selectedTimeRange: normalizedTimeRange,
       lastLoadedPresetId: preset.id,
     });
+    useDashboardDemoFilterStore.getState().setTimeRange(normalizedTimeRange);
   },
   deletePreset: (id) => {
     const state = get();

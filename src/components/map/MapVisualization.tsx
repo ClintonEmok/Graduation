@@ -12,11 +12,9 @@ import MapDebugOverlay from './MapDebugOverlay';
 import { MapClusterHighlights } from './MapClusterHighlights';
 import { MapHeatmapOverlay } from './MapHeatmapOverlay';
 import { MapTrajectoryLayer } from './MapTrajectoryLayer';
-import { MapHotspotTrajectoryLayer } from './MapHotspotTrajectoryLayer';
 import { MapTypeLegend } from './MapTypeLegend';
 import { MapStkdeHeatmapLayer } from './MapStkdeHeatmapLayer';
 import { MapPoiLayer } from './MapPoiLayer';
-import DeckGlHeatmapOverlay from './DeckGlHeatmapOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { project } from '@/lib/projection';
@@ -237,9 +235,6 @@ export default function MapVisualization({
           />
         ) : null}
         {!disableHeatmapOverlay && visibility.heatmap ? <MapHeatmapOverlay /> : null}
-        {visibility.heatmap && data.length > 0 ? (
-          <DeckGlHeatmapOverlay data={filteredData} visible={visibility.heatmap} />
-        ) : null}
         {visibility.trajectories ? <MapTrajectoryLayer /> : null}
         {visibility.clusters ? <MapClusterHighlights /> : null}
         {statsOverlay ?? null}
@@ -250,9 +245,6 @@ export default function MapVisualization({
             activeHotspotCentroid={activeHotspotCentroid}
             opacity={opacity.stkde}
           />
-        ) : null}
-        {isStkdeVisible ? (
-          <MapHotspotTrajectoryLayer sliceResults={stkdeResponse?.sliceResults ?? null} />
         ) : null}
         {visibility.poi ? (
           <div className="pointer-events-auto" style={{ opacity: opacity.poi }}>

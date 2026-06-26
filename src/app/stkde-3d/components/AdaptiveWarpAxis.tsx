@@ -2,18 +2,16 @@
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { toDisplaySeconds } from '@/components/timeline/hooks/useScaleTransforms';
 import { ADAPTIVE_BIN_COUNT } from '@/lib/adaptive-utils';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
-import { START_Y } from './StkdeSliceStack';
+import { AXIS_HEIGHT, START_Y, resolveWarpedEpochY } from '../lib/timeline-axis';
 
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 
 const AXIS_WIDTH = 100;
 const AXIS_DEPTH = 1.8;
-const AXIS_HEIGHT = 100;
 const AXIS_BOTTOM_Y = START_Y;
 const AXIS_Z = -50.6;
 const LINEAR_COLOR = new THREE.Color('#4f7fa8');
@@ -52,7 +50,7 @@ const interpolateColor = (t: number): THREE.Color => {
   return new THREE.Color(r / 255, g / 255, b / 255);
 };
 
-export function AdaptiveWarpAxis() {
+export function AdaptiveWarpAxis({ displayDomain: displayDomainProp }: { displayDomain?: [number, number] } = {}) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const densityMap = useDashboardDemoCoordinationStore((state) => state.densityMap);
   const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
@@ -64,24 +62,13 @@ export function AdaptiveWarpAxis() {
   const viewportEnd = useViewportStore((state) => state.endDate);
   const hasViewport = Number.isFinite(viewportStart) && Number.isFinite(viewportEnd) && viewportEnd > viewportStart;
   const viewportDomain: [number, number] = hasViewport ? [viewportStart, viewportEnd] : [0, 1];
-  const warpDomain: [number, number] = mapDomain[1] > mapDomain[0] ? mapDomain : viewportDomain;
-  const warpDomainDisplay = useMemo<[number, number]>(() => {
-    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
-      return warpDomain;
-    }
-
-    return [
-      toDisplaySeconds(warpDomain[0], warpBlend, warpMap, warpDomain),
-      toDisplaySeconds(warpDomain[1], warpBlend, warpMap, warpDomain),
-    ];
-  }, [timeScaleMode, warpDomain, warpBlend, warpMap]);
-
+  const displayDomain = displayDomainProp ?? viewportDomain;
+  const warpDomain: [number, number] = mapDomain[1] > mapDomain[0] ? mapDomain : displayDomain;
   const bins = useMemo(() => {
-    const domain: [number, number] = warpDomain;
+    const domain: [number, number] = displayDomain;
     const domainSpan = Math.max(1e-9, domain[1] - domain[0]);
     const adaptiveEnabled = timeScaleMode === 'adaptive' && warpBlend > 0 && warpMap && warpMap.length > 1;
     const equalHeight = AXIS_HEIGHT / ADAPTIVE_BIN_COUNT;
-    const totalDisplaySpan = Math.max(1e-9, warpDomainDisplay[1] - warpDomainDisplay[0]);
 
     return Array.from({ length: ADAPTIVE_BIN_COUNT }).reduce<Array<{ centerY: number; height: number; color: THREE.Color }>>(
       (acc, _, index) => {
@@ -92,15 +79,27 @@ export function AdaptiveWarpAxis() {
           : -1;
         const densityValue = densityIndex >= 0 ? densityMap?.[densityIndex] ?? 0 : 0;
 
-        const displayedStart = adaptiveEnabled && warpMap
-          ? toDisplaySeconds(boundaryStart, warpBlend, warpMap, warpDomain)
-          : boundaryStart;
-        const displayedEnd = adaptiveEnabled && warpMap
-          ? toDisplaySeconds(boundaryEnd, warpBlend, warpMap, warpDomain)
-          : boundaryEnd;
+        const displayedStart = adaptiveEnabled
+          ? resolveWarpedEpochY(boundaryStart, AXIS_BOTTOM_Y, {
+              timeScaleMode,
+              warpBlend,
+              warpMap,
+              displayDomain,
+              warpDomain,
+            })
+          : AXIS_BOTTOM_Y + ((boundaryStart - domain[0]) / domainSpan) * AXIS_HEIGHT;
+        const displayedEnd = adaptiveEnabled
+          ? resolveWarpedEpochY(boundaryEnd, AXIS_BOTTOM_Y, {
+              timeScaleMode,
+              warpBlend,
+              warpMap,
+              displayDomain,
+              warpDomain,
+            })
+          : AXIS_BOTTOM_Y + ((boundaryEnd - domain[0]) / domainSpan) * AXIS_HEIGHT;
 
         const binHeight = adaptiveEnabled
-          ? Math.max(MIN_BIN_HEIGHT, ((displayedEnd - displayedStart) / totalDisplaySpan) * AXIS_HEIGHT)
+          ? Math.max(MIN_BIN_HEIGHT, displayedEnd - displayedStart)
           : equalHeight;
         const previousTop = acc.length === 0
           ? AXIS_BOTTOM_Y
@@ -116,7 +115,7 @@ export function AdaptiveWarpAxis() {
       },
       [],
     );
-  }, [densityMap, timeScaleMode, warpBlend, warpDomain, warpDomainDisplay, warpMap]);
+  }, [densityMap, displayDomain, timeScaleMode, warpBlend, warpDomain, warpMap]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;

@@ -7,7 +7,6 @@ describe('/dashboard-demo shell', () => {
     const shellSource = readFileSync(new URL('../../components/dashboard-demo/DashboardDemoShell.tsx', import.meta.url), 'utf8');
     const railTabsSource = readFileSync(new URL('../../components/dashboard-demo/DashboardDemoRailTabs.tsx', import.meta.url), 'utf8');
     const demoStatsSource = readFileSync(new URL('../../components/dashboard-demo/DemoStatsPanel.tsx', import.meta.url), 'utf8');
-    const demoStkdePanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoStkdePanel.tsx', import.meta.url), 'utf8');
     const demoDetectPanelSource = readFileSync(new URL('../../components/dashboard-demo/DemoDetectPanel.tsx', import.meta.url), 'utf8');
     const demoAnalysisStoreSource = readFileSync(new URL('../../store/useDashboardDemoCoordinationStore.ts', import.meta.url), 'utf8');
     const demoNeighborhoodStatsSource = readFileSync(
@@ -23,8 +22,8 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/timeline/DualTimelineSurface.tsx', import.meta.url),
       'utf8'
     );
-    const demoTimelineSettingsSource = readFileSync(
-      new URL('../../components/dashboard-demo/DemoTimelineSettingsCard.tsx', import.meta.url),
+    const globalWarpControlsSource = readFileSync(
+      new URL('../../components/dashboard-demo/GlobalWarpControls.tsx', import.meta.url),
       'utf8'
     );
     const demoMapVisualizationSource = readFileSync(
@@ -41,10 +40,6 @@ describe('/dashboard-demo shell', () => {
     );
     const demoSlicePanelSource = readFileSync(
       new URL('../../components/dashboard-demo/DemoSlicePanel.tsx', import.meta.url),
-      'utf8'
-    );
-    const demoPendingDraftListSource = readFileSync(
-      new URL('../../components/dashboard-demo/DemoPendingDraftList.tsx', import.meta.url),
       'utf8'
     );
     const demoBurstGenerationSource = readFileSync(
@@ -66,10 +61,6 @@ describe('/dashboard-demo shell', () => {
     const timeslicingModeStoreSource = readFileSync(new URL('../../store/useTimeslicingModeStore.ts', import.meta.url), 'utf8');
     const demoTimeslicingModeStoreSource = readFileSync(
       new URL('../../store/useDashboardDemoTimeslicingModeStore.ts', import.meta.url),
-      'utf8'
-    );
-    const timesliceToolbarSource = readFileSync(
-      new URL('../../components/timeslicing/TimesliceToolbar.tsx', import.meta.url),
       'utf8'
     );
     const mapVisualizationSource = readFileSync(new URL('../../components/map/MapVisualization.tsx', import.meta.url), 'utf8');
@@ -135,14 +126,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsSource).toMatch(/Distribution/);
     expect(demoStatsSource).not.toMatch(/Top types\W/);
     expect(demoStatsSource).not.toMatch(/all districts/);
-    expect(demoTimelineSettingsSource).not.toMatch(/Timeline settings/);
-    expect(demoTimelineSettingsSource).not.toMatch(/Compact rendering controls for the timeline surface/);
-    expect(demoTimelineSettingsSource).toMatch(/Temporal resolution/);
-    expect(demoTimelineSettingsSource).toMatch(/Time scale/);
-    expect(demoTimelineSettingsSource).toMatch(/Slice source/);
-    expect(demoTimelineSettingsSource).toMatch(/Warp factor/);
-    expect(demoTimelineSettingsSource).toMatch(/Linear|Adaptive/);
-    expect(demoTimelineSettingsSource).toMatch(/Slice-authored|Density/);
+    expect(globalWarpControlsSource).toMatch(/Temporal resolution/);
+    expect(globalWarpControlsSource).toMatch(/Time scale/);
+    expect(globalWarpControlsSource).toMatch(/Warp factor/);
+    expect(globalWarpControlsSource).toMatch(/Linear|Adaptive/);
     expect(demoStatsMapOverlaySource).toMatch(/heatmap/);
     expect(demoStatsMapOverlaySource).toMatch(/demo-stats-districts/);
     expect(demoStatsMapOverlaySource).toMatch(/chicago-police-districts\.geojson/);
@@ -172,13 +159,6 @@ describe('/dashboard-demo shell', () => {
     expect(demoInspectPanelSource).toMatch(/setViewMode\('focus'\)/);
     expect(demoInspectPanelSource).toMatch(/hasDefaultedFocusRef/);
     expect(demoInspectPanelSource).toMatch(/comparisonSelectionOrder/);
-    expect(demoStkdePanelSource).toMatch(/STKDE Rail/);
-    expect(demoStkdePanelSource).toMatch(/Applied slices/);
-    expect(demoStkdePanelSource).toMatch(/Full viewport/);
-    expect(demoStkdePanelSource).toMatch(/Parameters are preset-only in the demo rail/);
-    expect(demoStkdePanelSource).toMatch(/Hotspots/);
-    expect(demoStkdePanelSource).toMatch(/District context/);
-    expect(demoStkdePanelSource).toMatch(/No hotspots found for the current scope/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange !== null/);
     // Phase 80 adds the evaluation lock OR clause to the disabled prop;
@@ -208,15 +188,6 @@ describe('/dashboard-demo shell', () => {
     expect(demoSlicePanelSource).toMatch(/warpWeight|Warp strength/);
     expect(demoSlicePanelSource).toMatch(/Warp disabled|Warp \d/);
     expect(demoSlicePanelSource).toMatch(/setTimeScaleMode|setWarpFactor|resetWarp/);
-    expect(demoPendingDraftListSource).toMatch(/Pending slices/);
-    expect(demoPendingDraftListSource).toMatch(/Draft \$\{/);
-    expect(demoPendingDraftListSource).toMatch(/Manual \$\{/);
-    expect(demoPendingDraftListSource).toMatch(/Details/);
-    expect(demoPendingDraftListSource).toMatch(/Calc/);
-    expect(demoPendingDraftListSource).toMatch(/Merge/);
-    expect(demoPendingDraftListSource).toMatch(/Split/);
-    expect(demoPendingDraftListSource).toMatch(/Delete/);
-    expect(demoPendingDraftListSource).toMatch(/datetime-local/);
     expect(demoBurstGenerationSource).not.toMatch(/preset-bias|fallback to preset-bias/i);
     expect(demoBurstGenerationSource).toMatch(/buildDemoBurstWindowsFromSelection/);
     expect(demoBurstGenerationSource).toMatch(/buildBurstWindowsFromSeries/);
@@ -232,7 +203,6 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimeslicingModeStoreSource).toMatch(/maxSlices/);
     expect(timeslicingModeStoreSource).not.toMatch(/presetBiases|setPresetBias|resetPresetBias|resetAllPresetBiases/);
     expect(timeslicingModeStoreSource).not.toMatch(/generateBinsFromActivePresetBias|PRESET_GENERATION_PROFILES|resolvePresetBiasBinTarget/);
-    expect(timesliceToolbarSource).not.toMatch(/Bias|Active|Reset preset|Reset all/);
     expect(demoDualTimelineSource).toMatch(/DemoDualTimeline/);
     expect(demoDualTimelineSource).toMatch(/buildDemoSliceAuthoredWarpMap/);
     expect(demoDualTimelineSource).toMatch(/useDashboardDemoCoordinationStore/);

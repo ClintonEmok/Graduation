@@ -16,38 +16,27 @@ function formatSliceDate(epochSeconds: number): string {
 interface SliceInspectorProps {
   slice: EvolvingSlice | undefined;
   sliceKde: ReturnType<typeof computeSliceKde> | undefined;
-  isFocusedView: boolean;
+  burstiness?: number | null;
 }
 
-export function SliceInspector({ slice, sliceKde, isFocusedView }: SliceInspectorProps) {
+function burstinessColor(value: number): string {
+  if (value > 0.3) return 'bg-amber-500';
+  if (value > 0.1) return 'bg-amber-400/70';
+  if (value < -0.3) return 'bg-sky-500/70';
+  if (value < -0.1) return 'bg-sky-400/60';
+  return 'bg-slate-500';
+}
+
+export function SliceInspector({ slice, sliceKde: _sliceKde, burstiness }: SliceInspectorProps) {
   if (!slice) return null;
 
-  const burstPercent = (slice.burstScore * 100).toFixed(0);
-  const cellCount = sliceKde?.cells.length ?? 0;
-  const peakIntensity = sliceKde?.maxIntensity ?? 0;
+  const burstinessValue = burstiness ?? 0;
+  const burstinessDisplay = Number.isFinite(burstinessValue) ? burstinessValue.toFixed(2) : '0.00';
+  const burstinessWidth = Math.max(0, Math.min(1, Math.abs(burstinessValue)));
 
   return (
-    <section className="rounded-2xl border border-sky-500/15 bg-slate-950/60 p-4 text-xs text-slate-300 shadow-[0_24px_80px_-48px_rgba(14,165,233,0.45)]">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-sky-300">
-            Detail Inspector
-          </div>
-          <h3 className="mt-1 text-sm font-medium text-slate-50">{slice.label}</h3>
-        </div>
-
-        {isFocusedView && (
-          <span className="rounded-full border border-sky-400/15 bg-sky-400/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200">
-            Focused
-          </span>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between gap-3">
-          <span className="text-slate-400">Events</span>
-          <span className="tabular-nums text-slate-100">{slice.crimeCount.toLocaleString()}</span>
-        </div>
+    <section className="rounded-md border border-border/70 bg-background/60 p-2 text-xs text-slate-300">
+      <div className="space-y-1.5">
         <div className="flex justify-between gap-3">
           <span className="text-slate-400">Time range</span>
           <span className="text-right tabular-nums text-slate-100">
@@ -55,30 +44,20 @@ export function SliceInspector({ slice, sliceKde, isFocusedView }: SliceInspecto
           </span>
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-slate-400">KDE cells</span>
-          <span className="tabular-nums text-slate-100">{cellCount}</span>
-        </div>
-        <div className="flex justify-between gap-3">
-          <span className="text-slate-400">Peak intensity</span>
-          <span className="tabular-nums text-slate-100">{peakIntensity.toFixed(1)}</span>
+          <span className="text-slate-400">Events</span>
+          <span className="tabular-nums text-slate-100">{slice.crimeCount.toLocaleString()}</span>
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-2">
         <div className="mb-1 flex items-center justify-between text-slate-400">
-          <span>Burst score</span>
-          <span className="tabular-nums text-slate-100">{burstPercent}%</span>
+          <span>Burstiness</span>
+          <span className="tabular-nums text-slate-100">{burstinessDisplay}</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-slate-800/80">
           <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              slice.burstScore > 0.6
-                ? 'bg-amber-500'
-                : slice.burstScore > 0.3
-                  ? 'bg-amber-400/70'
-                  : 'bg-slate-500'
-            }`}
-            style={{ width: `${slice.burstScore * 100}%` }}
+            className={`h-full rounded-full transition-all duration-300 ${burstinessColor(burstinessValue)}`}
+            style={{ width: `${burstinessWidth * 100}%` }}
           />
         </div>
       </div>

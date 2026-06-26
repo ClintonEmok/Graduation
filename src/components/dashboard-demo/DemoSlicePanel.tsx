@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
 import { useDebouncedDensity } from '@/hooks/useDebouncedDensity';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -104,6 +103,7 @@ export function DemoSlicePanel() {
   const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
+  const updatePendingBinRange = useDashboardDemoTimeslicingModeStore((state) => state.updatePendingBinRange);
   const warpMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
   const setTimeScaleMode = useDashboardDemoCoordinationStore((state) => state.setTimeScaleMode);
@@ -198,6 +198,28 @@ export function DemoSlicePanel() {
     setSelectedSliceId(null);
     setSelectedDraftId(binId);
   }, [setSelectedDraftId, setSelectedSliceId]);
+
+  const handleSelectedDraftStartChange = useCallback((value: string) => {
+    if (!selectedDraft) return;
+    const nextStartMs = parseDateTimeLocalValue(value);
+    if (nextStartMs === null) return;
+    const currentEndMs = selectedDraft.endTime;
+    if (!Number.isFinite(currentEndMs)) return;
+    const start = Math.min(nextStartMs, currentEndMs);
+    const end = Math.max(nextStartMs, currentEndMs);
+    updatePendingBinRange(selectedDraft.id, start, end);
+  }, [selectedDraft, updatePendingBinRange]);
+
+  const handleSelectedDraftEndChange = useCallback((value: string) => {
+    if (!selectedDraft) return;
+    const nextEndMs = parseDateTimeLocalValue(value);
+    if (nextEndMs === null) return;
+    const currentStartMs = selectedDraft.startTime;
+    if (!Number.isFinite(currentStartMs)) return;
+    const start = Math.min(currentStartMs, nextEndMs);
+    const end = Math.max(currentStartMs, nextEndMs);
+    updatePendingBinRange(selectedDraft.id, start, end);
+  }, [selectedDraft, updatePendingBinRange]);
 
   const handleOpenSliceDetails = useCallback((sliceId: string) => {
     setSelectedDraftId(null);
@@ -368,64 +390,6 @@ export function DemoSlicePanel() {
               Clear all
             </Button>
           </div>
-        </div>
-
-        <div className="rounded-md border border-slate-700/60 bg-slate-900/20 px-4 py-2.5">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-[0.15em] text-slate-500">Adaptive Warp</span>
-            <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px]">
-              {warpMode} · {warpMode === 'adaptive' ? `${warpFactor.toFixed(2)}x` : '—'}
-            </Badge>
-          </div>
-          <div className={cn('flex items-center gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
-            <button
-              type="button"
-              onClick={() => setTimeScaleMode('linear')}
-              disabled={isEvaluationLocked}
-              aria-disabled={isEvaluationLocked}
-              tabIndex={isEvaluationLocked ? -1 : undefined}
-              className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
-                warpMode === 'linear'
-                  ? 'bg-slate-700 text-slate-100'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Linear
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeScaleMode('adaptive')}
-              disabled={isEvaluationLocked}
-              aria-disabled={isEvaluationLocked}
-              tabIndex={isEvaluationLocked ? -1 : undefined}
-              className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
-                warpMode === 'adaptive'
-                  ? 'bg-violet-700 text-violet-100'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Adaptive
-            </button>
-          </div>
-          {warpMode === 'adaptive' && (
-            <div className={cn('mt-2.5 space-y-1.5', isEvaluationLocked && 'pointer-events-none opacity-40')}>
-              <div className="flex items-center justify-between text-[10px] text-slate-500">
-                <span>Warp factor</span>
-                <span className="font-mono text-slate-300">{warpFactor.toFixed(2)}</span>
-              </div>
-              <Slider
-                value={[warpFactor]}
-                onValueChange={([v]) => setWarpFactor(v)}
-                min={0}
-                max={3}
-                step={0.05}
-                disabled={isEvaluationLocked}
-                aria-disabled={isEvaluationLocked}
-                tabIndex={isEvaluationLocked ? -1 : undefined}
-                className="[&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-range]]:bg-violet-500 [&_[data-slot=slider-thumb]]:size-3.5"
-              />
-            </div>
-          )}
         </div>
 
         {generationError ? (
@@ -724,11 +688,30 @@ export function DemoSlicePanel() {
 
           {selectedDraft ? (
             <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Draft / span</div>
-                <div className="mt-2 text-sm text-slate-100">{selectedDraft.id}</div>
+              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Boundary editor</div>
+                <div className="mt-3 flex gap-2">
+                  <label className="min-w-0 flex-1 space-y-1 text-[11px] text-slate-400">
+                    <span>Start datetime</span>
+                    <Input
+                      type="datetime-local"
+                      value={toDateTimeLocalValue(selectedDraft.startTime)}
+                      onChange={(event) => handleSelectedDraftStartChange(event.target.value)}
+                      className="border-slate-700 bg-slate-950 text-slate-100"
+                    />
+                  </label>
+                  <label className="min-w-0 flex-1 space-y-1 text-[11px] text-slate-400">
+                    <span>End datetime</span>
+                    <Input
+                      type="datetime-local"
+                      value={toDateTimeLocalValue(selectedDraft.endTime)}
+                      onChange={(event) => handleSelectedDraftEndChange(event.target.value)}
+                      className="border-slate-700 bg-slate-950 text-slate-100"
+                    />
+                  </label>
+                </div>
                 <div className="mt-1 text-xs text-slate-400">
-                  {formatDateTime(selectedDraft.startTime)} → {formatDateTime(selectedDraft.endTime)}
+                  {formatDateTime(selectedDraft.startTime)} → {formatDateTime(selectedDraft.endTime)} · {selectedDraft.id}
                 </div>
               </div>
 

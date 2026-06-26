@@ -13,7 +13,6 @@ import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { epochSecondsToNormalized } from '@/lib/time-domain';
-import { DemoTimelineSettingsCard } from '@/components/dashboard-demo/DemoTimelineSettingsCard';
 import { useDemoStatsSummary } from '@/components/dashboard-demo/lib/useDemoStatsSummary';
 import { formatHour, getDistrictDisplayName } from '@/app/stats/lib/stats-view-model';
 import { useCrimeData } from '@/hooks/useCrimeData';
@@ -526,8 +525,6 @@ export function DemoStatsPanel() {
             </div>
           </CardContent>
         </Card>
-
-        <DemoTimelineSettingsCard />
 
         <div className="grid grid-cols-2 gap-2">
           <MetricCard label="Total Crimes" value={summary?.totalCrimes ?? 0} />

@@ -48,4 +48,26 @@ describe('buildDurationVolumeProfile', () => {
     expect(exaggerated.map((entry) => entry.index)).toEqual(conservative.map((entry) => entry.index));
     expect(exaggerated[2]?.opacity).toBeLessThanOrEqual(exaggerated[0]?.opacity ?? 1);
   });
+
+  test('uses warp-adjusted duration when adaptive warp is enabled', () => {
+    const warpedSlices = [
+      { index: 0, startEpoch: 0, endEpoch: 50 },
+      { index: 1, startEpoch: 50, endEpoch: 100 },
+    ];
+
+    const profile = buildDurationVolumeProfile(warpedSlices, {
+      scaleSeconds: 50,
+      exaggeration: 1,
+      normalizationMode: 'reference',
+      timeScaleMode: 'adaptive',
+      warpBlend: 1,
+      warpMap: new Float32Array([0, 10, 100]),
+      warpDomain: [0, 100],
+    });
+
+    expect(profile).toHaveLength(2);
+    expect(profile[0]?.durationSeconds).toBeCloseTo(10, 5);
+    expect(profile[1]?.durationSeconds).toBeCloseTo(90, 5);
+    expect(profile[1]?.thickness).toBeGreaterThan(profile[0]?.thickness ?? 0);
+  });
 });

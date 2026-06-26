@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { Map, Box, Sparkles, Flame, Layers3, MapPin } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Map, Box, Flame, Layers3, MapPin, GitCompareArrows } from 'lucide-react';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
+import { DemoCompareStage } from '@/components/dashboard-demo/DemoCompareStage';
 import { Button } from '@/components/ui/button';
-import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { DemoMapVisualization } from '@/components/dashboard-demo/DemoMapVisualization';
@@ -15,11 +15,8 @@ import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoord
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoMapLayerStore } from '@/store/useDashboardDemoMapLayerStore';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
-import { normalizedToEpochSeconds } from '@/lib/time-domain';
-import { toast } from 'sonner';
 
-type DemoViewport = 'map' | '3d';
-const DEFAULT_TIME_RANGE: [number, number] = [0, 100];
+type DemoViewport = 'map' | '3d' | 'compare';
 
 function DemoStkdeTrigger() {
   useDemoStkde();
@@ -29,12 +26,12 @@ function DemoStkdeTrigger() {
 export function DashboardDemoShell() {
   const [activeViewport, setActiveViewport] = useState<DemoViewport>('map');
   const [showStkde, setShowStkde] = useState(true);
+  const [railCollapsed, setRailCollapsed] = useState(false);
   const loadSummaryData = useTimelineDataStore((state) => state.loadSummaryData);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const setViewport = useViewportStore((state) => state.setViewport);
   const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
-  const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const poiVisible = useDashboardDemoMapLayerStore((state) => state.visibility.poi);
   const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
@@ -78,65 +75,13 @@ export function DashboardDemoShell() {
     autoSwitchKeyRef.current = nextKey;
   }, [appliedSliceCount, lastAppliedAt, setActiveRailTab]);
 
-  const [generateLoading, setGenerateLoading] = useState(false);
-
-  const handleGenerate = useCallback(async () => {
-    if (minTimestampSec === null || maxTimestampSec === null) return;
-    const [rangeStart, rangeEnd] = selectedTimeRange ?? useDashboardDemoCoordinationStore.getState().brushRange ?? DEFAULT_TIME_RANGE;
-    if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) return;
-
-    setGenerateLoading(true);
-    const { useDashboardDemoTimeslicingModeStore } = await import('@/store/useDashboardDemoTimeslicingModeStore');
-
-    try {
-      const timeslicingStore = useDashboardDemoTimeslicingModeStore.getState();
-      const windowStartMs = normalizedToEpochSeconds(rangeStart, minTimestampSec, maxTimestampSec) * 1000;
-      const windowEndMs = normalizedToEpochSeconds(rangeEnd, minTimestampSec, maxTimestampSec) * 1000;
-
-      timeslicingStore.setGenerationInputs({
-        timeWindow: { start: windowStartMs, end: windowEndMs },
-        granularity: timeslicingStore.generationInputs.granularity,
-      });
-
-      const success = await timeslicingStore.generateBurstDraftBinsFromWindows();
-      if (!success) {
-        toast.error('Generation failed', { description: 'Could not generate burst slices.' });
-        setGenerateLoading(false);
-        return;
-      }
-
-      setActiveRailTab('slices');
-      toast.success('Slices ready', { description: 'Draft slices are ready for review in Slices.' });
-    } catch {
-      toast.error('Generation failed');
-    }
-
-    setGenerateLoading(false);
-  }, [maxTimestampSec, minTimestampSec, selectedTimeRange, setActiveRailTab]);
-
   return (
     <main
       className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100"
       aria-label="dashboard demo workspace"
     >
       <DemoStkdeTrigger />
-      <div className="flex h-full min-w-0 flex-col pr-80">
-        <header className="border-b border-slate-800 bg-slate-900/60 px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-400">Adaptive Space-Time Cube</span>
-            <Button
-              type="button"
-              onClick={handleGenerate}
-              disabled={generateLoading || minTimestampSec === null}
-              size="sm"
-              className="gap-2"
-            >
-              <Sparkles className="size-3.5" />
-              {generateLoading ? 'Generating…' : 'Generate'}
-            </Button>
-          </div>
-        </header>
-
+      <div className={`flex h-full min-w-0 flex-col transition-[padding] duration-200 ${railCollapsed ? 'pr-12' : 'pr-80'}`}>
         <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
           <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-700/70 bg-slate-900/60 p-1 shadow-sm backdrop-blur">
             <Button
@@ -160,6 +105,17 @@ export function DashboardDemoShell() {
               className="rounded-full"
             >
               <Box className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setActiveViewport('compare')}
+              aria-label="Show compare view"
+              title="Compare slices"
+              variant={activeViewport === 'compare' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              className="rounded-full"
+            >
+              <GitCompareArrows className="size-3.5" />
             </Button>
             {activeViewport === 'map' ? (
               <>
@@ -204,8 +160,10 @@ export function DashboardDemoShell() {
           <div className="h-full w-full transition-opacity duration-200 ease-out">
             {activeViewport === 'map' ? (
               <DemoMapVisualization stkdeVisible={showStkde} />
-            ) : (
+            ) : activeViewport === '3d' ? (
               <Demo3dSpatialView />
+            ) : (
+              <DemoCompareStage />
             )}
           </div>
         </section>
@@ -215,7 +173,10 @@ export function DashboardDemoShell() {
         </div>
       </div>
 
-      <DashboardDemoRailTabs />
+      <DashboardDemoRailTabs
+        collapsed={railCollapsed}
+        onToggleCollapse={() => setRailCollapsed((value) => !value)}
+      />
     </main>
   );
 }

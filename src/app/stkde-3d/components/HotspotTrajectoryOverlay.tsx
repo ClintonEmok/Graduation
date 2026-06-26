@@ -20,10 +20,10 @@ const TRACK_COLORS = ['#67e8f9', '#60a5fa', '#a78bfa', '#34d399', '#f472b6'];
 
 export function HotspotTrajectoryOverlay({ slices, sliceResults, viewMode, yOffset = 0, resolveSliceY }: HotspotTrajectoryOverlayProps) {
   const sliceById = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, EvolvingSlice & { sourceSliceId?: string }>();
     for (const slice of slices) {
       const key = slice.sourceSliceId ?? String(slice.index);
-      map.set(key, slice.index);
+      map.set(key, slice);
     }
     return map;
   }, [slices]);
@@ -41,11 +41,11 @@ export function HotspotTrajectoryOverlay({ slices, sliceResults, viewMode, yOffs
         const color = TRACK_COLORS[trackIndex % TRACK_COLORS.length] ?? TRACK_COLORS[0];
         const points = track.snapshots
           .map((snapshot) => {
-            const sliceIndex = sliceById.get(snapshot.sliceId);
-            if (sliceIndex === undefined) return null;
+            const slice = sliceById.get(snapshot.sliceId);
+            if (!slice) return null;
 
             const [x, z] = project(snapshot.centroidLat, snapshot.centroidLng);
-            const y = yForIndex(sliceIndex) + 0.38 + yOffset;
+            const y = (resolveSliceY ? resolveSliceY(slice) : yForIndex(slice.index)) + 0.38 + yOffset;
             return [x, y, z] as [number, number, number];
           })
           .filter((point): point is [number, number, number] => point !== null);

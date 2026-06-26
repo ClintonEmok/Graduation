@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
+import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useViewportStore } from '@/lib/stores/viewportStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import { normalizeTimeRange } from '@/lib/time-range';
 import { Stkde3DScene } from '@/app/stkde-3d/components/Stkde3DScene';
 import { buildDurationVolumeProfile } from '@/app/stkde-3d/lib/volume-encoding';
-import { Slider } from '@/components/ui/slider';
-import { MoveHorizontal } from 'lucide-react';
 import type { KdeCell } from '@/lib/kde';
 import type { CrimeRecord } from '@/types/crime';
 import type { TimeSlice } from '@/store/useSliceDomainStore';
@@ -29,6 +30,8 @@ function normalizeBurstScore(score: number): number {
   const clamped = Math.max(0, score);
   return clamped > 1 ? Math.min(1, clamped / 100) : clamped;
 }
+
+const normalizeWarpBlend = (warpFactor: number): number => Math.min(1, Math.max(0, warpFactor / 3));
 
 function resolveSliceEpochRange(
   slice: TimeSlice,
@@ -57,13 +60,22 @@ export function Demo3dSpatialView() {
   const slices = useSliceDomainStore((state) => state.slices);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
+  const viewportStart = useViewportStore((state) => state.startDate);
+  const viewportEnd = useViewportStore((state) => state.endDate);
+  const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const stkdeResponse = useDashboardDemoCoordinationStore((state) => state.stkdeResponse);
   const activeIndex = useDashboardDemoCoordinationStore((state) => state.activeSliceIndex);
   const viewMode = useDashboardDemoCoordinationStore((state) => state.viewMode);
+  const brushRange = useDashboardDemoCoordinationStore((state) => state.brushRange);
   const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
   const playbackSpeed = useDashboardDemoCoordinationStore((state) => state.inspectPlaybackSpeed);
   const isScrubbing = useDashboardDemoCoordinationStore((state) => state.inspectIsScrubbing);
   const sliceOpacity = useDashboardDemoCoordinationStore((state) => state.inspectSliceOpacity);
+  const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
+  const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
+  const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
+  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
+  const cubeScopeMode = useDashboardDemoCoordinationStore((state) => state.cubeScopeMode);
   const volumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.volumeScaleSeconds);
   const volumeExaggeration = useDashboardDemoCoordinationStore((state) => state.volumeExaggeration);
   const volumeNormalizationMode = useDashboardDemoCoordinationStore((state) => state.volumeNormalizationMode);
@@ -73,7 +85,6 @@ export function Demo3dSpatialView() {
   const [crimesBySlice, setCrimesBySlice] = useState<CrimeRecord[][]>([]);
   const [crimesError, setCrimesError] = useState<string | null>(null);
   const [sliceKdes, setSliceKdes] = useState<KdeCell[][]>([]);
-  const [yOffset, setYOffset] = useState(0);
   const hasLoadedRef = useRef(false);
   const kdeWorkerRef = useRef<Worker | null>(null);
   const kdeRequestIdRef = useRef(0);
@@ -112,9 +123,6 @@ export function Demo3dSpatialView() {
 
   useEffect(() => {
     if (orderedSlices.length === 0) {
-      setCrimesBySlice([]);
-      setCrimesError(null);
-      setCrimeFetchStatus('idle');
       return;
     }
 
@@ -182,18 +190,98 @@ export function Demo3dSpatialView() {
     }));
   }, [crimesBySlice, orderedSlices]);
 
+  const fullTimeDomain = useMemo<[number, number]>(() => (
+    Number.isFinite(viewportStart) && Number.isFinite(viewportEnd) && viewportEnd > viewportStart
+      ? [viewportStart, viewportEnd]
+      : [0, 1]
+  ), [viewportEnd, viewportStart]);
+
+  const brushedTimeDomain = useMemo<[number, number]>(() => {
+    if (
+      brushRange &&
+      minTimestampSec !== null &&
+      maxTimestampSec !== null &&
+      maxTimestampSec > minTimestampSec
+    ) {
+      const [start, end] = brushRange;
+      const brushedStart = normalizedToEpochSeconds(start, minTimestampSec, maxTimestampSec);
+      const brushedEnd = normalizedToEpochSeconds(end, minTimestampSec, maxTimestampSec);
+      if (Number.isFinite(brushedStart) && Number.isFinite(brushedEnd) && brushedEnd > brushedStart) {
+        return [brushedStart, brushedEnd];
+      }
+    }
+
+    const normalized = normalizeTimeRange(selectedTimeRange);
+    return normalized && normalized[1] > normalized[0] ? normalized : fullTimeDomain;
+  }, [brushRange, fullTimeDomain, maxTimestampSec, minTimestampSec, selectedTimeRange]);
+
+  const cubeTimeDomain = cubeScopeMode === 'brushed' ? brushedTimeDomain : fullTimeDomain;
+  const mapWarpDomain = useMemo<[number, number]>(() => (
+    mapDomain[1] > mapDomain[0] ? mapDomain : cubeTimeDomain
+  ), [cubeTimeDomain, mapDomain]);
+
   const volumeProfile = useMemo(
     () => buildDurationVolumeProfile(countedSlices, {
       scaleSeconds: volumeScaleSeconds,
       exaggeration: volumeExaggeration,
       normalizationMode: volumeNormalizationMode,
+      timeScaleMode,
+      warpBlend: normalizeWarpBlend(warpFactor),
+      warpMap,
+      warpDomain: mapWarpDomain,
     }),
-    [countedSlices, volumeScaleSeconds, volumeExaggeration, volumeNormalizationMode],
+    [countedSlices, mapWarpDomain, volumeScaleSeconds, volumeExaggeration, volumeNormalizationMode, timeScaleMode, warpFactor, warpMap],
   );
+
+  const cubeSlices = useMemo(() => {
+    if (cubeScopeMode !== 'brushed') {
+      return countedSlices;
+    }
+
+    const [scopeStart, scopeEnd] = cubeTimeDomain;
+    return countedSlices.filter((slice) => slice.endEpoch >= scopeStart && slice.startEpoch <= scopeEnd);
+  }, [countedSlices, cubeScopeMode, cubeTimeDomain]);
+
+  const cubeSliceKdes = useMemo(() => {
+    if (cubeScopeMode !== 'brushed') {
+      return sliceKdes;
+    }
+
+    const visibleIndexes = new Set(
+      cubeSlices.map((slice) => countedSlices.findIndex((candidate) => candidate.sourceSliceId === slice.sourceSliceId)),
+    );
+
+    return sliceKdes.filter((_, index) => visibleIndexes.has(index));
+  }, [countedSlices, cubeScopeMode, cubeSlices, sliceKdes]);
+
+  const cubeVolumeProfile = useMemo(() => {
+    if (cubeScopeMode !== 'brushed') {
+      return volumeProfile;
+    }
+
+    const visibleIndexes = new Set(
+      cubeSlices.map((slice) => countedSlices.findIndex((candidate) => candidate.sourceSliceId === slice.sourceSliceId)),
+    );
+
+    return volumeProfile.filter((_, index) => visibleIndexes.has(index));
+  }, [countedSlices, cubeScopeMode, cubeSlices, volumeProfile]);
+
+  const cubeActiveIndex = useMemo(() => {
+    if (cubeSlices.length === 0) {
+      return -1;
+    }
+
+    const activeSliceId = countedSlices[activeIndex]?.sourceSliceId;
+    if (!activeSliceId) {
+      return Math.min(activeIndex, cubeSlices.length - 1);
+    }
+
+    const nextIndex = cubeSlices.findIndex((slice) => slice.sourceSliceId === activeSliceId);
+    return nextIndex;
+  }, [activeIndex, countedSlices, cubeSlices]);
 
   useEffect(() => {
     if (crimesBySlice.length === 0 || orderedSlices.length === 0) {
-      setSliceKdes([]);
       return;
     }
 
@@ -315,39 +403,15 @@ export function Demo3dSpatialView() {
       )}
 
       <Stkde3DScene
-        slices={countedSlices}
-        sliceKdes={sliceKdes}
-        volumeProfile={volumeProfile}
+        slices={cubeSlices}
+        sliceKdes={cubeSliceKdes}
+        volumeProfile={cubeVolumeProfile}
         hotspotSliceResults={stkdeResponse?.sliceResults ?? null}
-        activeIndex={activeIndex}
+        activeIndex={cubeActiveIndex}
         viewMode={viewMode}
         sliceOpacity={sliceOpacity}
-        yOffset={yOffset}
+        timeDomain={cubeTimeDomain}
       />
-
-      <div className="pointer-events-auto absolute right-3 top-3 z-20 w-64 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-50 shadow-sm backdrop-blur">
-        <div className="flex items-center gap-1.5 text-amber-200/90">
-          <MoveHorizontal className="size-3.5" aria-hidden />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">
-            Y offset (diag)
-          </span>
-        </div>
-        <div className="mt-1.5 flex items-center gap-2">
-          <Slider
-            min={-20}
-            max={20}
-            step={0.1}
-            value={[yOffset]}
-            onValueChange={(value) => setYOffset(value[0] ?? 0)}
-            aria-label="Diagnostic Y offset"
-            className="flex-1 [&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-range]]:bg-amber-400 [&_[data-slot=slider-thumb]]:size-3.5"
-          />
-          <span className="w-12 text-right font-mono">{yOffset.toFixed(1)}</span>
-        </div>
-        <p className="mt-1 text-[10px] text-amber-200/70">
-          If slices move smoothly here, instability is from the base mapping switch.
-        </p>
-      </div>
     </div>
   );
 }

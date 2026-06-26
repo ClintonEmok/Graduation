@@ -33,6 +33,12 @@ export default function Home() {
             >
               3D STKDE
             </Link>
+            <Link
+              href="/hotspot-evolution"
+              className="inline-flex min-w-[220px] items-center justify-center rounded-full border border-[#34d399]/50 bg-[#06120f] px-7 py-3 text-sm font-semibold text-[#a7f3d0] transition hover:border-[#6ee7b7] hover:bg-[#081815] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#34d399] focus-visible:ring-offset-2"
+            >
+              Hotspot evolution
+            </Link>
             </div>
         </div>
       </section>

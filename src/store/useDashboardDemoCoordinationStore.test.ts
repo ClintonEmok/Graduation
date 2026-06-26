@@ -38,11 +38,10 @@ beforeEach(() => {
     activeRailTab: 'scan',
     inspectIsPlaying: false,
     inspectPlaybackSpeed: 1,
-    inspectInterpolation: false,
-    inspectTrailEnabled: false,
-    inspectTrailDecay: 0.32,
+    inspectInterpolation: true,
     inspectIsScrubbing: false,
     inspectSliceOpacity: 1,
+    cubeScopeMode: 'full',
     volumeScaleSeconds: 43_200,
     volumeExaggeration: 1.15,
     volumeNormalizationMode: 'window',
@@ -150,24 +149,18 @@ describe('useDashboardDemoCoordinationStore', () => {
 
     expect(store.inspectIsPlaying).toBe(false);
     expect(store.inspectPlaybackSpeed).toBe(1);
-    expect(store.inspectInterpolation).toBe(false);
-    expect(store.inspectTrailEnabled).toBe(false);
-    expect(store.inspectTrailDecay).toBe(0.32);
+    expect(store.inspectInterpolation).toBe(true);
     expect(store.inspectIsScrubbing).toBe(false);
 
     store.setInspectIsPlaying(true);
     store.setInspectPlaybackSpeed(2.5);
-    store.setInspectInterpolation(true);
-    store.setInspectTrailEnabled(true);
-    store.setInspectTrailDecay(0.48);
+    store.setInspectInterpolation(false);
     store.setInspectIsScrubbing(true);
 
     expect(useDashboardDemoCoordinationStore.getState()).toMatchObject({
       inspectIsPlaying: true,
       inspectPlaybackSpeed: 2.5,
-      inspectInterpolation: true,
-      inspectTrailEnabled: true,
-      inspectTrailDecay: 0.48,
+      inspectInterpolation: false,
       inspectIsScrubbing: true,
     });
 
@@ -176,28 +169,32 @@ describe('useDashboardDemoCoordinationStore', () => {
     expect(useDashboardDemoCoordinationStore.getState()).toMatchObject({
       inspectIsPlaying: false,
       inspectPlaybackSpeed: 1,
-      inspectInterpolation: false,
-      inspectTrailEnabled: false,
-      inspectTrailDecay: 0.32,
+      inspectInterpolation: true,
       inspectIsScrubbing: false,
     });
 
     store.setInspectIsPlaying(true);
     store.setInspectPlaybackSpeed(3);
-    store.setInspectInterpolation(true);
-    store.setInspectTrailEnabled(true);
-    store.setInspectTrailDecay(0.9);
+    store.setInspectInterpolation(false);
     store.setInspectIsScrubbing(true);
     store.resetAnalysis();
 
     expect(useDashboardDemoCoordinationStore.getState()).toMatchObject({
       inspectIsPlaying: false,
       inspectPlaybackSpeed: 1,
-      inspectInterpolation: false,
-      inspectTrailEnabled: false,
-      inspectTrailDecay: 0.32,
+      inspectInterpolation: true,
       inspectIsScrubbing: false,
     });
+  });
+
+  test('tracks cube scope mode', () => {
+    const store = useDashboardDemoCoordinationStore.getState();
+
+    expect(store.cubeScopeMode).toBe('full');
+
+    store.setCubeScopeMode('brushed');
+
+    expect(useDashboardDemoCoordinationStore.getState().cubeScopeMode).toBe('brushed');
   });
 
   test('clamps demo warp factor to the 0 to 3 range', () => {

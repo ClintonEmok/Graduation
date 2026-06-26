@@ -273,7 +273,6 @@ export default function Stkde3DPage() {
               <SliceInspector
                 slice={activeSlice}
                 sliceKde={activeSliceKde}
-                isFocusedView={isFocusedView}
               />
             )}
 

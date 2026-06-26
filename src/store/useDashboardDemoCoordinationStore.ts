@@ -14,11 +14,12 @@ export type DemoBurstMetric = 'density' | 'burstiness';
 export type DemoComparisonSlot = 'left' | 'right';
 export type DemoSliceViewMode = 'stack' | 'focus';
 export type DemoCrimeFetchStatus = 'idle' | 'loading' | 'success' | 'error';
-export type DemoRailTab = 'scan' | 'detect' | 'slices' | 'inspect' | 'configure';
+export type DemoRailTab = 'scan' | 'detect' | 'slices' | 'inspect' | 'compare';
 export type DemoWarpScaleMode = 'linear' | 'adaptive';
 export type DemoWarpSource = 'density' | 'slice-authored';
 export type DemoStkdeScopeMode = 'applied-slices' | 'full-viewport';
 export type DemoVolumeNormalizationMode = 'window' | 'reference';
+export type DemoCubeScopeMode = 'full' | 'brushed';
 
 const DEFAULT_START_EPOCH = 978307200;
 const DEFAULT_END_EPOCH = 1767571200;
@@ -103,17 +104,15 @@ interface DashboardDemoCoordinationState {
   inspectIsPlaying: boolean;
   inspectPlaybackSpeed: number;
   inspectInterpolation: boolean;
-  inspectTrailEnabled: boolean;
-  inspectTrailDecay: number;
   inspectIsScrubbing: boolean;
   inspectSliceOpacity: number;
+  cubeScopeMode: DemoCubeScopeMode;
   volumeScaleSeconds: number;
   volumeExaggeration: number;
   volumeNormalizationMode: DemoVolumeNormalizationMode;
   crimeFetchStatus: DemoCrimeFetchStatus;
   sliceCrimeCounts: Record<string, number>;
   activeRailTab: DemoRailTab;
-  burstThreshold: number;
   timeScaleMode: DemoWarpScaleMode;
   warpSource: DemoWarpSource;
   warpFactor: number;
@@ -140,9 +139,8 @@ interface DashboardDemoCoordinationState {
   setInspectSliceOpacity: (opacity: number) => void;
   setInspectInterpolation: (enabled: boolean) => void;
   toggleInspectInterpolation: () => void;
-  setInspectTrailEnabled: (enabled: boolean) => void;
-  setInspectTrailDecay: (value: number) => void;
   setInspectIsScrubbing: (scrubbing: boolean) => void;
+  setCubeScopeMode: (mode: DemoCubeScopeMode) => void;
   resetTemporalSettings: () => void;
   setVolumeScaleSeconds: (seconds: number) => void;
   setVolumeExaggeration: (value: number) => void;
@@ -166,8 +164,6 @@ interface DashboardDemoCoordinationState {
   pushComparisonSlice: (sliceId: string) => void;
   swapComparisonSlices: () => void;
   clearComparisonSlices: () => void;
-  setBurstThreshold: (value: number) => void;
-  resetBurstThreshold: () => void;
   setTimeScaleMode: (mode: DemoWarpScaleMode) => void;
   setWarpSource: (source: DemoWarpSource) => void;
   setWarpFactor: (value: number) => void;
@@ -204,21 +200,22 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   viewMode: 'stack',
   inspectIsPlaying: false,
   inspectPlaybackSpeed: 1,
-  inspectInterpolation: false,
-  inspectTrailEnabled: false,
-  inspectTrailDecay: 0.32,
+  inspectInterpolation: true,
   inspectIsScrubbing: false,
   inspectSliceOpacity: 1,
+  cubeScopeMode: 'full',
   volumeScaleSeconds: DEFAULT_VOLUME_SCALE_SECONDS,
   volumeExaggeration: DEFAULT_VOLUME_EXAGGERATION,
   volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
   crimeFetchStatus: 'idle',
   sliceCrimeCounts: {},
   activeRailTab: 'scan',
-  burstThreshold: 0.7,
-  timeScaleMode: 'linear',
+  // Demo starts in adaptive mode so the 3D cube's non-uniform time axis
+  // (the thesis's core contribution) is visible by default. The user can
+  // still toggle to 'linear' for comparison via the Time scale control.
+  timeScaleMode: 'adaptive',
   warpSource: 'density',
-  warpFactor: 0,
+  warpFactor: 1,
   densityMap: null,
   warpMap: null,
   mapDomain: [0, 100],
@@ -247,9 +244,8 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   setInspectSliceOpacity: (inspectSliceOpacity) => set({ inspectSliceOpacity }),
   setInspectInterpolation: (inspectInterpolation) => set({ inspectInterpolation }),
   toggleInspectInterpolation: () => set((state) => ({ inspectInterpolation: !state.inspectInterpolation })),
-  setInspectTrailEnabled: (inspectTrailEnabled) => set({ inspectTrailEnabled }),
-  setInspectTrailDecay: (inspectTrailDecay) => set({ inspectTrailDecay: Math.max(0.12, Math.min(0.9, inspectTrailDecay)) }),
   setInspectIsScrubbing: (inspectIsScrubbing) => set({ inspectIsScrubbing }),
+  setCubeScopeMode: (cubeScopeMode) => set({ cubeScopeMode }),
   setVolumeScaleSeconds: (volumeScaleSeconds) =>
     set({ volumeScaleSeconds: Math.max(1, Math.floor(volumeScaleSeconds)) }),
   setVolumeExaggeration: (volumeExaggeration) =>
@@ -265,10 +261,9 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
     set({
       inspectIsPlaying: false,
       inspectPlaybackSpeed: 1,
-      inspectInterpolation: false,
-      inspectTrailEnabled: false,
-      inspectTrailDecay: 0.32,
+      inspectInterpolation: true,
       inspectIsScrubbing: false,
+      cubeScopeMode: 'full',
     }),
   setCrimeFetchStatus: (crimeFetchStatus) => set({ crimeFetchStatus }),
   setSliceCrimeCounts: (sliceCrimeCounts) => set({ sliceCrimeCounts }),
@@ -367,8 +362,6 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
     }),
   clearComparisonSlices: () =>
     set({ comparisonSliceIds: { left: null, right: null }, comparisonSelectionOrder: [] }),
-  setBurstThreshold: (value) => set({ burstThreshold: Math.max(0, Math.min(1, value)) }),
-  resetBurstThreshold: () => set({ burstThreshold: 0.7 }),
   setTimeScaleMode: (mode) => set({ timeScaleMode: mode }),
   setWarpSource: (source) => set({ warpSource: source }),
   setWarpFactor: (value) => set({ warpFactor: Math.min(3, Math.max(0, value)) }),
@@ -416,9 +409,7 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
       volumeNormalizationMode: DEFAULT_VOLUME_NORMALIZATION_MODE,
       inspectIsPlaying: false,
       inspectPlaybackSpeed: 1,
-      inspectInterpolation: false,
-      inspectTrailEnabled: false,
-      inspectTrailDecay: 0.32,
+      inspectInterpolation: true,
       inspectIsScrubbing: false,
       selectedHotspotId: null,
       hoveredHotspotId: null,

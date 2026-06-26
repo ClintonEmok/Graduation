@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { toEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
@@ -81,9 +80,10 @@ export function DemoDetectPanel() {
 
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return null;
-    const [windowStart, windowEnd] = selectedTimeRange;
-    const start = toEpochSeconds(windowStart) * 1000;
-    const end = toEpochSeconds(windowEnd) * 1000;
+    // selectedTimeRange is canonical epoch seconds — multiply to ms.
+    const [windowStartSec, windowEndSec] = selectedTimeRange;
+    const start = windowStartSec * 1000;
+    const end = windowEndSec * 1000;
     return { start, end };
   }, [maxTimestampSec, minTimestampSec, selectedTimeRange]);
 
@@ -126,9 +126,10 @@ export function DemoDetectPanel() {
 
   const handleFetchBurstBins = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return;
-    const [ws, we] = selectedTimeRange;
-    const start = toEpochSeconds(ws) * 1000;
-    const end = toEpochSeconds(we) * 1000;
+    // selectedTimeRange is canonical epoch seconds — multiply to ms.
+    const [windowStartSec, windowEndSec] = selectedTimeRange;
+    const start = windowStartSec * 1000;
+    const end = windowEndSec * 1000;
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
 
     const partitions = partitionSelectionByGranularity(
@@ -174,9 +175,10 @@ export function DemoDetectPanel() {
       });
       return;
     }
-    const [windowStart, windowEnd] = selectedTimeRange;
-    const start = toEpochSeconds(windowStart) * 1000;
-    const end = toEpochSeconds(windowEnd) * 1000;
+    const [windowStartSec, windowEndSec] = selectedTimeRange;
+    // selectedTimeRange is canonical epoch seconds — multiply to ms.
+    const start = windowStartSec * 1000;
+    const end = windowEndSec * 1000;
     setGenerationInputs({ timeWindow: { start, end } });
     const generated = await generateBurstDraftBinsFromWindows();
     const state = useDashboardDemoTimeslicingModeStore.getState();

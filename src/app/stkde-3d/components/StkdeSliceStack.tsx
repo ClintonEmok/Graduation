@@ -8,18 +8,15 @@ import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoord
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
-import { buildAgingOpacityMap, computeTrailIntensity } from '@/lib/motion/aging';
 import { easeInOutCubic, interpolateKdeCells } from '@/lib/motion/easing';
 import { epochSecondsToNormalized, normalizedToEpochSeconds } from '@/lib/time-domain';
-import { toDisplaySeconds, toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
+import { START_Y, SLICE_SPACING, resolveEpochFromWarpedY, resolveWarpedEpochY } from '../lib/timeline-axis';
 import type { KdeCell, EvolvingSlice } from '../lib/types';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import type { TimeSlice } from '@/store/slice-domain/types';
 
-export const SLICE_SPACING = 7.25;
-export const START_Y = -32.625;
+export { AXIS_HEIGHT, START_Y, SLICE_SPACING } from '../lib/timeline-axis';
 const TEXTURE_SIZE = 256;
-const TRAIL_HISTORY_LIMIT = 4;
 const TRANSITION_DURATION_MS = 240;
 const MIN_RESIZE_DURATION_SEC = 3600;
 const normalizeWarpBlend = (warpFactor: number): number => Math.min(1, Math.max(0, warpFactor / 3));
@@ -34,16 +31,6 @@ function clamp01(value: number): number {
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function mapRange(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
-  const span = Math.max(1e-9, inMax - inMin);
-  const t = clamp((value - inMin) / span, 0, 1);
-  return outMin + t * (outMax - outMin);
 }
 
 function formatRangeLabel(startEpoch: number, endEpoch: number): string {
@@ -203,12 +190,10 @@ interface StkdeSliceStackProps {
   volumeProfile?: DurationVolumeProfileEntry[];
   activeIndex: number;
   compact?: boolean;
+  displayDomain?: [number, number];
   sliceOpacity?: number;
-}
-
-interface ActiveTrailEntry {
-  index: number;
-  startedAt: number;
+  yOffset?: number;
+  heightScale?: number;
 }
 
 type ResizeHandle = 'start' | 'end';
@@ -271,12 +256,13 @@ export function StkdeSliceStack({
   volumeProfile,
   activeIndex,
   compact = false,
+  displayDomain: displayDomainProp,
   sliceOpacity = 1,
+  yOffset = 0,
+  heightScale = 1,
 }: StkdeSliceStackProps) {
   const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
   const isInterpolated = useDashboardDemoCoordinationStore((state) => state.inspectInterpolation);
-  const trailEnabled = useDashboardDemoCoordinationStore((state) => state.inspectTrailEnabled);
-  const trailDecay = useDashboardDemoCoordinationStore((state) => state.inspectTrailDecay);
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
@@ -299,39 +285,28 @@ export function StkdeSliceStack({
     return buildOrderedSourceSlices(sourceSlices, minTimestampSec, maxTimestampSec).map((slice) => slice.sourceSliceId);
   }, [maxTimestampSec, minTimestampSec, sourceSlices]);
 
-  const adaptiveDomain = useMemo<[number, number]>(() => {
+  const viewportDomain = useMemo<[number, number]>(() => {
     if (!Number.isFinite(viewportStart) || !Number.isFinite(viewportEnd) || viewportEnd <= viewportStart) {
       return [0, 1];
     }
     return [viewportStart, viewportEnd];
   }, [viewportEnd, viewportStart]);
+  const displayDomain = displayDomainProp ?? viewportDomain;
   const warpDomain = useMemo<[number, number]>(() => (
-    mapDomain[1] > mapDomain[0] ? mapDomain : adaptiveDomain
-  ), [mapDomain, adaptiveDomain]);
-  const warpDomainDisplay = useMemo<[number, number]>(() => {
-    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
-      return warpDomain;
-    }
-
-    return [
-      toDisplaySeconds(warpDomain[0], warpBlend, warpMap, warpDomain),
-      toDisplaySeconds(warpDomain[1], warpBlend, warpMap, warpDomain),
-    ];
-  }, [timeScaleMode, warpDomain, warpBlend, warpMap]);
-
-  const stackEndY = useMemo(() => START_Y + SLICE_SPACING * Math.max(1, slices.length - 1), [slices.length]);
-
+    mapDomain[1] > mapDomain[0] ? mapDomain : displayDomain
+  ), [displayDomain, mapDomain]);
   const resolveSliceY = useMemo(
     () => (slice: EvolvingSlice): number => {
-      if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
-        return compact ? 0 : yForIndex(slice.index);
-      }
-
-      const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
-      const displayEpoch = toDisplaySeconds(midEpoch, warpBlend, warpMap, warpDomain);
-      return mapRange(displayEpoch, warpDomainDisplay[0], warpDomainDisplay[1], START_Y, stackEndY);
+      return resolveWarpedEpochY(slice.startEpoch, START_Y, {
+        timeScaleMode,
+        warpBlend,
+        warpMap,
+        displayDomain,
+        warpDomain,
+        yOffset,
+      });
     },
-    [compact, warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]
+    [displayDomain, timeScaleMode, warpBlend, warpMap, warpDomain, yOffset]
   );
 
   const resolveSourceSliceId = useCallback(
@@ -347,14 +322,15 @@ export function StkdeSliceStack({
 
   const yToEpoch = useCallback(
     (y: number): number => {
-      if (timeScaleMode === 'adaptive' && warpMap && warpBlend > 0 && warpMap.length > 1) {
-        const displayEpoch = mapRange(y, START_Y, stackEndY, warpDomainDisplay[0], warpDomainDisplay[1]);
-        return toLinearSeconds(displayEpoch, warpDomain, warpBlend, warpMap, warpDomain);
-      }
-
-      return mapRange(y, START_Y, stackEndY, warpDomain[0], warpDomain[1]);
+      return resolveEpochFromWarpedY(y, START_Y, {
+        timeScaleMode,
+        warpBlend,
+        warpMap,
+        displayDomain,
+        warpDomain,
+      });
     },
-    [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]
+    [displayDomain, timeScaleMode, warpBlend, warpMap, warpDomain]
   );
 
   const resolvePointerY = useCallback(
@@ -422,7 +398,7 @@ export function StkdeSliceStack({
     setActiveSliceIndex(compact ? 0 : sliceIndex);
   }, [compact, resolveSourceSliceId, setActiveSlice, setActiveSliceIndex]);
 
-  const handleHandlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, sliceIndex: number, handle: ResizeHandle) => {
+  const handleHandlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, sliceIndex: number, handle: ResizeHandle, centerY: number) => {
     e.stopPropagation();
     const sourceSliceId = resolveSourceSliceId(sliceIndex);
     if (!sourceSliceId) return;
@@ -437,13 +413,13 @@ export function StkdeSliceStack({
       sliceIndex,
       handle,
       pointerId: e.pointerId,
-      centerY: resolveSliceY(slice),
+      centerY,
       startEpoch: slice.startEpoch,
       endEpoch: slice.endEpoch,
       previewStartEpoch: slice.startEpoch,
       previewEndEpoch: slice.endEpoch,
     });
-  }, [gl.domElement, handleSliceSelect, resolveSourceSliceId, resolveSliceY, slices]);
+  }, [gl.domElement, handleSliceSelect, resolveSourceSliceId, slices]);
 
   useEffect(() => {
     if (!dragState) return undefined;
@@ -496,11 +472,6 @@ export function StkdeSliceStack({
     return newTextures;
   }, [sliceKdes]);
 
-  const agingOpacityMap = useMemo(
-    () => buildAgingOpacityMap(activeIndex, slices.length, trailDecay),
-    [activeIndex, slices.length, trailDecay],
-  );
-  const [trailHistory, setTrailHistory] = useState<ActiveTrailEntry[]>([]);
   const [transition, setTransition] = useState<SliceTransition | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const previousActiveIndexRef = useRef(activeIndex);
@@ -517,12 +488,8 @@ export function StkdeSliceStack({
 
     if (previousIndex === activeIndex || previousIndex < 0) return;
 
-    setTrailHistory((history) => {
-      const nextHistory = [{ index: previousIndex, startedAt: Date.now() }, ...history];
-      return nextHistory.slice(0, TRAIL_HISTORY_LIMIT);
-    });
-
     if (!isPlaying || !isInterpolated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on playback pause
       setTransition(null);
       return;
     }
@@ -531,14 +498,14 @@ export function StkdeSliceStack({
   }, [activeIndex, isInterpolated, isPlaying]);
 
   useEffect(() => {
-    if (!trailEnabled && trailHistory.length === 0 && !transition) return undefined;
+    if (!transition) return undefined;
 
     const interval = window.setInterval(() => {
       setNowMs(Date.now());
     }, 80);
 
     return () => window.clearInterval(interval);
-  }, [trailEnabled, trailHistory.length, transition]);
+  }, [transition]);
 
   const transitionProgress = useMemo(
     () => (transition ? clamp01((nowMs - transition.startedAt) / TRANSITION_DURATION_MS) : 0),
@@ -560,16 +527,6 @@ export function StkdeSliceStack({
     };
   }, [transitionTexture]);
 
-  const trailHistoryByIndex = useMemo(() => {
-    const map = new Map<number, ActiveTrailEntry>();
-    for (const entry of trailHistory) {
-      if (!map.has(entry.index)) {
-        map.set(entry.index, entry);
-      }
-    }
-    return map;
-  }, [trailHistory]);
-
   return (
     <group>
       {slices.map((slice) => {
@@ -578,7 +535,6 @@ export function StkdeSliceStack({
         const diff = Math.abs(i - activeIndex);
         const isActive = hasActiveSlice && diff === 0;
         const isAdjacent = hasActiveSlice && diff === 1;
-        const agingWeight = trailEnabled ? 0.28 + agingOpacityMap[i]! * 0.72 : 1;
         const opacityMultiplier = isActive
           ? 1
           : isAdjacent
@@ -588,9 +544,9 @@ export function StkdeSliceStack({
         const gridOpacity = isActive ? 0.08 : isAdjacent ? 0.03 : 0.01;
         const volume = volumeProfile?.[i];
         const hasVolume = Boolean(volume);
-        const thickness = volume?.thickness ?? 0.3;
+        const thickness = (volume?.thickness ?? 0.3) * heightScale;
         const surfaceY = hasVolume ? thickness / 2 + 0.05 : 0;
-        const baseMultiplier = opacityMultiplier * agingWeight * sliceOpacity;
+        const baseMultiplier = opacityMultiplier * sliceOpacity;
         const slabOpacity = hasVolume
           ? Math.min(0.26, Math.max(0.08, (volume?.opacity ?? 0.18) * baseMultiplier))
           : 0;
@@ -601,14 +557,7 @@ export function StkdeSliceStack({
           ? Math.max(0.04, surfaceOpacity * (0.22 + (volume?.falloff ?? 0.1)))
           : 0;
         const texture = textures.get(i) ?? undefined;
-        const trailEntry = trailHistoryByIndex.get(i);
-        const trailIntensity = trailEntry
-          ? computeTrailIntensity((nowMs - trailEntry.startedAt) / 1000, Math.max(0.12, trailDecay * 2.4))
-          : 0;
-        const trailOpacity = trailEnabled && !isActive ? Math.max(0, trailIntensity * 0.18) : 0;
-        const trailOffset = trailEnabled && !isActive ? Math.min(0.5, trailIntensity * 0.28) : 0;
 
-        const burstLabel = `${(slice.burstScore * 100).toFixed(0)}%`;
         const sourceSliceId = resolveSourceSliceId(i);
         const isDraggingThisSlice = dragState?.sliceId === sourceSliceId;
         const labelText = isDraggingThisSlice && dragState
@@ -687,36 +636,19 @@ export function StkdeSliceStack({
               <>
                 <mesh
                   position={[50, topHandleY, 0]}
-                  onPointerDown={(event) => handleHandlePointerDown(event, i, 'end')}
+                  onPointerDown={(event) => handleHandlePointerDown(event, i, 'end', y + thickness / 2)}
                 >
                   <sphereGeometry args={[0.9, 16, 16]} />
                   <meshBasicMaterial color={dragState?.sliceId === sourceSliceId && dragState.handle === 'end' ? '#67e8f9' : '#ffffff'} />
                 </mesh>
                 <mesh
                   position={[50, bottomHandleY, 0]}
-                  onPointerDown={(event) => handleHandlePointerDown(event, i, 'start')}
+                  onPointerDown={(event) => handleHandlePointerDown(event, i, 'start', y + thickness / 2)}
                 >
                   <sphereGeometry args={[0.9, 16, 16]} />
                   <meshBasicMaterial color={dragState?.sliceId === sourceSliceId && dragState.handle === 'start' ? '#67e8f9' : '#ffffff'} />
                 </mesh>
               </>
-            ) : null}
-
-            {trailEnabled && trailOpacity > 0 && texture ? (
-              <mesh
-                rotation={[-Math.PI / 2, 0, 0]}
-                position={[0, hasVolume ? surfaceY + 0.06 + trailOffset : 0.04 + trailOffset, 0]}
-                renderOrder={-50 + i}
-              >
-                <planeGeometry args={[96, 96]} />
-                <meshBasicMaterial
-                  map={texture}
-                  transparent
-                  opacity={trailOpacity}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
             ) : null}
 
             <gridHelper
@@ -790,20 +722,6 @@ export function StkdeSliceStack({
                 >
                 <div className="font-medium tracking-wide">
                   {labelText}
-                </div>
-                <div className="flex gap-2 text-[9px] uppercase tracking-[0.15em]">
-                  <span
-                    className={
-                      slice.burstScore > 0.5
-                        ? 'text-amber-300'
-                        : 'text-sky-400'
-                    }
-                  >
-                    burst {burstLabel}
-                  </span>
-                  <span className="text-sky-500">
-                    {slice.crimeCount} ev
-                  </span>
                 </div>
                 {isDraggingThisSlice && dragState ? (
                   <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-cyan-200">

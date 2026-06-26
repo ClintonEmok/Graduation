@@ -1,4 +1,5 @@
 import type { EvolvingSlice } from './types';
+import { toDisplaySeconds } from '@/components/timeline/hooks/useScaleTransforms';
 
 export type DurationVolumeNormalizationMode = 'window' | 'reference';
 
@@ -6,6 +7,10 @@ export interface DurationVolumeSettings {
   scaleSeconds: number;
   exaggeration: number;
   normalizationMode: DurationVolumeNormalizationMode;
+  timeScaleMode?: 'linear' | 'adaptive';
+  warpBlend?: number;
+  warpMap?: Float32Array | null;
+  warpDomain?: [number, number];
 }
 
 export interface DurationVolumeSourceSlice {
@@ -41,6 +46,26 @@ function resolveDuration(slice: Pick<DurationVolumeSourceSlice, 'startEpoch' | '
   return Math.max(0, slice.endEpoch - slice.startEpoch);
 }
 
+function resolveWarpAdjustedDuration(
+  slice: Pick<DurationVolumeSourceSlice, 'startEpoch' | 'endEpoch'>,
+  settings: Pick<DurationVolumeSettings, 'timeScaleMode' | 'warpBlend' | 'warpMap' | 'warpDomain'>,
+): number {
+  if (
+    settings.timeScaleMode !== 'adaptive' ||
+    !settings.warpMap ||
+    settings.warpMap.length < 2 ||
+    !settings.warpDomain ||
+    settings.warpBlend === undefined ||
+    settings.warpBlend <= 0
+  ) {
+    return resolveDuration(slice);
+  }
+
+  const startDisplay = toDisplaySeconds(slice.startEpoch, settings.warpBlend, settings.warpMap, settings.warpDomain);
+  const endDisplay = toDisplaySeconds(slice.endEpoch, settings.warpBlend, settings.warpMap, settings.warpDomain);
+  return Math.max(0, endDisplay - startDisplay);
+}
+
 export function buildDurationVolumeProfile(
   slices: Array<DurationVolumeSourceSlice | EvolvingSlice>,
   settings: Partial<DurationVolumeSettings> = {},
@@ -51,9 +76,13 @@ export function buildDurationVolumeProfile(
     scaleSeconds: Math.max(1, Math.floor(settings.scaleSeconds ?? DEFAULT_DURATION_VOLUME_SETTINGS.scaleSeconds)),
     exaggeration: clamp(settings.exaggeration ?? DEFAULT_DURATION_VOLUME_SETTINGS.exaggeration, 0.1, 4),
     normalizationMode: settings.normalizationMode ?? DEFAULT_DURATION_VOLUME_SETTINGS.normalizationMode,
+    timeScaleMode: settings.timeScaleMode,
+    warpBlend: settings.warpBlend,
+    warpMap: settings.warpMap,
+    warpDomain: settings.warpDomain,
   };
 
-  const durations = slices.map((slice) => resolveDuration(slice));
+  const durations = slices.map((slice) => resolveWarpAdjustedDuration(slice, resolvedSettings));
   const minDuration = Math.min(...durations);
   const maxDuration = Math.max(...durations);
   const durationSpan = Math.max(1, maxDuration - minDuration);

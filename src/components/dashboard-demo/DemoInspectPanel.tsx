@@ -38,79 +38,6 @@ function resolveSliceEpochRange(
   return [time, time];
 }
 
-function formatComparisonSpan(seconds: number): string {
-  const absolute = Math.abs(seconds);
-
-  if (absolute >= 86_400) {
-    const days = absolute / 86_400;
-    return `${days >= 10 ? Math.round(days) : days.toFixed(1)} days`;
-  }
-
-  if (absolute >= 3_600) {
-    const hours = absolute / 3_600;
-    return `${hours >= 10 ? Math.round(hours) : hours.toFixed(1)} hours`;
-  }
-
-  if (absolute >= 60) {
-    const minutes = absolute / 60;
-    return `${minutes >= 10 ? Math.round(minutes) : minutes.toFixed(1)} minutes`;
-  }
-
-  return `${Math.round(absolute)} seconds`;
-}
-
-function formatBurstPercent(score: number): string {
-  const percent = score > 1 ? score : score * 100;
-  return `${Math.round(percent)}%`;
-}
-
-function normalizeBurstPercent(score: number): number {
-  return score > 1 ? score : score * 100;
-}
-
-function normalizeBurstScore(score: number): number {
-  return score > 1 ? score / 100 : score;
-}
-
-type InspectSliceSummary = {
-  label: string;
-  crimeCount: number;
-};
-
-type InspectComparisonMetric = {
-  label: string;
-  value: string;
-};
-
-function ComparisonSlotCard({
-  label,
-  slice,
-  emptyText,
-}: {
-  label: string;
-  slice: InspectSliceSummary | null;
-  emptyText: string;
-}) {
-  return (
-    <article className="rounded-lg border border-border/70 bg-background/60 p-2">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium text-slate-50">{slice?.label ?? 'Empty'}</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {slice ? `${slice.crimeCount.toLocaleString()} events` : emptyText}
-      </p>
-    </article>
-  );
-}
-
-function ComparisonMetricCard({ label, value }: InspectComparisonMetric) {
-  return (
-    <div className="rounded-lg border border-border/70 bg-background/60 p-2">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm text-slate-50">{value}</p>
-    </div>
-  );
-}
-
 function InspectLoadingSkeleton() {
   return (
     <section className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-3 shadow-sm shadow-slate-950/20 backdrop-blur-sm">
@@ -135,16 +62,9 @@ function InspectLoadingSkeleton() {
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <div className="h-8 w-28 rounded-lg bg-slate-800/80" />
-            <div className="h-8 w-20 rounded-lg bg-slate-800/80" />
             <div className="h-8 w-20 rounded-lg bg-slate-800/80" />
             <div className="h-8 w-16 rounded-lg bg-slate-800/80" />
-            <div className="h-8 w-16 rounded-lg bg-slate-800/80" />
-          </div>
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <div className="h-20 rounded-xl bg-slate-800/60" />
-            <div className="h-20 rounded-xl bg-slate-800/60" />
+            <div className="ml-auto h-7 w-16 rounded-lg bg-slate-800/80" />
           </div>
 
           <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/70 p-2.5">
@@ -155,28 +75,11 @@ function InspectLoadingSkeleton() {
               </div>
               <div className="h-3 w-28 rounded-full bg-slate-800/60" />
             </div>
-            <div className="mt-2.5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="h-16 rounded-xl bg-slate-800/60" />
-              <div className="h-16 rounded-xl bg-slate-800/60" />
-              <div className="h-16 rounded-xl bg-slate-800/60" />
-              <div className="h-16 rounded-xl bg-slate-800/60" />
+            <div className="mt-2.5 space-y-1.5">
+              <div className="h-3 w-32 rounded-full bg-slate-800/60" />
+              <div className="h-3 w-40 rounded-full bg-slate-800/60" />
             </div>
-            <div className="mt-2.5 h-3 w-64 rounded-full bg-slate-800/60" />
           </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="h-8 w-16 rounded-lg bg-slate-800/80" />
-            <div className="h-8 w-16 rounded-lg bg-slate-800/80" />
-            <div className="h-8 w-16 rounded-lg bg-slate-800/80" />
-            <div className="ml-auto h-7 w-20 rounded-lg bg-slate-800/80" />
-          </div>
-          <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/70 p-2.5">
-            <div className="h-2.5 w-24 rounded-full bg-slate-800/80" />
-            <div className="mt-2.5 h-2.5 w-full rounded-full bg-slate-800/80" />
-          </div>
-          <div className="mt-3 h-48 rounded-xl border border-slate-800/70 bg-slate-950/70" />
         </div>
 
         <div className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-2.5">
@@ -206,14 +109,8 @@ export function DemoInspectPanel() {
   const setSliceOpacity = useDashboardDemoCoordinationStore((s) => s.setInspectSliceOpacity);
   const sliceCrimeCounts = useDashboardDemoCoordinationStore((s) => s.sliceCrimeCounts);
   const crimeFetchStatus = useDashboardDemoCoordinationStore((s) => s.crimeFetchStatus);
-  const comparisonSliceIds = useDashboardDemoCoordinationStore((s) => s.comparisonSliceIds);
-  const comparisonSelectionOrder = useDashboardDemoCoordinationStore((s) => s.comparisonSelectionOrder);
   const setSliceCrimeCounts = useDashboardDemoCoordinationStore((s) => s.setSliceCrimeCounts);
   const setCrimeFetchStatus = useDashboardDemoCoordinationStore((s) => s.setCrimeFetchStatus);
-  const setComparisonSliceId = useDashboardDemoCoordinationStore((s) => s.setComparisonSliceId);
-  const pushComparisonSlice = useDashboardDemoCoordinationStore((s) => s.pushComparisonSlice);
-  const swapComparisonSlices = useDashboardDemoCoordinationStore((s) => s.swapComparisonSlices);
-  const clearComparisonSlices = useDashboardDemoCoordinationStore((s) => s.clearComparisonSlices);
 
   const visibleSlices = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null) return [];
@@ -222,12 +119,14 @@ export function DemoInspectPanel() {
       .filter((slice) => slice.isVisible && slice.type === 'range')
       .map((slice, originalIndex) => {
         const [startEpoch, endEpoch] = resolveSliceEpochRange(slice, minTimestampSec, maxTimestampSec);
+        const rawBurstScore = slice.burstScore ?? 0;
         return {
           index: originalIndex,
           label: slice.name || `Slice ${originalIndex + 1}`,
           startEpoch,
           endEpoch,
-          burstScore: normalizeBurstScore(slice.burstScore ?? 0),
+          burstScore: rawBurstScore > 1 ? rawBurstScore / 100 : rawBurstScore,
+          burstiness: slice.burstinessCoefficient ?? null,
           crimeCount: sliceCrimeCounts[slice.id] ?? 0,
           sourceSliceId: slice.id,
         };
@@ -246,10 +145,10 @@ export function DemoInspectPanel() {
       }));
   }, [slices, minTimestampSec, maxTimestampSec, sliceCrimeCounts]);
 
+  const hasZeroCountSlices = visibleSlices.some((s) => s.crimeCount === 0);
+
   const isFocusedView = viewMode === 'focus';
   const hasDefaultedFocusRef = useRef(false);
-
-  const hasZeroCountSlices = visibleSlices.some((s) => s.crimeCount === 0);
 
   useEffect(() => {
     if (visibleSlices.length === 0) {
@@ -275,91 +174,6 @@ export function DemoInspectPanel() {
   const activeSliceKde = useMemo(
     () => (activeSliceCrimeData.data.length > 0 ? computeSliceKde(activeSliceCrimeData.data) : undefined),
     [activeSliceCrimeData.data],
-  );
-
-  const comparisonBySliceId = useMemo(() => {
-    const entries = visibleSlices.map((slice) => [slice.sourceSliceId, slice] as const);
-    return new Map(entries);
-  }, [visibleSlices]);
-
-  const comparisonSummary = useMemo(
-    () =>
-      (['left', 'right'] as const).map((slot) => {
-        const sliceId = comparisonSliceIds[slot];
-        const slice = sliceId ? comparisonBySliceId.get(sliceId) ?? null : null;
-
-        return {
-          slot,
-          label: slot === 'left' ? 'Left' : 'Right',
-          slice,
-        };
-      }),
-    [comparisonBySliceId, comparisonSliceIds]
-  );
-
-  const comparisonSelectionSummary = useMemo(() => {
-    if (comparisonSelectionOrder.length === 0) return 'No comparison slices selected';
-    return `Selection order: ${comparisonSelectionOrder.join(' → ')}`;
-  }, [comparisonSelectionOrder]);
-
-  const comparisonMetrics = useMemo(() => {
-    const left = comparisonSummary.find((item) => item.slot === 'left')?.slice ?? null;
-    const right = comparisonSummary.find((item) => item.slot === 'right')?.slice ?? null;
-
-    if (!left || !right) return null;
-
-    const leftDuration = Math.max(0, left.endEpoch - left.startEpoch);
-    const rightDuration = Math.max(0, right.endEpoch - right.startEpoch);
-    const eventDelta = right.crimeCount - left.crimeCount;
-     const leftBurstPercent = normalizeBurstPercent(left.burstScore);
-     const rightBurstPercent = normalizeBurstPercent(right.burstScore);
-     const burstDelta = rightBurstPercent - leftBurstPercent;
-     const durationDelta = rightDuration - leftDuration;
-    const overlapStart = Math.max(left.startEpoch, right.startEpoch);
-    const overlapEnd = Math.min(left.endEpoch, right.endEpoch);
-    const overlapSeconds = overlapEnd - overlapStart;
-
-    const timing = overlapSeconds > 0
-      ? `Shared window ${formatComparisonSpan(overlapSeconds)}`
-      : `${formatComparisonSpan(Math.abs(right.startEpoch - left.endEpoch))} gap between slices`;
-
-    const lead = eventDelta === 0
-      ? 'Same event count'
-      : `${Math.abs(eventDelta).toLocaleString()} more events on ${eventDelta > 0 ? 'right' : 'left'}`;
-
-    const burst = burstDelta === 0
-      ? 'Same burst intensity'
-      : `${Math.abs(Math.round(burstDelta))}% higher burst intensity on ${burstDelta > 0 ? 'right' : 'left'}`;
-
-    const duration = durationDelta === 0
-      ? 'Same duration'
-      : `${formatComparisonSpan(durationDelta)} longer on ${durationDelta > 0 ? 'right' : 'left'}`;
-
-    const ordering = left.startEpoch <= right.startEpoch
-      ? `${left.label} starts first`
-      : `${right.label} starts first`;
-
-    return [
-      { label: 'Event count', value: lead },
-      { label: 'Duration', value: duration },
-      { label: 'Burst intensity', value: burst },
-      { label: 'Timing', value: `${ordering} · ${timing}` },
-    ];
-  }, [comparisonSummary]);
-
-  const handleCompareActiveSlice = useCallback(() => {
-    if (!activeEvolvingSlice) return;
-    pushComparisonSlice(activeEvolvingSlice.sourceSliceId);
-    setViewMode('focus');
-  }, [activeEvolvingSlice, pushComparisonSlice, setViewMode]);
-
-  const handleSetComparisonSlot = useCallback(
-    (slot: 'left' | 'right') => {
-      if (!activeEvolvingSlice) return;
-      setComparisonSliceId(slot, activeEvolvingSlice.sourceSliceId);
-      setViewMode('focus');
-    },
-    [activeEvolvingSlice, setComparisonSliceId, setViewMode]
   );
 
   const handleRefetchCrimeCounts = useCallback(async () => {
@@ -465,136 +279,30 @@ export function DemoInspectPanel() {
     <div className="space-y-1.5">
       <Card>
         <CardHeader className="pb-0.5">
-          <CardTitle className="text-sm">Inspect applied slices</CardTitle>
+          <CardTitle className="text-sm">{activeEvolvingSlice?.label ?? 'Inspect applied slices'}</CardTitle>
           <CardDescription className="text-xs leading-snug">
-            {visibleSlices.length} applied slice{visibleSlices.length !== 1 ? 's' : ''} · {isFocusedView ? 'Focus' : 'Stack'} view
             {crimeFetchStatus === 'idle' && (
               <span className="text-amber-400">
-                {' · '}crime data not loaded
+                crime data not loaded
                 <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-amber-300">Load</button>
               </span>
             )}
-            {crimeFetchStatus === 'loading' && <span className="text-muted-foreground"> · loading crime data...</span>}
+            {crimeFetchStatus === 'loading' && <span className="text-muted-foreground">loading crime data...</span>}
             {crimeFetchStatus === 'error' && (
               <span className="text-destructive">
-                {' · '}crime fetch failed
+                crime fetch failed
                 <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-red-300">Retry</button>
               </span>
             )}
             {crimeFetchStatus === 'success' && hasZeroCountSlices && (
               <span className="text-amber-400">
-                {' · '}0-count slice
+                0-count slice
                 <button type="button" onClick={handleRefetchCrimeCounts} className="ml-1 underline hover:text-amber-300">Recalc</button>
               </span>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-1.5">
-          <section className="rounded-md border border-sky-500/15 bg-slate-950/60 p-1.5">
-            <header className="flex items-start justify-between gap-1.5">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-sky-300">
-                  Active slice
-                </div>
-                <div className="mt-1 text-sm font-medium text-slate-50">
-                  {activeEvolvingSlice?.label ?? 'Active slice'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {activeEvolvingSlice ? (
-                    <>
-                      {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(activeEvolvingSlice.startEpoch * 1000))}
-                      {' '}to{' '}
-                      {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(activeEvolvingSlice.endEpoch * 1000))}
-                    </>
-                  ) : (
-                    'No active slice'
-                  )}
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="text-xs text-slate-300">
-                  {(activeEvolvingSlice?.crimeCount ?? 0).toLocaleString()} events
-                </div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-sky-200">
-                  burst intensity {formatBurstPercent(activeEvolvingSlice?.burstScore ?? 0)}
-                </div>
-              </div>
-            </header>
-
-            <div className="mt-2 flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={handleCompareActiveSlice}
-                className="rounded-md border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-[11px] text-sky-100 transition hover:border-sky-300/60"
-              >
-                Add to compare
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetComparisonSlot('left')}
-                className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground transition hover:border-sky-400/60 hover:text-sky-100"
-              >
-                Set left
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetComparisonSlot('right')}
-                className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground transition hover:border-sky-400/60 hover:text-sky-100"
-              >
-                Set right
-              </button>
-              <button
-                type="button"
-                onClick={swapComparisonSlices}
-                className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground transition hover:border-sky-400/60 hover:text-sky-100"
-              >
-                Swap
-              </button>
-              <button
-                type="button"
-                onClick={clearComparisonSlices}
-                className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground transition hover:border-sky-400/60 hover:text-sky-100"
-              >
-                Clear
-              </button>
-            </div>
-
-            <div className="mt-2 grid gap-1.5">
-              {comparisonSummary.map(({ slot, label, slice }) => (
-                <ComparisonSlotCard
-                  key={slot}
-                  label={label}
-                  slice={slice ? { label: slice.label, crimeCount: slice.crimeCount } : null}
-                  emptyText="Select a slice to compare"
-                />
-              ))}
-            </div>
-
-            <section className="mt-2 rounded-md border border-sky-500/15 bg-slate-950/60 p-2">
-              <header className="flex items-center justify-between gap-2">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-sky-300">Comparison overview</div>
-                <div className="text-[10px] text-muted-foreground">Pairwise deltas</div>
-              </header>
-
-              {comparisonMetrics ? (
-                <div className="mt-2 grid gap-1.5">
-                  {comparisonMetrics.map((metric) => (
-                    <ComparisonMetricCard key={metric.label} {...metric} />
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Select both comparison slots to see direct deltas between slices.
-                </p>
-              )}
-            </section>
-
-            <div className="mt-1.5 text-[10px] text-muted-foreground">
-              {comparisonSelectionSummary}
-            </div>
-          </section>
-
           {crimeFetchStatus === 'loading' ? (
             <InspectLoadingSkeleton />
           ) : (
@@ -641,8 +349,8 @@ export function DemoInspectPanel() {
 
               <div className="rounded-md border border-border/70 bg-background/60 p-2">
                 <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  <span>Slice opacity</span>
-                  <span className="font-mono text-muted-foreground/80">{sliceOpacity.toFixed(2)}</span>
+                  <span>Slice emphasis</span>
+                  <span className="font-mono text-muted-foreground/80">×{sliceOpacity.toFixed(2)}</span>
                 </div>
                 <Slider
                   min={0.2}
@@ -657,7 +365,7 @@ export function DemoInspectPanel() {
                 <SliceInspector
                   slice={activeEvolvingSlice}
                   sliceKde={activeSliceKde}
-                  isFocusedView={isFocusedView}
+                  burstiness={activeEvolvingSlice?.burstiness ?? null}
                 />
               )}
 

@@ -11,11 +11,11 @@ import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTi
 import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import type { StkdeSurfaceResponse } from '@/lib/stkde/contracts';
-import { toDisplaySeconds, toLinearSeconds } from '@/components/timeline/hooks/useScaleTransforms';
+import { START_Y, resolveEpochFromWarpedY, resolveWarpedEpochY } from '../lib/timeline-axis';
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
 import { AdaptiveWarpAxis } from './AdaptiveWarpAxis';
 import { HotspotTrajectoryOverlay } from './HotspotTrajectoryOverlay';
-import { START_Y, SLICE_SPACING, StkdeSliceStack, yForIndex } from './StkdeSliceStack';
+import { StkdeSliceStack } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
 
@@ -37,12 +37,6 @@ const MAP_PLANE_Y = -38;
 const MIN_DRAFT_WINDOW_SEC = 6 * 60 * 60;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
-
-const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number): number => {
-  const span = Math.max(1e-9, inMax - inMin);
-  const t = clamp((value - inMin) / span, 0, 1);
-  return outMin + t * (outMax - outMin);
-};
 
 const buildDraftWindow = (
   centerEpoch: number,
@@ -142,8 +136,10 @@ interface Stkde3DSceneProps {
   viewMode?: 'stack' | 'focus';
   showRawEvents?: boolean;
   sliceOpacity?: number;
+  timeDomain?: [number, number];
   onCreateDraftAtPoint?: (payload: { y: number; clientX: number; clientY: number }) => void;
   yOffset?: number;
+  heightScale?: number;
 }
 
 function RawEventPoints({
@@ -206,9 +202,11 @@ function SceneContent({
   viewMode = 'stack',
   showRawEvents = false,
   sliceOpacity = 1,
+  timeDomain,
   onCreateDraftAtPoint,
   resolveSliceY,
   yOffset = 0,
+  heightScale = 1,
   }: Stkde3DSceneProps & {
     resolveSliceY: (slice: EvolvingSlice & { sourceSliceId?: string }) => number;
   }) {
@@ -256,7 +254,7 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      <AdaptiveWarpAxis />
+      <AdaptiveWarpAxis displayDomain={timeDomain} />
 
       <StkdeSliceStack
         slices={viewMode === 'focus' ? focusedSlices : slices}
@@ -264,7 +262,10 @@ function SceneContent({
         volumeProfile={viewMode === 'focus' ? focusedVolumeProfile : volumeProfile}
         activeIndex={viewMode === 'focus' ? 0 : activeIndex}
         compact={viewMode === 'focus'}
+        displayDomain={timeDomain}
         sliceOpacity={sliceOpacity}
+        yOffset={yOffset}
+        heightScale={heightScale}
       />
 
       <HotspotTrajectoryOverlay
@@ -305,7 +306,9 @@ export function Stkde3DScene({
   viewMode = 'stack',
   showRawEvents = false,
   sliceOpacity = 1,
+  timeDomain,
   yOffset = 0,
+  heightScale = 1,
 }: Stkde3DSceneProps) {
   const [mapTexture, setMapTexture] = useState<THREE.CanvasTexture | null>(null);
   const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
@@ -321,41 +324,33 @@ export function Stkde3DScene({
   const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
   const computeManualDraftBin = useDashboardDemoTimeslicingModeStore((state) => state.computeManualDraftBin);
   const canvasPointerRef = useRef<{ x: number; y: number } | null>(null);
-  const stackEndY = useMemo(() => START_Y + SLICE_SPACING * Math.max(1, slices.length - 1), [slices.length]);
-  const viewDomain = useMemo<[number, number]>(() => (
+  const viewportDomain = useMemo<[number, number]>(() => (
     viewportEnd > viewportStart ? [viewportStart, viewportEnd] : [0, 1]
   ), [viewportEnd, viewportStart]);
+  const displayDomain = timeDomain ?? viewportDomain;
   const warpDomain = useMemo<[number, number]>(() => (
-    mapDomain[1] > mapDomain[0] ? mapDomain : viewDomain
-  ), [mapDomain, viewDomain]);
-  const warpDomainDisplay = useMemo<[number, number]>(() => {
-    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
-      return warpDomain;
-    }
-
-    return [
-      toDisplaySeconds(warpDomain[0], warpBlend, warpMap, warpDomain),
-      toDisplaySeconds(warpDomain[1], warpBlend, warpMap, warpDomain),
-    ];
-  }, [timeScaleMode, warpDomain, warpBlend, warpMap]);
-
+    mapDomain[1] > mapDomain[0] ? mapDomain : displayDomain
+  ), [displayDomain, mapDomain]);
   const resolveSliceY = useCallback((slice: EvolvingSlice & { sourceSliceId?: string }): number => {
-    if (timeScaleMode !== 'adaptive' || warpBlend <= 0 || !warpMap || warpMap.length < 2) {
-      return yForIndex(slice.index) + yOffset;
-    }
-
-    const midEpoch = (slice.startEpoch + slice.endEpoch) / 2;
-    const displayEpoch = toDisplaySeconds(midEpoch, warpBlend, warpMap, warpDomain);
-    return mapRange(displayEpoch, warpDomainDisplay[0], warpDomainDisplay[1], START_Y, stackEndY) + yOffset;
-  }, [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap, yOffset]);
+    return resolveWarpedEpochY(slice.startEpoch, START_Y, {
+      timeScaleMode,
+      warpBlend,
+      warpMap,
+      displayDomain,
+      warpDomain,
+      yOffset,
+    });
+  }, [displayDomain, timeScaleMode, warpBlend, warpMap, warpDomain, yOffset]);
 
   const yToEpoch = useCallback((y: number): number => {
-    if (timeScaleMode === 'adaptive' && warpMap && warpBlend > 0 && warpMap.length > 1) {
-      const displayEpoch = mapRange(y, START_Y, stackEndY, warpDomainDisplay[0], warpDomainDisplay[1]);
-      return toLinearSeconds(displayEpoch, warpDomain, warpBlend, warpMap, warpDomain);
-    }
-    return mapRange(y, START_Y, stackEndY, warpDomain[0], warpDomain[1]);
-  }, [warpDomainDisplay, stackEndY, timeScaleMode, warpBlend, warpDomain, warpMap]);
+    return resolveEpochFromWarpedY(y, START_Y, {
+      timeScaleMode,
+      warpBlend,
+      warpMap,
+      displayDomain,
+      warpDomain,
+    });
+  }, [displayDomain, timeScaleMode, warpBlend, warpMap, warpDomain]);
 
   const clearActiveSlice = useCallback(() => {
     setActiveSliceIndex(-1);
@@ -368,7 +363,7 @@ export function Stkde3DScene({
     if (movedTooFar) return;
 
     const clickEpoch = yToEpoch(y);
-    const draftWindow = buildDraftWindow(clickEpoch, viewportStart, viewportEnd);
+    const draftWindow = buildDraftWindow(clickEpoch, displayDomain[0], displayDomain[1]);
     if (!draftWindow) return;
 
     const draftId = addManualDraftRange({
@@ -377,7 +372,7 @@ export function Stkde3DScene({
     });
     setActiveRailTab('slices');
     void computeManualDraftBin(draftId);
-  }, [addManualDraftRange, computeManualDraftBin, setActiveRailTab, viewportEnd, viewportStart, yToEpoch]);
+  }, [addManualDraftRange, computeManualDraftBin, displayDomain, setActiveRailTab, yToEpoch]);
 
   const handleCanvasPointerDown = useCallback((event: { clientX: number; clientY: number }) => {
     canvasPointerRef.current = { x: event.clientX, y: event.clientY };
@@ -408,15 +403,17 @@ export function Stkde3DScene({
             slices={slices}
             sliceKdes={sliceKdes}
             volumeProfile={volumeProfile}
-          sliceEvents={sliceEvents}
-          hotspotSliceResults={hotspotSliceResults}
-          activeIndex={activeIndex}
-          viewMode={viewMode}
-          showRawEvents={showRawEvents}
-          sliceOpacity={sliceOpacity}
-          resolveSliceY={resolveSliceY}
-          onCreateDraftAtPoint={handleCreateDraftAtPoint}
-          yOffset={yOffset}
+            sliceEvents={sliceEvents}
+            hotspotSliceResults={hotspotSliceResults}
+            activeIndex={activeIndex}
+            viewMode={viewMode}
+            showRawEvents={showRawEvents}
+            sliceOpacity={sliceOpacity}
+            timeDomain={displayDomain}
+            resolveSliceY={resolveSliceY}
+            onCreateDraftAtPoint={handleCreateDraftAtPoint}
+            yOffset={yOffset}
+            heightScale={heightScale}
           />
 
           {mapTexture ? (
