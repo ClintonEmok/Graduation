@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   isMockDataEnabledMock: vi.fn(),
-  ensureSortedCrimesTableMock: vi.fn(),
-  getDbMock: vi.fn(),
+  readDatasetMetadataMock: vi.fn(),
+  readOverviewBinsMock: vi.fn(),
   getDataPathMock: vi.fn(),
   existsSyncMock: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   isMockDataEnabled: hoisted.isMockDataEnabledMock,
-  ensureSortedCrimesTable: hoisted.ensureSortedCrimesTableMock,
-  getDb: hoisted.getDbMock,
+  readDatasetMetadata: hoisted.readDatasetMetadataMock,
+  readOverviewBins: hoisted.readOverviewBinsMock,
   getDataPath: hoisted.getDataPathMock,
 }));
 
@@ -26,39 +26,45 @@ describe('GET /api/crime/overview', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     hoisted.isMockDataEnabledMock.mockReset();
-    hoisted.ensureSortedCrimesTableMock.mockReset();
-    hoisted.getDbMock.mockReset();
+    hoisted.readDatasetMetadataMock.mockReset();
+    hoisted.readOverviewBinsMock.mockReset();
     hoisted.getDataPathMock.mockReset();
     hoisted.existsSyncMock.mockReset();
 
     hoisted.isMockDataEnabledMock.mockReturnValue(false);
-    hoisted.ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
+    hoisted.readDatasetMetadataMock.mockResolvedValue({
+      minTime: 1_700_000_000,
+      maxTime: 1_700_086_400,
+      minLat: 41.8,
+      maxLat: 42.0,
+      minLon: -87.8,
+      maxLon: -87.5,
+      count: 123,
+      crimeTypes: ['ASSAULT', 'THEFT'],
+      yearRange: { min: 2001, max: 2026 },
+    });
+    hoisted.readOverviewBinsMock.mockResolvedValue([
+      { x0: 1_700_000_000, x1: 1_700_021_600, length: 1 },
+      { x0: 1_700_043_200, x1: 1_700_064_800, length: 2 },
+    ]);
     hoisted.getDataPathMock.mockReturnValue('/tmp/crimes.csv');
     hoisted.existsSyncMock.mockReturnValue(true);
   });
 
-  test('returns timestamps from persisted DuckDB table', async () => {
-    let capturedSql = '';
-    hoisted.getDbMock.mockResolvedValue({
-      all: vi.fn((sql: string, callback: (err: Error | null, rows: unknown[]) => void) => {
-        capturedSql = sql;
-        callback(null, [
-          { timestamp_sec: 1_700_000_000 },
-          { timestamp_sec: 1_700_086_400 },
-        ]);
-      }),
-    });
-
+  test('returns bins from persisted DuckDB summary tables', async () => {
     const response = await GET(new Request('http://localhost/api/crime/overview?maxPoints=5'));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      timestampsSec: [1_700_000_000, 1_700_086_400],
+      overviewBins: [
+        { x0: 1_700_000_000, x1: 1_700_021_600, length: 1 },
+        { x0: 1_700_043_200, x1: 1_700_064_800, length: 2 },
+      ],
+      timestampsSec: [1_700_010_800, 1_700_054_000],
+      domain: { start: 1_700_000_000, end: 1_700_086_400 },
     });
-    expect(hoisted.ensureSortedCrimesTableMock).toHaveBeenCalledTimes(1);
-    expect(capturedSql).toContain('FROM crimes_sorted');
-    expect(capturedSql).not.toContain('read_csv_auto');
-    expect(capturedSql).toContain('NTILE(5)');
+    expect(hoisted.readDatasetMetadataMock).toHaveBeenCalledTimes(1);
+    expect(hoisted.readOverviewBinsMock).toHaveBeenCalledWith(5);
   });
 
   test('returns mock overview when dataset file is missing', async () => {
@@ -71,11 +77,7 @@ describe('GET /api/crime/overview', () => {
   });
 
   test('returns mock overview when DuckDB read fails', async () => {
-    hoisted.getDbMock.mockResolvedValue({
-      all: vi.fn((_sql: string, callback: (err: Error | null, rows: unknown[]) => void) => {
-        callback(new Error('boom'), []);
-      }),
-    });
+    hoisted.readOverviewBinsMock.mockRejectedValue(new Error('boom'));
 
     const response = await GET(new Request('http://localhost/api/crime/overview'));
     expect(response.status).toBe(200);

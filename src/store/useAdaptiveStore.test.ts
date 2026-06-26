@@ -93,4 +93,10 @@ describe('useAdaptiveStore computeMaps contract', () => {
     const firstArg = worker.postMessage.mock.calls[0]?.[0] as { config: { binningMode?: string } };
     expect(firstArg.config.binningMode).toBe('uniform-events');
   });
+
+  test('defaults burst metric to burstiness', async () => {
+    const { useAdaptiveStore } = await import('./useAdaptiveStore');
+
+    expect(useAdaptiveStore.getState().burstMetric).toBe('burstiness');
+  });
 });

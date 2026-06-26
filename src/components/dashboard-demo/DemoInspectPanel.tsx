@@ -168,7 +168,7 @@ export function DemoInspectPanel() {
     startEpoch: activeEvolvingSlice?.startEpoch ?? 0,
     endEpoch: activeEvolvingSlice?.endEpoch ?? 0,
     bufferDays: 0,
-    limit: 50000,
+    pageSize: 50000,
   });
 
   const activeSliceKde = useMemo(
@@ -204,7 +204,7 @@ export function DemoInspectPanel() {
         startEpoch: Math.floor(slice.startEpoch).toString(),
         endEpoch: Math.ceil(slice.endEpoch).toString(),
         bufferDays: '0',
-        limit: '50000',
+        pageSize: '50000',
       });
 
       try {

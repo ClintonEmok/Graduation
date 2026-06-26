@@ -172,31 +172,48 @@ const fetchCrimeRecordsForRange = async (
     return { records: [], sampled: false, limit };
   }
 
-  const searchParams = new URLSearchParams({
-    startEpoch: String(Math.floor(Math.min(startMs, endMs) / 1000)),
-    endEpoch: String(Math.floor(Math.max(startMs, endMs) / 1000)),
-    bufferDays: '0',
-    limit: String(limit),
-  });
-
   const crimeTypes = generationInputs.crimeTypes.filter((type) => type !== 'all-crime-types');
-  if (crimeTypes.length > 0) {
-    searchParams.set('crimeTypes', crimeTypes.join(','));
+  const records: CrimeRecord[] = [];
+  let sampled = false;
+  let cursor: string | null = null;
+
+  while (true) {
+    const searchParams = new URLSearchParams({
+      startEpoch: String(Math.floor(Math.min(startMs, endMs) / 1000)),
+      endEpoch: String(Math.floor(Math.max(startMs, endMs) / 1000)),
+      bufferDays: '0',
+      pageSize: String(limit),
+      ...(cursor ? { cursor } : {}),
+    });
+
+    if (crimeTypes.length > 0) {
+      searchParams.set('crimeTypes', crimeTypes.join(','));
+    }
+
+    if (generationInputs.neighbourhood) {
+      searchParams.set('districts', generationInputs.neighbourhood);
+    }
+
+    const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
+    if (!response.ok) {
+      throw new Error(`Burst selection crime fetch failed with status ${response.status}`);
+    }
+
+    const result = (await response.json()) as { data?: CrimeRecord[]; meta?: { sampled?: boolean; hasMore?: boolean; nextCursor?: string | null } };
+    const pageRecords = Array.isArray(result.data) ? result.data : [];
+    records.push(...pageRecords);
+    sampled = sampled || Boolean(result.meta?.sampled);
+
+    if (!result.meta?.hasMore || !result.meta?.nextCursor || pageRecords.length === 0) {
+      break;
+    }
+
+    cursor = result.meta.nextCursor;
   }
 
-  if (generationInputs.neighbourhood) {
-    searchParams.set('districts', generationInputs.neighbourhood);
-  }
-
-  const response = await fetch(`/api/crimes/range?${searchParams.toString()}`);
-  if (!response.ok) {
-    throw new Error(`Burst selection crime fetch failed with status ${response.status}`);
-  }
-
-  const result = (await response.json()) as { data?: CrimeRecord[]; meta?: { sampled?: boolean } };
   return {
-    records: Array.isArray(result.data) ? result.data : [],
-    sampled: Boolean(result.meta?.sampled),
+    records,
+    sampled,
     limit,
   };
 };
@@ -349,7 +366,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           )
         );
         const crimeRecords = fetchResults.flatMap((result) => result.records);
-        const sampled = fetchResults.some((result) => result.sampled || result.records.length >= result.limit);
+        const sampled = fetchResults.some((result) => result.sampled);
         const generated = buildNonUniformDraftBinsFromSelection({
           ...generationInputs,
           eventTimestamps: crimeRecords.map((crime) => crime.timestamp * 1000),

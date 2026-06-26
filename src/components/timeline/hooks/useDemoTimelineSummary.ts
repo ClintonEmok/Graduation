@@ -13,14 +13,15 @@ export function useDemoTimelineSummary() {
       columns: state.columns,
     }))
   );
-  const overviewTimestampSec = useTimelineDataStore((state) => state.overviewTimestampSec);
+  const overviewBins = useTimelineDataStore((state) => state.overviewBins);
   const dataCount = useTimelineDataStore((state) => state.dataCount);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const burstWindows = useDemoBurstWindows();
 
   return useMemo(() => {
-    const pointCount = dataCount ?? overviewTimestampSec.length ?? columns?.timestamp?.length ?? data.length;
+    const overviewCount = overviewBins.length > 0 ? overviewBins.reduce((sum, bin) => sum + bin.length, 0) : null;
+    const pointCount = dataCount ?? overviewCount ?? columns?.timestamp?.length ?? data.length;
     const selectedWindowLabel = selectionStory.activeWindowLabel;
     const overviewRangeLabel =
       minTimestampSec !== null && maxTimestampSec !== null
@@ -46,5 +47,5 @@ export function useDemoTimelineSummary() {
       isComparing: true,
       warpSource: undefined,
     };
-  }, [columns?.timestamp?.length, data.length, dataCount, maxTimestampSec, minTimestampSec, overviewTimestampSec.length, burstWindows.length, selectionStory]);
+  }, [columns?.timestamp?.length, data.length, dataCount, maxTimestampSec, minTimestampSec, overviewBins, burstWindows.length, selectionStory]);
 }

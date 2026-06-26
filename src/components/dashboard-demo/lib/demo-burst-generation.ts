@@ -570,7 +570,7 @@ export const buildDemoBurstWindowsFromSelection = ({
     burstinessMap: null,
     countMap: null,
     burstMetric: 'density',
-    burstCutoff: Math.max(0, Math.min(1, burstThreshold)),
+    burstThreshold: Math.max(0, Math.min(1, burstThreshold)),
     mapDomain,
     selectionRange,
   });

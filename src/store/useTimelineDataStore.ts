@@ -5,6 +5,7 @@ import { getCrimeTypeId, getDistrictId } from '@/lib/category-maps';
 import { ColumnarData, DataPoint } from '@/lib/data/types';
 import { epochSecondsToNormalized, toEpochSeconds } from '@/lib/time-domain';
 import { TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS } from '@/lib/timeline-series';
+import type { CrimeOverviewBin } from '@/types/crime';
 
 export interface LoadRealDataOptions {
   maxRows?: number;
@@ -42,6 +43,7 @@ function getBounds(values: ArrayLike<number>): { min: number; max: number } | nu
 export interface TimelineDataState {
   data: DataPoint[];
   columns: ColumnarData | null;
+  overviewBins: CrimeOverviewBin[];
   overviewTimestampSec: number[];
   crimeTypes: string[];
   minX: number | null;
@@ -63,6 +65,7 @@ export interface TimelineDataState {
 export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
   data: [],
   columns: null,
+  overviewBins: [],
   overviewTimestampSec: [],
   crimeTypes: [],
   minX: null,
@@ -96,10 +99,11 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
     });
 
     data.sort((a, b) => a.timestamp - b.timestamp);
-    set({
-      data,
-      columns: null,
-      overviewTimestampSec: data.map((point) => point.timestamp / 1000),
+      set({
+        data,
+        columns: null,
+        overviewBins: [],
+        overviewTimestampSec: data.map((point) => point.timestamp / 1000),
       crimeTypes,
       minTimestampSec: MOCK_START_SEC,
       maxTimestampSec: MOCK_END_SEC,
@@ -112,8 +116,8 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
   },
 
   loadSummaryData: async (options?: LoadSummaryDataOptions) => {
-    const { isLoading, overviewTimestampSec, columns } = get();
-    if (isLoading || (columns && overviewTimestampSec.length > 0)) return;
+    const { isLoading, overviewTimestampSec, columns, overviewBins } = get();
+    if (isLoading || ((columns && overviewTimestampSec.length > 0) || overviewBins.length > 0)) return;
     set({ isLoading: true });
 
     try {
@@ -128,6 +132,18 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
 
       const meta = await metaRes.json();
       const overview = await overviewRes.json();
+      const nextOverviewBins: CrimeOverviewBin[] = Array.isArray(overview?.overviewBins)
+        ? (overview.overviewBins as CrimeOverviewBin[])
+            .map((bin: CrimeOverviewBin) => ({
+              x0: Number(bin.x0),
+              x1: Number(bin.x1),
+              length: Number(bin.length),
+            }))
+            .filter((bin: CrimeOverviewBin) => Number.isFinite(bin.x0) && Number.isFinite(bin.x1) && Number.isFinite(bin.length))
+        : [];
+      const nextOverviewTimestamps: number[] = Array.isArray(overview?.timestampsSec)
+        ? overview.timestampsSec.map((value: number) => Number(value)).filter(Number.isFinite)
+        : nextOverviewBins.map((bin: CrimeOverviewBin) => Math.round((bin.x0 + bin.x1) / 2));
 
       const minTimeSec = meta?.minTime ?? null;
       const maxTimeSec = meta?.maxTime ?? null;
@@ -145,7 +161,8 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       set({
         data: [],
         columns: null,
-        overviewTimestampSec: Array.isArray(overview?.timestampsSec) ? overview.timestampsSec.map((value: number) => Number(value)).filter(Number.isFinite) : [],
+        overviewBins: nextOverviewBins,
+        overviewTimestampSec: nextOverviewTimestamps,
         crimeTypes: Array.isArray(meta?.crimeTypes) ? meta.crimeTypes.filter((value: string) => typeof value === 'string') : [],
         minTimestampSec: minTimeSec,
         maxTimestampSec: maxTimeSec,
@@ -272,6 +289,7 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
 
       set({
         columns,
+        overviewBins: [],
         overviewTimestampSec: [],
         crimeTypes: meta?.crimeTypes || [],
         minTimestampSec: effectiveMinTimeSec,

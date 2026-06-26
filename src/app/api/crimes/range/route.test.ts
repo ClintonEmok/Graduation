@@ -2,22 +2,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { lonLatToNormalized } from '@/lib/coordinate-normalization';
 
 const {
-  queryCrimesInRangeMock,
-  queryCrimeCountMock,
+  getDbMock,
+  ensureSortedCrimesTableMock,
   isMockDataEnabledMock,
+  getDataPathMock,
+  existsSyncMock,
 } = vi.hoisted(() => ({
-  queryCrimesInRangeMock: vi.fn(),
-  queryCrimeCountMock: vi.fn(),
+  getDbMock: vi.fn(),
+  ensureSortedCrimesTableMock: vi.fn(),
   isMockDataEnabledMock: vi.fn(),
-}));
-
-vi.mock('@/lib/queries', () => ({
-  queryCrimesInRange: queryCrimesInRangeMock,
-  queryCrimeCount: queryCrimeCountMock,
+  getDataPathMock: vi.fn(),
+  existsSyncMock: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
+  getDb: getDbMock,
+  ensureSortedCrimesTable: ensureSortedCrimesTableMock,
   isMockDataEnabled: isMockDataEnabledMock,
+  getDataPath: getDataPathMock,
+}));
+
+vi.mock('fs', () => ({
+  existsSync: existsSyncMock,
 }));
 
 import { GET, buildBufferedRange, parseCsvFilterParam } from '@/app/api/crimes/range/route';
@@ -27,10 +33,16 @@ const makeRequest = (query: string) => new Request(`http://localhost/api/crimes/
 describe('/api/crimes/range GET', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    queryCrimesInRangeMock.mockReset();
-    queryCrimeCountMock.mockReset();
+    getDbMock.mockReset();
+    ensureSortedCrimesTableMock.mockReset();
     isMockDataEnabledMock.mockReset();
+    getDataPathMock.mockReset();
+    existsSyncMock.mockReset();
+
     isMockDataEnabledMock.mockReturnValue(false);
+    ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
+    getDataPathMock.mockReturnValue('/tmp/crimes.csv');
+    existsSyncMock.mockReturnValue(true);
   });
 
   it('validates required parameters', async () => {
@@ -57,108 +69,102 @@ describe('/api/crimes/range GET', () => {
     });
   });
 
-  it('parses filters and returns buffer metadata contract', async () => {
-    queryCrimeCountMock.mockResolvedValue(120);
-    queryCrimesInRangeMock.mockResolvedValue([
-      {
-        timestamp: 1500,
-        type: 'THEFT',
-        lat: 41.8,
-        lon: -87.6,
-        x: 25,
-        z: -10,
-        iucr: '0820',
-        district: '1',
-        year: 2001,
-      },
-    ]);
+  it('returns exact paged rows with cursor metadata', async () => {
+    let capturedSql = '';
+    let capturedParams: unknown[] = [];
 
-    const response = await GET(
-      makeRequest(
-        'startEpoch=1000&endEpoch=2000&bufferDays=2&limit=10&crimeTypes=THEFT,%20BATTERY,,&districts=1,%202'
-      )
-    );
+    getDbMock.mockResolvedValue({
+      all: vi.fn((sql: string, ...args: unknown[]) => {
+        capturedSql = sql;
+        const callback = args[args.length - 1] as (err: Error | null, rows: unknown[]) => void;
+        capturedParams = args.slice(0, -1);
+        callback(null, [
+          {
+            crime_row_id: 1,
+            timestamp: 1500,
+            type: 'THEFT',
+            lat: 41.8,
+            lon: -87.6,
+            x: 25,
+            z: -10,
+            iucr: '0820',
+            district: '1',
+            year: 2001,
+          },
+          {
+            crime_row_id: 2,
+            timestamp: 1600,
+            type: 'ASSAULT',
+            lat: 41.81,
+            lon: -87.61,
+            x: 24,
+            z: -9,
+            iucr: '1310',
+            district: '2',
+            year: 2001,
+          },
+        ]);
+      }),
+    });
+
+    const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000&pageSize=1&crimeTypes=THEFT,%20BATTERY&districts=1,2'));
 
     expect(response.status).toBe(200);
-    expect(queryCrimeCountMock).toHaveBeenCalledWith(-171800, 174800, {
-      crimeTypes: ['THEFT', 'BATTERY'],
-      districts: ['1', '2'],
-    });
-    expect(queryCrimesInRangeMock).toHaveBeenCalledWith(-171800, 174800, {
-      limit: 10,
-      sampleStride: 12,
-      crimeTypes: ['THEFT', 'BATTERY'],
-      districts: ['1', '2'],
-    });
+    expect(ensureSortedCrimesTableMock).toHaveBeenCalledTimes(1);
+    expect(capturedSql).toContain('row_number() OVER');
+    expect(capturedSql).toContain('crime_row_id');
+    expect(capturedSql).toContain('ORDER BY timestamp, crime_row_id');
+    expect(capturedParams).toEqual(expect.arrayContaining([1000, 2000, 'THEFT', 'BATTERY', '1', '2', 2]));
 
     const body = await response.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]).toMatchObject({
+      id: '1',
+      timestamp: 1500,
+      type: 'THEFT',
+      district: '1',
+    });
     expect(body.meta).toMatchObject({
       viewport: { start: 1000, end: 2000 },
-      buffer: { days: 2, applied: { start: -171800, end: 174800 } },
+      pageSize: 1,
       returned: 1,
-      limit: 10,
-      totalMatches: 120,
-      sampled: true,
-      sampleStride: 12,
+      hasMore: true,
+      requiresNarrowing: false,
+      sampled: false,
+      sampleStride: 1,
     });
+    expect(body.meta.nextCursor).toBe('1500:1');
   });
 
-  it('returns non-sampled metadata when total matches fit limit', async () => {
-    queryCrimeCountMock.mockResolvedValue(3);
-    queryCrimesInRangeMock.mockResolvedValue([]);
-
-    const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000&limit=10'));
+  it('prompts narrowing for over-broad exact ranges', async () => {
+    const response = await GET(makeRequest('startEpoch=1000&endEpoch=40000000&pageSize=10'));
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.meta.sampled).toBe(false);
-    expect(body.meta.sampleStride).toBe(1);
-    expect(queryCrimesInRangeMock).toHaveBeenCalledWith(
-      1000 - 30 * 86400,
-      2000 + 30 * 86400,
-      expect.objectContaining({ sampleStride: 1 })
-    );
+    expect(body.meta.requiresNarrowing).toBe(true);
+    expect(body.data).toEqual([]);
+    expect(ensureSortedCrimesTableMock).not.toHaveBeenCalled();
   });
 
-  it('keeps buffer and sampling metadata contract for sampled responses', async () => {
-    queryCrimeCountMock.mockResolvedValue(10);
-    queryCrimesInRangeMock.mockResolvedValue([]);
-
-    const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000&limit=3'));
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.meta).toMatchObject({
-      viewport: { start: 1000, end: 2000 },
-      buffer: {
-        days: 30,
-        applied: {
-          start: 1000 - 30 * 86400,
-          end: 2000 + 30 * 86400,
-        },
-      },
-      sampled: true,
-      sampleStride: 4,
-      totalMatches: 10,
-      limit: 3,
-    });
-  });
-
-  it('returns mock response with coordinate parity and mock metadata', async () => {
+  it('returns mock responses with coordinate parity', async () => {
     isMockDataEnabledMock.mockReturnValue(true);
 
-    const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000&bufferDays=1&limit=8'));
+    const response = await GET(makeRequest('startEpoch=1000&endEpoch=2000&pageSize=8'));
     expect(response.status).toBe(200);
 
     const body = await response.json();
     expect(body.meta).toMatchObject({
       isMock: true,
-      buffer: { days: 1, applied: { start: -85400, end: 88400 } },
+      pageSize: 8,
+      returned: 8,
       sampled: false,
       sampleStride: 1,
+      hasMore: true,
+      requiresNarrowing: false,
     });
 
     expect(body.data.length).toBeLessThanOrEqual(8);
+    expect(body.meta.nextCursor).toEqual(expect.any(String));
     for (const record of body.data) {
       expect(typeof record.x).toBe('number');
       expect(typeof record.z).toBe('number');

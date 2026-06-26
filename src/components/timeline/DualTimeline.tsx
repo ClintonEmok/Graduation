@@ -8,8 +8,8 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useFilterStore } from '@/store/useFilterStore';
 import { useTimeStore } from '@/store/useTimeStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import type { CrimeOverviewBin } from '@/types/crime';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
-import { resolveSliceColor, SLICE_COLOR_PALETTE } from '@/lib/slice-geometry';
 import {
   select,
   selectActiveSliceId,
@@ -22,7 +22,6 @@ import { resolvePointByIndex } from '@/lib/selection';
 import { useBurstWindows } from '@/components/viz/BurstList';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useAutoBurstSlices } from '@/store/useSliceStore';
-import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
 import { DualTimelineSurface } from '@/components/timeline/DualTimelineSurface';
 import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 import { useViewportCrimeData } from '@/hooks/useViewportCrimeData';
@@ -40,15 +39,6 @@ import {
 } from './lib/interaction-guards';
 import { type TickLabelStrategy } from './lib/tick-ux';
 import { useDualTimelineViewModel } from './hooks/useDualTimelineViewModel';
-
-const OVERVIEW_HEIGHT = 42;
-const DETAIL_HEIGHT = 60;
-const AXIS_HEIGHT = 28;
-
-const DENSITY_DOMAIN: [number, number] = [0, 1];
-const DENSITY_COLOR_LOW: [number, number, number] = [59, 130, 246];
-const DENSITY_COLOR_HIGH: [number, number, number] = [239, 68, 68];
-const TIME_CURSOR_COLOR = '#10b981';
 
 const OVERVIEW_MARGIN = { top: 8, right: 12, bottom: 10, left: 12 };
 const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
@@ -166,6 +156,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
+  const overviewBinsFromStore = useTimelineDataStore((state) => state.overviewBins);
   const overviewTimestampSec = useTimelineDataStore((state) => state.overviewTimestampSec);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
@@ -271,6 +262,12 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   }, [columns, data, overviewTimestampSec]);
 
   const overviewSeries = useMemo<number[]>(() => {
+    if (overviewBinsFromStore.length > 0) {
+      return overviewBinsFromStore.map((bucket) => {
+        const midpoint = Math.round(((bucket.x0 ?? 0) + (bucket.x1 ?? 0)) / 2);
+        return midpoint;
+      });
+    }
     if (overviewTimestampSec.length > 0) {
       return overviewTimestampSec;
     }
@@ -278,19 +275,29 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
       return sampleTimelinePoints(timestampSeconds);
     }
     return [];
-  }, [overviewTimestampSec, timestampSeconds]);
+  }, [overviewBinsFromStore, overviewTimestampSec, timestampSeconds]);
 
-  const overviewBins = useMemo(() => {
+  const overviewBins = useMemo<CrimeOverviewBin[]>(() => {
+    if (overviewBinsFromStore.length > 0) {
+      return overviewBinsFromStore;
+    }
     const values = timestampSecondsOverride ?? overviewSeries;
     if (!values.length) return [];
     const binner = bin<number, number>()
       .value((d) => d)
       .domain([domainStart, domainEnd])
       .thresholds(50);
-    return binner(values);
-  }, [timestampSecondsOverride, overviewSeries, domainStart, domainEnd]);
+    return binner(values).map((bucket) => ({
+      x0: bucket.x0 ?? domainStart,
+      x1: bucket.x1 ?? domainEnd,
+      length: bucket.length,
+    }));
+  }, [overviewBinsFromStore, timestampSecondsOverride, overviewSeries, domainStart, domainEnd]);
 
-  const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
+  const overviewMax = useMemo(
+    () => Number(max(overviewBins as CrimeOverviewBin[], (d) => d.length)) || 1,
+    [overviewBins]
+  );
   
   // Use viewport crime data when available, fallback to computed timestampSeconds
   const detailPoints = useMemo(() => {
@@ -697,6 +704,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     overviewTickFormat,
     burstWindows: burstWindowsWithTaxonomy,
     burstTaxonomySummary,
+    showAdaptiveDensityStrip: Boolean(densityMap || detailDensityMap),
     activeBurstWindowId: null,
     onBurstWindowClick: undefined,
     detailDensityMap,

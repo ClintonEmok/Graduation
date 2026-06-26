@@ -21,7 +21,6 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
   shader.uniforms.uWarpFactor = { value: 0 };
   shader.uniforms.uWarpTexture = { value: null };
   shader.uniforms.uDensityTexture = { value: null };
-  shader.uniforms.uBurstThreshold = { value: 0.7 };
   shader.uniforms.uWarpDomainMin = { value: 0 };
   shader.uniforms.uWarpDomainMax = { value: 100 };
   shader.uniforms.uDensityDomainMin = { value: 0 };
@@ -54,7 +53,6 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uWarpFactor;
     uniform sampler2D uWarpTexture;
     uniform sampler2D uDensityTexture;
-    uniform float uBurstThreshold;
     uniform float uWarpDomainMin;
     uniform float uWarpDomainMax;
     uniform float uDensityDomainMin;
@@ -155,7 +153,6 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
     uniform float uBrushStart;
     uniform float uBrushEnd;
     uniform sampler2D uDensityTexture;
-    uniform float uBurstThreshold;
     uniform float uDensityDomainMin;
     uniform float uDensityDomainMax;
     varying float vWorldY;
@@ -266,13 +263,12 @@ export const applyGhostingShader = (shader: any, options: GhostingShaderOptions)
       }
     }
 
-    // Burst highlight (based on density)
+    // Burst highlight (continuous, based on the selected adaptive map)
     float densitySpan = max(0.0001, uDensityDomainMax - uDensityDomainMin);
     float burstNorm = clamp((vLinearY - uDensityDomainMin) / densitySpan, 0.0, 1.0);
     float burstDensity = texture2D(uDensityTexture, vec2(burstNorm, 0.5)).r;
-    if (burstDensity >= uBurstThreshold) {
-      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.55, 0.1), 0.6);
-    }
+    float burstGlow = smoothstep(0.15, 0.95, burstDensity);
+    gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.55, 0.1), burstGlow * 0.6);
 
     // Selection Highlight (Single point click)
     if (uHasSelection > 0.5) {

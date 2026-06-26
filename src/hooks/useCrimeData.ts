@@ -56,36 +56,63 @@ async function fetchCrimesInRange(
   bufferDays: number,
   crimeTypes?: string[],
   districts?: string[],
-  limit?: number
+  limit?: number,
+  pageSize?: number,
+  cursor?: string | null,
+  target?: string
 ): Promise<CrimeRangeResponse> {
   const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
-  const requestPath = `/api/crimes/range?${new URLSearchParams({
-    startEpoch: normalizedRange.start.toString(),
-    endEpoch: normalizedRange.end.toString(),
-    bufferDays: bufferDays.toString(),
-    ...(crimeTypes?.length ? { crimeTypes: crimeTypes.join(',') } : {}),
-    ...(districts?.length ? { districts: districts.join(',') } : {}),
-    ...(limit ? { limit: limit.toString() } : {}),
-  }).toString()}`;
+  const records: CrimeRecord[] = [];
+  let nextCursor = cursor ?? null;
+  let finalMeta: CrimeDataMeta | undefined;
+  let lastRequestPath = '';
 
   try {
-    const response = await fetch(requestPath)
-    
+    while (true) {
+      lastRequestPath = `/api/crimes/range?${new URLSearchParams({
+        startEpoch: normalizedRange.start.toString(),
+        endEpoch: normalizedRange.end.toString(),
+        bufferDays: bufferDays.toString(),
+        ...(crimeTypes?.length ? { crimeTypes: crimeTypes.join(',') } : {}),
+        ...(districts?.length ? { districts: districts.join(',') } : {}),
+        ...(pageSize ? { pageSize: pageSize.toString() } : {}),
+        ...(limit ? { limit: limit.toString() } : {}),
+        ...(nextCursor ? { cursor: nextCursor } : {}),
+        ...(target ? { target } : {}),
+      }).toString()}`;
+
+      const response = await fetch(lastRequestPath)
+
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`)
       }
-    
-    const result = (await response.json()) as CrimeRangeResponse
-    
-    // API returns { data: CrimeRecord[], meta: {...} }
+
+      const result = (await response.json()) as CrimeRangeResponse
+      records.push(...(result.data || []))
+      finalMeta = result.meta
+
+      if (!result.meta?.hasMore || !result.meta?.nextCursor || result.meta.nextCursor === nextCursor) {
+        break
+      }
+
+      nextCursor = result.meta.nextCursor
+    }
+
     return {
-      data: result.data || [],
-      meta: result.meta,
+      data: records,
+      meta: finalMeta
+        ? {
+            ...finalMeta,
+            returned: records.length,
+            hasMore: false,
+            nextCursor: null,
+          }
+        : undefined,
     }
   } catch (error) {
     console.error('[useCrimeData] Error fetching crimes:', error)
     if (error instanceof TypeError) {
-      throw new Error(`Network error while fetching crimes from ${requestPath}`)
+      throw new Error(`Network error while fetching crimes from ${lastRequestPath}`)
     }
     throw error
   }
@@ -111,13 +138,16 @@ function hasValidEpochRange(startEpoch: number, endEpoch: number): boolean {
 export function useCrimeData(
   options: UseCrimeDataOptions
 ): UseCrimeDataResult {
-  const { 
-    startEpoch, 
-    endEpoch, 
-    crimeTypes, 
-    districts, 
+  const {
+    startEpoch,
+    endEpoch,
+    crimeTypes,
+    districts,
     bufferDays = 30,
-    limit = 50000 
+    limit = 50000,
+    pageSize,
+    cursor,
+    target,
   } = options
 
   const normalizedRange = normalizeEpochRange(startEpoch, endEpoch)
@@ -132,6 +162,9 @@ export function useCrimeData(
     normalizedRange.end,
     bufferDays,
     limit,
+    pageSize,
+    cursor,
+    target,
     crimeTypes,
     districts
   ];
@@ -146,7 +179,10 @@ export function useCrimeData(
       bufferDays,
       crimeTypes,
       districts,
-      limit
+      limit,
+      pageSize,
+      cursor,
+      target
     ),
     // Keep old data while fetching new to prevent UI flash
     placeholderData: (previousData) => previousData,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDataPath, isMockDataEnabled } from '@/lib/db';
+import { getDataPath, isMockDataEnabled, readDatasetMetadata, readOverviewBins } from '@/lib/db';
 import { existsSync } from 'fs';
 import { TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS } from '@/lib/timeline-series';
 
@@ -8,6 +8,9 @@ export const dynamic = 'force-dynamic';
 const MOCK_OVERVIEW = {
   timestampsSec: Array.from({ length: 1000 }, (_, i) => 1704067200 + i * 60 * 60 * 6),
 };
+
+const overviewBinsToTimestampsSec = (bins: Array<{ x0: number; x1: number; length: number }>) =>
+  bins.map((bin) => Math.round((bin.x0 + bin.x1) / 2));
 
 export async function GET(request: Request) {
   try {
@@ -37,33 +40,16 @@ export async function GET(request: Request) {
       });
     }
 
-    const { getDb } = await import('@/lib/db');
-    const db = await getDb();
-
-    const rows: { timestamp_sec: number | string }[] = await new Promise((resolve, reject) => {
-      db.all(
-        `
-          WITH ordered AS (
-            SELECT
-              EXTRACT(EPOCH FROM "Date") AS timestamp_sec,
-              NTILE(${maxPoints}) OVER (ORDER BY "Date") AS bucket
-            FROM read_csv_auto('${dataPath}')
-            WHERE "Date" IS NOT NULL
-          )
-          SELECT MIN(timestamp_sec) AS timestamp_sec
-          FROM ordered
-          GROUP BY bucket
-          ORDER BY bucket
-        `,
-        (err: Error | null, res: unknown[]) => {
-          if (err) reject(err);
-          else resolve(res as { timestamp_sec: number | string }[]);
-        }
-      );
-    });
+    const metadata = await readDatasetMetadata();
+    const overviewBins = await readOverviewBins(maxPoints);
 
     return NextResponse.json({
-      timestampsSec: rows.map((row) => Number(row.timestamp_sec)).filter(Number.isFinite),
+      overviewBins,
+      timestampsSec: overviewBinsToTimestampsSec(overviewBins),
+      domain: {
+        start: metadata.minTime,
+        end: metadata.maxTime,
+      },
     });
   } catch (error) {
     console.error('Error fetching overview timestamps:', error);

@@ -80,8 +80,6 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
   const densityMap = useAdaptiveStore((state) => state.densityMap);
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
-  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
-  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   // Initialize Data Texture for Warp Map
@@ -90,10 +88,10 @@ export const DataPoints = forwardRef<THREE.InstancedMesh, DataPointsProps>(({ da
     () => createTexture(warpMap && warpMap.length > 0 ? warpMap : new Float32Array([0, 100])),
     [warpMap]
   );
-  const selectedDensityMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
+  const selectedAdaptiveMap = burstMetric === 'burstiness' ? burstinessMap : densityMap;
   const densityTexture = useMemo(
-    () => createTexture(selectedDensityMap && selectedDensityMap.length > 0 ? selectedDensityMap : new Float32Array([0, 0])),
-    [selectedDensityMap]
+    () => createTexture(selectedAdaptiveMap && selectedAdaptiveMap.length > 0 ? selectedAdaptiveMap : new Float32Array([0, 0])),
+    [selectedAdaptiveMap]
   );
 
   useEffect(() => () => warpTexture.dispose(), [warpTexture]);
@@ -276,10 +274,6 @@ useEffect(() => {
     shader.uniforms.uDensityTexture.value = densityTexture;
   }
 
-  if (shader.uniforms.uBurstThreshold) {
-    shader.uniforms.uBurstThreshold.value = burstCutoff;
-  }
-
   if (shader.uniforms.uWarpDomainMin) {
     shader.uniforms.uWarpDomainMin.value = mapDomain[0];
   }
@@ -307,7 +301,7 @@ useEffect(() => {
   if (shader.uniforms.uDataBoundsMax) {
     shader.uniforms.uDataBoundsMax.value.set(maxX, maxZ);
   }
-}, [normalizedTimeRange, minX, maxX, minZ, maxZ, warpTexture, densityTexture, burstCutoff, mapDomain]);
+}, [normalizedTimeRange, minX, maxX, minZ, maxZ, warpTexture, densityTexture, mapDomain]);
 
 useEffect(() => {
   if (!meshRef.current || !meshRef.current.material) return;

@@ -25,6 +25,7 @@ beforeEach(() => {
   useTimelineDataStore.setState({
     data: [],
     columns: null,
+    overviewBins: [],
     overviewTimestampSec: [],
     crimeTypes: [],
     minX: null,
@@ -206,7 +207,13 @@ describe('useTimelineDataStore.loadRealData', () => {
       if (url.endsWith('/api/crime/overview?maxPoints=5')) {
         return {
           ok: true,
-          json: async () => ({ timestampsSec: [1_700_000_000, 1_700_043_200, 1_700_086_400] }),
+          json: async () => ({
+            overviewBins: [
+              { x0: 1_700_000_000, x1: 1_700_021_600, length: 1 },
+              { x0: 1_700_043_200, x1: 1_700_064_800, length: 2 },
+            ],
+            timestampsSec: [1_700_010_800, 1_700_054_000],
+          }),
         } as Response;
       }
 
@@ -217,11 +224,15 @@ describe('useTimelineDataStore.loadRealData', () => {
 
     await useTimelineDataStore.getState().loadSummaryData({ maxPoints: 5 });
 
-    const { columns, overviewTimestampSec, minTimestampSec, maxTimestampSec, crimeTypes, dataCount } =
+    const { columns, overviewBins, overviewTimestampSec, minTimestampSec, maxTimestampSec, crimeTypes, dataCount } =
       useTimelineDataStore.getState();
 
     expect(columns).toBeNull();
-    expect(overviewTimestampSec).toEqual([1_700_000_000, 1_700_043_200, 1_700_086_400]);
+    expect(overviewBins).toEqual([
+      { x0: 1_700_000_000, x1: 1_700_021_600, length: 1 },
+      { x0: 1_700_043_200, x1: 1_700_064_800, length: 2 },
+    ]);
+    expect(overviewTimestampSec).toEqual([1_700_010_800, 1_700_054_000]);
     expect(minTimestampSec).toBe(1_700_000_000);
     expect(maxTimestampSec).toBe(1_700_086_400);
     expect(crimeTypes).toEqual(['ASSAULT', 'THEFT']);

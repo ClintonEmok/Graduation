@@ -109,11 +109,14 @@ describe('/timeslicing-algos route intent', () => {
     expect(burstListSource).toMatch(/burstConfidence/);
 
     expect(burstDetailsSource).toMatch(/Why this label/);
+    expect(burstDetailsSource).toMatch(/Onset:/);
+    expect(burstDetailsSource).toMatch(/Ramp:/);
     expect(burstDetailsSource).toMatch(/burstRuleVersion/);
     expect(burstDetailsSource).toMatch(/burstProvenance/);
     expect(burstDetailsSource).toMatch(/burstConfidence/);
 
-    expect(timelineSource).toMatch(/Burst indicators/);
+    expect(timelineSource).toMatch(/useAutoBurstSlices/);
+    expect(timelineSource).toMatch(/burstWindowsForAutoSlices/);
     expect(timelineSource).toMatch(/prolonged-peak/);
     expect(timelineSource).toMatch(/isolated-spike/);
     expect(timelineSource).toMatch(/valley/);

@@ -8,6 +8,7 @@ import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useDashboardDemoTimeStore } from '@/store/useDashboardDemoTimeStore';
 import { normalizedToEpochSeconds } from '@/lib/time-domain';
+import type { CrimeOverviewBin } from '@/types/crime';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import {
   select,
@@ -184,6 +185,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
 }) => {
   const data = useTimelineDataStore((state) => state.data);
   const columns = useTimelineDataStore((state) => state.columns);
+  const overviewBinsFromStore = useTimelineDataStore((state) => state.overviewBins);
   const overviewTimestampSec = useTimelineDataStore((state) => state.overviewTimestampSec);
   const isDataLoading = useTimelineDataStore((state) => state.isLoading);
   const minTimestampSec = useTimelineDataStore((state) => state.minTimestampSec);
@@ -297,6 +299,12 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   }, [columns, data, overviewTimestampSec]);
 
   const overviewSeries = useMemo<number[]>(() => {
+    if (overviewBinsFromStore.length > 0) {
+      return overviewBinsFromStore.map((bucket) => {
+        const midpoint = Math.round(((bucket.x0 ?? 0) + (bucket.x1 ?? 0)) / 2);
+        return midpoint;
+      });
+    }
     if (overviewTimestampSec.length > 0) {
       return overviewTimestampSec;
     }
@@ -304,7 +312,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       return sampleTimelinePoints(timestampSeconds);
     }
     return [];
-  }, [overviewTimestampSec, timestampSeconds]);
+  }, [overviewBinsFromStore, overviewTimestampSec, timestampSeconds]);
 
   const nextDensityMap = useMemo(() => {
     if (!timestampSeconds.length || warpDomain[1] <= warpDomain[0]) {
@@ -333,17 +341,27 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const effectiveWarpBlend = useMemo(() => normalizeWarpBlend(effectiveWarpFactor), [effectiveWarpFactor]);
   const effectiveTimeScaleMode = shouldForceAdaptiveFromSlices ? 'adaptive' : timeScaleMode;
 
-  const overviewBins = useMemo(() => {
+  const overviewBins = useMemo<CrimeOverviewBin[]>(() => {
+    if (overviewBinsFromStore.length > 0) {
+      return overviewBinsFromStore;
+    }
     const values = timestampSecondsOverride ?? overviewSeries;
     if (!values.length) return [];
     const binner = bin<number, number>()
       .value((d) => d)
       .domain([domainStart, domainEnd])
       .thresholds(50);
-    return binner(values);
-  }, [timestampSecondsOverride, overviewSeries, domainStart, domainEnd]);
+    return binner(values).map((bucket) => ({
+      x0: bucket.x0 ?? domainStart,
+      x1: bucket.x1 ?? domainEnd,
+      length: bucket.length,
+    }));
+  }, [overviewBinsFromStore, timestampSecondsOverride, overviewSeries, domainStart, domainEnd]);
 
-  const overviewMax = useMemo(() => max(overviewBins, (d) => d.length) || 1, [overviewBins]);
+  const overviewMax = useMemo(
+    () => Number(max(overviewBins as CrimeOverviewBin[], (d) => d.length)) || 1,
+    [overviewBins]
+  );
 
   const detailPoints = useMemo(() => {
     if (detailPointsOverride) {

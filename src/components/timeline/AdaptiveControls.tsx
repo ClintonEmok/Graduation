@@ -11,41 +11,12 @@ export function AdaptiveControls({ className }: { className?: string }) {
   const setDensityScope = useAdaptiveStore((s) => s.setDensityScope);
   const burstMetric = useAdaptiveStore((s) => s.burstMetric);
   const setBurstMetric = useAdaptiveStore((s) => s.setBurstMetric);
-  const burstThreshold = useAdaptiveStore((s) => s.burstThreshold);
-  const setBurstThreshold = useAdaptiveStore((s) => s.setBurstThreshold);
   const [draftWarpFactor, setDraftWarpFactor] = React.useState<number | null>(null);
-  const [previewWarpFactor, setPreviewWarpFactor] = React.useState(warpFactor);
   const [isPreviewingWarp, setIsPreviewingWarp] = React.useState(false);
-  const warpPreviewTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  React.useEffect(() => {
-    if (draftWarpFactor !== null) {
-      return;
-    }
-    setPreviewWarpFactor(warpFactor);
-  }, [draftWarpFactor, warpFactor]);
-
-  React.useEffect(() => {
-    if (draftWarpFactor === null) {
-      return;
-    }
-    if (warpPreviewTimeoutRef.current) {
-      clearTimeout(warpPreviewTimeoutRef.current);
-    }
-    warpPreviewTimeoutRef.current = setTimeout(() => {
-      setPreviewWarpFactor(draftWarpFactor);
-    }, 50);
-
-    return () => {
-      if (warpPreviewTimeoutRef.current) {
-        clearTimeout(warpPreviewTimeoutRef.current);
-      }
-    };
-  }, [draftWarpFactor]);
 
   const displayedWarpFactor = draftWarpFactor ?? warpFactor;
   const displayedWarpPercent = Math.round(displayedWarpFactor * 100);
-  const previewWarpPercent = Math.round(previewWarpFactor * 100);
+  const previewWarpPercent = displayedWarpPercent;
 
   const handleWarpChange = (values: number[]) => {
     const next = values[0];
@@ -65,7 +36,6 @@ export function AdaptiveControls({ className }: { className?: string }) {
     }
     setWarpFactor(next);
     setDraftWarpFactor(null);
-    setPreviewWarpFactor(next);
     setIsPreviewingWarp(false);
   };
 
@@ -132,27 +102,11 @@ export function AdaptiveControls({ className }: { className?: string }) {
           onPointerDown={(event) => event.stopPropagation()}
           className="w-full rounded-md border bg-background px-2 py-1 text-xs"
         >
-          <option value="density">Density</option>
           <option value="burstiness">Inter-arrival Burstiness</option>
+          <option value="density">Density</option>
         </select>
         <p className="text-[10px] text-muted-foreground">
-            Choose how bursts are detected.
-        </p>
-
-        <div className="flex justify-between items-center pt-2">
-            <Label className="text-sm font-medium">Burst Percentile</Label>
-            <span className="text-xs font-mono text-muted-foreground">{Math.round(burstThreshold * 100)}%</span>
-        </div>
-        <Slider
-          min={0}
-          max={1}
-          step={0.01}
-          value={[burstThreshold]}
-          onValueChange={(vals) => setBurstThreshold(vals[0])}
-          className="w-full"
-        />
-        <p className="text-[10px] text-muted-foreground">
-            Highlights points in the top percentile for the selected metric.
+            Burstiness is the default signal; density stays available as the fallback.
         </p>
     </div>
   );

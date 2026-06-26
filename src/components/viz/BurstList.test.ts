@@ -8,7 +8,7 @@ describe('buildBurstWindowsFromSeries', () => {
       burstinessMap: null,
       countMap: Float32Array.from([4, 4, 1, 3, 2, 1]),
       burstMetric: 'density',
-      burstCutoff: 0.8,
+      burstThreshold: 0.8,
       mapDomain: [0, 50],
       selectionRange: [25, 45],
     });
@@ -26,7 +26,7 @@ describe('buildBurstWindowsFromSeries', () => {
       burstinessMap: null,
       countMap: Float32Array.from([1, 2, 3, 1, 1]),
       burstMetric: 'density',
-      burstCutoff: 0.8,
+      burstThreshold: 0.8,
       mapDomain: [0, 40],
       selectionRange: [15, 35],
     });

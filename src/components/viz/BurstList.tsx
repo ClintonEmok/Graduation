@@ -41,7 +41,7 @@ export interface BurstWindowSeriesInput {
   burstinessMap: Float32Array | null;
   countMap: Float32Array | null;
   burstMetric: 'density' | 'burstiness';
-  burstCutoff: number;
+  burstThreshold: number;
   mapDomain: [number, number];
   selectionRange?: [number, number] | null;
 }
@@ -51,7 +51,7 @@ export const buildBurstWindowsFromSeries = ({
   burstinessMap,
   countMap,
   burstMetric,
-  burstCutoff,
+  burstThreshold,
   mapDomain,
   selectionRange,
 }: BurstWindowSeriesInput): BurstWindow[] => {
@@ -91,7 +91,7 @@ export const buildBurstWindowsFromSeries = ({
 
   for (let i = startIndex; i < endIndexExclusive; i += 1) {
     const value = Number.isFinite(selectedMap[i]) ? selectedMap[i] : 0;
-    if (value >= burstCutoff) {
+    if (value >= burstThreshold) {
       if (countMap && Number.isFinite(countMap[i])) {
         windowCount += countMap[i];
       } else {
@@ -123,7 +123,7 @@ export const useBurstWindows = (selectionRange?: [number, number] | null) => {
   const burstinessMap = useAdaptiveStore((state) => state.burstinessMap);
   const countMap = useAdaptiveStore((state) => state.countMap);
   const burstMetric = useAdaptiveStore((state) => state.burstMetric);
-  const burstCutoff = useAdaptiveStore((state) => state.burstCutoff);
+  const burstThreshold = useAdaptiveStore((state) => state.burstThreshold);
   const mapDomain = useAdaptiveStore((state) => state.mapDomain);
 
   return useMemo(() => {
@@ -132,11 +132,11 @@ export const useBurstWindows = (selectionRange?: [number, number] | null) => {
       burstinessMap,
       countMap,
       burstMetric,
-      burstCutoff,
+      burstThreshold,
       mapDomain,
       selectionRange,
     });
-  }, [burstCutoff, burstMetric, burstinessMap, countMap, densityMap, mapDomain, selectionRange]);
+  }, [burstMetric, burstThreshold, burstinessMap, countMap, densityMap, mapDomain, selectionRange]);
 };
 
 export function BurstList() {

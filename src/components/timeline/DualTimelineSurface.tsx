@@ -3,8 +3,7 @@
 import type { DemoDetailPeriodSelection, DemoBurstWindowSelection } from '@/store/useDashboardDemoCoordinationStore';
 import React from 'react';
 import { DensityHeatStrip } from '@/components/timeline/DensityHeatStrip';
-
-type BurstTaxonomy = 'prolonged-peak' | 'isolated-spike' | 'valley' | 'neutral';
+import type { BurstTaxonomy } from '@/lib/binning/burst-taxonomy';
 
 export interface SurfaceBurstWindow extends Omit<DemoBurstWindowSelection, 'metric'> {
   metric?: 'density';

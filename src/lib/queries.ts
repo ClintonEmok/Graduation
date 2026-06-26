@@ -69,8 +69,8 @@ interface AdaptiveCacheRow {
 }
 
 type DbLike = {
-  all: (...args: unknown[]) => void;
-  run: (...args: unknown[]) => void;
+  all: (sql: string, ...args: any[]) => void;
+  run: (sql: string, ...args: any[]) => void;
 };
 
 const normalizeRange = (start: number, end: number) => {
@@ -236,7 +236,8 @@ const executeAll = <T>(
   params: unknown[]
 ): Promise<T[]> =>
   new Promise((resolve, reject) => {
-    db.all(sql, ...params, (err: Error | null, rows: unknown[]) => {
+    const all = db.all as unknown as (sql: string, ...args: unknown[]) => void;
+    all(sql, ...params, (err: Error | null, rows: unknown[]) => {
       if (err) {
         reject(err);
         return;
@@ -247,7 +248,8 @@ const executeAll = <T>(
 
 const executeRun = (db: Pick<DbLike, 'run'>, sql: string, params: unknown[] = []): Promise<void> =>
   new Promise((resolve, reject) => {
-    db.run(sql, ...params, (err: Error | null) => {
+    const run = db.run as unknown as (sql: string, ...args: unknown[]) => void;
+    run(sql, ...params, (err: Error | null) => {
       if (err) {
         reject(err);
         return;

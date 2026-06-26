@@ -140,7 +140,7 @@ export function Demo3dSpatialView() {
           startEpoch: Math.floor(slice.startEpoch).toString(),
           endEpoch: Math.ceil(slice.endEpoch).toString(),
           bufferDays: '0',
-          limit: '50000',
+          pageSize: '50000',
         });
 
         try {

@@ -52,6 +52,9 @@ export interface UseCrimeDataOptions {
   districts?: string[]
   bufferDays?: number
   limit?: number
+  pageSize?: number
+  cursor?: string | null
+  target?: string
 }
 
 /**
@@ -74,6 +77,21 @@ export interface CrimeDataMeta {
   totalMatches?: number
   sampled?: boolean
   sampleStride?: number
+  hasMore?: boolean
+  nextCursor?: string | null
+  requiresNarrowing?: boolean
+  pageSize?: number
+  target?: string
+  suggestedWindowDays?: number
+}
+
+/**
+ * Server-binned overview bucket.
+ */
+export interface CrimeOverviewBin {
+  x0: number
+  x1: number
+  length: number
 }
 
 /**

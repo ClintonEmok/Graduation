@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server';
-import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
-import type { CrimeRecord } from '@/lib/queries';
-import { isMockDataEnabled } from '@/lib/db';
 import { CHICAGO_BOUNDS, lonLatToNormalized } from '@/lib/coordinate-normalization';
+import { buildCrimeCoordinateSelectColumns } from '@/lib/queries/builders';
+import { buildCrimeRangeFilters } from '@/lib/queries/filters';
+import { clampPositiveInt } from '@/lib/queries/sanitization';
+import { ensureSortedCrimesTable, getDb, isMockDataEnabled } from '@/lib/db';
+import type { CrimeDataMeta, CrimeRecord } from '@/types/crime';
 
 /**
  * Viewport-based crime data API endpoint.
- * 
- * Accepts viewport bounds and returns only the data needed for the current view
- * plus buffer zones for smooth scrolling/loading.
- * 
- * Query Parameters:
- * - startEpoch: number (required) - start of visible range (Unix epoch seconds)
- * - endEpoch: number (required) - end of visible range (Unix epoch seconds)
- * - bufferDays: number (optional, default: 30) - buffer before/after visible range
- * - limit: number (optional, default: 50000) - max records to return
- * - crimeTypes: string (optional) - comma-separated crime types
- * - districts: string (optional) - comma-separated districts
+ *
+ * Returns exact rows from the persisted DuckDB fact table using cursor-based paging.
  */
 
-// Force Node.js runtime for DuckDB compatibility
 export const runtime = 'nodejs';
-// Prevent static optimization as we serve dynamic viewport data
 export const dynamic = 'force-dynamic';
+
+const DEFAULT_PAGE_SIZE = 5000;
+const MAX_PAGE_SIZE = 50000;
+const MAX_EXACT_RANGE_SECONDS = 365 * 86400;
 
 const MOCK_CRIME_TYPES = ['THEFT', 'BATTERY', 'CRIMINAL DAMAGE', 'ASSAULT', 'BURGLARY', 'ROBBERY', 'MOTOR VEHICLE THEFT', 'DECEPTIVE PRACTICE'];
 const MOCK_DISTRICTS = Array.from({ length: 25 }, (_, idx) => String(idx + 1));
@@ -45,6 +40,19 @@ export const buildBufferedRange = (startEpoch: number, endEpoch: number, bufferD
     bufferedStart: startEpoch - bufferSeconds,
     bufferedEnd: endEpoch + bufferSeconds,
   };
+};
+
+const encodeCursor = (timestamp: number, rowId: number) => `${Math.floor(timestamp)}:${Math.floor(rowId)}`;
+
+const decodeCursor = (cursor: string | null): { timestamp: number; rowId: number } | null => {
+  if (!cursor) return null;
+  const [timestampRaw, rowIdRaw] = cursor.split(':');
+  const timestamp = Number(timestampRaw);
+  const rowId = Number(rowIdRaw);
+  if (!Number.isFinite(timestamp) || !Number.isFinite(rowId)) {
+    return null;
+  }
+  return { timestamp: Math.floor(timestamp), rowId: Math.floor(rowId) };
 };
 
 const generateMockCrimes = (
@@ -83,131 +91,191 @@ const generateMockCrimes = (
   return results;
 };
 
+const runAll = async <T>(sql: string, params: unknown[] = []): Promise<T[]> => {
+  const db = await getDb();
+  return new Promise((resolve, reject) => {
+    (db.all as unknown as (this: typeof db, sql: string, ...args: unknown[]) => void).call(
+      db,
+      sql,
+      ...params,
+      (err: Error | null, rows: unknown[]) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(rows as T[]);
+      }
+    );
+  });
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    
-    // Required viewport bounds
+
     const startEpoch = searchParams.get('startEpoch');
     const endEpoch = searchParams.get('endEpoch');
-    
-    // Validate required parameters
+
     if (!startEpoch || !endEpoch) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: startEpoch and endEpoch are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required parameters: startEpoch and endEpoch are required' }, { status: 400 });
     }
-    
-    const start = parseInt(startEpoch, 10);
-    const end = parseInt(endEpoch, 10);
-    
-    if (isNaN(start) || isNaN(end)) {
-      return NextResponse.json(
-        { error: 'Invalid epoch parameters: must be valid integers' },
-        { status: 400 }
-      );
+
+    const start = Number.parseInt(startEpoch, 10);
+    const end = Number.parseInt(endEpoch, 10);
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      return NextResponse.json({ error: 'Invalid epoch parameters: must be valid integers' }, { status: 400 });
     }
-    
     if (start >= end) {
-      return NextResponse.json(
-        { error: 'Invalid range: startEpoch must be less than endEpoch' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid range: startEpoch must be less than endEpoch' }, { status: 400 });
     }
-    
-    // Optional parameters with defaults
-    const bufferDays = parseInt(searchParams.get('bufferDays') || '30', 10);
-    const limit = parseInt(searchParams.get('limit') || '50000', 10);
-    const crimeTypesParam = searchParams.get('crimeTypes');
-    const districtsParam = searchParams.get('districts');
-    
-    // Apply buffer zone (convert days to seconds)
+
+    const pageSize = clampPositiveInt(
+      Number.parseInt(searchParams.get('pageSize') || searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      1,
+      MAX_PAGE_SIZE
+    );
+    const bufferDays = clampPositiveInt(Number.parseInt(searchParams.get('bufferDays') || '0', 10), 0, 3650);
+    const crimeTypes = parseCsvFilterParam(searchParams.get('crimeTypes'));
+    const districts = parseCsvFilterParam(searchParams.get('districts'));
+    const target = searchParams.get('target') || 'detail';
+    const cursor = decodeCursor(searchParams.get('cursor'));
+
     const { bufferedStart, bufferedEnd } = buildBufferedRange(start, end, bufferDays);
-    
-    // Parse optional filters
-    const crimeTypes = parseCsvFilterParam(crimeTypesParam);
-    const districts = parseCsvFilterParam(districtsParam);
 
     if (isMockDataEnabled()) {
-      const mockCount = Math.min(limit, 100000);
+      const mockCount = Math.min(pageSize + 1, 100000);
       const crimes = generateMockCrimes(mockCount, bufferedStart, bufferedEnd, crimeTypes, districts);
+      const pageRows = crimes.slice(0, pageSize);
+      const hasMore = crimes.length > pageSize;
 
       return NextResponse.json(
         {
-          data: crimes,
+          data: pageRows,
           meta: {
             viewport: { start, end },
             buffer: { days: bufferDays, applied: { start: bufferedStart, end: bufferedEnd } },
-            returned: crimes.length,
-            limit,
-            totalMatches: Math.max(crimes.length, 1000),
+            returned: pageRows.length,
+            limit: pageSize,
+            pageSize,
+            target,
+            hasMore,
+            nextCursor: hasMore && pageRows.length > 0 ? encodeCursor(pageRows[pageRows.length - 1]!.timestamp, pageRows.length) : null,
+            requiresNarrowing: false,
             sampled: false,
             sampleStride: 1,
             isMock: true,
-          }
+          },
         },
         {
           status: 200,
           headers: {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'X-Content-Type-Options': 'nosniff',
-            'X-Data-Warning': 'Using demo data - database disabled'
-          }
+            'X-Data-Warning': 'Using demo data - database disabled',
+          },
         }
       );
     }
 
-    const totalMatches = await queryCrimeCount(bufferedStart, bufferedEnd, {
-      crimeTypes,
-      districts,
-    });
-    const sampleStride = totalMatches > limit ? Math.ceil(totalMatches / limit) : 1;
-    const sampled = sampleStride > 1;
+    if (!cursor && bufferedEnd - bufferedStart > MAX_EXACT_RANGE_SECONDS) {
+      return NextResponse.json(
+        {
+          data: [],
+          meta: {
+            viewport: { start, end },
+            buffer: { days: bufferDays, applied: { start: bufferedStart, end: bufferedEnd } },
+            returned: 0,
+            limit: pageSize,
+            pageSize,
+            target,
+            hasMore: false,
+            nextCursor: null,
+            requiresNarrowing: true,
+            sampled: false,
+            sampleStride: 1,
+            suggestedWindowDays: 30,
+          },
+        },
+        { status: 200, headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'X-Content-Type-Options': 'nosniff' } }
+      );
+    }
 
-    // Query the database with buffered range
-    const crimes = await queryCrimesInRange(
-      bufferedStart,
-      bufferedEnd,
-      {
-        limit,
-        sampleStride,
-        crimeTypes,
-        districts
-      }
+    await ensureSortedCrimesTable();
+    const filters = buildCrimeRangeFilters(bufferedStart, bufferedEnd, { crimeTypes, districts }, true);
+    const cursorClause = cursor
+      ? 'AND (timestamp > ? OR (timestamp = ? AND crime_row_id > ?))'
+      : '';
+    const cursorParams = cursor ? [cursor.timestamp, cursor.timestamp, cursor.rowId] : [];
+
+    const rows = await runAll<Record<string, unknown>>(
+      `WITH ordered AS (
+        SELECT
+          row_number() OVER (ORDER BY "Date", "Primary Type", "District", "IUCR", "Latitude", "Longitude") AS crime_row_id,
+          ${buildCrimeCoordinateSelectColumns()}
+        FROM crimes_sorted
+        WHERE ${filters.sql}
+      ), paged AS (
+        SELECT *
+        FROM ordered
+        WHERE 1=1
+        ${cursorClause}
+        ORDER BY timestamp, crime_row_id
+        LIMIT ?
+      )
+      SELECT * FROM paged`,
+      [...filters.params, ...cursorParams, pageSize + 1]
     );
-    
-    // Return response with appropriate caching headers
-    // Viewport data should never be cached long-term as user navigates
+
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const nextCursor = hasMore && pageRows.length > 0
+      ? encodeCursor(Number(pageRows[pageRows.length - 1]?.timestamp ?? 0), Number(pageRows[pageRows.length - 1]?.crime_row_id ?? 0))
+      : null;
+
     return NextResponse.json(
       {
-        data: crimes,
+        data: pageRows.map((row) => ({
+          id: String(row.crime_row_id ?? row.timestamp ?? Math.random()),
+          timestamp: Number(row.timestamp),
+          type: String(row.type),
+          lat: Number(row.lat),
+          lon: Number(row.lon),
+          x: Number(row.x),
+          z: Number(row.z),
+          iucr: String(row.iucr),
+          district: String(row.district),
+          year: Number(row.year),
+        })) satisfies CrimeRecord[],
         meta: {
           viewport: { start, end },
           buffer: { days: bufferDays, applied: { start: bufferedStart, end: bufferedEnd } },
-          returned: crimes.length,
-          limit,
-          totalMatches,
-          sampled,
-          sampleStride,
-        }
+          returned: pageRows.length,
+          limit: pageSize,
+          pageSize,
+          target,
+          hasMore,
+          nextCursor,
+          requiresNarrowing: false,
+          sampled: false,
+          sampleStride: 1,
+        } satisfies CrimeDataMeta & { hasMore: boolean; nextCursor: string | null; requiresNarrowing: boolean; pageSize: number; target: string },
       },
       {
         status: 200,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'X-Content-Type-Options': 'nosniff'
-        }
+          'X-Content-Type-Options': 'nosniff',
+        },
       }
     );
-    
   } catch (error) {
     console.error('API Error (/api/crimes/range):', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch crime data',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

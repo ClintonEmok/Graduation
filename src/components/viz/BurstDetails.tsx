@@ -9,12 +9,58 @@ import { classifyBurstWindow } from '@/lib/binning/burst-taxonomy';
 type StatRow = { label: string; value: string };
 type GapBin = { label: string; count: number; percent: number };
 
+type BurstShapeLabel = {
+  onset: string;
+  ramp: string;
+  detail: string;
+};
+
 const formatInterval = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds <= 0) return 'n/a';
   if (seconds < 60) return `${seconds.toFixed(1)}s`;
   if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
   if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
   return `${(seconds / 86400).toFixed(1)}d`;
+};
+
+const resolveBurstShapeLabel = (window: { duration: number; peak: number; burstClass?: string | null }): BurstShapeLabel => {
+  if (window.burstClass === 'isolated-spike') {
+    return {
+      onset: 'Abrupt start',
+      ramp: 'Fast ramp-up',
+      detail: 'A short burst that rises sharply and fades quickly.',
+    };
+  }
+
+  if (window.burstClass === 'prolonged-peak') {
+    return {
+      onset: 'Gradual onset',
+      ramp: window.duration >= 900 ? 'Sustained buildup' : 'Steady buildup',
+      detail: 'A longer burst that builds and stays elevated across adjacent windows.',
+    };
+  }
+
+  if (window.burstClass === 'valley') {
+    return {
+      onset: 'Soft edge',
+      ramp: 'Cooling off',
+      detail: 'Activity is tapering relative to the surrounding neighborhood.',
+    };
+  }
+
+  if (window.duration <= 300 || window.peak >= 0.8) {
+    return {
+      onset: 'Clear start',
+      ramp: 'Visible lift',
+      detail: 'The burst is legible, but not strong enough to call out as a spike.',
+    };
+  }
+
+  return {
+    onset: 'Subtle start',
+    ramp: 'Flat build',
+    detail: 'The window stays close to baseline and does not build strongly.',
+  };
 };
 
 export function BurstDetails() {
@@ -121,7 +167,13 @@ export function BurstDetails() {
         { label: 'Median gap', value: formatInterval(medianDelta) }
       ];
 
-      return { rows, topTypes, gapBins, total: times.length, taxonomy };
+      const shape = resolveBurstShapeLabel({
+        duration: window.end - window.start,
+        peak: matchingWindow?.peak ?? 0,
+        burstClass: taxonomy?.burstClass,
+      });
+
+      return { rows, topTypes, gapBins, total: times.length, taxonomy, shape };
     };
 
     return selectedBurstWindows.map((window) => ({
@@ -162,6 +214,11 @@ export function BurstDetails() {
             <div className="mt-2 text-xs text-muted-foreground">
               Why this label: {entry.stats.taxonomy?.rationale ?? 'No taxonomy rationale available.'}
             </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="rounded-full border border-slate-700 px-2 py-0.5">Onset: {entry.stats.shape.onset}</span>
+              <span className="rounded-full border border-slate-700 px-2 py-0.5">Ramp: {entry.stats.shape.ramp}</span>
+            </div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{entry.stats.shape.detail}</div>
             <div className="mt-1 text-[10px] text-muted-foreground">
               Provenance: {entry.stats.taxonomy?.burstProvenance ?? 'n/a'}
             </div>
