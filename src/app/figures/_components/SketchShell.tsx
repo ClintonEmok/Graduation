@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { ChevronLeft, LayoutDashboard } from 'lucide-react';
 
 type SketchShellProps = {
-  title: string;
-  subtitle: string;
-  eyebrow?: string;
-  screenshot?: boolean;
   children: ReactNode;
 };
 
@@ -22,31 +16,10 @@ type SketchChipProps = {
   children: ReactNode;
 };
 
-export function SketchShell({ title, subtitle, eyebrow = 'Figures', screenshot = false, children }: SketchShellProps) {
+export function SketchShell({ children }: SketchShellProps) {
   return (
     <main className="min-h-screen bg-neutral-100 text-neutral-900">
-      <div className={screenshot ? 'flex min-h-screen w-full flex-col gap-4 overflow-hidden p-0' : 'mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8'}>
-        {screenshot ? null : (
-          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-neutral-300 pb-4">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500">
-                <LayoutDashboard className="size-3.5" />
-                <span>{eyebrow}</span>
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">{title}</h1>
-              <p className="max-w-2xl text-sm leading-6 text-neutral-600">{subtitle}</p>
-            </div>
-
-            <Link
-              href="/figures"
-              className="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-            >
-              <ChevronLeft className="size-3.5" />
-              Back to index
-            </Link>
-          </header>
-        )}
-
+      <div className="flex min-h-screen w-full flex-col overflow-hidden p-0">
         <section className="min-h-0 flex-1">{children}</section>
       </div>
     </main>

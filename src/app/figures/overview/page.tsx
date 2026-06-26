@@ -2,31 +2,10 @@ import { SketchLine, SketchPanel, SketchShell } from '../_components/SketchShell
 import { OverviewCubeSketch } from '../_components/OverviewCubeSketch';
 import { OverviewMapSketch } from '../_components/OverviewMapSketch';
 
-type FiguresOverviewPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
-};
-
-function isScreenshotMode(searchParams?: Record<string, string | string[] | undefined>) {
-  const value = searchParams?.screenshot;
-
-  if (Array.isArray(value)) {
-    return value.includes('1');
-  }
-
-  return value === '1';
-}
-
-export default function FiguresOverviewPage({ searchParams }: FiguresOverviewPageProps) {
-  const screenshot = isScreenshotMode(searchParams);
-
+export default function FiguresOverviewPage() {
   return (
-    <SketchShell
-      eyebrow="Dashboard sketch"
-      title="Full dashboard composition"
-      subtitle="A low-fidelity view of the complete dashboard: map on the left, cube on the right, overview and detail timelines underneath, and a full-height side panel."
-      screenshot={screenshot}
-    >
-      <div className={screenshot ? 'grid min-h-[calc(100vh-2rem)] gap-0 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)_minmax(12rem,0.48fr)] xl:grid-rows-[minmax(32rem,auto)_minmax(9rem,auto)_minmax(9rem,auto)]' : 'grid gap-0 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)_minmax(12rem,0.48fr)] xl:grid-rows-[minmax(30rem,auto)_minmax(8rem,auto)_minmax(8rem,auto)]'}>
+    <SketchShell>
+      <div className="grid min-h-[calc(100vh)] gap-0 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)_minmax(12rem,0.48fr)] xl:grid-rows-[minmax(32rem,auto)_minmax(9rem,auto)_minmax(9rem,auto)]">
         <SketchPanel className="min-h-[24rem] overflow-hidden xl:col-start-1 xl:row-start-1" contentClassName="h-full p-0">
           <OverviewMapSketch />
         </SketchPanel>

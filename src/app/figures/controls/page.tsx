@@ -2,11 +2,7 @@ import { SketchChip, SketchLine, SketchPanel, SketchShell } from '../_components
 
 export default function FiguresControlsPage() {
   return (
-    <SketchShell
-      eyebrow="Dashboard sketch"
-      title="Controls sketch"
-      subtitle="A stripped-down study rail showing the toolbar, filters, and supporting action cards without any active behavior."
-    >
+    <SketchShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_0.75fr]">
         <SketchPanel title="Toolbar" subtitle="Top-level actions and status chips." className="min-h-[18rem]">
           <div className="space-y-4">

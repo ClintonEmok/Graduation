@@ -2,7 +2,7 @@ import { SketchPanel, SketchShell } from '../_components/SketchShell';
 
 export default function FiguresTimelinePage() {
   return (
-    <SketchShell eyebrow="Dashboard sketch">
+    <SketchShell>
       <div className="grid gap-4">
         <SketchPanel className="min-h-[34rem]">
           <div className="flex h-full flex-col gap-4">

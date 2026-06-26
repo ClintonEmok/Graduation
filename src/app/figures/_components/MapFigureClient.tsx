@@ -7,10 +7,6 @@ import { Button } from '@/components/ui/button';
 import { CENTER } from '@/lib/projection';
 import type { LatLngExpression } from 'leaflet';
 
-type MapFigureClientProps = {
-  screenshot?: boolean;
-};
-
 const CHICAGO_COORDINATES = [CENTER.latitude, CENTER.longitude] satisfies LatLngExpression;
 
 const FIGURE_MARKERS = [
@@ -28,14 +24,14 @@ const HEAT_BLOBS = [
   { top: '24%', left: '62%', size: '22%' },
 ];
 
-export function MapFigureClient({ screenshot }: MapFigureClientProps) {
+export function MapFigureClient() {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showPois, setShowPois] = useState(true);
 
   return (
     <div className="mx-auto flex w-full justify-center px-6 py-6 sm:px-8 lg:px-10">
       <div
-        className={screenshot ? 'relative w-[min(75vw,1280px)]' : 'relative w-[min(75vw,1280px)]'}
+        className="relative w-[min(75vw,1280px)]"
         style={{ height: 'min(72vh, 760px)' }}
       >
         <div className="absolute inset-0 rounded-[2rem] border border-neutral-300 bg-neutral-100 p-4 shadow-[0_16px_48px_rgba(0,0,0,0.08)]">

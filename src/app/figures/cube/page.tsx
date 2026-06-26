@@ -3,11 +3,7 @@ import { SketchShell } from '../_components/SketchShell';
 
 export default function FiguresCubePage() {
   return (
-    <SketchShell
-      eyebrow="Dashboard sketch"
-      title="3D cube sketch"
-      subtitle="A simple three.js cube with a floating point inside it."
-    >
+    <SketchShell>
       <div className="mx-auto flex w-full justify-center px-6 py-6 sm:px-8 lg:px-10">
         <div className="relative w-[min(75vw,1280px)]" style={{ height: 'min(72vh, 760px)' }}>
           <div className="absolute inset-0 rounded-[2rem] border border-neutral-300 bg-neutral-100 p-4 shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
