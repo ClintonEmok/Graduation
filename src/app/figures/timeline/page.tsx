@@ -1,19 +1,15 @@
-import { SketchLine, SketchPanel, SketchShell } from '../_components/SketchShell';
+import { SketchPanel, SketchShell } from '../_components/SketchShell';
 
 export default function FiguresTimelinePage() {
   return (
-    <SketchShell
-      eyebrow="Dashboard sketch"
-      title="Timeline sketch"
-      subtitle="A standalone dual-timeline sketch that matches the overview timeline layout."
-    >
+    <SketchShell eyebrow="Dashboard sketch">
       <div className="grid gap-4">
-        <SketchPanel title="Dual timeline" subtitle="Overview lane above, detail lane below." className="min-h-[34rem]">
+        <SketchPanel className="min-h-[34rem]">
           <div className="flex h-full flex-col gap-4">
             <div className="rounded-[1.25rem] border border-neutral-300 bg-neutral-50 p-4">
               <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Overview</div>
               <div className="mt-4 grid gap-3">
-                <SketchLine className="w-full" />
+                <div className="h-2 w-full rounded-full bg-gradient-to-r from-sky-300 via-cyan-400 via-emerald-400 to-amber-300 opacity-90" />
                 <div className="grid grid-cols-16 gap-1.5 rounded-2xl border border-neutral-300 bg-white p-3">
                   {Array.from({ length: 16 }).map((_, index) => (
                     <div

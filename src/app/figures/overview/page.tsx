@@ -72,7 +72,7 @@ export default function FiguresOverviewPage({ searchParams }: FiguresOverviewPag
             <div className="rounded-xl border border-neutral-300 bg-neutral-50 p-2">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Overview</div>
               <div className="grid gap-0">
-                <SketchLine className="w-full" />
+                <div className="h-2 w-full rounded-full bg-gradient-to-r from-sky-300 via-cyan-400 via-emerald-400 to-amber-300 opacity-90" />
                 <div className="grid grid-cols-16 gap-0 rounded-xl border border-neutral-300 bg-white p-2">
                   {Array.from({ length: 16 }).map((_, index) => (
                     <div
