@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
-status: Phase 84 in progress; 84-01 complete; 84-02 next
-stopped_at: Completed 84-01 (AdaptiveSignalSource contract + dispatch refactor)
-last_updated: "2026-06-27T15:55:00Z"
-last_activity: 2026-06-27 -- Phase 84-01 complete: 3 commits, 79/79 store tests pass, BFT-01/02/12 satisfied
+status: Phase 84 in progress; 84-02 complete; 84-03 next
+stopped_at: Completed 84-02 (Density mapper + JSON baseline + DuckDB API)
+last_updated: "2026-06-27T16:17:20Z"
+last_activity: 2026-06-27 -- Phase 84-02 complete: 3 commits, 7 new density tests, 79/79 store tests still pass, BFT-02/03/11 satisfied (real density mapper wired). 84-03 (Wave 3) ready to start: contextual z port + 3-way Select + feature flag.
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
-  percent: 38
+  completed_plans: 14
+  percent: 44
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: `.planning/PROJECT.md`
 ## Current Position
 
 Phase: 84 of 8 (Burstiness Signal Contract + Density Fallback) — **IN PROGRESS**
-Status: 84-01 (Wave 1) complete; 84-02 (Wave 2: density + JSON baseline export) next
-Last activity: 2026-06-27 -- 84-01 SUMMARY shipped: AdaptiveSignalSource type union, activeSignalSource field with persist middleware, refactored addSliceFromBin / replaceSlicesFromBins dispatch, 7-test parity suite passing, BFT-01/02/12 satisfied. BFT-03 (preserve existing density path) deferred to 84-02.
+Status: 84-01 (Wave 1) + 84-02 (Wave 2) complete; 84-03 (Wave 3: contextual z + 3-way Select + feature flag) next
+Last activity: 2026-06-27 -- 84-02 SUMMARY shipped: real densityWarpWeight formula (range [1.0, 2.5]) implemented + 7-test unit suite; public/baselines/baseline_168.json (168 cells, 21,877 bytes, sha256:2bff2e8db8397784); DuckDB fallback API route /api/adaptive/contextual-baseline (Cache-Control: s-maxage=3600); baseline-loader.ts (loadBaseline168 + getBaseline168Sync + getBaseline168WinsorizedSync stub); createSliceCoreSlice dispatch now passes getBaseline168Sync() for density path. 3 commits, 79/79 store tests pass, 6 pre-existing failures (stkde/cube/viz) unchanged. BFT-02/03/11 satisfied. BFT-12 invariant preserved.
 
 ### 80-03 Pending Handoff
 
@@ -116,6 +116,10 @@ Recent decisions affecting current work:
 - [Phase 84]: Density and contextual mappers ship as 84-01 stubs returning `1.0` when no baseline is loaded; their full implementations land in 84-02 and 84-03 respectively. The dispatch signature is `(source, bin, baseline, baselineWinsorized)` so 84-02/84-03 just replace the `null` args.
 - [Phase 84]: `activeSignalSource` persists in localStorage under key `adaptive-signal-source-v1` (same pattern as `useFeatureFlagsStore.ts:25-89`); the persist middleware uses a noop localStorage shim in node test environments so `vi.resetModules()` re-imports in `useAdaptiveStore.test.ts` continue to work without crashing.
 - [Phase 84]: `dispatchWarpWeight` lives in `src/lib/signal-sources/index.ts` (not `contract.ts`) to avoid a circular import with the mapper modules; mappers import their type contracts from `contract.ts` only.
+- [Phase 84]: The 168-cell baseline JSON fingerprint uses `sha256(raw parquet bytes)[:16]` (matches the `sha256:16hex` format in `baseline_168.meta.json`); the fingerprint format is stable across re-runs. The DuckDB-derived baseline uses a poor-man's `sha256:duckdb-{tsMin}-{tsMax}` identifier — not cryptographic, just dataset-range identification. The static JSON is the canonical fingerprint for data-change detection.
+- [Phase 84]: Density mapper formula is `clampComparableWarpWeight(1 + clamp01((O - E) / Math.max(E, 1)) * 1.5, 0.25, 4)`. Range [1.0, 2.5]. O < E clamps to 0 → 1.0 (we don't compress sub-baseline bins; only expand above-baseline bins). `cellSeconds = 3600 * totalWeeks` matches `metrics/contextual.py:98 SECONDS_PER_HOUR * total_weeks` (per-hour-of-week rate table, not per-bin).
+- [Phase 84]: Baseline loader uses `static-first → API-fallback` pattern: `loadBaseline168()` fetches `/baselines/baseline_168.json` first (with `cache: 'force-cache'`, no revalidation), falls back to `/api/adaptive/contextual-baseline` (which has `Cache-Control: s-maxage=3600, stale-while-revalidate=86400` — 60x longer than the global maps route because the 168-cell baseline is dataset-locked). Module-level `baselineCache` is the single source of truth for the sync accessor.
+- [Phase 84]: Widening `DuckDbInstance.all` to accept variadic params (`...args: [...unknown[], (err, rows) => void] | []`) is a beneficial side effect — fixed 8 pre-existing TS2556 spread errors in `bursts/route.ts` and `crime/stats-summary/route.ts`. The narrow callback-type variance fix in `bursts/route.ts` (callback declares `rows: unknown[]` with cast at the resolve site) is the standard pattern from `db.ts`'s `queryRows` helper.
 
 ### Pending Todos
 
@@ -152,8 +156,8 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-27T15:55:00Z
-Stopped at: Phase 84-01 complete; 84-02 ready to execute
+Last session: 2026-06-27T16:17:20Z
+Stopped at: Phase 84-02 complete; 84-03 ready to execute
 Resume file: None
 
 ### 83 Phase Roadmap
