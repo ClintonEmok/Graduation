@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { Map, Box, Flame, Layers3, MapPin, GitCompareArrows } from 'lucide-react';
+import { Map, Box, Flame, Layers3, MapPin, GitCompareArrows, Maximize2, ZoomIn } from 'lucide-react';
 import { DemoTimelinePanel } from '@/components/dashboard-demo/DemoTimelinePanel';
 import { DashboardDemoRailTabs } from '@/components/dashboard-demo/DashboardDemoRailTabs';
 import { DemoCompareStage } from '@/components/dashboard-demo/DemoCompareStage';
@@ -33,6 +33,9 @@ export function DashboardDemoShell() {
   const setViewport = useViewportStore((state) => state.setViewport);
   const setActiveRailTab = useDashboardDemoCoordinationStore((state) => state.setActiveRailTab);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
+  const cubeScopeMode = useDashboardDemoCoordinationStore((state) => state.cubeScopeMode);
+  const setCubeScopeMode = useDashboardDemoCoordinationStore((state) => state.setCubeScopeMode);
+  const brushRange = useDashboardDemoCoordinationStore((state) => state.brushRange);
   const poiVisible = useDashboardDemoMapLayerStore((state) => state.visibility.poi);
   const heatmapVisible = useDashboardDemoMapLayerStore((state) => state.visibility.heatmap);
   const toggleLayer = useDashboardDemoMapLayerStore((state) => state.toggleVisibility);
@@ -152,6 +155,33 @@ export function DashboardDemoShell() {
                   className="rounded-full"
                 >
                   <Layers3 className="size-3.5" />
+                </Button>
+              </>
+            ) : null}
+            {activeViewport === '3d' && brushRange !== null ? (
+              <>
+                <div className="mx-1 h-5 w-px bg-slate-700/70" aria-hidden="true" />
+                <Button
+                  type="button"
+                  onClick={() => setCubeScopeMode('full')}
+                  aria-label="Overview mode — show full time range"
+                  title="Overview"
+                  variant={cubeScopeMode === 'full' ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="rounded-full"
+                >
+                  <Maximize2 className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setCubeScopeMode('brushed')}
+                  aria-label="Detail mode — zoom to brushed range"
+                  title="Detail"
+                  variant={cubeScopeMode === 'brushed' ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="rounded-full"
+                >
+                  <ZoomIn className="size-3.5" />
                 </Button>
               </>
             ) : null}
