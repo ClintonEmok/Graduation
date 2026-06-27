@@ -2,6 +2,7 @@ import { useAdaptiveStore } from '../useAdaptiveStore';
 import { useTimelineDataStore } from '../useTimelineDataStore';
 import { calculateRangeTolerance, rangesMatch } from '../../lib/slice-utils';
 import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '../../lib/time-domain';
+import { dispatchWarpWeight } from '@/lib/signal-sources';
 import type { TimeBin } from '@/lib/binning/types';
 import type { SliceCoreState, SliceDomainStateCreator, TimeSlice } from './types';
 
@@ -316,6 +317,21 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
 
     const burstTaxonomyPresent = hasBurstTaxonomy(bin);
 
+    // Phase 84 (BFT-01 / BFT-02): dispatch warpWeight on the active signal
+    // source. The burstiness path reproduces the pre-Phase-84 hardcoded
+    // values exactly (parity test in
+    // `createSliceCoreSlice.burstinessParity.test.ts` enforces this);
+    // density and contextual fall through to the dispatch helper, which
+    // returns 1.0 (stub) when the respective baseline is null. Plan 84-02
+    // wires the real density baseline; Plan 84-03 wires the winsorized
+    // contextual baseline.
+    const source = useAdaptiveStore.getState().activeSignalSource;
+    const warpWeight = source === 'burstiness'
+      ? (burstTaxonomyPresent
+        ? (bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25))
+        : 1)
+      : dispatchWarpWeight(source, bin, null, null);
+
     let slice: TimeSlice;
 
     if (burstTaxonomyPresent) {
@@ -327,7 +343,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         time: (start + end) / 2,
         range: [start, end] as [number, number],
         warpEnabled: true,
-        warpWeight: bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25),
+        warpWeight,
         notes: `${bin.count} events`,
         isBurst: true,
         burstSliceId: buildBurstSliceId(start, end),
@@ -354,7 +370,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         time: (start + end) / 2,
         range: [start, end] as [number, number],
         warpEnabled: true,
-        warpWeight: 1,
+        warpWeight,
         notes: `${bin.count} events`,
         isLocked: false,
         isVisible: true,
@@ -381,6 +397,15 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
 
         const burstTaxonomyPresent = hasBurstTaxonomy(bin);
 
+        // Phase 84 (BFT-01 / BFT-02): dispatch warpWeight on the active
+        // signal source (same pattern as `addSliceFromBin`).
+        const source = useAdaptiveStore.getState().activeSignalSource;
+        const warpWeight = source === 'burstiness'
+          ? (burstTaxonomyPresent
+            ? (bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25))
+            : 1)
+          : dispatchWarpWeight(source, bin, null, null);
+
         if (burstTaxonomyPresent) {
           return {
             id: crypto.randomUUID(),
@@ -390,7 +415,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
             time: (start + end) / 2,
             range: [start, end] as [number, number],
             warpEnabled: true,
-            warpWeight: bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25),
+            warpWeight,
             notes: `${bin.count} events`,
             isBurst: true,
             burstSliceId: buildBurstSliceId(start, end),
@@ -418,7 +443,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
           time: (start + end) / 2,
           range: [start, end] as [number, number],
           warpEnabled: true,
-          warpWeight: 1,
+          warpWeight,
           notes: `${bin.count} events`,
           isLocked: false,
           isVisible: true,
