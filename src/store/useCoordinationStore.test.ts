@@ -13,6 +13,9 @@ beforeEach(() => {
     workflowPhase: 'generate',
     syncStatus: { status: 'synchronized' },
     panelNoMatch: {},
+    hoveredTypeId: null,
+    lastClick: null,
+    mapOverlayOpen: false,
   });
 });
 

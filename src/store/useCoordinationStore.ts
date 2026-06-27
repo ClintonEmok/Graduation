@@ -34,6 +34,9 @@ interface CoordinationState {
   workflowPhase: WorkflowPhase;
   syncStatus: SyncStatus;
   panelNoMatch: Partial<Record<PanelName, PanelNoMatchState>>;
+  hoveredTypeId: number | null;
+  lastClick: { lat: number; lon: number } | null;
+  mapOverlayOpen: boolean;
   setSelectedIndex: (index: number, source: Exclude<SelectionSource, null>) => void;
   commitSelection: (index: number, source: Exclude<SelectionSource, null>) => void;
   clearSelection: (reason?: string) => void;
@@ -44,6 +47,9 @@ interface CoordinationState {
   toggleBurstWindow: (window: { start: number; end: number; metric: 'density' | 'burstiness' }) => void;
   clearSelectedBurstWindows: () => void;
   setDetailsOpen: (open: boolean) => void;
+  setHoveredTypeId: (id: number | null) => void;
+  setLastClick: (click: { lat: number; lon: number } | null) => void;
+  setMapOverlayOpen: (open: boolean) => void;
 }
 
 export const useCoordinationStore = create<CoordinationState>((set) => ({
@@ -57,6 +63,9 @@ export const useCoordinationStore = create<CoordinationState>((set) => ({
   workflowPhase: 'generate',
   syncStatus: { status: 'synchronized' },
   panelNoMatch: {},
+  hoveredTypeId: null,
+  lastClick: null,
+  mapOverlayOpen: false,
   setSelectedIndex: (index, source) =>
     set({
       selectedIndex: index,
@@ -150,5 +159,8 @@ export const useCoordinationStore = create<CoordinationState>((set) => ({
       return { selectedBurstWindows: next.slice(-3) };
     }),
   clearSelectedBurstWindows: () => set({ selectedBurstWindows: [] }),
-  setDetailsOpen: (open) => set({ detailsOpen: open })
+  setDetailsOpen: (open) => set({ detailsOpen: open }),
+  setHoveredTypeId: (hoveredTypeId) => set({ hoveredTypeId }),
+  setLastClick: (lastClick) => set({ lastClick }),
+  setMapOverlayOpen: (mapOverlayOpen) => set({ mapOverlayOpen }),
 }));

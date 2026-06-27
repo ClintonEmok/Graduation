@@ -130,6 +130,9 @@ interface DashboardDemoCoordinationState {
   temporalFilter: StkdeTemporalFilter | null;
   stkdeResponse: StkdeResponse | null;
   selectedPoiId: string | null;
+  hoveredTypeId: number | null;
+  lastClick: { lat: number; lon: number } | null;
+  mapOverlayOpen: boolean;
   setSelectedPoi: (poiId: string | null) => void;
   setActiveRailTab: (tab: string) => void;
   setActiveSliceIndex: (index: number) => void;
@@ -180,6 +183,9 @@ interface DashboardDemoCoordinationState {
   setSpatialFilter: (filter: StkdeSpatialFilter | null) => void;
   setTemporalFilter: (filter: StkdeTemporalFilter | null) => void;
   setStkdeResponse: (response: StkdeResponse | null) => void;
+  setHoveredTypeId: (id: number | null) => void;
+  setLastClick: (click: { lat: number; lon: number } | null) => void;
+  setMapOverlayOpen: (open: boolean) => void;
   resetAnalysis: () => void;
 }
 
@@ -234,6 +240,9 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   selectedHotspotId: null,
   hoveredHotspotId: null,
   selectedPoiId: null,
+  hoveredTypeId: null,
+  lastClick: null,
+  mapOverlayOpen: false,
   spatialFilter: null,
   temporalFilter: null,
   stkdeResponse: null,
@@ -398,6 +407,9 @@ export const useDashboardDemoCoordinationStore = create<DashboardDemoCoordinatio
   setTemporalFilter: (temporalFilter) => set({ temporalFilter }),
   setStkdeResponse: (stkdeResponse) => set({ stkdeResponse }),
   setSelectedPoi: (selectedPoiId) => set({ selectedPoiId }),
+  setHoveredTypeId: (hoveredTypeId) => set({ hoveredTypeId }),
+  setLastClick: (lastClick) => set({ lastClick }),
+  setMapOverlayOpen: (mapOverlayOpen) => set({ mapOverlayOpen }),
   resetAnalysis: () =>
     set({
       selectedDistricts: [],
