@@ -67,6 +67,16 @@ export const FLAG_DEFINITIONS: FeatureFlag[] = [
     status: 'experimental',
     default: false,
   },
+  // Phase 84: Adaptive signal source selector (Burstiness / Density / Contextual)
+  {
+    id: 'adaptiveSignalSource',
+    name: 'Adaptive signal source',
+    description:
+      'Expose a 3-way selector (Burstiness, Density, Contextual) in the dashboard-demo adaptive warp controls',
+    category: 'experimental',
+    status: 'experimental',
+    default: true,
+  },
 ];
 
 export function getDefaultFlags(): Record<string, boolean> {

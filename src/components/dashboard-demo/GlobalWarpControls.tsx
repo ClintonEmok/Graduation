@@ -4,8 +4,25 @@ import { useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Sliders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
+import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
+import { useAdaptiveStore } from '@/store/useAdaptiveStore';
+import {
+  SIGNAL_SOURCE_OPTIONS,
+  type AdaptiveSignalSource,
+} from '@/lib/signal-sources/contract';
+import {
+  loadBaseline168,
+  loadBaseline168Winsorized,
+} from '@/lib/signal-sources';
 import { cn } from '@/lib/utils';
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
@@ -39,6 +56,40 @@ export function GlobalWarpControls() {
 
   const volumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.volumeScaleSeconds);
   const setVolumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.setVolumeScaleSeconds);
+
+  // Phase 84 (BFT-02 finalisation, BFT-10): adaptive signal source
+  // selector. Doubly-gated: (1) `timeScaleMode === 'adaptive'` (the
+  // Linear/Adaptive toggle); (2) `useFeatureFlagsStore.isEnabled(
+  // 'adaptiveSignalSource')` so the UI can be hidden in evaluation
+  // mode or via the Settings panel without code changes.
+  const activeSignalSource = useAdaptiveStore((state) => state.activeSignalSource);
+  const setActiveSignalSource = useAdaptiveStore((state) => state.setActiveSignalSource);
+  const isSignalSourceEnabled = useFeatureFlagsStore((state) =>
+    state.isEnabled('adaptiveSignalSource'),
+  );
+  const showSignalSource = isSignalSourceEnabled && !isEvaluationLocked;
+
+  const handleSourceChange = useCallback(
+    (value: string) => {
+      const source = value as AdaptiveSignalSource;
+      setActiveSignalSource(source);
+      // Warm the baseline caches on first source switch so the
+      // dispatch hot path has the baseline available immediately.
+      // Failures are silent — the dispatch falls back to 1.0 if the
+      // baseline isn't loaded.
+      if (source === 'density') {
+        void loadBaseline168().catch(() => undefined);
+      } else if (source === 'contextual') {
+        void loadBaseline168().catch(() => undefined);
+        try {
+          loadBaseline168Winsorized();
+        } catch {
+          /* baseline not loaded yet — see loadBaseline168 above */
+        }
+      }
+    },
+    [setActiveSignalSource],
+  );
 
   const temporalDays = useMemo(() => volumeScaleSeconds / SECONDS_PER_DAY, [volumeScaleSeconds]);
 
@@ -149,21 +200,48 @@ export function GlobalWarpControls() {
           </Button>
         </div>
         {timeScaleMode === 'adaptive' ? (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="shrink-0 text-foreground">Warp factor</span>
-            <Slider
-              min={0}
-              max={WARP_FACTOR_MAX}
-              step={0.01}
-              value={[warpFactor]}
-              onValueChange={handleWarpSliderChange}
-              aria-label="Warp factor"
-              disabled={isEvaluationLocked}
-            />
-            <span className="w-10 shrink-0 text-right font-mono tabular-nums text-foreground">
-              {warpPercent}%
-            </span>
-          </div>
+          <>
+            {showSignalSource ? (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="shrink-0 text-foreground">Signal source</span>
+                <Select
+                  value={activeSignalSource}
+                  onValueChange={handleSourceChange}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-6 w-[140px] rounded-sm px-2 text-[11px]"
+                    aria-label="Adaptive signal source"
+                    disabled={isEvaluationLocked}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SIGNAL_SOURCE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="shrink-0 text-foreground">Warp factor</span>
+              <Slider
+                min={0}
+                max={WARP_FACTOR_MAX}
+                step={0.01}
+                value={[warpFactor]}
+                onValueChange={handleWarpSliderChange}
+                aria-label="Warp factor"
+                disabled={isEvaluationLocked}
+              />
+              <span className="w-10 shrink-0 text-right font-mono tabular-nums text-foreground">
+                {warpPercent}%
+              </span>
+            </div>
+          </>
         ) : null}
       </div>
     </section>

@@ -131,6 +131,15 @@ describe('/dashboard-demo shell', () => {
     expect(globalWarpControlsSource).toMatch(/Time scale/);
     expect(globalWarpControlsSource).toMatch(/Warp factor/);
     expect(globalWarpControlsSource).toMatch(/Linear|Adaptive/);
+    // Phase 84: adaptive signal source selector
+    expect(globalWarpControlsSource).toMatch(/from '@\/components\/ui\/select'/);
+    expect(globalWarpControlsSource).toMatch(/from '@\/lib\/signal-sources\/contract'/);
+    expect(globalWarpControlsSource).toMatch(/SIGNAL_SOURCE_OPTIONS/);
+    expect(globalWarpControlsSource).toMatch(/isEnabled\(['"]adaptiveSignalSource['"]\)/);
+    expect(globalWarpControlsSource).toMatch(/setActiveSignalSource/);
+    // The Select is rendered conditionally on both `timeScaleMode === 'adaptive'`
+    // AND the feature flag (the `showSignalSource` doubly-gated variable).
+    expect(globalWarpControlsSource).toMatch(/showSignalSource/);
     expect(demoStatsMapOverlaySource).toMatch(/heatmap/);
     expect(demoStatsMapOverlaySource).toMatch(/demo-stats-districts/);
     expect(demoStatsMapOverlaySource).toMatch(/chicago-police-districts\.geojson/);
