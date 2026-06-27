@@ -141,7 +141,7 @@ This project uses ~197 distinct algorithms across 17 subsystems. The performance
 | D3 | `findBoundaryBin` | `adaptiveTime.worker.ts:48` | O(log B) | O(1) | Lower-bound binary search |
 | D4 | `ensureStrictlyMonotonicBoundaries` | `adaptiveTime.worker.ts:30` | O(B) | O(1) | Linear fix-up with 1e-6 epsilon |
 | D5 | `computeBurstinessPerBin` | `adaptiveTime.worker.ts:200` | O(n) | O(B) | Online variance of inter-event gaps per bin |
-| D6 | `getAdaptiveScaleConfig` | `adaptive-scale.ts:21` | O(n + B) | O(B) | Density→weight→cumulative range |
+| D6 | `getAdaptiveScaleConfig` | `adaptive-scale.ts:21` | O(n + B) | O(B) | Burstiness→weight→cumulative range (per-bin Goh-Barabási coefficient; density is computed only for the density strip and is not part of the weight) |
 | D7 | `getAdaptiveScaleConfigColumnar` | `adaptive-scale.ts:91` | O(n + B) | O(B) | Same as D6, columnar input |
 | D8 | `computeAdaptiveY` | `adaptive-scale.ts:157` | **O(2n + 2B)** | O(n + B) | Calls D6 (bins all) THEN bins again — double binning |
 | D9 | `computeAdaptiveYColumnar` | `adaptive-scale.ts:193` | **O(2n + 2B)** | O(n + B) | Same double-binning as D8 |
@@ -165,7 +165,7 @@ This project uses ~197 distinct algorithms across 17 subsystems. The performance
 
 **Improvements:**
 1. Sort Float32Array in-place instead of `Array.from() → sort()`
-2. Single-pass compute in worker: combine density accumulation, burstiness, and warp accumulation
+2. Single-pass compute in worker: combine count accumulation, burstiness, and warp accumulation (density is still produced for the density strip but no longer feeds the weight)
 3. Refactor D8/D9 to compute config once and reuse
 4. Prefix sum for box filter smoothing (O(B·W) → O(B))
 5. Gaussian kernel instead of box filter for smoother density estimates

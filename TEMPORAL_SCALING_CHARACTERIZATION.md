@@ -22,9 +22,15 @@ The temporal domain `[t₀, t₁]` is divided into `N` equal-width bins. Each ev
 
 ### Stage 2: Weighting (per-interval)
 
-Each bin is assigned a weight `wᵢ = 1 + (cᵢ / max(c)) · 5`.
+Each bin is assigned a weight driven by its **Goh--Barabási burstiness coefficient** rather than by its raw count:
 
-The minimum weight is 1 (sparse bin), the maximum is 6 (densest bin). Weight is a discrete, piecewise-constant function over the bins.
+```
+wᵢ = 1 + Bᵢ · M
+```
+
+where `Bᵢ ∈ [0, 1]` is the per-bin burstiness score (inter-event gap irregularity within the bin, normalised from the raw coefficient `(σ − μ) / (σ + μ)` to `[0, 1]`), and `M` is a multiplier that controls the maximum expansion. The default `M = 5` gives a minimum weight of 1 (empty or non-bursty bin) and a maximum of 6 (strongly bursty bin). Weight is a discrete, piecewise-constant function over the bins.
+
+The scaling is burstiness-driven: a bin with a moderate event count that is concentrated into a short spike receives a larger weight than a bin with a higher count that is uniformly spread out. Density is intentionally not part of the weight; it is used separately for the density strip and the count summary, but it does not feed the visual-space allocation.
 
 ### Stage 3: Visual space distribution (cumulative)
 

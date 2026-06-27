@@ -1,7 +1,7 @@
 # Burst Metrics Methodology
 
 ## Scope
-This project uses standard statistical primitives and then composes them into app-specific burst windows, draft bins, and API payloads.
+This project uses standard statistical primitives and then composes them into app-specific burst windows, draft bins, and API payloads. The burstiness signal is the primary input to adaptive temporal scaling (see `TEMPORAL_SCALING_CHARACTERIZATION.md`), and density is used only for visualisation (density strip, count summary).
 
 ## Metric Sources
 
