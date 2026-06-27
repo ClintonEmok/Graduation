@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
-status: Defining requirements
-stopped_at: Completed 83-01-PLAN.md
-last_updated: "2026-06-27T12:57:20Z"
-last_activity: 2026-06-27 -- Completed 83-01-PLAN.md (Python scaffold + 168-cell baseline + z-preview, verdict PASS)
+status: Phase 83 complete; Phase 84 unblocked
+stopped_at: Completed 83 (Contextual Burstiness vs Goh-Barabasi Comparison, verdict GO)
+last_updated: "2026-06-27T13:30:00Z"
+last_activity: 2026-06-27 -- Phase 83 complete; CBP-05 decision gate GO; Phase 84 unblocked per CBP-06
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 11
-  completed_plans: 7
-  percent: 27
+  completed_phases: 3
+  total_plans: 16
+  completed_plans: 12
+  percent: 38
 ---
 
 # Project State
@@ -25,10 +25,9 @@ See: `.planning/PROJECT.md`
 
 ## Current Position
 
-Phase: 83 of 8 (Contextual Burstiness vs Goh-Barabasi Comparison)
-Plan: 83-01 of 5 (Python scaffold + 168-cell baseline + z-preview)
-Status: In progress
-Last activity: 2026-06-27 -- Completed 83-01-PLAN.md (verdict PASS)
+Phase: 83 of 8 (Contextual Burstiness vs Goh-Barabasi Comparison) — **COMPLETE**
+Status: Phase 83 verdict GO; Phase 84 unblocked per CBP-06
+Last activity: 2026-06-27 -- Phase 83 verdict GO (CV ratio 56.7x, range ratio 10.9x, absolute floor 9.18 all pass at 1d). Phase 84 ready to plan.
 
 ### 80-03 Pending Handoff
 
@@ -66,12 +65,12 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 | 78 Temporal Evolution | 2 | 2 | ~30m |
 | 79 Adaptive 3D | 3 | 3 | ~6m |
 | 80 Evaluation Readiness | 3 | 2.6/3 | ~12m (80-03 partial — pilot deferred) |
-| 83 Contextual Burstiness | 1 | 0.2/5 | ~10m (83-01 complete; 02-05 pending) |
+| 83 Contextual Burstiness | 5 | 5/5 | ~25m (all plans complete; verdict GO) |
 
 **Recent Trend:**
 
-- Last 5 plans: 83-01, 80-02, 80-01, 79-03, 79-02
-- Trend: Phase 83 Plan 01 (Python scaffold + 168-cell baseline + z-preview) complete; verdict PASS. 4 more plans in Phase 83 to ship the full comparison pipeline.
+- Last 5 plans: 83-05, 83-04, 83-03, 83-02, 83-01
+- Trend: Phase 83 fully complete with verdict GO. Decision gate: contextual std 9.18 / median ref CV 0.16 = 56.7x (need 2x), range 62.2 / max ref range 5.69 = 10.9x (need 3x), absolute floor 9.18 (need >=0.10). All pass. Phase 84 unblocked.
 
 ## Accumulated Context
 
@@ -86,6 +85,11 @@ Recent decisions affecting current work:
 - [Phase 83]: Venv bootstrapped via `uv venv --python 3.11` (miniconda Python 3.11.5) — homebrew Python 3.11/3.13/3.14 all have broken libexpat link on this host.
 - [Phase 83]: Added `!output/figures/.gitkeep` exception to .gitignore so figures dir structure persists in git while generated PNGs stay untracked.
 - [Phase 83]: 168-cell exploration verdict is **PASS** (n_degenerate=0, z_cv=0.445, z_max=1315.464). Peak cell hour=0 (Sun 00:00) count=76,519; trough cell hour=5 (Tue 05:00) count=14,569.
+- [Phase 83]: Decision gate verdict **GO** at 1d (36,537 windows, 8.38M events). CV ratio 56.7x, range ratio 10.9x, absolute floor 9.18. Phase 84 (Burstiness Signal Contract + Density Fallback) unblocked per CBP-06.
+- [Phase 83]: Baseline is **conditional rate** (events/sec at h, d), not averaged over all time. This was a critical fix — initial implementation averaged over total_seconds, producing z=14000 (168x too large). Pearson residual form: z = (O - E) / sqrt(E), with E computed by summing per-second conditional rates over the cells the window spans.
+- [Phase 83]: For the contextual z-score, std is used directly as the relative-variation measure (not CV = std/|mean|) because mean(z)=0 by construction. This keeps the comparison dimensionless across all four metrics.
+- [Phase 83]: Decision gate uses median (not max) for the CV test — standard robust estimator for small panels (breakdown point 50% vs 0% for mean). Defended in thesis note via Huber (1981), Rousseeuw & Leroy (1987), Maronna et al. (2019). Range test uses max because range is the property the warp visualization depends on.
+- [Phase 83]: Intensity ratio r = O/E (alongside z) is the natural positive-valued form for the warp visualization (r>1 = expand, r<1 = compress). z is the signed deviation in standardized units. Both written to the contextual parquet.
 - [Phase 80]: Study task order is fixed T4 → T1 → T2 → T3 (not natural ordering).
 - [Phase 80]: Researcher flow is fixed 8-step: Welcome → Training → Tasks-A → Questionnaire-A → Tasks-B → Questionnaire-B → Interview → Done.
 - [Phase 80]: Questionnaire is 6 NASA-RTLX + 6 interpretability items (overrides the 12 NASA-RTLX draft in `EVALUATION_PROTOCOL.md`).
@@ -143,14 +147,14 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-27T12:57:20Z
-Stopped at: Completed 83-01-PLAN.md (Python scaffold + 168-cell baseline + z-preview, verdict PASS)
+Last session: 2026-06-27T13:30:00Z
+Stopped at: Phase 83 complete (verdict GO); Phase 84 unblocked and ready to plan
 Resume file: None
 
 ### 83 Phase Roadmap
 
 - **83-01** ✓ COMPLETE — Python scaffold + 168-cell baseline + 1d z-score preview (verdict PASS)
-- **83-02** — Implement Goh-Barabasi B port + 1h/6h/1d/1w sweep
-- **83-03** — Compute contextual z-series + populate comparison_table.csv (4 metrics: contextual, B, density, CV)
-- **83-04** — Generate 3 thesis-ready figures (z_heatmap, per_window_timeseries, contrast_table)
-- **83-05** — Decision gate, single-run entry point, DECISION-GATE.md (go/not_yet/no)
+- **83-02** ✓ COMPLETE — Contextual z metric: 168-cell conditional-rate baseline + Pearson residual + intensity ratio
+- **83-03** ✓ COMPLETE — Goh-Barabasi B + density + CV reference metrics (4-metric sweep at 1h/6h/1d/1w)
+- **83-04** ✓ COMPLETE — 16-row comparison_table.csv + 3 thesis PNGs (heatmap, time series, contrast table) at 320 DPI
+- **83-05** ✓ COMPLETE — Decision gate (verdict GO) + DECISION-GATE.md + thesis note at docs/CONTEXTUAL_BURSTINESS_VS_GOH_BARABASI_THESIS_NOTE.md

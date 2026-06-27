@@ -105,6 +105,8 @@ Plans:
 | 80. Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4 | v3.3 | In progress | 8 | 3 |
 | 81. Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads | v3.3 | Planned | TBD | 3 |
 | 82. add poi to 2d map on dashboard demo | v3.3 | Planned | TBD | 0 |
+| **83. Contextual Burstiness vs Goh-Barabasi Comparison** | **v3.4** | **Complete (2026-06-27, verdict GO)** | **8** | **5** |
+| 84. Burstiness Signal Contract + Density Fallback (gated on Phase 83 GO) | v3.4 | Unblocked (plan pending) | 3 | 0 |
 
 ### Phase 80: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 
@@ -152,11 +154,13 @@ Plans:
 
 Plans:
 
-- [ ] 83-01-PLAN.md — Scaffold Python project (venv, db.py loader, run.py skeleton)
-- [ ] 83-02-PLAN.md — Build contextual baseline (hour×dayOfWeek expected rate + sigma) and z-score metric
-- [ ] 83-03-PLAN.md — Implement Goh-Barabasi baseline (B = (σ-μ)/(σ+μ) on inter-event times) over the same windows
-- [ ] 83-04-PLAN.md — Side-by-side CV/dynamic-range comparison + thesis-ready figures
-- [ ] 83-05-PLAN.md — Decision gate (go / not yet / no) for prototype integration
+- [x] 83-01-PLAN.md — Scaffold Python project (venv, db.py loader, run.py skeleton)
+- [x] 83-02-PLAN.md — Build contextual baseline (hour×dayOfWeek expected rate + sigma) and z-score metric
+- [x] 83-03-PLAN.md — Implement Goh-Barabasi baseline (B = (σ-μ)/(σ+μ) on inter-event times) over the same windows
+- [x] 83-04-PLAN.md — Side-by-side CV/dynamic-range comparison + thesis-ready figures
+- [x] 83-05-PLAN.md — Decision gate (go / not yet / no) for prototype integration
+
+**Status: COMPLETE (2026-06-27). Verdict GO at 1d. Phase 84 unblocked per CBP-06.**
 
 **Success Criteria**:
 
