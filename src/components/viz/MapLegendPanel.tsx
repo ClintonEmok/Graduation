@@ -55,6 +55,7 @@ export function MapLegendPanel({ activeSliceLabel = null }: MapLegendPanelProps)
 
   useEffect(() => {
     if (!selectedPoi) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset when POI selection clears
       setPoiBreakdown({ total: 0, byType: [], loading: false, error: null });
       return;
     }

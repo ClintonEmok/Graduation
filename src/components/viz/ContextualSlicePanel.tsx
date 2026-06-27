@@ -6,14 +6,15 @@ import { SliceStats } from './SliceStats';
 import { PointInspector } from './PointInspector';
 import { BurstList } from './BurstList';
 import { BurstDetails } from './BurstDetails';
+import { MapLegendPanel } from './MapLegendPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 
 export function ContextualSlicePanel() {
   const { activeSliceId, setActiveSlice } = useSliceStore();
-  const { selectedIndex, clearSelection, detailsOpen, setDetailsOpen } = useCoordinationStore();
+  const { selectedIndex, clearSelection, detailsOpen, setDetailsOpen, mapOverlayOpen, setMapOverlayOpen } = useCoordinationStore();
 
-  const isOpen = detailsOpen || activeSliceId !== null || selectedIndex !== null;
+  const isOpen = detailsOpen || activeSliceId !== null || selectedIndex !== null || mapOverlayOpen;
 
   if (!isOpen) return null;
 
@@ -21,13 +22,20 @@ export function ContextualSlicePanel() {
     setActiveSlice(null);
     clearSelection();
     setDetailsOpen(false);
+    setMapOverlayOpen(false);
   };
 
   return (
     <div className="fixed right-0 top-0 h-full w-80 bg-background border-l shadow-xl z-50 overflow-y-auto transition-transform duration-300 ease-in-out transform translate-x-0">
       <div className="flex items-center justify-between p-4 border-b bg-muted/20">
         <h2 className="font-semibold text-lg">
-          {activeSliceId ? 'Slice Analysis' : selectedIndex !== null ? 'Point Details' : 'Details'}
+          {activeSliceId
+            ? 'Slice Analysis'
+            : selectedIndex !== null
+              ? 'Point Details'
+              : mapOverlayOpen
+                ? 'Map Legend'
+                : 'Details'}
         </h2>
         <button 
           onClick={handleClose}
@@ -38,12 +46,13 @@ export function ContextualSlicePanel() {
         </button>
       </div>
       
-      <Tabs defaultValue={selectedIndex !== null ? 'point' : activeSliceId ? 'slice' : 'bursts'} className="w-full">
+      <Tabs defaultValue={mapOverlayOpen ? 'legend' : selectedIndex !== null ? 'point' : activeSliceId ? 'slice' : 'bursts'} className="w-full">
         <div className="px-4 pt-4">
           <TabsList className="w-full justify-start">
             <TabsTrigger value="point">Point</TabsTrigger>
             <TabsTrigger value="bursts">Bursts</TabsTrigger>
             <TabsTrigger value="slice">Slice</TabsTrigger>
+            <TabsTrigger value="legend">Legend</TabsTrigger>
           </TabsList>
         </div>
 
@@ -66,6 +75,10 @@ export function ContextualSlicePanel() {
           ) : (
             <div className="px-4 py-6 text-sm text-muted-foreground">Create a slice to see stats.</div>
           )}
+        </TabsContent>
+
+        <TabsContent value="legend">
+          <MapLegendPanel />
         </TabsContent>
       </Tabs>
     </div>
