@@ -73,8 +73,29 @@ const buildBurstSliceId = (start: number, end: number): string => {
   return `burst-${normalizedStart}-${normalizedEnd}`;
 };
 
+const resolveFullTimelineDomain = (): [number, number] | null => {
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+  if (minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec) {
+    return [minTimestampSec * 1000, maxTimestampSec * 1000];
+  }
+  return null;
+};
+
 const toNormalizedBinRange = (bin: TimeBin, domain: [number, number]): [number, number] => {
-  const [domainStart, domainEnd] = normalizeRange(domain[0], domain[1]);
+  const [rawDomainStart, rawDomainEnd] = normalizeRange(domain[0], domain[1]);
+  const fullDomain = resolveFullTimelineDomain();
+  let domainStart = rawDomainStart;
+  let domainEnd = rawDomainEnd;
+
+  if (fullDomain) {
+    const intersectionStart = Math.max(rawDomainStart, fullDomain[0]);
+    const intersectionEnd = Math.min(rawDomainEnd, fullDomain[1]);
+    if (intersectionEnd > intersectionStart) {
+      domainStart = intersectionStart;
+      domainEnd = intersectionEnd;
+    }
+  }
+
   const span = Math.max(1, domainEnd - domainStart);
   const start = ((bin.startTime - domainStart) / span) * 100;
   const end = ((bin.endTime - domainStart) / span) * 100;
