@@ -37,9 +37,22 @@ Produce a thesis-grade analytical comparison showing that a **contextual (deviat
 - **Windowing:** same window set (1h, 6h, 1d, 1w) for fair comparison.
 - **Implementation:** can re-derive or port `src/lib/burst-detection.ts:53-59` logic to Python; record the source file for traceability.
 
+### Metric C — Density (rate reference)
+- **Formula:** `density = n_events / window_seconds` (events per second averaged over the window).
+- **Windowing:** same window set (1h, 6h, 1d, 1w) for fair comparison.
+- **Interpretation:** raw activity level — measures *how many* events occurred, not *how clustered* they are. Bursty windows have higher density. This is the simplest possible "burst" signal: just the count.
+- **Edge cases:** density is always ≥ 0. Empty windows have density = 0 (kept in the series). No degenerate cases.
+
+### Metric D — Coefficient of variation of inter-event times (CV)
+- **Formula:** `CV = σ_τ / μ_τ` on inter-event times τ within each window.
+- **Windowing:** same window set (1h, 6h, 1d, 1w) for fair comparison.
+- **Interpretation:** the unbounded cousin of Goh-Barabasi B. Same numerator, different denominator (μ alone instead of σ + μ). CV ≥ 0 always; CV = 0 means perfectly regular gaps (σ = 0). For Poisson-process gaps, CV ≈ 1.
+- **Edge cases:** returns `None` (dropped from series) when n_events < 2 (no gaps) or μ_τ ≤ 0 (zero-length gaps).
+- **Why include it:** Goh-Barabasi's boundedness (B ∈ [-1, 1]) is sometimes claimed to be a feature. CV gives us the *unbounded* version of the same shape signal, so we can see whether the boundedness is the source of the 0.30 → 0.01 collapse or whether it's a property of the gap distribution itself.
+
 ### Comparison metric
 - **Per-window dynamic range** = coefficient of variation (CV) and (max − min) over the window sweep.
-- **Acceptance threshold (decision gate):** contextual metric CV ≥ 2× Goh-Barabasi CV at the 1d window, and contextual metric range ≥ 3× Goh-Barabasi range at 1d. If met → "go" for prototype integration. If not met → "not yet", revisit baseline dimensions or fall back to BFT-04..BFT-06 from Phase 84.
+- **Acceptance threshold (decision gate):** contextual metric CV ≥ 2× max(Goh-Barabasi, density, CV) CV at the 1d window, and contextual metric range ≥ 3× max(Goh-Barabasi, density, CV) range at 1d. If met → "go" for prototype integration. If not met → "not yet", revisit baseline dimensions or fall back to BFT-04..BFT-06 from Phase 84. The "max" comparator is intentional: contextual should beat *every* reference, not just the average.
 
 ### Baseline dimensions
 - Start with **hour × dayOfWeek** (168 cells) as the primary baseline. Optionally extend to **hour × dayOfWeek × month** (2016 cells) in a stretch goal if time permits.
@@ -47,11 +60,13 @@ Produce a thesis-grade analytical comparison showing that a **contextual (deviat
 ### Output artifacts (all under `.planning/phases/83-contextual-burstiness-vs-goh-barabasi-comparison/output/`)
 1. `contextual_metric.parquet` — per-window z-scores
 2. `goh_barabasi_metric.parquet` — per-window B values
-3. `comparison_table.csv` — CV, range, mean, std for both metrics at each window size
-4. `figures/z_heatmap.png` — hour×dayOfWeek z-score heatmap
-5. `figures/per_window_timeseries.png` — B vs z time series over the full dataset
-6. `figures/contrast_table.png` — visual contrast table
-7. `DECISION-GATE.md` — go/no-go call with threshold justification
+3. `density_metric.parquet` — per-window density (events/sec)
+4. `cv_metric.parquet` — per-window CV (σ_τ / μ_τ)
+5. `comparison_table.csv` — CV, range, mean, std for all 4 metrics at each window size (16 rows = 4 metrics × 4 window sizes)
+6. `figures/z_heatmap.png` — hour×dayOfWeek z-score heatmap
+7. `figures/per_window_timeseries.png` — 4-line time series at 1d: z (left axis), B / density / CV (right axis, normalized)
+8. `figures/contrast_table.png` — visual contrast table mirroring the 16-row CSV
+9. `DECISION-GATE.md` — 4-way go/no-go call with threshold justification
 
 ### Reproducibility
 - One command: `python run.py` (or `make reproduce`) reads from DuckDB, computes both metrics, writes all artifacts, and prints the decision-gate verdict.
