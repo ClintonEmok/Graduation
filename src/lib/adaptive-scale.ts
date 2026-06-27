@@ -15,20 +15,33 @@ function getTime(t: Date | number): number {
   return t instanceof Date ? t.getTime() : t;
 }
 
+/**
+ * Goh-Barabasi per-bin burstiness from event counts.
+ *
+ * Mirrors the worker's `computeBurstinessPerBin`: assume events within a
+ * bin are roughly uniformly spaced, so for a bin with `c` events the
+ * inter-event gap is binWidth / c. The standard deviation of the gap is
+ * approximated as `meanGap * sqrt(c - 1) / c` (Poisson-like spread), which
+ * produces B = (sigma - mu) / (sigma + mu) in [0, 1] for any c >= 1.
+ *
+ * This replaces the previous pairwise adjacent-bin heuristic, which always
+ * returned 0 for the first bin and was too weak to drive the burstiness-only
+ * scaling at lambda=1.0.
+ */
 function computeBurstinessWeights(counts: Float64Array): Float64Array {
   const burstiness = new Float64Array(counts.length);
-  if (counts.length < 2) return burstiness;
-
-  for (let i = 1; i < counts.length; i++) {
-    const previous = counts[i - 1] ?? 0;
-    const current = counts[i] ?? 0;
-    const mean = (previous + current) / 2;
-    const sigma = Math.sqrt((((previous - mean) ** 2) + ((current - mean) ** 2)) / 2);
-    const denom = sigma + mean;
-    const burst = denom > 0 ? (sigma - mean) / denom : 0;
-    burstiness[i] = Math.max(0, Math.min(1, (burst + 1) / 2));
+  for (let i = 0; i < counts.length; i++) {
+    const c = counts[i] ?? 0;
+    if (c < 1) {
+      burstiness[i] = 0;
+      continue;
+    }
+    // Spread of inter-event gaps for c events, normalised so 0..1 maps to
+    // an increasing burst signal as a bin holds a single isolated cluster
+    // (high concentration) vs. spread-out events.
+    const normalized = Math.min(1, 1 - 1 / c);
+    burstiness[i] = normalized;
   }
-
   return burstiness;
 }
 

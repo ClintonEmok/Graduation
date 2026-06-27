@@ -93,18 +93,18 @@ describe('computeAdaptiveMaps', () => {
       burstInfluence: 0,
     });
 
-    const hybrid = computeAdaptiveMaps(timestamps, domain, {
+    const burstDriven = computeAdaptiveMaps(timestamps, domain, {
       binCount: 2,
       kernelWidth: 1,
       binningMode: 'uniform-time',
-      burstInfluence: 0.25,
+      burstInfluence: 1,
     });
 
     const densityWeights = Array.from(densityOnly.densityMap, (value) => 1 + value * 5);
-    const hybridWeights = Array.from(hybrid.densityMap, (value, index) => 1 + ((((1 - 0.25) * value) + (0.25 * (hybrid.burstinessMap[index] ?? 0))) * 5));
+    const burstWeights = Array.from(burstDriven.burstinessMap, (value) => 1 + value * 5);
 
-    expect(hybrid.burstinessMap[0]).toBeGreaterThan(hybrid.burstinessMap[1] ?? 0);
-    expect(hybridWeights[0]).toBeGreaterThan(hybridWeights[1] ?? 0);
-    expect(hybrid.warpMap[1]).toBeGreaterThan(densityOnly.warpMap[1]);
+    expect(burstDriven.burstinessMap[0]).toBeGreaterThan(burstDriven.burstinessMap[1] ?? 0);
+    expect(burstWeights[0]).toBeGreaterThan(burstWeights[1] ?? 0);
+    expect(burstDriven.warpMap[1]).toBeGreaterThan(densityOnly.warpMap[1]);
   });
 });
