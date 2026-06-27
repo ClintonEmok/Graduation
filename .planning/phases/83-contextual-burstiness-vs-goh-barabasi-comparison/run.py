@@ -1,8 +1,9 @@
 """Phase 83 single-command entry point.
 
 Loads the 8.5M-record Chicago crime dataset, computes the contextual
-and Goh-Barabasi burstiness metrics over 1h/6h/1d/1w windows, writes
-comparison_table.csv, renders thesis figures, and writes DECISION-GATE.md.
+and the three reference burstiness metrics (Goh-Barabasi, density, CV)
+over 1h/6h/1d/1w windows, writes comparison_table.csv, renders thesis
+figures, and writes DECISION-GATE.md.
 
 Usage:
     python run.py                                    # uses defaults
@@ -21,9 +22,20 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 from db import load_crimes
 from metrics import goh_barabasi
 
+try:
+    from metrics import density
+except ImportError:
+    density = None  # type: ignore[assignment]
+try:
+    from metrics import cv
+except ImportError:
+    cv = None  # type: ignore[assignment]
 try:
     from metrics import contextual
 except ImportError:
@@ -67,8 +79,6 @@ def parse_args() -> argparse.Namespace:
 
 def _summarize(values, label: str) -> str:
     """Render n_windows / mean / std / min / max / cv / range for a series."""
-    import numpy as np
-
     if values is None or len(values) == 0:
         return f"  {label}: (no windows)"
     arr = np.asarray(values, dtype=np.float64)
@@ -77,11 +87,11 @@ def _summarize(values, label: str) -> str:
     std = float(arr.std())  # population std (ddof=0), mirrors burstiness_sweep.py
     vmin = float(arr.min())
     vmax = float(arr.max())
-    cv = std / abs(mean) if mean != 0 else float("inf")
+    cv_val = std / abs(mean) if mean != 0 else float("inf")
     rng = vmax - vmin
     return (
         f"  {label}: n={n:,}  mean={mean:+.4f}  std={std:.4f}  "
-        f"min={vmin:+.4f}  max={vmax:+.4f}  cv={cv:.4f}  range={rng:.4f}"
+        f"min={vmin:+.4f}  max={vmax:+.4f}  cv={cv_val:.4f}  range={rng:.4f}"
     )
 
 
@@ -107,13 +117,18 @@ def main() -> int:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Plan 03 stage: Goh-Barabasi B (CBP-02) ─────────────────────
-    t1 = time.perf_counter()
     timestamps = df["ts"].to_numpy()
-    full_gaps = None if timestamps.size < 2 else __import__("numpy").diff(
-        timestamps.astype("float64")
+
+    # ── Plan 03 stage: three reference metrics (B, density, CV) ────
+    t_metric_start = time.perf_counter()
+
+    # 1. Goh-Barabasi B (CBP-02) — direct port of computeTemporalB
+    t1 = time.perf_counter()
+    print("=== Goh-Barabasi B (CBP-02) ===")
+    full_gaps = np.diff(timestamps.astype("float64")) if timestamps.size >= 2 else None
+    b_full = (
+        goh_barabasi.goh_barabasi_b(full_gaps) if full_gaps is not None else None
     )
-    b_full = goh_barabasi.goh_barabasi_b(full_gaps) if full_gaps is not None else None
     if b_full is not None:
         print(f"Full-series Goh-Barabasi B (IEI): {b_full:.4f}  (expected ≈ 0.30)")
         if not (0.20 <= b_full <= 0.40):
@@ -123,11 +138,12 @@ def main() -> int:
             )
     else:
         print("Full-series Goh-Barabasi B (IEI): (degenerate)")
-
     all_b = []
     for window_sec in goh_barabasi.WINDOWS_SEC:
         step = max(1, window_sec // 4)
-        b_series = goh_barabasi.compute_goh_barabasi_series(timestamps, window_sec, step)
+        b_series = goh_barabasi.compute_goh_barabasi_series(
+            timestamps, window_sec, step
+        )
         b_series["window_sec"] = window_sec
         all_b.append(b_series)
         print(
@@ -136,19 +152,85 @@ def main() -> int:
                 goh_barabasi.WINDOW_LABELS[window_sec],
             )
         )
-    full_b = (
-        __import__("pandas").concat(all_b, ignore_index=True) if all_b else __import__("pandas").DataFrame()
-    )
+    full_b = pd.concat(all_b, ignore_index=True) if all_b else pd.DataFrame()
     goh_barabasi.write_goh_barabasi_parquet(
         full_b, args.output_dir / "goh_barabasi_metric.parquet"
     )
     print(f"Goh-Barabasi metric: {time.perf_counter() - t1:.1f}s")
     print()
 
+    # 2. Density (CBP-07) — events/sec
+    if density is not None:
+        t1 = time.perf_counter()
+        print("=== density (CBP-07) ===")
+        all_d = []
+        for window_sec in density.WINDOWS_SEC:
+            step = max(1, window_sec // 4)
+            d_series = density.compute_density_series(timestamps, window_sec, step)
+            d_series["window_sec"] = window_sec
+            all_d.append(d_series)
+            print(
+                _summarize(
+                    d_series["density"].to_numpy() if len(d_series) else None,
+                    density.WINDOW_LABELS[window_sec],
+                )
+            )
+        full_d = pd.concat(all_d, ignore_index=True) if all_d else pd.DataFrame()
+        density.write_density_parquet(
+            full_d, args.output_dir / "density_metric.parquet"
+        )
+        print(f"density metric: {time.perf_counter() - t1:.1f}s")
+        print()
+
+    # 3. Coefficient of variation (CBP-08) — sigma_tau / mu_tau
+    if cv is not None:
+        t1 = time.perf_counter()
+        print("=== CV (CBP-08) ===")
+        full_gaps = (
+            np.diff(timestamps.astype("float64")) if timestamps.size >= 2 else None
+        )
+        cv_full = cv.cv_tau(full_gaps) if full_gaps is not None else None
+        if cv_full is not None:
+            print(
+                f"Full-series CV (IEI): {cv_full:.4f}  (Poisson-process would be ≈ 1.0)"
+            )
+        else:
+            print("Full-series CV (IEI): (degenerate)")
+        all_c = []
+        for window_sec in cv.WINDOWS_SEC:
+            step = max(1, window_sec // 4)
+            cv_series = cv.compute_cv_series(timestamps, window_sec, step)
+            cv_series["window_sec"] = window_sec
+            all_c.append(cv_series)
+            print(
+                _summarize(
+                    cv_series["CV"].to_numpy() if len(cv_series) else None,
+                    cv.WINDOW_LABELS[window_sec],
+                )
+            )
+        full_c = pd.concat(all_c, ignore_index=True) if all_c else pd.DataFrame()
+        cv.write_cv_parquet(full_c, args.output_dir / "cv_metric.parquet")
+        print(f"CV metric: {time.perf_counter() - t1:.1f}s")
+        print()
+
+    print(
+        f"Reference metrics total: {time.perf_counter() - t_metric_start:.1f}s"
+    )
+    if density is not None and cv is not None:
+        print(
+            f"Reference metrics: density {len(pd.read_parquet(args.output_dir / 'density_metric.parquet')):,} windows total, "
+            f"CV {len(pd.read_parquet(args.output_dir / 'cv_metric.parquet')):,} windows total"
+        )
+
     # ── Future plans (02 contextual, 04 comparison, 05 decision) ────
-    if any(x is None for x in (contextual, compare, figures, decision_gate)):
-        print("(Phase 83 Plan 03 stage complete — B metric written. ")
-        print(" Plans 02 / 04 / 05 stages not yet implemented.)")
+    if any(
+        x is None for x in (contextual, compare, figures, decision_gate)
+    ):
+        print()
+        print(
+            "(Phase 83 Plan 03 stage complete — B + density + CV metrics written. "
+            "Plans 02 / 04 / 05 stages not yet implemented.)"
+        )
 
     return 0
 
