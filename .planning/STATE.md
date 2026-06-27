@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
-status: Phase 84 in progress; 84-02 complete; 84-03 next
-stopped_at: Completed 84-02 (Density mapper + JSON baseline + DuckDB API)
-last_updated: "2026-06-27T16:17:20Z"
-last_activity: 2026-06-27 -- Phase 84-02 complete: 3 commits, 7 new density tests, 79/79 store tests still pass, BFT-02/03/11 satisfied (real density mapper wired). 84-03 (Wave 3) ready to start: contextual z port + 3-way Select + feature flag.
+status: Phase 84 complete (3 of 3 plans); 84-AUDIT ready
+stopped_at: Completed 84-03 (Contextual z port + 3-way Select + feature flag)
+last_updated: "2026-06-27T16:37:14Z"
+last_activity: 2026-06-27 -- Phase 84-03 complete: 3 commits (sensitivity check + contextual port + UI Select). Sensitivity verdict PASS (CV ratio 1.0113x, well within 30% threshold). 16 new unit tests (5 winsorize + 11 contextual) all pass; 102/102 signal-sources + store tests pass; 6 pre-existing failures (stkde/cube/viz) unchanged. BFT-02 finalised (all 3 sources wired in runtime + UI), BFT-10 satisfied (3-way Select in GlobalWarpControls), BFT-12 invariant preserved (7/7 burstiness parity + contract tests still pass). Phase 84 fully complete; ready for 84-AUDIT.
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 16
-  completed_plans: 14
-  percent: 44
+  total_plans: 17
+  completed_plans: 15
+  percent: 47
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: `.planning/PROJECT.md`
 
 ## Current Position
 
-Phase: 84 of 8 (Burstiness Signal Contract + Density Fallback) — **IN PROGRESS**
-Status: 84-01 (Wave 1) + 84-02 (Wave 2) complete; 84-03 (Wave 3: contextual z + 3-way Select + feature flag) next
-Last activity: 2026-06-27 -- 84-02 SUMMARY shipped: real densityWarpWeight formula (range [1.0, 2.5]) implemented + 7-test unit suite; public/baselines/baseline_168.json (168 cells, 21,877 bytes, sha256:2bff2e8db8397784); DuckDB fallback API route /api/adaptive/contextual-baseline (Cache-Control: s-maxage=3600); baseline-loader.ts (loadBaseline168 + getBaseline168Sync + getBaseline168WinsorizedSync stub); createSliceCoreSlice dispatch now passes getBaseline168Sync() for density path. 3 commits, 79/79 store tests pass, 6 pre-existing failures (stkde/cube/viz) unchanged. BFT-02/03/11 satisfied. BFT-12 invariant preserved.
+Phase: 84 of 8 (Burstiness Signal Contract + Density Fallback) — **COMPLETE**
+Status: 84-01 (Wave 1) + 84-02 (Wave 2) + 84-03 (Wave 3) all complete. Phase 84 fully shipped. Ready for 84-AUDIT.
+Last activity: 2026-06-27 -- 84-03 SUMMARY shipped: contextual z port (winsorized Pearson residual) implemented with sensitivity check (PASS at 1d, CV ratio 1.0113x — winsorized form is the production choice per 84-CONTEXT.md §2); baseline-loader.ts exposes loadBaseline168Winsorized() + getBaseline168WinsorizedSync() (real impl, replaces 84-02 stub); 3-way Radix <Select> added to GlobalWarpControls.tsx (Burstiness / Density / Contextual), doubly-gated on timeScaleMode==='adaptive' && useFeatureFlagsStore.isEnabled('adaptiveSignalSource'); adaptiveSignalSource feature flag added (default: true); 6 new page.shell test assertions. 3 commits, 16 new unit tests (5 winsorize + 11 contextual) all pass; 102/102 signal-sources + store tests pass; 6 pre-existing failures (stkde/cube/viz) unchanged. BFT-02 finalised (all 3 sources wired in runtime + UI), BFT-10 satisfied (UI toggle for signal source), BFT-12 invariant preserved.
 
 ### 80-03 Pending Handoff
 
@@ -66,11 +66,12 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 | 79 Adaptive 3D | 3 | 3 | ~6m |
 | 80 Evaluation Readiness | 3 | 2.6/3 | ~12m (80-03 partial — pilot deferred) |
 | 83 Contextual Burstiness | 5 | 5/5 | ~25m (all plans complete; verdict GO) |
+| 84 Burstiness Signal Contract | 3 | 3/3 | ~13m (all 3 plans complete; sensitivity check PASS) |
 
 **Recent Trend:**
 
-- Last 5 plans: 83-05, 83-04, 83-03, 83-02, 83-01
-- Trend: Phase 83 fully complete with verdict GO. Decision gate: contextual std 9.18 / median ref CV 0.16 = 56.7x (need 2x), range 62.2 / max ref range 5.69 = 10.9x (need 3x), absolute floor 9.18 (need >=0.10). All pass. Phase 84 unblocked.
+- Last 5 plans: 84-03, 84-02, 84-01, 83-05, 83-04
+- Trend: Phase 84 fully complete in 3 atomic waves (~37 min total). All three signal sources (burstiness default + density + contextual) wired in runtime and UI; sensitivity check confirms winsorized Pearson residual is structurally equivalent to standard z (CV ratio 1.0113x at 1d, 36,537 windows). Phase 84 ready for AUDIT.
 
 ## Accumulated Context
 
@@ -120,6 +121,12 @@ Recent decisions affecting current work:
 - [Phase 84]: Density mapper formula is `clampComparableWarpWeight(1 + clamp01((O - E) / Math.max(E, 1)) * 1.5, 0.25, 4)`. Range [1.0, 2.5]. O < E clamps to 0 → 1.0 (we don't compress sub-baseline bins; only expand above-baseline bins). `cellSeconds = 3600 * totalWeeks` matches `metrics/contextual.py:98 SECONDS_PER_HOUR * total_weeks` (per-hour-of-week rate table, not per-bin).
 - [Phase 84]: Baseline loader uses `static-first → API-fallback` pattern: `loadBaseline168()` fetches `/baselines/baseline_168.json` first (with `cache: 'force-cache'`, no revalidation), falls back to `/api/adaptive/contextual-baseline` (which has `Cache-Control: s-maxage=3600, stale-while-revalidate=86400` — 60x longer than the global maps route because the 168-cell baseline is dataset-locked). Module-level `baselineCache` is the single source of truth for the sync accessor.
 - [Phase 84]: Widening `DuckDbInstance.all` to accept variadic params (`...args: [...unknown[], (err, rows) => void] | []`) is a beneficial side effect — fixed 8 pre-existing TS2556 spread errors in `bursts/route.ts` and `crime/stats-summary/route.ts`. The narrow callback-type variance fix in `bursts/route.ts` (callback declares `rows: unknown[]` with cast at the resolve site) is the standard pattern from `db.ts`'s `queryRows` helper.
+- [Phase 84]: Winsorized Pearson residual is the production choice for the contextual z mapper (per 84-CONTEXT.md §2). Sensitivity check at 1d reports CV ratio 1.0113x (winsorized 9.2886 / standard 9.1849), well within the 30% threshold. The 1,305-week per-cell distribution is not stored in `baseline_168.parquet`; we ship the 168-cell shortcut (winsorize the 168 per-cell mu/sig at 5/95 percentiles via `d3.quantile` R-7 linear interpolation). The 1,305-week path is documented as deferred in thesis note Section 5.
+- [Phase 84]: Sensitivity script reads from pre-built Phase 83 artifacts (`output/baseline_168.csv` + `output/contextual_metric.parquet`) rather than re-running the full pipeline via `load_crimes()`. The dev server holds a DuckDB write lock; reading the pre-built artifacts avoids the lock conflict and is faster (~5s vs ~30s for the CSV re-read path). The script's primary purpose is the audit trail, not data generation, so this trade-off is acceptable.
+- [Phase 84]: `getBaseline168WinsorizedSync()` lazily derives the winsorized form on first access if the standard baseline is loaded. Avoids requiring an explicit `loadBaseline168Winsorized()` call from the dashboard mount; the dispatch hot path in `createSliceCoreSlice.ts` reads it via the sync accessor and lazy derivation is transparent.
+- [Phase 84]: 3-way Select is doubly-gated: `timeScaleMode === 'adaptive'` AND `useFeatureFlagsStore.isEnabled('adaptiveSignalSource')` AND NOT `isEvaluationLocked()`. The `showSignalSource` variable combines the three conditions. The feature flag default is `true` so the Select appears by default in dev; the evaluation lock prevents modification during studies; the adaptive-mode gate keeps the Select out of the linear-mode UI where it has no effect.
+- [Phase 84]: `handleSourceChange` callback warms the baseline caches on first source switch (best-effort: `loadBaseline168` for density, `loadBaseline168` + `loadBaseline168Winsorized` for contextual). Failures are silent (`.catch(() => undefined)`) because the dispatch falls back to 1.0 if the baseline isn't loaded.
+- [Phase 84]: `d3.quantile` (R-7) and `numpy.percentile(method='linear')` are mathematically equivalent for N >= 5. The 168-cell baseline has 168 floats so the cross-language parity is exact within 1e-6 (verified by `winsorize.test.ts` 5-test cross-language parity suite).
 
 ### Pending Todos
 
@@ -156,8 +163,8 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-27T16:17:20Z
-Stopped at: Phase 84-02 complete; 84-03 ready to execute
+Last session: 2026-06-27T16:37:14Z
+Stopped at: Phase 84-03 complete; 84-AUDIT ready
 Resume file: None
 
 ### 83 Phase Roadmap
@@ -171,5 +178,5 @@ Resume file: None
 ### 84 Phase Roadmap
 
 - **84-01** ✓ COMPLETE — AdaptiveSignalSource contract (3 mapper types) + activeSignalSource field with persist middleware + addSliceFromBin / replaceSlicesFromBins dispatch refactor + 7-test burstiness parity suite (BFT-01/02/12 satisfied)
-- **84-02** ⏳ NEXT — Density mapper wired to /public/baselines/baseline_168.json + DuckDB fallback API route + getBaseline168Sync() helper replaces the first `null` in the dispatch (BFT-02 fallback / BFT-03 preserved)
-- **84-03** ⏳ PLANNED — Winsorized z TS port (d3-array.quantile) + sensitivity check + 3-way <Select> in GlobalWarpControls + getBaseline168WinsorizedSync() helper replaces the second `null` (BFT-10 UI toggle)
+- **84-02** ✓ COMPLETE — Density mapper wired to /public/baselines/baseline_168.json + DuckDB fallback API route + getBaseline168Sync() helper replaces the first `null` in the dispatch + 7 density tests (BFT-02 fallback / BFT-03 / BFT-11 satisfied)
+- **84-03** ✓ COMPLETE — Winsorized z TS port (d3-array.quantile) + sensitivity check (PASS, CV ratio 1.0113x) + 3-way <Select> in GlobalWarpControls + getBaseline168WinsorizedSync() real impl + adaptiveSignalSource feature flag + 16 new unit tests (BFT-02 finalised / BFT-10 satisfied)
