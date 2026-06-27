@@ -4,8 +4,8 @@ milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
 status: planning
 stopped_at: Milestone v3.4 started
-last_updated: "2026-06-26T14:28:02Z"
-last_activity: 2026-06-26 -- Milestone v3.4 started
+last_updated: "2026-06-27T09:30:00Z"
+last_activity: 2026-06-27 -- Completed quick task 260627-fmr: move floating crime types legend card to side panel
 progress:
   total_phases: 0
   completed_phases: 0
@@ -131,6 +131,7 @@ Recent decisions affecting current work:
 | 260615-pc4 | Simplify slices tab details dialog | 2026-06-15 | 667a078 | [260615-pc4-simplify-slices-tab-date-editing-to-dire](./quick/260615-pc4-simplify-slices-tab-date-editing-to-dire/) |
 | 260615-tx5 | Remove slice type from slices tab details dialog | 2026-06-15 | 4cae5bc | [260615-tx5-remove-slice-type-from-slices-tab-detail](./quick/260615-tx5-remove-slice-type-from-slices-tab-detail/) |
 | 260615-tze | Remove neutral language from slices tab dialogs | 2026-06-15 | 7b0ad04 | [260615-tze-remove-neutral-language-from-slices-tab-](./quick/260615-tze-remove-neutral-language-from-slices-tab-/) |
+| 260627-fmr | Move floating crime types legend card to side panel | 2026-06-27 | 96462ca | [260627-fmr-move-floating-crime-types-legend-card-fr](./quick/260627-fmr-move-floating-crime-types-legend-card-fr/) |
 
 ## Session Continuity
 
