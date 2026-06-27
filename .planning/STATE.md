@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
-status: Phase 83 complete; Phase 84 unblocked
-stopped_at: Completed 83 (Contextual Burstiness vs Goh-Barabasi Comparison, verdict GO)
-last_updated: "2026-06-27T13:30:00Z"
-last_activity: 2026-06-27 -- Phase 83 complete; CBP-05 decision gate GO; Phase 84 unblocked per CBP-06
+status: Phase 84 in progress; 84-01 complete; 84-02 next
+stopped_at: Completed 84-01 (AdaptiveSignalSource contract + dispatch refactor)
+last_updated: "2026-06-27T15:55:00Z"
+last_activity: 2026-06-27 -- Phase 84-01 complete: 3 commits, 79/79 store tests pass, BFT-01/02/12 satisfied
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 38
 ---
 
@@ -25,9 +25,9 @@ See: `.planning/PROJECT.md`
 
 ## Current Position
 
-Phase: 83 of 8 (Contextual Burstiness vs Goh-Barabasi Comparison) — **COMPLETE**
-Status: Phase 83 verdict GO; Phase 84 unblocked per CBP-06
-Last activity: 2026-06-27 -- Phase 83 verdict GO (CV ratio 56.7x, range ratio 10.9x, absolute floor 9.18 all pass at 1d). Phase 84 ready to plan.
+Phase: 84 of 8 (Burstiness Signal Contract + Density Fallback) — **IN PROGRESS**
+Status: 84-01 (Wave 1) complete; 84-02 (Wave 2: density + JSON baseline export) next
+Last activity: 2026-06-27 -- 84-01 SUMMARY shipped: AdaptiveSignalSource type union, activeSignalSource field with persist middleware, refactored addSliceFromBin / replaceSlicesFromBins dispatch, 7-test parity suite passing, BFT-01/02/12 satisfied. BFT-03 (preserve existing density path) deferred to 84-02.
 
 ### 80-03 Pending Handoff
 
@@ -111,6 +111,11 @@ Recent decisions affecting current work:
 - [Phase 79]: Interactive Drei Html overlays in the cube must stop pointer bubbling so slider/button controls remain usable.
 - [Phase 79]: Study infrastructure (task runner, NASA-TLX, structured logging) is deferred to a future milestone after adaptive 3D visualization is stable.
 - [Phase 79]: 3 plans split by foundation (axis + spacing), interaction (select/resize/create), and polish (warp weight, delete, density strip, cross-view verification).
+- [Phase 84]: Burstiness is the default `activeSignalSource` to preserve pre-Phase-84 behavior; density and contextual ship as fallback / comparison modes (BFT-02).
+- [Phase 84]: Burstiness mapper reproduces pre-Phase-84 hardcoded values exactly (`1.0` non-burst, `bin.warpWeight ?? 1.25` for burst, `1.0` for `isNeutralPartition`); parity test is the load-bearing assertion against drift.
+- [Phase 84]: Density and contextual mappers ship as 84-01 stubs returning `1.0` when no baseline is loaded; their full implementations land in 84-02 and 84-03 respectively. The dispatch signature is `(source, bin, baseline, baselineWinsorized)` so 84-02/84-03 just replace the `null` args.
+- [Phase 84]: `activeSignalSource` persists in localStorage under key `adaptive-signal-source-v1` (same pattern as `useFeatureFlagsStore.ts:25-89`); the persist middleware uses a noop localStorage shim in node test environments so `vi.resetModules()` re-imports in `useAdaptiveStore.test.ts` continue to work without crashing.
+- [Phase 84]: `dispatchWarpWeight` lives in `src/lib/signal-sources/index.ts` (not `contract.ts`) to avoid a circular import with the mapper modules; mappers import their type contracts from `contract.ts` only.
 
 ### Pending Todos
 
@@ -147,8 +152,8 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-27T13:30:00Z
-Stopped at: Phase 83 complete (verdict GO); Phase 84 unblocked and ready to plan
+Last session: 2026-06-27T15:55:00Z
+Stopped at: Phase 84-01 complete; 84-02 ready to execute
 Resume file: None
 
 ### 83 Phase Roadmap
@@ -158,3 +163,9 @@ Resume file: None
 - **83-03** ✓ COMPLETE — Goh-Barabasi B + density + CV reference metrics (4-metric sweep at 1h/6h/1d/1w)
 - **83-04** ✓ COMPLETE — 16-row comparison_table.csv + 3 thesis PNGs (heatmap, time series, contrast table) at 320 DPI
 - **83-05** ✓ COMPLETE — Decision gate (verdict GO) + DECISION-GATE.md + thesis note at docs/CONTEXTUAL_BURSTINESS_VS_GOH_BARABASI_THESIS_NOTE.md
+
+### 84 Phase Roadmap
+
+- **84-01** ✓ COMPLETE — AdaptiveSignalSource contract (3 mapper types) + activeSignalSource field with persist middleware + addSliceFromBin / replaceSlicesFromBins dispatch refactor + 7-test burstiness parity suite (BFT-01/02/12 satisfied)
+- **84-02** ⏳ NEXT — Density mapper wired to /public/baselines/baseline_168.json + DuckDB fallback API route + getBaseline168Sync() helper replaces the first `null` in the dispatch (BFT-02 fallback / BFT-03 preserved)
+- **84-03** ⏳ PLANNED — Winsorized z TS port (d3-array.quantile) + sensitivity check + 3-way <Select> in GlobalWarpControls + getBaseline168WinsorizedSync() helper replaces the second `null` (BFT-10 UI toggle)
