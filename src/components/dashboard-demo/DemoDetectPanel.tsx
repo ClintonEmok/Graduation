@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Lock, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { ArrowRight, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,41 +11,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { toEpochSeconds } from '@/lib/time-domain';
 import { getCrimeTypeName } from '@/lib/category-maps';
+import { recommendGranularityForSelection } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
-import {
-  partitionSelectionByGranularity,
-  recommendGranularityForSelection,
-  type DemoSelectionGranularity,
-} from '@/components/dashboard-demo/lib/demo-burst-generation';
-import {
-  allocateSlices,
-  fetchBurstBins,
-  resolveBurstMetricValue,
-  type BurstMetric,
-} from '@/lib/burst-detection';
-import type { BurstBinResult } from '@/lib/burst-detection';
 import { cn } from '@/lib/utils';
 
-const GRANULARITY_ORDER: DemoSelectionGranularity[] = ['quarterly', 'monthly', 'weekly', 'daily', 'hourly'];
-const GRANULARITY_RANK = new Map<DemoSelectionGranularity, number>(
-  GRANULARITY_ORDER.map((granularity, index) => [granularity, index]),
-);
-
-const coarsenGranularity = (
-  preferred: DemoSelectionGranularity,
-  suggested: DemoSelectionGranularity,
-): DemoSelectionGranularity => {
-  const preferredRank = GRANULARITY_RANK.get(preferred) ?? GRANULARITY_ORDER.length - 1;
-  const suggestedRank = GRANULARITY_RANK.get(suggested) ?? GRANULARITY_ORDER.length - 1;
-  return GRANULARITY_ORDER[Math.min(preferredRank, suggestedRank)];
-};
-
 export function DemoDetectPanel() {
+  const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
+  const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore(
+    (state) => state.generateBurstDraftBinsFromWindows,
+  );
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const timelineColumns = useTimelineDataStore((state) => state.columns);
   const crimeTypes = useTimelineDataStore((state) => state.crimeTypes);
@@ -53,32 +33,20 @@ export function DemoDetectPanel() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const isEvaluationLocked = useIsEvaluationLocked();
-  const canScan = minTimestampSec !== null && maxTimestampSec !== null && selectedTimeRange !== null;
-
-  const [burstBins, setBurstBins] = useState<BurstBinResult[] | null>(null);
-  const [burstTargetSliceCount, setBurstTargetSliceCount] = useState<number | null>(null);
-  const [isFetchingBurst, setIsFetchingBurst] = useState(false);
-  const burstMetric: BurstMetric = 'temporal';
+  const canGenerate = generationStatus !== 'generating' && minTimestampSec !== null && maxTimestampSec !== null && selectedTimeRange !== null;
 
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return null;
-    // selectedTimeRange is canonical epoch seconds — multiply to ms.
     const [windowStartSec, windowEndSec] = selectedTimeRange;
-    const start = windowStartSec * 1000;
-    const end = windowEndSec * 1000;
-    return { start, end };
+    return {
+      start: toEpochSeconds(windowStartSec) * 1000,
+      end: toEpochSeconds(windowEndSec) * 1000,
+    };
   }, [maxTimestampSec, minTimestampSec, selectedTimeRange]);
 
   const suggestedGranularity = useMemo(
     () => recommendGranularityForSelection(selectedWindowBounds),
     [selectedWindowBounds],
-  );
-  const scanGranularity = useMemo(
-    () =>
-      selectedWindowBounds
-        ? coarsenGranularity(generationInputs.granularity, suggestedGranularity)
-        : generationInputs.granularity,
-    [generationInputs.granularity, selectedWindowBounds, suggestedGranularity],
   );
 
   useEffect(() => {
@@ -102,50 +70,25 @@ export function DemoDetectPanel() {
 
   const selectedCrimeTypes = generationInputs.crimeTypes;
 
-  const handleFetchBurstBins = useCallback(async () => {
+  const handleGenerateBurstDrafts = useCallback(async () => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return;
-    // selectedTimeRange is canonical epoch seconds — multiply to ms.
     const [windowStartSec, windowEndSec] = selectedTimeRange;
-    const start = windowStartSec * 1000;
-    const end = windowEndSec * 1000;
+    const start = toEpochSeconds(windowStartSec) * 1000;
+    const end = toEpochSeconds(windowEndSec) * 1000;
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
-
-    const partitions = partitionSelectionByGranularity([start, end], scanGranularity);
-
-    if (partitions.length === 0) {
-      toast.error('No partitions to score', {
-        description: 'Choose a wider selection or a coarser granularity.',
+    setGenerationInputs({ timeWindow: { start, end } });
+    const generated = await generateBurstDraftBinsFromWindows();
+    const state = useDashboardDemoTimeslicingModeStore.getState();
+    if (generated && state.lastGeneratedMetadata) {
+      toast.success('Slices generated', {
+        description: state.lastGeneratedMetadata.warning ?? 'Slices ready for review in Slices.',
       });
       return;
     }
-
-    setIsFetchingBurst(true);
-    try {
-        const result = await fetchBurstBins({
-          partitions: partitions.map((partition) => ({
-            startEpoch: partition.startTime / 1000,
-            endEpoch: partition.endTime / 1000,
-          })),
-          granularity: scanGranularity,
-          crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : undefined,
-        });
-      setBurstBins(result.bins);
-      setBurstTargetSliceCount(result.targetSliceCount);
-      toast.success('Scan complete', {
-        description: `${result.bins.length} burst bins ready for review.`,
-      });
-    } catch {
-      toast.error('Scan failed', {
-        description: 'Could not fetch burst bins for the brushed range.',
-      });
-    }
-    setIsFetchingBurst(false);
-  }, [generationInputs.crimeTypes, maxTimestampSec, minTimestampSec, scanGranularity, selectedTimeRange]);
-
-  const allocations = useMemo(() => {
-    if (!burstBins || burstBins.length === 0) return null;
-    return allocateSlices(burstBins, burstTargetSliceCount ?? burstBins.length * 3, burstMetric);
-  }, [burstBins, burstTargetSliceCount, burstMetric]);
+    toast.error('Generation failed', {
+      description: state.generationError ?? 'Could not generate slices.',
+    });
+  }, [generateBurstDraftBinsFromWindows, maxTimestampSec, minTimestampSec, selectedTimeRange, setGenerationInputs]);
 
   return (
     <div className="space-y-3">
@@ -163,7 +106,7 @@ export function DemoDetectPanel() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Detect</CardTitle>
           <CardDescription className="text-xs">
-            Scan the brushed range to inspect burst scores and preview candidate intervals.
+            Generate candidate slices from the brushed range.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -214,71 +157,17 @@ export function DemoDetectPanel() {
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              onClick={handleFetchBurstBins}
-              disabled={isFetchingBurst || !canScan || isEvaluationLocked}
-              aria-disabled={isEvaluationLocked || isFetchingBurst || !canScan}
+              onClick={handleGenerateBurstDrafts}
+              disabled={!canGenerate || isEvaluationLocked}
+              aria-disabled={isEvaluationLocked || !canGenerate}
               tabIndex={isEvaluationLocked ? -1 : undefined}
               size="sm"
-              variant="outline"
               className={cn('gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}
             >
-              <Sparkles className="size-3.5" />
-              {isFetchingBurst ? 'Scanning…' : 'Scan brushed range'}
+              <ArrowRight className="size-3.5" />
+              {generationStatus === 'generating' ? 'Generating…' : 'Generate slices'}
             </Button>
           </div>
-
-          {burstBins && burstBins.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                  Burst scores ({burstBins.length} bins)
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {allocations && `${allocations.filter((a) => a.slicesAllocated > 1).length} bins bursty`}
-                </span>
-              </div>
-              <div className="space-y-1">
-                {burstBins.map((bin, i) => {
-                  const alloc = allocations?.[i];
-                  const selectedScore = resolveBurstMetricValue(bin, burstMetric);
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 rounded-md border border-border/70 bg-background px-2.5 py-1.5 text-[11px]"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-muted-foreground">
-                          Bin {i + 1}
-                        </div>
-                        <div className="flex gap-3 text-[10px] text-muted-foreground">
-                          <span>{bin.recordCount} events</span>
-                          {alloc && <span>{alloc.slicesAllocated} slices</span>}
-                          <span>Score {selectedScore.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`rounded px-1 py-0.5 text-[9px] font-medium ${
-                          bin.temporalB > 0.5 ? 'bg-amber-500/20 text-amber-300' : 'bg-muted text-muted-foreground'
-                        }`}>
-                          T {bin.temporalB.toFixed(2)}
-                        </span>
-                        <span className={`rounded px-1 py-0.5 text-[9px] font-medium ${
-                          bin.spatialB > 0.5 ? 'bg-sky-500/20 text-sky-300' : 'bg-muted text-muted-foreground'
-                        }`}>
-                          S {bin.spatialB.toFixed(2)}
-                        </span>
-                        <span className={`rounded px-1 py-0.5 text-[9px] font-medium ${
-                          bin.combinedB > 0.5 ? 'bg-violet-500/20 text-violet-300' : 'bg-muted text-muted-foreground'
-                        }`}>
-                          C {bin.combinedB.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

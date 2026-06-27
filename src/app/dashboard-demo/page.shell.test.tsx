@@ -146,12 +146,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange !== null/);
     expect(demoDetectPanelSource).toMatch(/rounded-md border px-3 py-1.5 text-\[11px\] transition-colors/);
-    expect(demoDetectPanelSource).not.toMatch(/Generate slices|generateBurstDraftBinsFromWindows/);
-    // Phase 80 adds the evaluation lock OR clause to the disabled prop;
-    // accept either the Phase 79 baseline, the lock-only variant, or
-    // the fully-locked variant so the test stays focused on shell-level
-    // wiring rather than the exact disabled prop expression.
-    expect(demoDetectPanelSource).toMatch(/disabled=\{isFetchingBurst \|\| !canScan \|\| isEvaluationLocked\}/);
+    expect(demoDetectPanelSource).toMatch(/Generate slices|generateBurstDraftBinsFromWindows/);
+    expect(demoDetectPanelSource).toMatch(/recommendGranularityForSelection/);
+    expect(demoDetectPanelSource).not.toMatch(/Scan brushed range|handleFetchBurstBins|burst bins ready for review/);
+    expect(demoDetectPanelSource).toMatch(/disabled=\{!canGenerate \|\| isEvaluationLocked\}/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
     expect(demoTimelinePanelSource).not.toMatch(/useDashboardDemoWarpStore|useDashboardDemoTimeStore|Warp factor|Warp source|Temporal Resolution|Time Scale|requestAnimationFrame/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
