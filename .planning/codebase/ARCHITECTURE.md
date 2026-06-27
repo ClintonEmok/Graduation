@@ -1,276 +1,276 @@
 # Architecture
 
-**Analysis Date:** 2026-06-25
+**Analysis Date:** 2026-06-27
 
 ## Pattern Overview
 
-**Overall:** Next.js 16 App Router with client-heavy visualization and server-side data processing. Multiple semi-independent visualization "apps" within a single Next.js instance, sharing a common data layer, state management patterns, and component library.
+**Overall:** Client-heavy Next.js 16 App Router SPA with a server-side DuckDB/Arrow data layer and a Web Worker compute layer. The frontend is a *coordinated multi-view visualization*: three independent views (2D MapLibre map, 3D R3F cube, dual visx timeline) are kept synchronized through a shared Zustand coordination store, while a separate slice-domain store owns the editable time-slices that all three views react to.
 
 **Key Characteristics:**
-- **Pages-as-views**: Each route (`/dashboard`, `/timeslicing`, `/stkde-3d`, `/stats`, etc.) acts as an independent application shell that composes shared components
-- **Client-heavy SPA**: Visualization logic (Three.js, MapLibre, D3) runs entirely in the browser; the server primarily serves data via API routes
-- **Zustand stores**: Global state is distributed across ~40+ specialized Zustand stores with a coordination store pattern for cross-view synchronization
-- **Web Workers offloaded**: Heavy computation (adaptive time binning, STKDE hotspot filtering) runs in Web Workers (`src/workers/`)
-- **DuckDB offline analytics**: All crime data (8.5M+ records) is processed locally via DuckDB with Apache Arrow for efficient streaming
-- **Pure function business logic**: Core data processing lives in `src/lib/` as pure functions, usable from both server (API routes) and client (workers)
+
+- **App Router pages as shells.** Each `src/app/<route>/page.tsx` is a thin composition of feature components — most logic lives in `src/components/` and `src/lib/`. Pages rarely own data fetching directly.
+- **Server route handlers own the data plane.** All crime data, STKDE, adaptive scaling, and synthetic generation flow through Next.js Route Handlers under `src/app/api/`. The handlers always return JSON (or Arrow IPC for the stream endpoint) and fall back to mock data on DuckDB failure with an `X-Data-Warning` header.
+- **Zustand slices, not Redux.** Global state is split into ~25 small Zustand stores; the most complex one (`useSliceDomainStore`) uses a four-slice composition pattern (`src/store/slice-domain/`) and is `persist`-ed to local storage.
+- **Pure-function lib for analytics.** All heavy math lives in `src/lib/` (binning, stkde, adaptive, interval detection, synthetic generator) so the same code can run on the server (in route handlers), in Web Workers, and in client stores.
+- **Web Workers for client-side heavy work.** Adaptive time scaling and STKDE hotspot projection run in dedicated Web Workers (`src/workers/`), instantiated lazily by stores.
+- **Synthetic data has a sibling Python implementation.** `src/lib/synthetic/` (TypeScript) and `scripts/synthetic/` (Python) implement the same Goh-Barabási bursty generator for cross-language validation against the adaptive scaling algorithm.
 
 ## Layers
 
-**Pages/Routes Layer:**
-- Purpose: Route-level entry points that compose feature components into full-page views
+**Routes (pages):**
+- Purpose: Composes feature components into a view.
 - Location: `src/app/`
-- Contains: Next.js App Router page files, layouts, and API route handlers
-- Depends on: Components, stores, hooks, lib modules
-- Used by: Next.js framework
+- Contains: `page.tsx`, `layout.tsx`, route-local `components/`, `hooks/`, `lib/`
+- Depends on: Components, stores, hooks
+- Used by: Browser
 
-**Component Layer:**
-- Purpose: React UI components organized by feature domain
-- Location: `src/components/`
-- Contains: Presentation components, visualization components, UI primitives, layout components
-- Depends on: Stores, hooks, lib utilities
-- Used by: Pages, other components
-
-**State Layer (Zustand Stores):**
-- Purpose: Global client-side state management
-- Location: `src/store/`
-- Contains: Domain-specific state stores (`useFilterStore`, `useAdaptiveStore`, `useCoordinationStore`, etc.), slice-domain store with composable slices
-- Depends on: Types, lib utilities
-- Used by: Components, hooks, other stores
-
-**Business Logic Layer:**
-- Purpose: Pure computation functions, data processing, query building
-- Location: `src/lib/` (subdirectories: `queries/`, `binning/`, `stkde/`, `stats/`, `adaptive/`, etc.)
-- Contains: Query builders, STKDE computation, time binning, burst detection, coordinate/date normalization
-- Depends on: Types, database
-- Used by: Stores, API routes, workers, hooks
-
-**API/Data Layer:**
-- Purpose: Server-side data access endpoints using DuckDB + Arrow
+**API Routes (server):**
+- Purpose: Server-side data access (DuckDB), heavy compute, synthetic data generation, study log ingestion.
 - Location: `src/app/api/`
-- Contains: Next.js Route Handlers for crime data, binned data, STKDE, adaptive maps, neighborhood data
-- Depends on: DuckDB, lib queries, coordinate normalization
-- Used by: Client hooks via TanStack Query (React Query)
+- Contains: Route Handlers (`route.ts`) per resource, organized by domain (`crime/`, `stkde/`, `adaptive/`, `synthetic/`, `crimes/`, `neighbourhood/`, `study/`, `evaluation/`)
+- Depends on: `src/lib/db.ts`, `src/lib/synthetic/`, `src/lib/queries/`, `src/lib/stkde/`, `src/lib/adaptive/`, `src/lib/study/`
+- Used by: Client hooks (`useCrimeData`, `useAdaptiveScale`, etc.) and dashboards
 
-**Worker Layer:**
-- Purpose: Offload heavy computation from main thread
+**Components (UI):**
+- Purpose: React UI for views, overlays, controls, and reusable primitives.
+- Location: `src/components/`
+- Contains: Feature folders (`dashboard/`, `dashboard-demo/`, `map/`, `timeline/`, `viz/`, `stkde/`, `binning/`, `layout/`, `onboarding/`, `study/`, `settings/`, `evaluation/`) and shared `ui/` (shadcn primitives).
+- Depends on: Stores, hooks, lib utilities, `@/types/`
+- Used by: Pages
+
+**Stores (client state):**
+- Purpose: Cross-component UI state, persisted user state, slice domain, adaptive settings, study progress.
+- Location: `src/store/`
+- Contains: ~25 Zustand stores. The slice domain uses a subfolder pattern under `src/store/slice-domain/`.
+- Depends on: Types, lib utilities, workers
+- Used by: Components, hooks, route handlers (server-side data prep)
+
+**Hooks (client orchestration):**
+- Purpose: Glue between components, stores, and API routes. TanStack Query wrappers and worker spawners live here.
+- Location: `src/hooks/`
+- Contains: `useCrimeData`, `useCrimeStream`, `useAdaptiveScale`, `useDebouncedDensity`, `useViewportCrimeData`, `useSuggestionGenerator`, `useHotspotEvolution`, `useSelectionSync`, `useLogger`, `useMeasure`, etc.
+- Depends on: `@tanstack/react-query`, stores, API routes, types
+- Used by: Components
+
+**Lib (pure logic + server-side DB):**
+- Purpose: Domain logic, query building, DuckDB access, synthetic generation, math, geometry, logging.
+- Location: `src/lib/`
+- Contains: `db.ts` (DuckDB), `synthetic/` (Goh-Barabási generator), `queries/` (SQL builders), `binning/` (time bin engine + warp scaling), `stkde/` (hotspot pipeline), `adaptive/` (route-mode resolution), `interval-detection.ts`, `confidence-scoring.ts`, `full-auto-orchestrator.ts`, `coordinate-normalization.ts`, `date-normalization.ts`, `logger.ts`, plus math/formatting utilities.
+- Depends on: Types, `duckdb`, `apache-arrow`
+- Used by: API routes, stores, workers, components
+
+**Workers (off-main-thread compute):**
+- Purpose: Heavy numeric compute that would otherwise block the UI thread.
 - Location: `src/workers/`
-- Contains: Web Workers for adaptive time computation and STKDE hotspot projection
-- Depends on: Lib modules (imported at build time)
-- Used by: Stores (create worker instances at module level)
+- Contains: `adaptiveTime.worker.ts` (density/burstiness/warp map computation), `stkdeHotspot.worker.ts` (post-filter + project hotspot rows), `kdeSlice.worker.ts`.
+- Depends on: Lib utilities
+- Used by: Stores via `new Worker(new URL('../workers/<x>.worker.ts', import.meta.url))`
 
-**Types Layer:**
-- Purpose: Shared TypeScript type definitions
+**Types:**
+- Purpose: Single source of truth for shared data shapes.
 - Location: `src/types/`
-- Contains: Canonical type interfaces (`CrimeRecord`, `CrimeViewport`, `AdaptiveBinningMode`, `AutoProposalSet`)
+- Contains: `crime.ts` (canonical `CrimeRecord`), `autoProposalSet.ts`, `adaptive.ts`, `data.ts`, `suggestion.ts`.
 - Depends on: None
 - Used by: All layers
 
+**Synthetic sibling (Python):**
+- Purpose: Cross-language reference implementation and ground-truth generator.
+- Location: `scripts/synthetic/` (`generate_bursty.py`, `test_generate_bursty.py`)
+- Depends on: numpy, scipy
+- Used by: External validation against the TS generator; produces CSV consumed by `scripts/verify_showcase_windows.py` etc.
+
 ## Data Flow
 
-**Crime Data Request Flow:**
+**1. Crime range query (most common path):**
 
-1. Component mounts or viewport changes → Zustand store signals new time range
-2. TanStack Query hook (`useCrimeData` in `src/hooks/useCrimeData.ts`) fires a GET to `/api/crimes/range` or `/api/crime/stream`
-3. API route queries DuckDB with parameterized SQL, returns data as Apache Arrow IPC stream or JSON
-4. TanStack Query caches response, returns `{ data, meta, isLoading, error }` to component
-5. Component renders 3D cube (Three.js), 2D map (MapLibre), or timeline (D3/@visx)
+1. User pans/zooms the map or drags the timeline brush. `useCoordinationStore` records `lastInteractionAt` and `brushRange`.
+2. `useCrimeData` (TanStack Query) at `src/hooks/useCrimeData.ts` paginates against `/api/crimes/range?startEpoch&endEpoch&bufferDays&crimeTypes&districts&pageSize&cursor`.
+3. `src/app/api/crimes/range/route.ts` calls `getDb()` from `src/lib/db.ts`, which lazily initializes a singleton DuckDB at `data/cache/crime.duckdb` from the CSV at `data/sources/Crimes_-_2001_to_Present_20260114.csv` (~2.2 GB).
+4. `src/lib/queries/builders.ts` builds parameterized SQL (with `sanitizeTableName` allowlist) and executes it.
+5. Rows are normalized to `CrimeRecord` (lat/lon → `x`/`z` in [-50, +50] via `coordinate-normalization.ts`).
+6. Response streams back as JSON paginated by cursor; TanStack Query dedupes and caches with a 5-minute `staleTime` set in `src/providers/QueryProvider.tsx`.
+7. Consumers (`MapEventLayer`, `CubeVisualization/DataPoints`, `DualTimeline`) read from the hook's result; they do not re-fetch independently.
 
-**Adaptive Time Flow:**
+**2. Adaptive scaling (worker path):**
 
-1. User adjusts warp factor or binning mode → `useAdaptiveStore.computeMaps()` called
-2. Worker (`adaptiveTime.worker.ts`) receives `Float32Array` of timestamps via `postMessage`
-3. Worker computes density map, burstiness map, and warp map using configurable KDE
-4. Worker sends results back to store via `onmessage`
-5. Store updates `densityMap`, `burstinessMap`, `warpMap` → components re-render
-6. Timeline and cube visualize warped time scale
+1. `useAdaptiveStore` (`src/store/useAdaptiveStore.ts`) instantiates `adaptiveTime.worker.ts` at module load.
+2. The store posts a `WorkerInput` payload (`{ requestId, timestamps: Float32Array, domain, config }`) to the worker.
+3. The worker (`src/workers/adaptiveTime.worker.ts`) computes density, burstiness, and warp maps with `binCount`, `kernelWidth`, and `binningMode` (`uniform-time` | `uniform-events`).
+4. The store receives `WorkerOutput` and sets `densityMap`, `burstinessMap`, `warpMap`, `countMap` on the global state. The `mapDomain` field is the canonical "what time range am I scaling for" reference.
+5. `useSliceStore` / `useAutoBurstSlices` react to new burst windows and call `addBurstSlice` on the slice domain.
 
-**Slice Management Flow:**
+**3. STKDE (server + worker):**
 
-1. Slices are created manually (drag on timeline), from burst auto-detection, or from binning proposals
-2. `useSliceDomainStore` (composable store in `src/store/slice-domain/`) manages slice CRUD
-3. `useCoordinationStore` tracks selected time index, brush range, and sync status across panels
-4. When a slice is created/modified, changes propagate through store selectors to map, cube, and timeline components
+1. A request hits `/api/stkde/hotspots?mode=...` (server route).
+2. The server route runs the full-population STKDE pipeline (`src/lib/stkde/full-population-pipeline.ts` → `compute.ts` → `burst-evolution.ts`).
+3. Returned `StkdeWorkerHotspot[]` flows into `useStkdeStore` and is passed to `stkdeHotspot.worker.ts` for client-side filtering and projection by `minIntensity`, `minSupport`, `temporalWindow`, and `spatialBbox`.
+4. `MapStkdeHeatmapLayer` and `BurstEvolutionOverlay` render the result.
 
-**Cross-View Selection Synchronization:**
+**4. Synthetic bursty generation:**
 
-1. User interacts with cube (click point), timeline (brush), or map (select region)
-2. Interaction calls `useCoordinationStore.setSelectedIndex()` or `setBrushRange()` with a `source` identifier
-3. Other panels subscribe to coordination store and synchronize their visual state
-4. `syncStatus` tracks whether all panels are synchronized or in a partial state
+1. Client or test calls `/api/synthetic/bursty?alpha=1.5&delta=1&count=10000&startEpoch=...&endEpoch=...&seed=42`.
+2. `src/app/api/synthetic/bursty/route.ts` parses and validates the config, then calls `generateBurstySequence` from `src/lib/synthetic/goh-barabasi.ts`.
+3. The generator runs in-memory: a priority queue selects the next event TYPE (Goh-Barabási mechanism); inter-event TIMESTAMPS are sampled from a power-law distribution via inverse transform sampling, seeded by `createSeededRandom` (`prng.ts`, Lehmer LCG) for reproducibility.
+4. The response includes `{ data: CrimeRecord[], meta: { config, metrics, rollingBurstiness } }`. `?format=csv` returns a CSV download via `csv-export.ts`.
+5. `/api/synthetic/bursty/burstiness` returns the rolling window B(t) series used as ground truth for evaluating the adaptive scaling algorithm.
+
+**State Management:**
+
+- **Per-store Zustand instances** with `create<T>((set, get) => ...)` (no global reducer). State changes are direct mutations through setters.
+- **Slice domain composition** in `src/store/slice-domain/` — `useSliceDomainStore` (in `src/store/useSliceDomainStore.ts`) merges four creators (`createSliceCoreSlice`, `createSliceSelectionSlice`, `createSliceCreationSlice`, `createSliceAdjustmentSlice`) and persists `slices` to `localStorage` under the key `slice-domain-v1`.
+- **Coordinated cross-view sync** flows through `useCoordinationStore` (`src/store/useCoordinationStore.ts`): `selectedIndex`, `selectedSource`, `brushRange`, `selectedBurstWindows`, `workflowPhase`, `syncStatus`, `panelNoMatch` — all map/cube/timeline reads/writes for shared state.
+- **Demonstration stores** for the dashboard-demo route: `useDashboardDemoCoordinationStore`, `useDashboardDemoFilterStore`, `useDashboardDemoMapLayerStore`, `useDashboardDemoTimeStore`, `useDashboardDemoTimeslicingModeStore`. These intentionally do not share state with the main dashboard.
 
 ## Key Abstractions
 
-**`CrimeRecord`** (`src/types/crime.ts`):
-- Purpose: Canonical crime data format used throughout the application
-- Fields: `id`, `timestamp` (epoch seconds), `lat`, `lon`, `x` (normalized), `z` (normalized), `type`, `district`, `year`, `iucr`
-- Pattern: Normalized spatial coordinates (x, z) alongside geographic (lat, lon) for dual map/cube rendering
-- Source: API response from `/api/crimes/range` or `/api/crime/stream`
+**`CrimeRecord` (canonical crime data):**
+- Purpose: Single shape used by all components, hooks, and the synthetic generator.
+- Examples: `src/types/crime.ts`, consumed in `src/lib/synthetic/goh-barabasi.ts:22`, all API routes, all components.
+- Pattern: Includes both lat/lon and normalized `x`/`z` in [-50, +50]; epoch seconds timestamp; `type`, `district`, `iucr`, `year`. Inputs to APIs use `CrimeRecordInput = Partial<CrimeRecord>`.
 
-**`TimeSlice`** (`src/store/slice-domain/types.ts`):
-- Purpose: Represents a time selection (point or range) in the timeline
-- Fields: `id`, `type` ('point'|'range'), `time`, `range`, `isLocked`, `isVisible`, `source`, burst classification fields
-- Pattern: Immutable-ish with `isLocked`, `isVisible` flags; supports burst auto-detection metadata
+**`TimeSlice` (slice domain):**
+- Purpose: Represents a single editable time selection (point or range) on the timeline.
+- Examples: `src/store/slice-domain/types.ts:7-33`
+- Pattern: Normalized 0–100 coordinates (mapped to epoch via `useTimelineDataStore`); carries `isLocked`, `isVisible`, burst taxonomy metadata (`burstClass`, `burstRuleVersion`, `burstScore`, `burstConfidence`, `burstProvenance`, `tieBreakReason`, `thresholdSource`, `neighborhoodSummary`), and `warpEnabled`/`warpWeight` for non-uniform slicing.
 
-**`SliceDomainState`** (`src/store/slice-domain/types.ts`):
-- Purpose: Composite state type combining four slice management domains
-- Composition: `SliceCoreState` + `SliceSelectionState` + `SliceCreationState` + `SliceAdjustmentState`
-- Pattern: Zustand slice pattern — each domain is a separate `StateCreator` composed into the store
+**`AutoProposalSet` (auto-generated slicing proposal):**
+- Purpose: Container for a complete suggested slicing solution.
+- Examples: `src/types/autoProposalSet.ts:38-64`
+- Pattern: Combines `AutoProposalIntervalSet[]` (boundaries + method + confidence) with `AutoProposalWarpProfile[]` (intervals + strength + emphasis). Scored via `src/lib/full-auto-orchestrator.ts` with `SCORE_WEIGHTS = { relevance: 0.4, continuity: 0.3, overlapMin: 0.2, coverage: 0.1 }` (asserts the sum equals 1.0).
 
-**Zustand Stores** (distributed across `src/store/`):
-- Purpose: Client state management for every domain (filters, slices, adaptive, coordination, time, layout, theme, etc.)
-- Examples: `useCoordinationStore`, `useAdaptiveStore`, `useSliceDomainStore`, `useFilterStore`, `useTimeStore`
-- Pattern: Each store is a single `create()` call with typed state + actions interface
-- Pattern: `useSliceDomainStore` uses `persist()` middleware + composable slice creators
+**`BurstyGeneratorConfig` / `BurstySequence` (synthetic generator):**
+- Purpose: Reproducible bursty crime event stream.
+- Examples: `src/lib/synthetic/types.ts:20-82`
+- Pattern: `alpha > 1` (power-law exponent), `delta > 0` (priority increment), `numEvents`, `startTime`/`endTime` (epoch seconds), `typeStrategy` ('weighted' | 'uniform'), optional `perTypeAlpha` overrides, `rollingWindowSec`, optional `seed`. Output: `events: CrimeRecord[]`, global `metrics` (B, memory coefficient, mean/std IET, fitted alpha), and `rollingBurstiness: RollingBurstinessPoint[]`.
 
-**TanStack Query Hooks** (`src/hooks/useCrimeData.ts`, `useViewportCrimeData.ts`):
-- Purpose: Server state management with caching, deduplication, retry
-- Pattern: Hooks return `{ data, meta, isLoading, isFetching, error }` — consumers are decoupled from fetch mechanics
-- Configuration: 5-minute stale time, 10-minute GC, no refetch on window focus
+**`QueryFragment` (SQL builder output):**
+- Purpose: Type-safe SQL + params pair.
+- Examples: `src/lib/queries/types.ts:1-4`, used in `src/lib/queries/builders.ts` and `filters.ts`.
+- Pattern: `{ sql: string, params: unknown[] }` — sanitization happens via `sanitizeTableName` allowlist (`crimes_sorted`, `adaptive_global_cache`) and `clampPositiveInt`.
 
-**Query Builders** (`src/lib/queries/`):
-- Purpose: Type-safe DuckDB query construction with sanitization
-- Exports: `builders.ts` (fluent query API), `filters.ts` (filter predicates), `sanitization.ts` (SQL injection guards), `aggregations.ts` (aggregate helpers)
-- Pattern: Parameterized queries with typed interfaces
+**`TimeBin` (binning output):**
+- Purpose: One time window produced by the binning engine.
+- Examples: `src/lib/binning/types.ts:9-63`
+- Pattern: `{ startTime, endTime, count, crimeTypes[], isModified?, mergedFrom?, burstClass?, burstScore?, burstinessCoefficient?, warpWeight?, isNeutralPartition? }`. Bursts have a full taxonomy attached; neutral fallback partitions get `isNeutralPartition: true` and `warpWeight: 1`.
 
-**Workers** (`src/workers/`):
-- Purpose: Offload KDE computation and hotspot filtering from main thread
-- Files: `adaptiveTime.worker.ts` (count map, density map, burstiness map, warp map), `stkdeHotspot.worker.ts` (filter/sort hotspots), `kdeSlice.worker.ts` (slice-based KDE)
-- Pattern: Module-level worker instantiation with `requestId` to discard stale responses
+**Coordination store pattern:**
+- Purpose: Synchronize map/cube/timeline without prop drilling.
+- Examples: `src/store/useCoordinationStore.ts`
+- Pattern: `SelectionSource = 'cube' | 'timeline' | 'map' | null`; `WorkflowPhase = 'generate' | 'review' | 'applied' | 'refine'`; `SyncStatusToken = 'syncing' | 'synchronized' | 'partial'`. `reconcileSelection` resolves conflicts when one panel can't match what another requested.
 
 ## Entry Points
 
-**Root Layout** (`src/app/layout.tsx`):
-- Responsibilities: Theme provider, TanStack Query provider, toast notifications (Sonner), onboarding tour
-- Composition order: `<ThemeProvider>` → `<QueryProvider>` → `{children}` → `<Toaster>` → `<OnboardingTour>`
+**`src/app/layout.tsx`:**
+- Location: `src/app/layout.tsx`
+- Triggers: All page routes (root layout)
+- Responsibilities: Loads Geist + Geist Mono fonts, wraps in `ThemeProvider` → `QueryProvider` (TanStack Query) → renders children + global `<Toaster />` (Sonner) + `<OnboardingTour />` (driver.js).
 
-**Landing Page** (`src/app/page.tsx`):
-- Route: `/`
-- Responsibilities: Navigation hub linking to /demo, /stkde-3d, /hotspot-evolution
-- Server component (no `"use client"`)
+**`src/app/page.tsx`:**
+- Location: `src/app/page.tsx`
+- Triggers: `/` route
+- Responsibilities: Landing page that links to the various dashboards and algorithm views.
 
-### Page Routes
+**`src/app/dashboard/page.tsx`:**
+- Location: `src/app/dashboard/page.tsx`
+- Triggers: `/dashboard` route
+- Responsibilities: Main visualization shell — `MapVisualization` (left), `CubeVisualization` (top-right), `TimelinePanel` (bottom). Wrapped in `DashboardLayout` (resizable panels from `react-resizable-panels`). Includes `DashboardHeader`, `StudyControls`, and `ContextualSlicePanel`.
 
-**`/dashboard`** (`src/app/dashboard/page.tsx`):
-- Main visualization layout with map, cube, and timeline panels
-- Composes: `DashboardLayout` (resizable panels), `MapVisualization`, `CubeVisualization`, `TimelinePanel`
+**`src/app/dashboard-demo/page.tsx`:**
+- Location: `src/app/dashboard-demo/page.tsx`
+- Triggers: `/dashboard-demo` route
+- Responsibilities: Demo shell for evaluation studies with rail tabs and three viewports (Map / 3D / Compare). Uses `DashboardDemoShell` (`src/components/dashboard-demo/DashboardDemoShell.tsx`).
 
-**`/dashboard-demo`** (`src/app/dashboard-demo/page.tsx`):
-- Refined demo interface with rail/tab navigation
-- Composes: `DashboardDemoShell` → rail tabs (Configure, Detect, Inspect, Stats)
+**`src/app/timeline-test/page.tsx`:**
+- Location: `src/app/timeline-test/page.tsx`
+- Triggers: `/timeline-test` route
+- Responsibilities: Dual-timeline testing surface with route-local `components/`, `hooks/`, `lib/`.
 
-**`/dashboard-v2`** (`src/app/dashboard-v2/page.tsx`):
-- Alternative dashboard version with hooks-based STKDE integration
+**`src/app/stkde/page.tsx` / `src/app/stkde-3d/page.tsx`:**
+- Location: `src/app/stkde/page.tsx`, `src/app/stkde-3d/page.tsx`
+- Triggers: `/stkde`, `/stkde-3d`
+- Responsibilities: STKDE hotspot analysis views (2D map and 3D cube).
 
-**`/timeslicing`** (`src/app/timeslicing/page.tsx` + `layout.tsx`):
-- Dedicated interface for time slicing workflow with suggestion panel and binning controls
-- Composes: `DualTimeline`, `SuggestionPanel`, `BinningControls`
+**`src/app/timeslicing/page.tsx` / `src/app/timeslicing-algos/page.tsx`:**
+- Triggers: `/timeslicing`, `/timeslicing-algos`
+- Responsibilities: Time-slicing controls. The `binningMode` (`uniform-time` | `uniform-events`) is route-derived in `src/lib/adaptive/route-binning-mode.ts` (any `/timeslicing-algos/*` route forces `uniform-events`).
 
-**`/stkde-3d`** (`src/app/stkde-3d/page.tsx`):
-- 3D STKDE visualization with adaptive warp axis, slice stack, and trajectory overlays
-- Uses: Three.js (R3F), MapLibre, custom 3D scene components
+**`src/app/api/crime/stream/route.ts`:**
+- Location: `src/app/api/crime/stream/route.ts`
+- Triggers: `GET /api/crime/stream`
+- Responsibilities: Streams crime rows in Apache Arrow IPC format (`Content-Type: application/vnd.apache.arrow.stream`). Falls back to mock data with `X-Data-Warning` header.
 
-**`/stkde`** (`src/app/stkde/page.tsx`):
-- 2D STKDE analysis view
+**`src/app/api/crime/overview/route.ts`:**
+- Triggers: `GET /api/crime/overview`
+- Responsibilities: Returns 1000-bin overview of the dataset's temporal extent; used by the timeline brush.
 
-**`/stats`** (`src/app/stats/page.tsx`):
-- Statistical dashboard with neighborhood analysis, temporal patterns, district breakdowns
+**`src/app/api/crime/bins/route.ts` / `src/app/api/crime/facets/route.ts` / `src/app/api/crime/meta/route.ts` / `src/app/api/crime/stats-summary/route.ts` / `src/app/api/crime/around/route.ts`:**
+- Triggers: `GET /api/crime/{bins,facets,meta,stats-summary,around}`
+- Responsibilities: Server-side aggregates for the timeline, filter facets, dataset metadata, statistical summaries, and point-proximity queries.
 
-**`/timeline-test`** (`src/app/timeline-test/page.tsx`):
-- Timeline interaction testbed with slice editing tools, snap modes, warp controls
+**`src/app/api/crimes/range/route.ts`:**
+- Triggers: `GET /api/crimes/range?startEpoch&endEpoch&...`
+- Responsibilities: Paginated raw crime rows used by `useCrimeData`. This is the hot path for the dashboard.
 
-**`/demo/non-uniform-time-slicing`** (`src/app/demo/non-uniform-time-slicing/page.tsx`):
-- Interactive demo showcasing adaptive time scaling concepts
+**`src/app/api/stkde/hotspots/route.ts`:**
+- Triggers: `GET /api/stkde/hotspots?mode=...`
+- Responsibilities: Full-population STKDE hotspot detection (server-side; off the main thread).
 
-**`/evaluation`** (`src/app/evaluation/page.tsx`):
-- User study evaluation interface with task cards, questionnaires, training gate
+**`src/app/api/adaptive/global/route.ts` / `src/app/api/adaptive/bursts/route.ts`:**
+- Triggers: `GET /api/adaptive/global`, `GET /api/adaptive/bursts`
+- Responsibilities: Global adaptive maps (precomputed density/burstiness/warp) and detected burst windows.
 
-**`/hotspot-evolution`** (`src/app/hotspot-evolution/page.tsx`):
-- Hotspot evolution flow visualization
+**`src/app/api/synthetic/bursty/route.ts` / `src/app/api/synthetic/bursty/burstiness/route.ts`:**
+- Triggers: `GET /api/synthetic/bursty`, `GET /api/synthetic/bursty/burstiness`
+- Responsibilities: Goh-Barabási bursty crime generator (JSON or CSV download). The burstiness subroute returns the rolling B(t) ground-truth series.
 
-**`/cube-sandbox`** (`src/app/cube-sandbox/page.tsx`):
-- Standalone 3D cube sandbox for testing
-
-### API Routes
-
-**`/api/crime/stream/route.ts`** — GET: Stream crime data as Apache Arrow IPC, supports filtering by date range, crime types, districts, with optional mock data fallback. Uses `nodejs` runtime.
-
-**`/api/crime/bins/route.ts`** — GET: Return aggregated 3D bins (x, y, z) with configurable resolution for cube visualization.
-
-**`/api/crime/around/route.ts`** — GET: Crime data around a specific point.
-
-**`/api/crime/facets/route.ts`** — GET: Faceted crime statistics.
-
-**`/api/crime/meta/route.ts`** — GET: Dataset metadata (date range, record count).
-
-**`/api/crime/overview/route.ts`** — GET: Overview statistics.
-
-**`/api/crime/stats-summary/route.ts`** — GET: Statistical summary.
-
-**`/api/crimes/range/route.ts`** — GET: Crime records within a date range (alternative to stream endpoint).
-
-**`/api/adaptive/global/route.ts`** — GET: Precomputed global adaptive maps (density, burstiness, warp) with configurable bin count and kernel width.
-
-**`/api/adaptive/bursts/route.ts`** — GET: Burst window detection results.
-
-**`/api/stkde/hotspots/route.ts`** — POST: Compute STKDE hotspots from crime data with configurable compute mode.
-
-**`/api/neighbourhood/poi/route.ts`** — GET: Points of interest data.
-
-**`/api/study/log/route.ts`** — POST: Study evaluation event logging.
+**`src/app/api/study/log/route.ts`:**
+- Triggers: `POST /api/study/log`
+- Responsibilities: Acknowledged study event ingestion; consumed by `LoggerService` in `src/lib/logger.ts` with requeue-on-failure (max 4 attempts, 750ms backoff).
 
 ## Error Handling
 
-**Strategy:** Graceful degradation with fallback data.
+**Strategy:** Server routes always fall back to mock data with a warning header; the UI never breaks when DuckDB is unavailable.
 
-**API Route Pattern:**
-- DuckDB queries wrapped in try/catch
-- On DuckDB failure: return mock data with `X-Data-Warning` header
-- On validation failure: return 400 with descriptive error message
-- Generic 500 fallback with logged error
+**Patterns:**
 
-**Client Hook Pattern:**
-- TanStack Query provides `error`, `isLoading`, `isFetching` states
-- Hooks normalize API errors into typed error fields
-- Components display loading skeletons or error states based on these fields
-
-**Store Pattern:**
-- Async actions (e.g., `computeMaps`) set `isComputing`/`isLoading` flags
-- Workers detect stale requests via `requestId` and discard out-of-order responses
-
-**Logger** (`src/lib/logger.ts`):
-- Centralized `LoggerService` class with queued, acknowledged writes
-- Uses `navigator.sendBeacon` during page unload for reliability
-- Fallback to `fetch` POST
-- Study-specific write helpers (`sessionStart`, `sessionEnd`, `trialComplete`, etc.)
+- **API routes catch all errors and return mock data** with `X-Data-Warning: Using demo data - <reason>` header. See `src/app/api/crime/overview/route.ts:55-60`, `src/app/api/crime/meta/route.ts:54-67`, `src/app/api/crime/stream/route.ts:51-64`.
+- **DuckDB singleton with lazy init** in `src/lib/db.ts` (`__quietTigerDuckDb`, `__quietTigerDuckDbInitPromise` global promises). The CSV→DuckDB load is a fingerprint check (`size:mtimeMs`); only reloads when the source CSV changes.
+- **SQL sanitization allowlist** in `src/lib/queries/sanitization.ts`: only `crimes_sorted` and `adaptive_global_cache` are accepted table names; numeric params are clamped via `clampPositiveInt(value, min, max)`.
+- **Client hook error state** through TanStack Query: `isLoading`, `isFetching`, `error` on every `useCrimeData` / `useAdaptiveScale` / `useStkde` return.
+- **Logger retry queue** in `src/lib/logger.ts` (`LoggerService`): single-write helpers (`sessionStart`, `sessionEnd`, `trialComplete`, `questionnaireResponse`, `conditionToggle`, `warpAdjustment`) re-queue failed `POST /api/study/log` writes up to 4 times before giving up; `beforeunload` does a `navigator.sendBeacon` best-effort drain.
+- **Worker `requestId` correlation** in `src/workers/adaptiveTime.worker.ts` and `stkdeHotspot.worker.ts` so a slow response from an earlier request can't overwrite a newer one.
 
 ## Cross-Cutting Concerns
 
 **Logging:**
-- `src/lib/logger.ts` — `LoggerService` class with buffered, acknowledged event writes
-- `src/hooks/useLogger.ts` — `useLogger` hook for component-level logging
-- Backend logging via `/api/study/log` endpoint for study data
+- `src/lib/logger.ts` exports the `LoggerService` class. Batches study-intent events, posts to `/api/study/log` with acknowledgement, requeues on failure, uses `sendBeacon` on unload.
+- `src/hooks/useLogger.ts` exposes a per-component log surface.
+- Backend study persistence through `/api/study/log`.
 
 **Validation:**
-- Query parameter sanitization in `src/lib/queries/sanitization.ts`
-- STKDE request validation in `src/lib/stkde/contracts.ts` with `validateAndNormalizeStkdeRequest`
-- Type guards in query builders for SQL injection prevention
+- `src/lib/queries/sanitization.ts` — table-name allowlist and parameter clamping for SQL.
+- `src/lib/synthetic/goh-barabasi.ts:resolveConfig` — validates `alpha > 1`, `delta > 0`, `numEvents >= 1`, `endTime > startTime`.
+- `src/lib/queries/filters.ts` — build WHERE-clause fragments.
+- Type guards inside `src/lib/queries/builders.ts`.
 
-**Coordinate Normalization:**
-- `src/lib/coordinate-normalization.ts` — `lonLatToNormalized()` converts geographic coordinates to normalized (-50, +50) space for 3D cube
+**Authentication:**
+- No application-level auth — this is a desktop-first internal prototype running against local DuckDB and local CSV data.
 
-**Date Normalization:**
-- `src/lib/date-normalization.ts` — Date to/from epoch conversion
-- `src/lib/time-domain.ts` — Normalized time domain [0, 100] to epoch mapping
+**Coordinate normalization:**
+- `src/lib/coordinate-normalization.ts` — `lonLatToNormalized`, `buildNormalizedSqlExpression`, `NORMALIZED_COORDINATE_RANGE`. The same constants are used in SQL builders (server) and on the client so x/z values are identical on both sides.
 
-**Feature Flags:**
-- `src/store/useFeatureFlagsStore.ts` — Client-side feature flag toggles
-- `src/lib/feature-flags.ts` — Feature flag logic
-- URL-based overrides via `useURLFeatureFlags` hook
+**Date normalization:**
+- `src/lib/date-normalization.ts` and `src/lib/time-domain.ts` — `epochSecondsToNormalized`, `normalizedToEpochSeconds`, `toEpochSeconds`. Slices and views use a normalized 0–100 range; conversion to absolute time happens at the boundary (`useTimelineDataStore.minTimestampSec`/`maxTimestampSec`).
+
+**State machine:**
+- `src/lib/state-machine.ts` — generic `createStateMachine<S extends string>(initialState, transitions)` for lifecycle enums. Used by the auto-run orchestrator (`src/lib/full-auto-orchestrator.ts`) with states `idle | running | paused | completed | error`.
+
+**Onboarding:**
+- `src/components/onboarding/OnboardingTour.tsx` — driver.js guided tour of the dashboard, mounted at the root layout.
 
 **Theming:**
-- `src/store/useThemeStore.ts` — Theme state (dark, light, colorblind)
-- `src/components/layout/ThemeProvider.tsx` — Applies theme classes to `document.documentElement`
+- `src/components/layout/ThemeProvider.tsx` — `next-themes` wrapper, exposes the theme to all components.
 
 ---
 
-*Architecture analysis: 2026-06-25*
+*Architecture analysis: 2026-06-27*

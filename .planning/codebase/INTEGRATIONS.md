@@ -1,145 +1,153 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-25
+**Analysis Date:** 2026-06-27
+
+> **Summary:** This prototype is a fully **offline-first** application. There are no third-party SaaS APIs, no auth provider, no cloud database, and no inbound webhooks. The only external network dependency is the **Carto basemap vector tile style** consumed by MapLibre at runtime. All data storage is local (DuckDB + CSV + Parquet). Study telemetry writes are persisted to a local DuckDB table.
 
 ## APIs & External Services
 
-**OpenStreetMap Overpass API:**
-- URL: `https://overpass-api.de/api/interpreter`
-- Purpose: Query Points of Interest (POIs) within a bounding box — restaurants, parks, schools, hospitals, transit stations, shops
-- Client: Native `fetch()` via `src/lib/neighbourhood/osm.ts`
-- Request method: POST with form-encoded Overpass QL query
-- Timeout: 30 seconds (set in Overpass QL query)
-- Response: JSON with OSM elements (nodes/ways with lat/lon, tags)
-- Caching: 24-hour in-memory cache in the API route handler at `src/app/api/neighbourhood/poi/route.ts`
-- Error handling: Network/HTTP/JSON errors surfaced as `NeighbourhoodSummaryMissing` responses
-- Usage frequency: On-demand when user views neighbourhood context (view-triggered)
+**None.** No third-party APIs (no Stripe, no Slack, no SendGrid, no analytics services, no LLM APIs, no OAuth providers).
 
-**Chicago Data Portal SODA API:**
-- Base URL: `https://data.cityofchicago.org/resource`
-- Endpoints used:
-  - `/6pth-rz8e.json` - Business licenses (`src/lib/neighbourhood/chicago.ts` — `queryChicagoBusinesses`)
-  - `/pxu2-2i9s.json` - Land use data (`src/lib/neighbourhood/chicago.ts` — `queryChicagoLandUse`)
-- Purpose: Enrich neighbourhood summaries with business and land use context
-- Client: Native `fetch()` with SODA `$where`, `$limit`, `$select` params
-- Response: JSON array of business/land-use records
-- Limits: 50,000 rows for businesses, 100,000 rows for land use
-- Error handling: Network failure and HTTP errors are caught and surfaced as structured errors; POI summary gracefully degrades to `status: 'missing'`
-- Usage frequency: Co-occurring with OSM queries via `buildNeighbourhoodSummary` in `src/lib/neighbourhood/index.ts`
+The only externally-hosted resource is:
+
+**Map tile style (CDN):**
+- **Carto Basemaps** — Public CDN, free, attribution required
+  - `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json` — Dark theme
+  - `https://basemaps.cartocdn.com/gl/positron-gl-style/style.json` — Light theme
+  - Used by MapLibre GL via the `mapStyle` prop in `src/lib/palettes.ts` (lines 82, 90, 98)
+  - Raster/vector tiles themselves are fetched by MapLibre from the same Carto origin at runtime
+  - No API key required; no env var to configure
+  - Auth: not required (public style)
+  - **Failure mode:** if Carto is unreachable, the map background appears blank but the rest of the dashboard (cube, timeline, charts) still functions
 
 ## Data Storage
 
 **Databases:**
-- DuckDB 1.4.4 (in-process OLAP database)
-  - Purpose: Primary data store for ~8.5M Chicago crime records (2001-2026); also stores study/evaluation data in `study_*` fact tables
-  - Connection: Singleton instance cached on `globalThis.__quietTigerDuckDb` at `src/lib/db.ts`
-  - Persistence: WAL-mode database file at `data/cache/crime.duckdb`
-  - Threads: Configurable via `DUCKDB_THREADS` env var (default: 2)
-  - Configuration: `next.config.ts` marks it as `serverExternalPackages: ['duckdb']` (cannot be bundled by Webpack/Turbopack)
-  - Patch: `patches/duckdb+1.4.4.patch` fixes the binary binding path for N-API version 3
-  - Postinstall: `pnpm postinstall` creates a symlink at `node_modules/duckdb/lib/binding/3/duckdb.node`
+- **DuckDB** (in-process OLAP) — file at `data/cache/crime.duckdb` by default
+  - Connection: file-based, no network
+  - Client: `duckdb` npm package (1.4.4), instantiated via `duckdb.Database(path, cb)` in `src/lib/db.ts:163`
+  - Schema managed at `src/lib/db.ts`:
+    - `crimes_sorted` — zone-map optimized copy of raw Chicago CSV (created on first run from `data/sources/Crimes_-_2001_to_Present_20260114.csv` via `read_csv_auto`)
+    - `crime_dataset_meta` — pre-computed min/max/crime_types/year range
+    - `crime_overview_bins_medium` — pre-bucketed (120 bins) overview summary for fast dashboard loading
+    - `crime_dataset_state` — fingerprint of the source CSV to skip re-materialization
+    - `study_*` — study telemetry tables written by `/api/study/log` via `src/lib/study/storage.ts`
+  - Concurrency: singleton cached on `globalThis.__quietTigerDuckDb`
+  - Threading: `SET threads=N` (env `DUCKDB_THREADS`, default 2)
+  - Ordering: `SET preserve_insertion_order=false`
 
-**File Storage:**
-- Local filesystem only
-  - Crime source data: `data/sources/Crimes_-_2001_to_Present_20260114.csv` (~8.5M rows, Chicago crime data)
-  - DuckDB cache: `data/cache/crime.duckdb` + `data/cache/crime.duckdb.wal`
-  - Parquet export: `data/crime.parquet`
-  - Raw data placeholder: `data/source.csv`
-  - Additional datasets: `data/sources/Police_Stations_20260202.csv`, `data/sources/Chicago_Police_Department_-_Illinois_Uniform_Crime_Reporting_(IUCR)_Codes_20260202.csv`
-  - Study logs (legacy): `logs/*.jsonl` (gitignored)
+**File storage (local filesystem only):**
+- `data/sources/Crimes_-_2001_to_Present_20260114.csv` — Raw Chicago crimes CSV (~9.9 MB committed? No, gitignored). Path resolved at `src/lib/db.ts:51` as `getDataPath()`
+- `data/cache/crime.duckdb` — DuckDB file (gitignored, regenerated on first run)
+- `data/source.csv` — Preprocessed CSV output of `datapreprocessing/pipeline.py` (gitignored)
+- `data/crime.parquet` — Parquet produced by `scripts/setup-data.js` (gitignored)
+- All paths gitignored under `/data/*.csv`, `/data/*.parquet`, `/data/*.duckdb`, `/data/*.wal` (see `.gitignore` lines 38-49)
+
+**Synthetic data output (local filesystem):**
+- `scripts/synthetic/generate_bursty.py` writes to a user-specified `--out-dir` (default `./out/`) producing `<prefix>-seed<seed>-<iso>_events.csv` and `<prefix>-seed<seed>-<iso>_burstiness.csv`
+- `/api/synthetic/bursty?format=csv` returns a CSV download stream built in-memory by `src/lib/synthetic/csv-export.ts`
 
 **Caching:**
-- None (in-memory only; no Redis, Memcached, or similar)
-- In-memory caches:
-  - `@tanstack/react-query` client-side cache with 5-minute `staleTime`, 10-minute `gcTime` (`src/providers/QueryProvider.tsx`)
-  - Neighbourhood POI: 24-hour in-memory `Map` in `src/app/api/neighbourhood/poi/route.ts`
-  - DuckDB `globalThis.__quietTigerDuckDb` singleton in `src/lib/db.ts`
+- None. Each request re-queries DuckDB. TanStack Query handles client-side cache invalidation
+- The `/api/neighbourhood/poi` route uses an in-process `Map<string, {data, timestamp}>` cache with a 24h TTL (`src/app/api/neighbourhood/poi/route.ts:7`)
 
-## Data Streaming
-
-**Apache Arrow (gRPC-free binary protocol):**
-- Purpose: Stream crime data from DuckDB → API route → client with zero-copy columnar format
-- Client-side: `@loaders.gl/arrow` 4.4.3 + `@loaders.gl/core` 4.4.3 (via `src/hooks/useCrimeStream.ts`)
-- Server-side: `apache-arrow` 21.1.0 (`tableFromJSON` / `tableToIPC` in `src/app/api/crime/stream/route.ts`)
-- Content-Type: `application/vnd.apache.arrow.stream`
-- Mock fallback: Generates synthetic Arrow stream when DuckDB is unavailable
+**Caching (build-time):**
+- `data/cache/` is created on demand for the DuckDB file via `mkdirSync(..., { recursive: true })` in `src/lib/db.ts:160`
 
 ## Authentication & Identity
 
-**Auth Provider:**
-- None (prototype/internal tool — no authentication)
-- Study sessions generate random UUID client-side via `crypto.randomUUID()` in `src/store/useStudyStore.ts`
-- Participant IDs are `anon-<sessionId-prefix>` or user-provided strings
+**None.** The prototype is a desktop-first internal tool with no auth layer. No login screen, no session cookies, no JWTs, no SSO. All routes are public.
 
-**API Security:**
-- No JWT, API keys, or session validation on API routes
-- API routes are internal Next.js Route Handlers (no external exposure by default)
-- No authentication middleware
+The `/api/study/log` endpoint accepts a `sessionId` and `participantId` in the request body (validated as non-empty strings) but does NOT verify them — these are opaque strings the user/researcher provides to group pilot-study events. The endpoint writes them straight to DuckDB study tables.
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None (no Sentry, Datadog, or similar)
-- Errors logged via `console.error()` throughout codebase
+- None (no Sentry, no Bugsnag, no Rollbar). Errors are caught in API route `try/catch` blocks and either:
+  - Returned to the client with a 4xx/5xx response, or
+  - Swallowed and replaced with a mock-data response (e.g. `/api/crime/stream` returns 1000 mock records on DuckDB failure with `X-Data-Warning: Using demo data - database unavailable` header — see `src/app/api/crime/stream/route.ts:156-171`)
 
-**Logging:**
-- Custom client-side `LoggerService` at `src/lib/logger.ts`
-  - Buffers study events and flushes via `fetch` POST to `/api/study/log`
-  - Fallback to `navigator.sendBeacon` on page unload
-  - Retry: up to 4 attempts with linear backoff (750ms base)
-  - Creates typed helpers: `submitSessionStart()`, `submitSessionEnd()`, `submitTrialComplete()`, etc.
-  
-- Server-side study logging at `src/app/api/study/log/route.ts`
-  - Accepts typed `StudyIntent` objects
-  - Validates 6 intent kinds: session-start, session-end, trial-complete, questionnaire-response, condition-toggle, warp-adjustment
-  - Persists to DuckDB `study_*` tables via `src/lib/study/storage.ts`
+**Logs:**
+- Server: `console.log` / `console.error` to stdout (Node.js process). DuckDB init log at `src/lib/db.ts:177`, API errors logged via `console.error` in route handlers
+- Client: `console.debug` in `src/lib/logger.ts:69` for dev-only `[study-log]` traces
+- File logs: `/logs/*.jsonl` is gitignored but not currently written (legacy logger dropped; Phase 80 logs to DuckDB instead)
+- `src/lib/logger.ts` — `LoggerService` with `navigator.sendBeacon` for best-effort drain on page unload and a `submit()` retry queue (`MAX_ATTEMPTS=4`, linear backoff 750ms) for acknowledged writes
 
-- `useLogger` hook at `src/hooks/useLogger.ts` for component-level logging
+**Telemetry:**
+- The acknowledged write path posts typed study intents (`session-start`, `session-end`, `trial-complete`, `questionnaire-response`, `condition-toggle`, `warp-adjustment`) to `/api/study/log` (see `src/app/api/study/log/route.ts`)
+- Persisted via `src/lib/study/storage.ts` to DuckDB `study_*` fact tables
+- This is **local**, not sent to any third party
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not configured for any cloud provider (Next.js can deploy to Vercel/Node.js server)
-- `.vercel` in `.gitignore` suggests Vercel consideration but not active
-- No Dockerfile, no deployment configuration
+- Not deployed. Runs locally via `pnpm dev` or `pnpm start`
+- No Dockerfile, no `vercel.json`, no `render.yaml`, no GitHub Actions workflows (`.github/` exists but contents not analyzed for this audit)
 
 **CI Pipeline:**
-- None (no `.github/workflows/` directory; only `pull_request_template.md` exists)
-- No automated testing in CI
+- None detected. No `.github/workflows/*.yml` referenced from the codebase
+
+**Production build:**
+- `pnpm build` runs `NEXT_DISABLE_TURBOPACK=1 next build` (Turbopack disabled for production builds — see `package.json:7`)
+- `next.config.ts` is the single Next.js config (no env-specific overrides)
 
 ## Environment Configuration
 
-**Required env vars:**
-| Variable | Default | Purpose |
-|---|---|---|
-| `USE_MOCK_DATA` | `false` | Enable DuckDB vs mock data mode |
-| `DISABLE_DUCKDB` | (not set) | Force-disables DuckDB |
-| `DUCKDB_PATH` | `data/cache/crime.duckdb` | Custom DuckDB database path |
-| `DUCKDB_THREADS` | `2` | DuckDB parallelism |
-| `STKDE_QA_FULL_POP_ENABLED` | `true` | Enable full-population STKDE computation |
+**Required env vars:** None. The app starts with no env vars set. `USE_MOCK_DATA=false` is the only line in `.env`, and even that is optional.
 
-**Secrets location:**
-- `.env` file in project root (contains only `USE_MOCK_DATA=false`)
-- No API keys or secrets required (all external APIs are public)
+**Optional env vars:**
+| Var | Default | Effect |
+|---|---|---|
+| `USE_MOCK_DATA` | unset | Truthy forces mock data. Falls back to `DISABLE_DUCKDB`. See `src/lib/db.ts:38-44` |
+| `DISABLE_DUCKDB` | unset | Same semantics as `USE_MOCK_DATA` |
+| `DUCKDB_PATH` | `data/cache/crime.duckdb` | Absolute or cwd-relative DuckDB file path. See `src/lib/db.ts:88-94` |
+| `DUCKDB_THREADS` | `2` | DuckDB `SET threads=N` at init. See `src/lib/db.ts:96-98` |
+| `STKDE_QA_FULL_POP_ENABLED` | `true` | Enables full-population STKDE compute. Set to `0`/`false` to force sampled mode. See `src/app/api/stkde/hotspots/route.ts:10-13` |
+| `NODE_ENV` | (Next.js default) | Standard Next.js env; logger is silent in `production` |
+
+**Secrets location:** None. The app has no secrets.
 
 ## Webhooks & Callbacks
 
-**Incoming:**
-- None
+**Incoming:** None. The app exposes no webhook endpoints and accepts no external callbacks.
 
-**Outgoing:**
-- None
+**Outgoing:** None. The only outbound HTTP is the Carto basemap style/tile fetch from the browser, which is user-initiated by MapLibre and not a webhook.
 
-## Mock Data System
+**Internal API routes (all served by the same Next.js process — not "external" but listed for completeness):**
+- `GET /api/crime/stream` — Arrow-IPC stream of crime records (`application/vnd.apache.arrow.stream`)
+- `GET /api/crime/around` — Crimes within a geographic radius
+- `GET /api/crime/bins` — Binned crime data for the timeline overview
+- `GET /api/crime/facets` — Faceted counts (crime type, district, year)
+- `GET /api/crime/meta` — Dataset metadata (min/max time, lat/lon, crime types, year range)
+- `GET /api/crime/overview` — Overview summary bins
+- `GET /api/crime/stats-summary` — Aggregated stats
+- `GET /api/crimes/range` — Crimes within a time range
+- `POST /api/stkde/hotspots` — Compute STKDE hotspots
+- `GET /api/adaptive/global` — Global adaptive scaling data
+- `GET /api/adaptive/bursts` — Per-burst adaptive data
+- `GET /api/neighbourhood/poi` — Neighbourhood POI summary (24h in-process cache)
+- `GET /api/synthetic/bursty` — Generate a bursty synthetic sequence (JSON or CSV)
+- `GET /api/synthetic/bursty/burstiness` — Burstiness ground truth for a generated sequence
+- `POST /api/study/log` — Acknowledge-write endpoint for study telemetry
 
-**Fallback architecture:**
-- Every API route supports graceful degradation to mock data when DuckDB is unavailable
-- Controlled via `USE_MOCK_DATA` / `DISABLE_DUCKDB` env vars
-- `isMockDataEnabled()` function at `src/lib/db.ts` reads the flag
-- Mock data responses include `X-Data-Warning` header with reason (e.g., "Using demo data - database disabled")
-- Mock data reflects realistic schema and patterns but is statistically random
-- Enables development and testing without the 8.5M-row CSV dataset
+All routes use `export const runtime = 'nodejs'` and `export const dynamic = 'force-dynamic'`. Route handlers live in `src/app/api/**/route.ts`.
+
+## Build-Time Data Setup
+
+`scripts/setup-data.js` (Node, commonjs, run manually):
+- Reads or generates `data/source.csv` (100K random points in Chicago)
+- Spins up an in-memory DuckDB (`new duckdb.Database(':memory:')`)
+- Loads the CSV, computes normalized `x`/`z`/`y` columns, and writes `data/crime.parquet` via `COPY (...) TO '...' (FORMAT 'parquet')`
+
+`datapreprocessing/pipeline.py` (Python, run manually with `python pipeline.py <input.csv>`):
+- Pandas chunked read of raw Chicago CSV
+- Filters to the last 5 years
+- Normalizes District codes, fills missing Lat/Lon from `Location` string
+- Maps IUCR / District Name lookups
+- Writes cleaned `data/source.csv` for downstream ingestion
+
+Both are offline, local-only ETL. No network calls.
 
 ---
 
-*Integration audit: 2026-06-25*
+*Integration audit: 2026-06-27*

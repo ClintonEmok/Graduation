@@ -1,378 +1,491 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-06-25
+**Analysis Date:** 2026-06-27
 
 ## Directory Layout
 
 ```
-project-root/
-├── .planning/          # GSD planning artifacts (codebase maps, phase plans, milestons)
-├── .github/            # GitHub workflows and templates
-├── data/               # Crime dataset (CSV) and DuckDB cache
-│   ├── sources/        # Raw CSV: Crimes_-_2001_to_Present_20260114.csv (~8.5M rows)
-│   └── cache/          # DuckDB database file: crime.duckdb
-├── docs/               # Project documentation
-├── scripts/            # Build/utility scripts
-├── patches/            # patch-package patches for node_modules
-├── screenshots/        # UI screenshots
-├── public/             # Static assets (favicon, images)
-├── src/                # Application source code
-│   ├── app/            # Next.js App Router pages, API routes, layout
-│   ├── components/     # React components by feature domain
-│   ├── hooks/          # React hooks (data fetching, interaction, utilities)
-│   ├── lib/            # Business logic, utilities, computation modules
-│   ├── providers/      # React context providers (QueryProvider)
-│   ├── store/          # Zustand state stores
-│   ├── types/          # Canonical TypeScript type definitions
-│   ├── utils/          # Shared utility functions
-│   └── workers/        # Web Workers for offloaded computation
-├── node_modules/
-├── next.config.ts      # Next.js configuration
-├── tsconfig.json       # TypeScript configuration (@/* path alias to ./src/*)
-├── eslint.config.mjs   # ESLint config (Next.js core-web-vitals + TypeScript)
-├── postcss.config.mjs  # PostCSS with Tailwind CSS
-├── vitest.config.mts   # Vitest test configuration
-├── components.json     # shadcn/ui configuration
-├── pnpm-workspace.yaml # pnpm workspace config
-├── package.json        # Dependencies and scripts
-└── pnpm-lock.yaml
+[project-root]/
+├── .planning/              # GSD planning artifacts (roadmap, phases, research)
+├── data/                   # Local data files (NOT committed; gitignored)
+│   ├── sources/            # Raw CSV inputs (Chicago crime dataset, IUCR codes, police stations)
+│   ├── cache/              # Generated DuckDB database files
+│   ├── crime.parquet       # 5.3 MB sample parquet
+│   └── source.csv          # 9.9 MB sample CSV
+├── scripts/                # Python and Node analysis/visualization scripts
+│   ├── synthetic/          # Python Goh-Barabási generator (sibling to src/lib/synthetic/)
+│   ├── spatial-formula-experiment/
+│   ├── map_figures/        # Generated matplotlib figures
+│   ├── output/             # Generated analysis output
+│   └── *.py / *.mjs / *.js # One-off analysis scripts (per-experiment)
+├── docs/                   # Long-form design docs (TEMPORAL_SCALING, METHODOLOGY, etc.)
+├── screenshots/            # PNG snapshots used in evaluation
+├── burst_aware_experiment_output/
+├── datapreprocessing/
+├── extractions/
+├── logs/                   # Runtime + dev server logs
+├── patches/                # patch-package overrides for node_modules
+├── public/                 # Static assets
+├── src/                    # Application code (see detailed layout below)
+├── .opencode/              # Opencode config
+├── components.json         # shadcn registry config
+├── eslint.config.mjs       # Flat ESLint config (Next core-web-vitals + TS)
+├── next.config.ts          # Next.js config (serverExternalPackages: ['duckdb'])
+├── next-env.d.ts
+├── package.json            # pnpm workspace root
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── postcss.config.mjs
+├── tsconfig.json           # `@/*` path alias → `./src/*`
+├── vitest.config.mts
+└── AGENTS.md / CLAUDE.md   # Project + GSD agent context
+```
+
+## `src/` Directory Layout
+
+```
+src/
+├── app/                    # Next.js App Router (pages + API)
+│   ├── layout.tsx          # Root layout (ThemeProvider + QueryProvider + Toaster + OnboardingTour)
+│   ├── page.tsx            # Landing page
+│   ├── globals.css
+│   ├── favicon.ico
+│   ├── dashboard/          # /dashboard — main visualization
+│   ├── dashboard-demo/     # /dashboard-demo — eval-study demo shell
+│   ├── dashboard-v2/       # /dashboard-v2 — alternate dashboard
+│   ├── timeline-test/      # /timeline-test — dual-timeline testing
+│   ├── timeline-test-3d/   # /timeline-test-3d — 3D timeline view
+│   ├── timeslicing/        # /timeslicing — binning controls
+│   ├── timeslicing-algos/  # /timeslicing-algos — algorithm catalogue
+│   ├── stkde/              # /stkde — hotspot analysis (2D)
+│   ├── stkde-3d/           # /stkde-3d — hotspot analysis (3D)
+│   ├── hotspot-evolution/  # /hotspot-evolution
+│   ├── cube-sandbox/       # /cube-sandbox — 3D scene playground
+│   ├── burstiness-vs-density/
+│   ├── figures/            # /figures — paper-figure generation views
+│   ├── algorithms/         # /algorithms — algorithm reference
+│   ├── demo/               # /demo — non-uniform time slicing demo
+│   ├── docs/               # /docs — in-app documentation
+│   ├── evaluation/         # /evaluation
+│   ├── stats/              # /stats — statistics dashboard
+│   └── api/                # Route Handlers (server)
+│       ├── crime/          # /api/crime/{stream,bins,facets,meta,overview,around,stats-summary}
+│       ├── crimes/         # /api/crimes/range
+│       ├── stkde/          # /api/stkde/hotspots
+│       ├── adaptive/       # /api/adaptive/{global,bursts}
+│       ├── synthetic/      # /api/synthetic/bursty + /api/synthetic/bursty/burstiness
+│       ├── neighbourhood/  # /api/neighbourhood/poi
+│       ├── study/          # /api/study/log
+│       └── evaluation/
+├── components/             # React UI
+│   ├── ui/                 # shadcn primitives (button, dialog, popover, etc.)
+│   ├── layout/             # DashboardLayout, TopBar, ThemeProvider
+│   ├── dashboard/          # DashboardHeader
+│   ├── dashboard-demo/     # Demo shell + compare/stats/inspect panels + lib/ helpers
+│   ├── map/                # MapLibre wrappers (MapBase, MapEventLayer, MapStkdeHeatmapLayer, MapClusterHighlights, MapPoiLayer, MapTypeLegend, etc.)
+│   ├── timeline/           # DualTimeline, DensityHeatStrip, TimelineContainer, TimelinePanel, plus hooks/ layers/ lib/ qa/ subfolders
+│   ├── viz/                # 3D cube scene (CubeVisualization, MainScene, DataPoints, SlicePlane, ClusterManager, SelectedWarpSliceOverlay, shaders/)
+│   ├── stkde/              # DashboardStkdePanel
+│   ├── binning/            # BinningControls
+│   ├── study/              # StudyControls
+│   ├── settings/           # User settings UI
+│   ├── evaluation/         # Evaluation study widgets
+│   └── onboarding/         # OnboardingTour (driver.js)
+├── hooks/                  # Client-side data hooks and behaviors
+│   ├── useCrimeData.ts             # TanStack Query wrapper for /api/crimes/range
+│   ├── useCrimeStream.ts           # /api/crime/stream consumer
+│   ├── useViewportCrimeData.ts     # Viewport-bounded crime fetcher
+│   ├── useAdaptiveScale.ts         # Adaptive scaling driver
+│   ├── useDebouncedDensity.ts      # Debounced density computations
+│   ├── useCrimePointCloud.ts
+│   ├── useHotspotEvolution.ts
+│   ├── useSuggestionGenerator.ts   # Auto-suggest slicing proposals
+│   ├── useLogger.ts                # LoggerService client wrapper
+│   ├── useSelectionSync.ts         # Cross-view selection sync
+│   ├── useDualTimelineScales.ts
+│   ├── useDebounce.ts
+│   ├── useDraggable.ts
+│   ├── useMeasure.ts
+│   ├── useSmartProfiles.ts
+│   ├── useURLFeatureFlags.ts
+│   └── useContextExtractor.ts
+├── lib/                    # Pure logic + server-side DB access
+│   ├── db.ts                       # DuckDB singleton + readDatasetMetadata / readOverviewBins
+│   ├── duckdb-aggregator.ts        # Bulk aggregate helpers
+│   ├── queries.ts                  # Re-exports /lib/queries/index
+│   ├── queries/                    # SQL builder subsystem
+│   ├── binning/                    # Time-binning engine + warp scaling + rules + burst taxonomy
+│   ├── stkde/                      # Full-population STKDE pipeline (compute, contracts, heatmap-scale, burst-evolution, adjacent-slice-comparison)
+│   ├── adaptive/                   # route-binning-mode resolution
+│   ├── clustering/                 # DBSCAN / density-clustering wrappers
+│   ├── kde/                        # KDE helpers
+│   ├── neighbourhood/              # POI / neighbourhood aggregations
+│   ├── stats/                      # Statistical helpers
+│   ├── motion/                     # Animation/interpolation helpers
+│   ├── evolution/                  # Burst/hotspot evolution utilities
+│   ├── synthetic/                  # Goh-Barabási generator (TypeScript)
+│   ├── context-diagnostics/        # Debug contexts
+│   ├── study/                      # Study log server-side
+│   ├── stores/                     # Smaller utility stores (viewportStore, etc.)
+│   ├── logger.ts                   # LoggerService (acknowledged study writes)
+│   ├── coordinate-normalization.ts # lon/lat ↔ normalized x/z
+│   ├── date-normalization.ts
+│   ├── time-domain.ts              # epoch ↔ normalized
+│   ├── time-range.ts
+│   ├── slice-utils.ts              # range tolerance, range match
+│   ├── slice-geometry.ts
+│   ├── slice-allocator.ts
+│   ├── slice-geometry.ts
+│   ├── state-machine.ts            # generic FSM
+│   ├── full-auto-orchestrator.ts   # Auto-proposal generator
+│   ├── interval-detection.ts
+│   ├── confidence-scoring.ts
+│   ├── hotspot-evolution.ts
+│   ├── adaptive-scale.ts
+│   ├── adaptive-utils.ts
+│   ├── bounds.ts
+│   ├── burst-detection.ts
+│   ├── category-legend.ts
+│   ├── category-maps.ts            # CRIME_TYPE_MAP, IUCR lookup
+│   ├── category-shapes.ts
+│   ├── palettes.ts
+│   ├── projection.ts
+│   ├── formatting.ts
+│   ├── date-formatting.ts
+│   ├── math.ts
+│   ├── constants.ts
+│   ├── feature-flags.ts
+│   ├── selection.ts
+│   ├── stats.ts
+│   ├── trajectories.ts
+│   ├── downsample.ts
+│   ├── poi-data.ts
+│   └── *.test.ts                   # Co-located Vitest tests
+├── store/                  # Zustand stores
+│   ├── ui.ts                       # Misc UI flags
+│   ├── useCoordinationStore.ts     # Cross-view sync (selectedIndex, brushRange, workflowPhase, syncStatus)
+│   ├── useSliceStore.ts            # Backwards-compatible re-export of useSliceDomainStore
+│   ├── useSliceDomainStore.ts      # Composes the four slice slices + persist
+│   ├── slice-domain/               # Slice subsystem
+│   ├── useAdaptiveStore.ts         # Warp factor, density/burstiness/warp maps, worker
+│   ├── useTimelineDataStore.ts     # minTimestampSec / maxTimestampSec / data loaders
+│   ├── useTimeStore.ts
+│   ├── useFilterStore.ts
+│   ├── useMapLayerStore.ts
+│   ├── useBinningStore.ts
+│   ├── useClusterStore.ts
+│   ├── useStkdeStore.ts
+│   ├── useHeatmapStore.ts
+│   ├── useIntervalProposalStore.ts
+│   ├── usePresetStore.ts
+│   ├── useLayoutStore.ts           # Resizable panel sizes
+│   ├── useThemeStore.ts
+│   ├── useStatsStore.ts
+│   ├── useSuggestionStore.ts
+│   ├── useSuggestionHistoryStore.ts
+│   ├── useSuggestionComparisonStore.ts
+│   ├── useStudyStore.ts            # Session/participant IDs for study logging
+│   ├── useEvaluationStudyStore.ts
+│   ├── useContextProfileStore.ts
+│   ├── useFeatureFlagsStore.ts
+│   ├── useSliceCreationStore.ts
+│   ├── useSliceSelectionStore.ts
+│   ├── useSliceAdjustmentStore.ts
+│   ├── useCubeSpatialConstraintsStore.ts
+│   ├── useDashboardDemoCoordinationStore.ts
+│   ├── useDashboardDemoFilterStore.ts
+│   ├── useDashboardDemoMapLayerStore.ts
+│   ├── useDashboardDemoTimeStore.ts
+│   ├── useDashboardDemoTimeslicingModeStore.ts
+│   ├── useAggregationStore.ts
+│   └── *.test.ts
+├── workers/                # Web Workers (off-main-thread compute)
+│   ├── adaptiveTime.worker.ts     # Density/burstiness/warp map computation
+│   ├── stkdeHotspot.worker.ts     # Post-filter and project hotspot rows
+│   ├── kdeSlice.worker.ts         # KDE per slice
+│   └── *.test.ts
+├── types/                  # Canonical types (no runtime code)
+│   ├── index.ts                   # Re-exports
+│   ├── crime.ts                   # CrimeRecord, CrimeDataMeta, CrimeOverviewBin
+│   ├── adaptive.ts                # AdaptiveBinningMode
+│   ├── autoProposalSet.ts         # Auto-proposal container + scoring
+│   ├── suggestion.ts
+│   └── data.ts
+├── providers/
+│   └── QueryProvider.tsx          # TanStack Query client (5 min staleTime, 10 min gcTime, no refetch on focus)
+└── utils/                  # Misc utilities
 ```
 
 ## Directory Purposes
 
-### `src/app/` — Next.js App Router Pages & API Routes
-
-- Purpose: All page routes and API endpoints using Next.js App Router conventions
-- Contains: Page files (`page.tsx`), layouts (`layout.tsx`), API route handlers (`route.ts`)
+**`src/app/` — App Router pages and API routes:**
+- Purpose: Next.js routing; pages compose feature components, API routes own the data plane.
+- Contains: `page.tsx`, `layout.tsx`, route-local folders (`components/`, `hooks/`, `lib/`), and `api/` route handlers.
 - Key files:
-  - `src/app/layout.tsx` — Root layout with ThemeProvider, QueryProvider, Toaster, OnboardingTour
-  - `src/app/page.tsx` — Landing page with navigation links to major views
-  - `src/app/globals.css` — Global Tailwind CSS styles
+  - `src/app/layout.tsx` — root layout
+  - `src/app/dashboard/page.tsx` — main viz shell
+  - `src/app/dashboard-demo/page.tsx` — eval-study demo
+  - `src/app/api/crime/stream/route.ts` — Arrow IPC stream
+  - `src/app/api/crimes/range/route.ts` — paginated raw rows
+  - `src/app/api/synthetic/bursty/route.ts` — synthetic generator
+  - `src/app/api/study/log/route.ts` — study event ingestion
 
-**Page Routes:**
+**`src/components/` — UI components:**
+- Purpose: All React UI; organized by feature.
+- Contains: Feature folders + `ui/` (shadcn primitives) + `layout/` (app shell pieces).
+- Key files:
+  - `src/components/layout/DashboardLayout.tsx` — resizable panels shell
+  - `src/components/map/MapVisualization.tsx` — MapLibre entry
+  - `src/components/viz/CubeVisualization.tsx` — R3F cube entry
+  - `src/components/timeline/DualTimeline.tsx` — dual-timeline entry
+  - `src/components/dashboard-demo/DashboardDemoShell.tsx` — demo shell
 
-| Route | File | Purpose |
-|-------|------|---------|
-| `/` | `src/app/page.tsx` | Landing/navigation page |
-| `/dashboard` | `src/app/dashboard/page.tsx` | Main visualization: map, cube, timeline |
-| `/dashboard-demo` | `src/app/dashboard-demo/page.tsx` | Refined demo with rail tabs |
-| `/dashboard-v2` | `src/app/dashboard-v2/page.tsx` | Alternative dashboard with STKDE |
-| `/timeslicing` | `src/app/timeslicing/page.tsx` | Time slicing workflow with suggestions |
-| `/stkde-3d` | `src/app/stkde-3d/page.tsx` | 3D STKDE visualization |
-| `/stkde` | `src/app/stkde/page.tsx` | 2D STKDE analysis |
-| `/stats` | `src/app/stats/page.tsx` | Statistical dashboard |
-| `/timeline-test` | `src/app/timeline-test/page.tsx` | Timeline interaction testbed |
-| `/demo/non-uniform-time-slicing` | `src/app/demo/non-uniform-time-slicing/page.tsx` | Adaptive time scaling demo |
-| `/evaluation` | `src/app/evaluation/page.tsx` | User study evaluation |
-| `/hotspot-evolution` | `src/app/hotspot-evolution/page.tsx` | Hotspot evolution flow |
-| `/cube-sandbox` | `src/app/cube-sandbox/page.tsx` | 3D cube sandbox |
-| `/algorithms` | `src/app/algorithms/page.tsx` | Algorithm complexity documentation |
-| `/docs` | `src/app/docs/page.tsx` | Documentation page |
-| `/figures/*` | `src/app/figures/` | Figure/timeline/map/cube standalone views |
-| `/timeline-test-3d` | `src/app/timeline-test-3d/page.tsx` | 3D timeline test |
-| `/timeslicing-algos` | `src/app/timeslicing-algos/page.tsx` | Timeline algorithm comparison |
+**`src/hooks/` — Client-side orchestration:**
+- Purpose: Glue between stores, API routes, workers, and components.
+- Key files: `useCrimeData.ts`, `useAdaptiveScale.ts`, `useCrimeStream.ts`, `useViewportCrimeData.ts`, `useLogger.ts`.
 
-**API Routes:**
+**`src/lib/` — Pure logic + server DB:**
+- Purpose: Domain logic, SQL builders, DuckDB access, synthetic generation, math.
+- Key files: `db.ts`, `synthetic/goh-barabasi.ts`, `queries/builders.ts`, `binning/engine.ts`, `stkde/full-population-pipeline.ts`, `interval-detection.ts`, `full-auto-orchestrator.ts`, `logger.ts`, `coordinate-normalization.ts`.
 
-| Route | File | Purpose |
-|-------|------|---------|
-| `/api/crime/stream` | `src/app/api/crime/stream/route.ts` | Crime data as Arrow IPC stream |
-| `/api/crime/bins` | `src/app/api/crime/bins/route.ts` | Aggregated 3D bins |
-| `/api/crime/facets` | `src/app/api/crime/facets/route.ts` | Faceted crime stats |
-| `/api/crime/meta` | `src/app/api/crime/meta/route.ts` | Dataset metadata |
-| `/api/crime/overview` | `src/app/api/crime/overview/route.ts` | Dataset overview |
-| `/api/crime/stats-summary` | `src/app/api/crime/stats-summary/route.ts` | Statistical summary |
-| `/api/crime/around` | `src/app/api/crime/around/route.ts` | Crime data near point |
-| `/api/crimes/range` | `src/app/api/crimes/range/route.ts` | Crime records in date range |
-| `/api/adaptive/global` | `src/app/api/adaptive/global/route.ts` | Precomputed adaptive maps |
-| `/api/adaptive/bursts` | `src/app/api/adaptive/bursts/route.ts` | Burst window detection |
-| `/api/stkde/hotspots` | `src/app/api/stkde/hotspots/route.ts` | STKDE hotspot computation |
-| `/api/neighbourhood/poi` | `src/app/api/neighbourhood/poi/route.ts` | Points of interest |
-| `/api/study/log` | `src/app/api/study/log/route.ts` | Study event logging |
+**`src/store/` — Zustand stores:**
+- Purpose: All client-side state.
+- Key files: `useCoordinationStore.ts`, `useSliceDomainStore.ts`, `useAdaptiveStore.ts`, `useTimelineDataStore.ts`, plus `slice-domain/` subsystem.
 
-### `src/components/` — React Components
-
-- Purpose: Reusable UI components organized by feature domain
-- Contains: Presentation and container components
-- Key subdirectories:
-
-| Directory | Purpose | Key Files |
-|-----------|---------|-----------|
-| `ui/` | shadcn/ui primitives (button, card, dialog, slider, etc.) | `button.tsx`, `card.tsx`, `dialog.tsx`, `slider.tsx`, `select.tsx`, `tabs.tsx` |
-| `map/` | MapLibre GL map components | `MapBase.tsx`, `MapVisualization.tsx`, `MapHeatmapOverlay.tsx`, `MapLayerManager.tsx`, `MapStkdeHeatmapLayer.tsx` |
-| `viz/` | 3D visualization (Three.js/R3F) components | `CubeVisualization.tsx`, `MainScene.tsx`, `Scene.tsx`, `TimePlane.tsx`, `TimeSlices.tsx`, `SlicePlane.tsx`, `DataPoints.tsx` |
-| `timeline/` | Timeline/adaptive time components | `DualTimeline.tsx`, `TimelinePanel.tsx`, `DualTimelineSurface.tsx`, `DensityHeatStrip.tsx`, `DensityTrack.tsx` |
-| `layout/` | Layout components | `DashboardLayout.tsx`, `ThemeProvider.tsx`, `TopBar.tsx` |
-| `dashboard-demo/` | Dashboard demo shell and panels | `DashboardDemoShell.tsx`, `DemoMapVisualization.tsx`, `Demo3dSpatialView.tsx`, `DemoTimelinePanel.tsx`, `DemoSlicePanel.tsx` |
-| `dashboard/` | Dashboard header | `DashboardHeader.tsx` |
-| `binning/` | Binning controls | `BinningControls.tsx` |
-| `stkde/` | STKDE-related components | `DashboardStkdePanel.tsx` |
-| `evaluation/` | Study evaluation components | `EvaluationShell.tsx`, `EvaluationQuestionnaire.tsx`, `EvaluationTaskCard.tsx` |
-| `study/` | Study controls | `StudyControls.tsx` |
-| `settings/` | Settings/feature flags | `SettingsPanel.tsx`, `FeatureFlagItem.tsx`, `URLConflictDialog.tsx` |
-| `onboarding/` | Tour/guide | `OnboardingTour.tsx` |
-
-### `src/store/` — Zustand State Stores
-
-- Purpose: All client-side global state management
-- Contains: ~40+ Zustand store files, slice-domain subdirectory
-- Pattern: Each store is a standalone `create()` call with typed interface
-- Key stores:
-
-| Store | Purpose |
-|-------|---------|
-| `useCoordinationStore.ts` | Cross-panel selection synchronization, brush range, sync status |
-| `useAdaptiveStore.ts` | Adaptive time scaling (warp factor, density/burstiness maps, worker communication) |
-| `useSliceDomainStore.ts` | Time slice CRUD with composable slice domains (core, selection, creation, adjustment) |
-| `useFilterStore.ts` | Data filters (crime types, districts, time range, spatial bounds) |
-| `useTimeStore.ts` | Timeline playback state (current time, speed, resolution, play/pause) |
-| `useTimelineDataStore.ts` | Timeline summary data cache |
-| `useLayoutStore.ts` | Resizable panel layout proportions |
-| `useThemeStore.ts` | Theme mode (dark, light, colorblind) |
-| `useStkdeStore.ts` | STKDE computation results, hotspot selection |
-| `useClusterStore.ts` | DBSCAN clustering results |
-| `useWarpProposalStore.ts` | Adaptive warp proposals |
-| `useIntervalProposalStore.ts` | Burst interval proposals |
-| `useBinningStore.ts` | Binning configuration |
-| `useCubeSpatialConstraintsStore.ts` | 3D cube spatial constraints |
-| `useSuggestionStore.ts` | Auto-generated slicing suggestions |
-| `useContextProfileStore.ts` | Context profiles for adaptive suggestions |
-| `useFeatureFlagsStore.ts` | Feature flag toggles |
-| `useHeatmapStore.ts` | Heatmap configuration |
-| `useMapLayerStore.ts` | Map layer visibility |
-
-### `src/store/slice-domain/` — Composable Slice Store
-
-- Purpose: Composable Zustand slice pattern for time slice management
-- Contains: Four slice creators composed into `useSliceDomainStore`
-- Files:
-  - `types.ts` — All type definitions including `TimeSlice`, `SliceCoreState`, `SliceSelectionState`, `SliceCreationState`, `SliceAdjustmentState`, `SliceDomainState`
-  - `createSliceCoreSlice.ts` — Core CRUD operations for time slices (add, remove, update, merge, clear, burst slice creation)
-  - `createSliceSelectionSlice.ts` — Selection state (select, deselect, toggle, selectAll)
-  - `createSliceCreationSlice.ts` — Creation workflow (start, preview, commit, cancel) with snap/preview feedback
-  - `createSliceAdjustmentSlice.ts` — Drag-to-adjust handles, snap modes, tooltip, limit cues
-  - `selectors.ts` — Extracted selector functions for granular subscriptions
-
-### `src/hooks/` — React Hooks
-
-- Purpose: Data fetching hooks, interaction hooks, utility hooks
-- Contains: 20 hooks
-- Key hooks:
-
-| Hook | Purpose |
-|------|---------|
-| `useCrimeData.ts` | Main crime data fetching via TanStack Query |
-| `useViewportCrimeData.ts` | Viewport-aware crime data fetching (deprecated wrapper) |
-| `useCrimeStream.ts` | Direct Arrow stream consumption |
-| `useCrimePointCloud.ts` | Point cloud data for 3D rendering |
-| `useAdaptiveScale.ts` | Adaptive scale calculations |
-| `useDualTimelineScales.ts` | Timeline scale computations |
-| `useBurstWindows.ts` | Burst window detection (from components/) |
-| `useDebouncedDensity.ts` | Debounced density computation |
-| `useDraggable.ts` | Generic drag interaction |
-| `useHotspotEvolution.ts` | Hotspot evolution flow |
-| `useSliceStats.ts` | Statistical summaries for slices |
-| `useSuggestionGenerator.ts` | Auto-suggestion generation |
-| `useSelectionSync.ts` | Selection sync across views |
-| `useSmartProfiles.ts` | Smart context profiles |
-| `useLogger.ts` | Component-level logging interface |
-| `useMeasure.ts` | Element measurement via ResizeObserver |
-| `useDebounce.ts` | Debounced value |
-| `useURLFeatureFlags.ts` | URL-based feature flag overrides |
-| `useContextExtractor.ts` | Context feature extraction |
-
-### `src/lib/` — Business Logic & Utilities
-
-- Purpose: Pure function modules, algorithm implementations, data processing
-- Contains: 68 entries (files + subdirectories)
-- Key subdirectories:
-
-| Directory | Purpose | Key Files |
-|-----------|---------|-----------|
-| `queries/` | DuckDB query builders with sanitization | `builders.ts`, `filters.ts`, `sanitization.ts`, `aggregations.ts` |
-| `stkde/` | STKDE computation pipeline | `compute.ts`, `contracts.ts`, `full-population-pipeline.ts`, `adjacent-slice-comparison.ts`, `burst-evolution.ts`, `heatmap-scale.ts` |
-| `binning/` | Time binning engine | `engine.ts`, `types.ts`, `rules.ts`, `warp-scaling.ts`, `burst-taxonomy.ts` |
-| `adaptive/` | Adaptive time scaling mode routing | `route-binning-mode.ts` |
-| `stats/` | Statistical analysis | `aggregation.ts`, `temporal-pulses.ts` |
-| `study/` | Evaluation study protocol | `protocol.ts`, `condition-order.ts`, `storage.ts`, `resetTargets.ts` |
-| `kde/` | Slice KDE computation | `compute-slice-kde.ts`, `types.ts` |
-| `clustering/` | DBSCAN cluster analysis | `cluster-analysis.ts` |
-| `evolution/` | Burst evolution flow | `evolution-flow.ts` |
-| `motion/` | Motion/animation utilities | `aging.ts`, `easing.ts` |
-| `stores/` | Additional stores (non-Zustand) | `viewportStore.ts` |
-| `neighbourhood/` | Chicago neighborhood data | `chicago.ts`, `osm.ts`, `types.ts` |
-| `context-diagnostics/` | Context profile diagnostics | `compare.ts`, `profile.ts`, `spatial.ts`, `temporal.ts` |
-| `data/` | Data type selectors | `selectors.ts`, `types.ts` |
-
-- Key standalone files:
-  - `db.ts` — DuckDB connection management, path resolution, mock detection
-  - `duckdb-aggregator.ts` — Aggregated bin computation
-  - `coordinate-normalization.ts` — `lonLatToNormalized()` coordinate conversion
-  - `date-normalization.ts` — Date-to-epoch conversion utilities
-  - `time-domain.ts` — Normalized time domain [0, 100] ↔ epoch mapping
-  - `slice-utils.ts` — Slice comparison, tolerance calculation
-  - `slice-allocator.ts` — Bin-to-slice allocation logic
-  - `interval-detection.ts` — Burst interval detection algorithm
-  - `confidence-scoring.ts` — Confidence scoring for suggestions
-  - `burst-detection.ts` — Burst detection algorithm
-  - `hotspot-evolution.ts` — Hotspot evolution tracking
-  - `trajectories.ts` — Hotspot trajectory computation
-  - `projection.ts` — Geographic projection utilities
-  - `logger.ts` — `LoggerService` class for study logging
-  - `downsample.ts` — Data downsampling for performance
-  - `timeline-series.ts` — Timeline series computation
-  - `time-range.ts` — Time range utilities
-  - `warp-generation.ts` — Warp map generation
-  - `full-auto-orchestrator.ts` — Full auto-suggestion orchestrator
-
-### `src/types/` — TypeScript Type Definitions
-
-- Purpose: Canonical type definitions shared across all layers
+**`src/store/slice-domain/` — Slice subsystem:**
+- Purpose: Splits the slice domain into four composable slices.
 - Contains:
-  - `crime.ts` — `CrimeRecord`, `CrimeViewport`, `UseCrimeDataOptions`, `UseCrimeDataResult`, `CrimeDataMeta`
-  - `adaptive.ts` — `AdaptiveBinningMode`
-  - `autoProposalSet.ts` — Auto-proposal set types
-  - `suggestion.ts` — Suggestion types
-  - `data.ts` — `ColumnarData`
-  - `index.ts` — Re-exports from all type modules
+  - `types.ts` — `TimeSlice`, `SliceCoreState`, `SliceSelectionState`, `SliceCreationState`, `SliceAdjustmentState`, `SliceDomainState`
+  - `createSliceCoreSlice.ts` — `addSlice`, `addBurstSlice`, `findMatchingSlice`, `mergeSlices`, `updateSlice`, `addSliceFromBin`, `replaceSlicesFromBins`, etc.
+  - `createSliceSelectionSlice.ts`
+  - `createSliceCreationSlice.ts` — `startCreation`, `updatePreview`, `commitCreation`
+  - `createSliceAdjustmentSlice.ts` — `beginDrag`, `updateDrag`, `endDrag`, snap handling
+  - `selectors.ts` — pre-bound `select<T>` helpers for ergonomic access
 
-### `src/workers/` — Web Workers
+**`src/workers/` — Web Workers:**
+- Purpose: Off-main-thread compute for the adaptive scaling algorithm and STKDE post-filtering.
+- Key files: `adaptiveTime.worker.ts`, `stkdeHotspot.worker.ts`, `kdeSlice.worker.ts`.
 
-- Purpose: Offload computation from main thread
-- Contains: 3 workers + 2 test files
-- Files:
-  - `adaptiveTime.worker.ts` — Computes density map, burstiness map, warp map from timestamps using configurable KDE
-  - `stkdeHotspot.worker.ts` — Filters and sorts STKDE hotspot results by intensity, support, temporal/spatial bounds
-  - `kdeSlice.worker.ts` — KDE computation per time slice
+**`src/types/` — Canonical types:**
+- Purpose: Single source of truth for data shapes.
+- Key files: `crime.ts`, `autoProposalSet.ts`, `adaptive.ts`.
 
-### `src/providers/` — React Context Providers
+**`src/providers/` — React providers:**
+- Purpose: App-wide context providers.
+- Key files: `QueryProvider.tsx`.
 
-- Purpose: React context wrappers for application-wide services
+**`scripts/synthetic/` — Python sibling:**
+- Purpose: Cross-language reference implementation of the Goh-Barabási generator and CSV exports.
+- Contains: `__init__.py`, `generate_bursty.py`, `test_generate_bursty.py`.
+
+**`data/` — Local data (gitignored):**
+- Purpose: Source CSV and generated DuckDB cache.
 - Contains:
-  - `QueryProvider.tsx` — TanStack Query client provider with 5-min stale time, 10-min GC
-
-### `src/utils/` — Utility Functions
-
-- Purpose: Small utility functions
-- Contains: `binning.ts` — Binning utility functions
+  - `data/sources/` — raw input CSVs (Chicago crime data ~2.2 GB, IUCR codes, police stations)
+  - `data/cache/crime.duckdb` — generated DuckDB (~1 GB) + WAL
+  - `data/crime.parquet` — small sample
+  - `data/source.csv` — small sample
+  - `data/README.md` — data directory docs
 
 ## Key File Locations
 
-**Entry Points:**
-- `src/app/layout.tsx` — Root layout with providers
-- `src/app/page.tsx` — Landing page
-- `src/app/api/crime/stream/route.ts` — Primary crime data API entry point
+**Entry points:**
+- `src/app/layout.tsx` — root layout (theme, query, toaster, onboarding)
+- `src/app/page.tsx` — landing
+- `src/app/dashboard/page.tsx` — main dashboard
+- `src/app/dashboard-demo/page.tsx` — evaluation demo
+- `src/app/timeline-test/page.tsx` — dual-timeline test
+- `src/app/stkde/page.tsx` — STKDE view
+- `src/app/timeslicing/page.tsx` — time-slicing controls
+
+**API route entry points:**
+- `src/app/api/crime/stream/route.ts` — Arrow IPC stream
+- `src/app/api/crime/overview/route.ts` — temporal extent
+- `src/app/api/crime/bins/route.ts` — server-binned data
+- `src/app/api/crime/facets/route.ts` — filter facets
+- `src/app/api/crime/meta/route.ts` — dataset metadata
+- `src/app/api/crime/around/route.ts` — proximity query
+- `src/app/api/crime/stats-summary/route.ts` — stats summary
+- `src/app/api/crimes/range/route.ts` — paginated raw rows
+- `src/app/api/stkde/hotspots/route.ts` — STKDE hotspots
+- `src/app/api/adaptive/global/route.ts` — precomputed global maps
+- `src/app/api/adaptive/bursts/route.ts` — burst windows
+- `src/app/api/synthetic/bursty/route.ts` — synthetic generator (JSON/CSV)
+- `src/app/api/synthetic/bursty/burstiness/route.ts` — rolling B(t) ground truth
+- `src/app/api/neighbourhood/poi/route.ts` — POI lookup
+- `src/app/api/study/log/route.ts` — study event log
 
 **Configuration:**
-- `next.config.ts` — Next.js configuration (serverExternalPackages for duckdb)
-- `tsconfig.json` — TypeScript with `@/*` path alias to `./src/*`
-- `eslint.config.mjs` — ESLint rules
-- `vitest.config.mts` — Vitest configuration
-- `postcss.config.mjs` — PostCSS with Tailwind CSS
-- `components.json` — shadcn/ui configuration
-- `.env` — Environment variables (USE_MOCK_DATA, DUCKDB_PATH, etc.)
+- `next.config.ts` — `serverExternalPackages: ['duckdb']`, `turbopack.root: process.cwd()`
+- `tsconfig.json` — strict TS, `@/*` → `./src/*`
+- `postcss.config.mjs` — Tailwind v4 PostCSS
+- `eslint.config.mjs` — flat config with `eslint-config-next/core-web-vitals` and `typescript`
+- `vitest.config.mts` — Vitest setup with jsdom
+- `components.json` — shadcn config
+- `package.json` — pnpm scripts: `dev`, `build` (with `NEXT_DISABLE_TURBOPACK=1`), `start`, `lint`, `typecheck`, `test`, `postinstall` (patch-package + duckdb binding symlink)
 
-**Core Logic:**
-- `src/lib/db.ts` — DuckDB connection management
-- `src/lib/queries/builders.ts` — Type-safe query construction
-- `src/lib/stkde/compute.ts` — STKDE algorithm
-- `src/lib/binning/engine.ts` — Time binning engine
-- `src/lib/adaptive-utils.ts` — Adaptive constants
-- `src/lib/coordinate-normalization.ts` — Geographic coordinate normalization
-- `src/lib/interval-detection.ts` — Burst interval detection
-- `src/lib/logger.ts` — Logging service
+**Core logic:**
+- `src/lib/db.ts` — DuckDB singleton, dataset fingerprint, `readDatasetMetadata`, `readOverviewBins`, `isMockDataEnabled`
+- `src/lib/queries/builders.ts` — SQL builders (`buildCrimesInRangeQuery`, `buildCrimeCoordinateSelectColumns`)
+- `src/lib/queries/filters.ts` — WHERE-clause fragments
+- `src/lib/queries/aggregations.ts` — global adaptive map aggregation
+- `src/lib/queries/sanitization.ts` — table allowlist + clamping
+- `src/lib/synthetic/goh-barabasi.ts` — bursty generator core
+- `src/lib/synthetic/types.ts` — generator config + result types
+- `src/lib/synthetic/prng.ts` — Lehmer LCG + `weightedPick`
+- `src/lib/synthetic/csv-export.ts` — CSV serialization
+- `src/lib/binning/engine.ts` — bin computation
+- `src/lib/binning/rules.ts` — binning strategies + constraints
+- `src/lib/binning/burst-taxonomy.ts` — burst classification
+- `src/lib/binning/warp-scaling.ts` — `ComparableWarpGranularity`, `clampComparableWarpWeight`
+- `src/lib/binning/types.ts` — `TimeBin`, `BinGroup`, `BinningState`
+- `src/lib/stkde/full-population-pipeline.ts` — end-to-end STKDE
+- `src/lib/stkde/compute.ts` — STKDE math
+- `src/lib/stkde/contracts.ts` — STKDE input/output contracts
+- `src/lib/interval-detection.ts` — boundary detection (peak, change-point, rule-based)
+- `src/lib/full-auto-orchestrator.ts` — auto-proposal ranking
+- `src/lib/state-machine.ts` — generic FSM
+- `src/lib/logger.ts` — `LoggerService` with acknowledged writes
+- `src/lib/coordinate-normalization.ts` — `CHICAGO_BOUNDS`, `lonLatToNormalized`, `buildNormalizedSqlExpression`, `NORMALIZED_COORDINATE_RANGE`
+- `src/lib/date-normalization.ts` — date helpers
+- `src/lib/time-domain.ts` — epoch ↔ normalized conversions
+- `src/lib/adaptive/route-binning-mode.ts` — derives binning mode from pathname
+
+**State:**
+- `src/store/useCoordinationStore.ts` — cross-view sync
+- `src/store/useSliceDomainStore.ts` — slice subsystem root, persisted
+- `src/store/slice-domain/createSliceCoreSlice.ts` — slice CRUD
+- `src/store/slice-domain/createSliceSelectionSlice.ts` — selection
+- `src/store/slice-domain/createSliceCreationSlice.ts` — creation flow
+- `src/store/slice-domain/createSliceAdjustmentSlice.ts` — drag/handle logic
+- `src/store/slice-domain/types.ts` — slice type system
+- `src/store/slice-domain/selectors.ts` — pre-bound selector helpers
+- `src/store/useAdaptiveStore.ts` — warp factor + worker management
+- `src/store/useTimelineDataStore.ts` — min/max timestamp refs
+
+**Workers:**
+- `src/workers/adaptiveTime.worker.ts` — density/burstiness/warp maps
+- `src/workers/stkdeHotspot.worker.ts` — filter + project
+- `src/workers/kdeSlice.worker.ts` — per-slice KDE
 
 **Testing:**
-- `vitest.config.mts` — Vitest configuration
-- Test files co-located with source (`*.test.ts`, `*.test.tsx`) or in `__tests__/` adjacent
+- Vitest co-located tests across all layers (`*.test.ts` / `*.test.tsx` next to source).
+- Run: `pnpm test` (vitest).
 
 ## Naming Conventions
 
 **Files:**
-- Components: `PascalCase.tsx` (e.g., `DualTimeline.tsx`, `SuggestionPanel.tsx`)
-- Hooks: `usePascalCase.ts` (e.g., `useCrimeData.ts`, `useAdaptiveScale.ts`)
-- Stores: `usePascalCaseStore.ts` (e.g., `useAdaptiveStore.ts`, `useSliceDomainStore.ts`)
-- Workers: `*.worker.ts` (e.g., `adaptiveTime.worker.ts`)
-- Types: `camelCase.ts` (e.g., `crime.ts`, `adaptive.ts`)
-- Tests: `*.test.ts` or `*.test.tsx` (e.g., `slice-utils.test.ts`)
-- Page files: `page.tsx` (Next.js convention)
-- Layout files: `layout.tsx` (Next.js convention)
-- API routes: `route.ts` (Next.js convention)
+- React components: `PascalCase.tsx` — e.g. `DualTimeline.tsx`, `SuggestionPanel.tsx`, `DashboardHeader.tsx`, `MapBase.tsx`, `CubeVisualization.tsx`.
+- Hooks: `useCamelCase.ts` — e.g. `useCrimeData.ts`, `useAdaptiveScale.ts`, `useLogger.ts`.
+- Stores: `usePascalCaseStore.ts` — e.g. `useSliceStore.ts`, `useAdaptiveStore.ts`, `useCoordinationStore.ts`.
+- Utilities / pure functions: `kebab-case.ts` — e.g. `slice-utils.ts`, `date-normalization.ts`, `coordinate-normalization.ts`, `time-domain.ts`, `full-auto-orchestrator.ts`, `interval-detection.ts`, `confidence-scoring.ts`.
+- API route handlers: `route.ts` (mandatory Next.js convention).
+- Workers: `*.worker.ts` — e.g. `adaptiveTime.worker.ts`, `stkdeHotspot.worker.ts`.
+- Test files: `*.test.ts` or `*.test.tsx` co-located with source. Vitest discovers both `.test.ts` and `.test.tsx`.
 
 **Directories:**
-- Feature directories: `camelCase/` (e.g., `dashboard-demo/`, `timeline-test/`, `slice-domain/`)
-- Component group directories: `camelCase/` (e.g., `ui/`, `map/`, `viz/`, `timeline/`)
-- Lib subdirectories: `camelCase/` (e.g., `queries/`, `stkde/`, `binning/`, `adaptive/`)
+- Single-word lowercase: `src/components/`, `src/lib/`, `src/hooks/`, `src/store/`, `src/types/`, `src/workers/`, `src/providers/`, `src/utils/`.
+- Feature folders: `src/components/<feature>/` — e.g. `dashboard-demo/`, `timeline/`, `viz/`, `map/`, `stkde/`, `binning/`, `study/`, `onboarding/`, `settings/`, `evaluation/`.
+- Slice subsystem: `src/store/slice-domain/` with a subfolder for the four creators + `types.ts` + `selectors.ts`.
+- API route subfolders mirror URL paths: `src/app/api/crime/stream/route.ts` for `/api/crime/stream`.
+
+**Variables and functions:**
+- Functions and methods: `camelCase` — e.g. `addBurstSlice`, `findMatchingSlice`, `toNormalizedStoreRange`, `generateBurstySequence`, `createSeededRandom`, `weightedPick`, `fireHighestPriority`.
+- React components: `PascalCase` — `DualTimeline`, `CubeVisualization`, `DashboardDemoShell`.
+- Constants: `UPPER_SNAKE_CASE` — e.g. `OVERVIEW_HEIGHT`, `DETAIL_HEIGHT`, `BATCH_SIZE`, `BURST_TOLERANCE_RATIO`, `MERGE_TOUCH_TOLERANCE`, `MAX_EVENTS`, `MAX_ATTEMPTS`, `RETRY_BACKOFF_MS`, `SCORE_WEIGHTS`, `MIN_CONFIDENCE_THRESHOLD`, `TOP_SET_LIMIT`, `EPSILON`, `OVERVIEW_SUMMARY_BIN_COUNT`, `TIMELINE_OVERVIEW_SAMPLE_MAX_POINTS`, `TABLE_NAME_ALLOWLIST`, `CHICAGO_TYPE_WEIGHTS`, `DEFAULT_ROLLING_WINDOW_SEC`.
+- TypeScript types/interfaces: `PascalCase` — `CrimeRecord`, `TimeSlice`, `BurstyGeneratorConfig`, `BurstySequence`, `AutoProposalSet`, `QueryFragment`, `TimeBin`, `SyncStatus`, `CoordinationState`.
 
 ## Where to Add New Code
 
-**New Feature/Page:**
-- Page component: `src/app/<feature-name>/page.tsx`
-- Feature-specific components: `src/app/<feature-name>/components/` (co-located with page)
-- Feature-specific lib: `src/app/<feature-name>/lib/`
-- Shared components: `src/components/<domain>/<ComponentName>.tsx`
-- Tests: co-located as `*.test.ts` or `*.test.tsx`
+**New page route:**
+- Primary code: `src/app/<route-name>/page.tsx` (the page itself; layout is inherited from `src/app/layout.tsx`).
+- Route-local components: `src/app/<route-name>/components/` (if the components are not reusable).
+- Route-local hooks: `src/app/<route-name>/hooks/`.
+- Route-local lib: `src/app/<route-name>/lib/`.
+- For shared logic, put it under `src/lib/` instead and import via `@/lib/<name>`.
 
-**New Component:**
-- shadcn/ui primitives: `src/components/ui/<name>.tsx` (also update `components.json`)
-- Feature-specific: `src/components/<domain>/<ComponentName>.tsx`
-- 3D visualization: `src/components/viz/<ComponentName>.tsx`
-- Map: `src/components/map/<ComponentName>.tsx`
-- Timeline: `src/components/timeline/<ComponentName>.tsx`
+**New API endpoint:**
+- Handler: `src/app/api/<resource>/<subroute>/route.ts` (the `route.ts` filename is mandatory).
+- Add the path to the `src/app/api/` directory; mirror the URL structure.
+- Shared SQL/logic goes under `src/lib/queries/`, `src/lib/<domain>/`, or `src/lib/synthetic/`.
+- Always include the `X-Data-Warning` mock-fallback pattern if the endpoint depends on DuckDB.
 
-**New Store:**
-- `src/store/use<PascalCase>Store.ts`
-- If composable (slice pattern): `src/store/slice-domain/<slice-creator>.ts`
+**New React component (shared):**
+- Implementation: `src/components/<feature>/<ComponentName>.tsx`.
+- If the component is generic/atomic: `src/components/ui/<ComponentName>.tsx` (shadcn primitive) and register it via `components.json`.
+- If the component is a hook: `src/hooks/use<HookName>.ts`.
+- Add co-located test: `src/components/<feature>/<ComponentName>.test.tsx` or `src/hooks/use<HookName>.test.ts`.
 
-**New Hook:**
-- `src/hooks/use<PascalCase>.ts`
+**New Zustand store:**
+- Implementation: `src/store/use<DomainName>Store.ts` (one store per file).
+- For multi-slice stores: `src/store/<domain>/create<Slicename>Slice.ts` + `src/store/<domain>/types.ts` + `src/store/<domain>/selectors.ts` + `src/store/use<DomainName>Store.ts` as the composer.
+- Persisted stores wrap with `zustand/middleware` `persist` (see `useSliceDomainStore.ts`).
+- Stores that need a Web Worker instantiate it lazily in module scope (`useAdaptiveStore.ts:49-55`).
 
-**New API Route:**
-- `src/app/api/<domain>/<action>/route.ts`
+**New Web Worker:**
+- File: `src/workers/<name>.worker.ts` exporting `WorkerInput`, `WorkerOutput`, and a pure compute function (so it can be tested in isolation).
+- Instantiate from a store: `worker = new Worker(new URL('../workers/<name>.worker.ts', import.meta.url))`.
+- Correlate requests with `requestId` so a slow response can't overwrite a newer one.
+- Co-locate test in `src/workers/<name>.worker.test.ts` that imports the pure function directly.
 
-**New Lib Module:**
-- Single file: `src/lib/<name>.ts`
-- Module with multiple files: `src/lib/<module-name>/<file>.ts`
+**New pure utility:**
+- Shared helpers: `src/lib/<name>.ts` (kebab-case).
+- Co-locate unit test: `src/lib/<name>.test.ts`.
 
-**New Worker:**
-- `src/workers/<name>.worker.ts`
-- Tests: `src/workers/<name>.worker.test.ts`
+**New synthetic data generator (or generator variant):**
+- Core: `src/lib/synthetic/<name>.ts`.
+- Types: extend `src/lib/synthetic/types.ts` (or add a sibling `types.ts` for a new generator family).
+- API route: `src/app/api/synthetic/<name>/route.ts` (and nested for sub-resources, e.g. `bursty/burstiness/`).
+- CSV export helper: extend `src/lib/synthetic/csv-export.ts`.
+- Python sibling (optional, for cross-validation): `scripts/synthetic/<name>.py`.
 
-**New Types:**
-- Add to existing file in `src/types/` or create new file and re-export from `src/types/index.ts`
+**New type:**
+- Single file: `src/types/<name>.ts`.
+- Re-export from `src/types/index.ts`.
+
+**New provider:**
+- `src/providers/<Name>Provider.tsx`.
+- Wire it into `src/app/layout.tsx` (after `ThemeProvider`, before children).
 
 ## Special Directories
 
-**`.planning/`:**
-- Purpose: GSD planning artifacts — codebase documents, phase plans, milestones
-- Generated: Yes (by GSD tools)
-- Committed: Yes
+**`data/` — Local data (not committed):**
+- Purpose: Source CSV inputs and generated DuckDB cache for the Chicago crime dataset.
+- Generated: Yes (DuckDB cache from CSV).
+- Committed: No — gitignored. Sample `crime.parquet` (5.3 MB) and `source.csv` (9.9 MB) may be committed for quick local spin-up.
+- Path constants: `src/lib/db.ts` resolves `data/sources/Crimes_-_2001_to_Present_20260114.csv` and `data/cache/crime.duckdb` (both relative to `process.cwd()`).
 
-**`node_modules/`:**
-- Purpose: Third-party dependencies
-- Generated: Yes (`pnpm install`)
-- Committed: No
+**`scripts/` — Python and ad-hoc analysis scripts:**
+- Purpose: One-off analysis, paper figure generation, cross-language validation of the synthetic generator.
+- Generated: Outputs land in `scripts/map_figures/`, `scripts/output/`, `burst_aware_experiment_output/`, `logs/`.
+- Committed: Source scripts yes, generated outputs no.
 
-**`data/sources/`:**
-- Purpose: Raw CSV crime dataset (~8.5M rows, 2001-2026)
-- Generated: No (manually placed)
-- Committed: Yes (project datasets)
+**`patches/` — patch-package overrides:**
+- Purpose: Patches to `node_modules` applied automatically by `pnpm install` via the `postinstall` script.
+- Generated: No.
+- Committed: Yes.
 
-**`data/cache/`:**
-- Purpose: DuckDB database file (compiled from CSV)
-- Generated: Yes (first DuckDB query)
-- Committed: No (gitignored)
+**`docs/` — Long-form design docs:**
+- Purpose: Methodology, algorithm analysis, evaluation protocol, etc.
+- Generated: No.
+- Committed: Yes.
+- Key files: `ALGORITHM_ANALYSIS.md`, `METHODOLOGY.md`, `EVALUATION_PROTOCOL.md`, `TEMPORAL_SCALING_CHARACTERIZATION.md`, `TEMPORAL_INTERPOLATION_DECISION.md`, `Space_time_cube_V36.md`.
 
-**`.next/`:**
-- Purpose: Next.js build output and cache
-- Generated: Yes (`next build` or `next dev`)
-- Committed: No
+**`.planning/` — GSD planning artifacts:**
+- Purpose: Roadmap, phases, research notes, and **codebase analysis** (where this document lives).
+- Contains: `PROJECT.md`, `ROADMAP.md`, `STATE.md`, `REQUIREMENTS.md`, `MILESTONES.md`, `phases/`, `codebase/`, `research/`, `seeds/`, `tmp/`, `todos/`, `vision/`, `quick/`, `archive/`, `debug/`, `milestones/`.
+- Generated: Mixed (some committed, some produced at runtime by GSD commands).
+- Committed: Yes for planning artifacts (see `.gitignore` for exclusions).
 
-**`patches/`:**
-- Purpose: patch-package overrides for node_modules
-- Generated: No (manually created)
-- Committed: Yes
+**`burst_aware_experiment_output/`, `datapreprocessing/`, `extractions/`, `logs/`, `screenshots/`:**
+- Purpose: Generated artifacts from specific phases / experiments.
+- Generated: Yes.
+- Committed: Mostly no (verify per file).
+
+**`screenshots/`:**
+- Purpose: PNGs referenced in evaluation and research docs.
+- Committed: Yes.
 
 ---
 
-*Structure analysis: 2026-06-25*
+*Structure analysis: 2026-06-27*

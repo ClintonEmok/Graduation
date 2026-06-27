@@ -1,101 +1,174 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-06-25
+**Analysis Date:** 2026-06-27
 
 ## Language & Tooling
 
-- **TypeScript** 5.9.3 - Strict mode enabled in `tsconfig.json` (`"strict": true`)
-- **React** 19.2.7 with **Next.js** 16.2.9 (App Router)
-- **Tailwind CSS** v4 for styling (via `@tailwindcss/postcss`)
-- **ESLint** 9 with `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`
-- **TypeScript strict mode**: `"strict": true` in `tsconfig.json`
-- **Path alias**: `@/*` maps to `./src/*` (configured in both `tsconfig.json` and `vitest.config.mts`)
+- **TypeScript 5.9.3** — Strict mode is on (`"strict": true` in `tsconfig.json`). Target `ES2017`, `module: esnext`, `moduleResolution: bundler`. JSX is `react-jsx`.
+- **React 19.2.3** + **Next.js 16.1.6** (App Router). The shadcn config in `components.json` uses the `new-york` style with `tsx: true`, RSC enabled, and aliases for `components`/`ui`/`lib`/`hooks`.
+- **Tailwind CSS v4** (PostCSS pipeline in `postcss.config.mjs`).
+- **ESLint 9** via `eslint.config.mjs` — composes `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`; uses `globalIgnores` for `.next/**`, `out/**`, `build/**`, `next-env.d.ts`, and `datapreprocessing/.venv/**`.
+- **Vitest 4.0.18** as the TypeScript test runner. Configured in `vitest.config.mts` with `environment: 'node'` and an `@` alias mirror of `tsconfig.json`.
+- **Python 3** for the synthetic-data sibling (`scripts/synthetic/`). No `pyproject.toml`/`ruff`/`pytest` is checked in — the Python file is shipped as a self-contained stdlib script (the `.ruff_cache/` exists in the workspace, hinting that `ruff` has been run ad hoc, but no config file is committed).
+
+### Tooling scripts
+
+```bash
+# package.json
+pnpm dev          # next dev
+pnpm build        # NEXT_DISABLE_TURBOPACK=1 next build
+pnpm lint         # eslint
+pnpm typecheck    # tsc --noEmit
+pnpm test         # vitest
+```
+
+```bash
+# Python sibling
+python scripts/synthetic/generate_bursty.py
+python scripts/synthetic/test_generate_bursty.py
+python -m unittest scripts.synthetic.test_generate_bursty
+```
+
+## TypeScript Path Aliases
+
+Defined in `tsconfig.json` and mirrored in `vitest.config.mts`:
+
+| Alias | Maps to |
+|---|---|
+| `@/*` | `./src/*` |
+
+Additional shadcn aliases from `components.json`:
+
+| Alias | Maps to |
+|---|---|
+| `@/components` | `src/components` |
+| `@/components/ui` | `src/components/ui` |
+| `@/lib` | `src/lib` |
+| `@/lib/utils` | `src/lib/utils.ts` |
+| `@/hooks` | `src/hooks` |
+
+Use `@/` for **all** internal imports; do not reach up with `../../` chains. Example: `import { CHICAGO_BOUNDS } from '@/lib/coordinate-normalization'`.
 
 ## Naming Conventions
 
-**Files:**
-- React components: `PascalCase.tsx` — `DualTimeline.tsx`, `SuggestionPanel.tsx`, `DashboardHeader.tsx`
-- Utilities/Hooks: `camelCase.ts` — `slice-utils.ts`, `date-normalization.ts`, `useCrimeData.ts`
-- Zustand stores: `usePascalCaseStore.ts` — `useCoordinationStore.ts`, `useFilterStore.ts`, `useSliceDomainStore.ts`
-- Tests: `*.test.ts` or `*.test.tsx` suffix — `slice-utils.test.ts`, `useCrimeData.test.ts`, `page.shell.test.tsx`
-- Workers: `*.worker.ts` suffix — `adaptiveTime.worker.ts`, `stkdeHotspot.worker.ts`, `kdeSlice.worker.ts`
-- Shadcn UI components: `kebab-case.tsx` — `alert-dialog.tsx`, `scroll-area.tsx`, `button.tsx`
+### Files
 
-**Identifiers:**
-- Constants: `UPPER_SNAKE_CASE` — `OVERVIEW_HEIGHT`, `DETAIL_HEIGHT`, `BATCH_SIZE`, `DEFAULT_TOLERANCE_PERCENT`, `PRESET_STORAGE_KEY`
-- Functions: `camelCase` — `normalizeToPercent()`, `generateBins()`, `computeAdaptiveMaps()`
-- React hooks: `camelCase` with `use` prefix — `useAutoBurstSlices()`, `useViewportCrimeData()`, `useDualTimelineViewModel()`
-- React components: `PascalCase` — `DualTimeline`, `CubeVisualization`, `SuggestionPanel`, `DashboardLayout`
-- Types/Interfaces: `PascalCase` — `CrimeRecord`, `UseCrimeDataOptions`, `CoordinationState`, `TimeSlice`
-- Factory helpers: `buildPackage()` for test data builders
-- Descriptive names preferred over abbreviations
+| Pattern | Example | Rule |
+|---|---|---|
+| React components | `DualTimeline.tsx`, `SuggestionPanel.tsx`, `CubeVisualization.tsx` | `PascalCase.tsx` |
+| Hooks | `useCrimeData.ts`, `useSliceStore.ts`, `useLogger.ts` | `camelCase.ts` starting with `use` |
+| Stores (Zustand) | `useCoordinationStore.ts`, `useAdaptiveStore.ts` | `usePascalCaseStore.ts` |
+| Pure utilities | `slice-utils.ts`, `date-normalization.ts`, `category-legend.ts` | `kebab-case.ts` (sometimes `camelCase.ts` — see `adaptive-scale.ts` vs `category-legend.ts`) |
+| Worker modules | `adaptiveTime.worker.ts`, `stkdeHotspot.worker.ts` | `camelCase.worker.ts` |
+| Tests (unit) | `slice-utils.test.ts`, `goh-barabasi.test.ts` | `*.test.ts` co-located with source |
+| Tests (component / shell) | `DualTimeline.tick-rollout.test.ts`, `page.shell.test.tsx` | `*.test.tsx` or topic-suffixed `*.test.tsx` |
+| Python module | `generate_bursty.py`, `test_generate_bursty.py` | `snake_case.py` (test module named `test_*.py` for stdlib `unittest` discovery) |
 
-## Import Organization
+### Variables, functions, and types
 
-**Order:**
-1. Node built-in modules (`node:fs`)
-2. Third-party packages (`react`, `vitest`, `zustand`, `@tanstack/react-query`, `three`, `d3-array`)
-3. Internal absolute imports via `@/*` alias (`@/store/...`, `@/lib/...`, `@/types/...`)
-4. Relative imports (`./slice-utils`, `./hooks/useDensityStripDerivation`)
-
-**Patterns:**
-- Type imports use `import type` syntax:
 ```typescript
-import type { CrimeRecord } from '@/types/crime';
-import type { UseCrimeDataOptions, UseCrimeDataResult } from '@/types/crime';
+// camelCase for variables and functions
+const realTime = 1704067200;
+const minTime = 978307200;
+function normalizeToPercent(realTime: number, minTime: number, maxTime: number): number { ... }
+const lonLatToNormalized = (lon: number, lat: number) => { ... };
+
+// camelCase for hooks (must start with "use")
+const useCrimeData = (options: UseCrimeDataOptions) => { ... };
+const useAutoBurstSlices = () => { ... };
+
+// PascalCase for React components
+function DualTimeline(props: DualTimelineProps) { ... }
+const SuggestionPanel = ({ items }: Props) => { ... };
+
+// PascalCase for types and interfaces
+export interface CrimeRecord { timestamp: number; lat: number; lon: number; ... }
+export interface BurstyGeneratorConfig { alpha: number; delta: number; numEvents: number; ... }
+type TimeSliceSource = 'manual' | 'generated-applied' | 'suggestion';
+
+// UPPER_SNAKE_CASE for module-level constants
+export const TIME_MIN = 0;
+export const TIME_MAX = 100;
+export const MOCK_START_MS = MOCK_START_DATE.getTime();
+export const OVERVIEW_SUMMARY_BIN_COUNT = 120;
+const MAX_ATTEMPTS = 4;
+const RETRY_BACKOFF_MS = 750;
 ```
-- Path alias `@/*` used consistently for internal imports across all layers
-- External imports always grouped first, then internal
+
+> **Be descriptive, not clever.** Names like `realTime`, `minTime`, `mapDomain`, `isLocked`, `activeSliceId` are preferred over abbreviations. Hex colors and ISO dates in tests use underscores for readability: `1_700_000_000`.
+
+### Python naming (sibling)
+
+```python
+# snake_case for functions and variables
+def compute_burstiness_metrics(iet): ...
+def lon_lat_to_normalized(lon, lat): ...
+
+# UPPER_SNAKE_CASE for module-level constants
+CHICAGO_MIN_LON = -87.9
+CHICAGO_MAX_LON = -87.5
+CHICAGO_MIN_LAT = 41.6
+CHICAGO_MAX_LAT = 42.1
+NORMALIZED_MIN = -50.0
+NORMALIZED_SPAN = 100.0
+CHICAGO_LON_SPAN = CHICAGO_MAX_LON - CHICAGO_MIN_LON
+CHICAGO_LAT_SPAN = CHICAGO_MAX_LAT - CHICAGO_MIN_LAT
+DEFAULT_ROLLING_WINDOW_SEC = 7 * 24 * 60 * 60
+IET_CAP_SEC = 30 * 24 * 60 * 60
+DEFAULT_START_EPOCH = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+DEFAULT_END_EPOCH = int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp())
+ACTIVE_TYPES = ["THEFT", "BATTERY", ...]
+ACTIVE_DISTRICTS = [str(i) for i in range(1, 26)]  # 1..25
+EVENT_COLUMNS = ["timestamp", "type", "district", "iucr", "lat", "lon", "x", "z", "year"]
+BURSTINESS_COLUMNS = ["startEpoch", "endEpoch", "burstinessParam", "eventCount", "typeBreakdown"]
+```
+
+The Python file deliberately mirrors the TS module names and outputs (column lists, default epochs, type list) so the same downstream consumers feed both runtimes.
 
 ## Code Style
 
-**Formatting:**
-- Tool: Prettier (inferred from 2-space indentation, consistent formatting, no ESLint stylistic rules)
-- 2-space indentation throughout all files
-- Semicolons used at end of statements
-- Single quotes for strings
-- Trailing commas in multi-line objects and arrays
+- **2-space indentation** for TypeScript and Python.
+- **Semicolons** at the end of every TypeScript statement; **no semicolons** in the Python file (PEP 8).
+- **Single quotes** for TypeScript strings; **double quotes** for Python strings (PEP 8).
+- **Trailing commas** in multi-line TS arrays/objects (`e.g. [1, 2, 3,]`) and in `argparse.add_argument()` blocks.
+- **Arrow functions** for callbacks and one-liners; `function` declarations for top-level public exports.
+- **Explicit return types** on public exported functions; `const` arrow functions for one-liners and aliases (e.g. `export const slicesOverlapWithinTolerance = rangesMatch;` in `src/lib/slice-utils.ts`).
+- **Object shorthand** is used in the factory builders (see *Factory helper pattern* below).
+- **Template literals** for SQL fragments: see `buildAdaptiveDomainQuery` in `src/lib/queries/aggregations.ts`.
 
-**Linting:**
-- Tool: ESLint 9 with `eslint-config-next`
-- Rules: `core-web-vitals` + `typescript` presets
-- No custom ESLint rules beyond Next.js defaults
-- Config: `eslint.config.mjs` (flat config format)
+### Formatting / linting
 
-**Arrow vs Named Functions:**
-- Arrow functions for short exports, callbacks, and simple utility functions:
+- ESLint (Next.js config) enforces Next.js core-web-vitals and TypeScript rules. No Prettier config is committed — the repo relies on ESLint formatting rules and editor defaults.
+- TypeScript is the only styler; no SCSS modules — styling is done with Tailwind utility classes and the `cn()` helper from `src/lib/utils.ts` (composed via `clsx` + `tailwind-merge`).
+
+## Import Organization
+
+- All internal imports use the `@/` alias.
+- External (npm) imports come first, then `@/` imports, then relative imports. Group blank lines separate concerns.
+
 ```typescript
-export const normalizeRange = (range: [number, number]): [number, number] =>
-  range[0] <= range[1] ? range : [range[1], range[0]];
+// External
+import { readFileSync } from 'node:fs';
+import { describe, expect, test } from 'vitest';
+import { useCallback } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
+// Internal alias
+import { useCrimeData } from '@/hooks/useCrimeData';
+import type { UseCrimeDataOptions, UseCrimeDataResult } from '@/types/crime';
+import { CHICAGO_BOUNDS, lonLatToNormalized } from '@/lib/coordinate-normalization';
+
+// Relative (rare)
+import { buildCategoryLegendEntries } from './category-legend';
 ```
-- Named `function` keyword for complex functions with multiple early returns:
+
+For type-only imports, always use the `import type { ... }` form so type-only dependencies are erased at build time.
+
+## JSDoc / TSDoc Documentation
+
+Use `/** ... */` block comments for exported functions, classes, and interfaces. Include `@param` / `@returns` only for non-obvious behavior; the `src/lib/date-normalization.ts` file is the canonical example:
+
 ```typescript
-export function focusTimelineRange({ start, end, ... }: TimelineFocusRangeOptions): void {
-  // ... multi-step logic with early returns
-}
-```
-- React components use `function` keyword consistently in shadcn/ui:
-```typescript
-function Button({ className, variant, ...props }: React.ComponentProps<"button"> & VariantProps<...>) {
-  // ...
-}
-```
-
-**Destructuring:**
-- Props destructured in component function signatures
-- State destructured in `set()` callbacks
-
-## JSDoc Documentation
-
-- Used sparingly but consistently in key libraries and types:
-```typescript
-/**
- * Date normalization utilities for mapping between real epoch seconds and normalized 0-100 values.
- * Used for real data integration (2001-2026 date range).
- */
-
 /**
  * Normalize a real epoch timestamp to a 0-100 value based on the data range.
  *
@@ -104,204 +177,179 @@ function Button({ className, variant, ...props }: React.ComponentProps<"button">
  * @param maxTime - Maximum epoch seconds in data range
  * @returns Normalized value 0-100
  */
-```
-- `@param` and `@returns` tags used when applicable
-- Used in `src/types/crime.ts` for canonical type documentation
-- Used in `src/lib/date-normalization.ts` for utility documentation
-- Used in `src/providers/QueryProvider.tsx` for provider documentation
-- Used in `src/lib/logger.ts` for class-level documentation with version/phase context
-- NOT used on every function; reserved for public APIs and complex logic
-
-## shadcn/ui Usage
-
-- All shadcn components in `src/components/ui/` (21 component files)
-- Style: **new-york** (per `components.json`)
-- Component patterns:
-```typescript
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { Slot } from "radix-ui";
-import { cn } from "@/lib/utils";
-
-const buttonVariants = cva(
-  "base-classes",
-  { variants: { variant: { ... }, size: { ... } },
-    defaultVariants: { variant: "default", size: "default" }
-  }
-);
-
-function Button({ className, variant, size, asChild, ...props }: ComponentProps & VariantProps) {
-  const Comp = asChild ? Slot.Root : "button";
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
-}
-```
-- Uses `data-slot` attributes for styling hooks
-- Uses `data-variant` and `data-size` attributes on components
-- Uses `Slot.Root` from Radix for `asChild` pattern
-- `cn()` utility from `src/lib/utils.ts` for class merging:
-```typescript
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
-```
-- Radix UI primitives used directly in `/src/components/ui/` files
-- Icon library: **lucide-react**
-
-## Zustand Store Patterns
-
-**Single store per file:**
-```typescript
-import { create } from 'zustand';
-
-interface StoreState {
-  // state fields
-  action: () => void;
-}
-
-export const useStoreName = create<StoreState>((set) => ({
-  // initial state
-  action: () => set({ /* ... */ }),
-}));
+export const normalizeToPercent = (realTime, minTime, maxTime): number => { ... }
 ```
 
-**Slice-domain pattern for complex stores** (`src/store/slice-domain/`):
-```typescript
-export const useSliceDomainStore = create<SliceDomainState>()(
-  persist(
-    (...args) => ({
-      ...createSliceCoreSlice(...args),
-      ...createSliceSelectionSlice(...args),
-      ...createSliceCreationSlice(...args),
-      ...createSliceAdjustmentSlice(...args),
-    }),
-    { name: 'slice-domain-v1', partialize: (state) => ({ slices: state.slices }) }
-  )
-);
-```
-- Complex stores use multiple slice creator functions (`createSliceXxxSlice`)
-- Each slice creator is a pure function `(set, get) => ({...})`
-- `persist` middleware used for persistent state
-- Selector exports for derived data (e.g., `selectSlices`, `selectActiveSliceId`)
-- Barrel file pattern: `useSliceDomainStore.ts` re-exports types and selectors
+The synthetic generator and study modules carry heavy doc blocks because they are the public contracts (see `src/lib/synthetic/goh-barabasi.ts`, `src/lib/study/storage.ts`, `src/lib/logger.ts`).
 
-**Store patterns observed:**
-- Simple stores: `create<Interface>()((set) => ({...}))` with inline actions
-- Complex stores: `create<Interface>()(persist((...args) => ({...slices}), {...persistOptions}))`
-- `set()` with object for simple updates
-- `set((state) => ({...}))` with callback for complex updates depending on current state
-- `getState()` / `setState()` used in tests for direct state manipulation
-- `useStore(store, selector)` pattern used for selective subscriptions in components
-- Stores access other stores via `useXxxStore.getState()` for cross-store reads:
+The Python sibling uses **PEP 257 docstrings** (single-line summary) plus a top-of-file module docstring with the algorithm and usage block (see `scripts/synthetic/generate_bursty.py`).
+
+## React Component Patterns
+
+- **Component file** exports the component (default or named) and its `Props` type. Examples: `src/components/timeline/DualTimeline.tsx`, `src/components/timeline/SuggestionPanel.tsx`.
+- **Hooks** are extracted into `src/hooks/` (e.g. `useCrimeData.ts`, `useLogger.ts`) and named with a `use` prefix.
+- **Container / view separation** — store interaction lives in hooks; presentational components accept callbacks via props. Tests use `react-test-renderer` (configured in `package.json`).
+- **Co-locate** styles, helpers, and tests with the component when they are private to that component (e.g. `src/components/timeline/lib/`, `src/components/dashboard-demo/lib/`).
+- **Touch device hooks** like `useDebounce`, `useMeasure`, `useDraggable` follow the same convention.
+
+## Factory Helper Pattern (test data builders)
+
+Tests use small in-file `build*` factory functions instead of dedicated fixture files. The pattern is consistent across the codebase:
 
 ```typescript
-const toNormalizedStoreRange = (start: number, end: number): [number, number] => {
-  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
-  const mapDomain = useAdaptiveStore.getState().mapDomain;
-  // ...
-};
-```
+// src/lib/clustering/cluster-analysis.test.ts
+const buildPoint = (overrides: Partial<FilteredPoint> & { typeId: number; districtId: number }): FilteredPoint => ({
+  x: 0,
+  y: 0,
+  z: 0,
+  typeId: 1,
+  districtId: 1,
+  originalIndex: 0,
+  ...overrides,
+});
 
-## Web Worker Patterns
-
-**File location:** `src/workers/*.worker.ts`
-
-**Worker creation pattern** (module-level singleton):
-```typescript
-let worker: Worker | null = null;
-if (typeof window !== 'undefined') {
-  worker = new Worker(new URL('../workers/adaptiveTime.worker.ts', import.meta.url));
-}
-```
-
-**Typed message contracts:**
-```typescript
-export interface WorkerInput {
-  requestId: number;
-  timestamps: Float32Array;
-  domain: [number, number];
-  config: WorkerConfig;
-}
-
-export interface WorkerOutput {
-  requestId: number;
-  densityMap: Float32Array;
-  burstinessMap: Float32Array;
-  warpMap: Float32Array;
-  countMap: Float32Array;
-}
-```
-
-**Message handling:**
-```typescript
-// In worker:
-if (typeof self !== 'undefined') {
-  self.onmessage = (e: MessageEvent<WorkerInput>) => {
-    const { requestId, timestamps, domain, config } = e.data;
-    const maps = computeAdaptiveMaps(timestamps, domain, config);
-    self.postMessage({ requestId, ...maps });
+// src/lib/full-auto-orchestrator.test.ts
+function buildCrime(id: number, timestamp: number): CrimeRecord {
+  return {
+    id: `crime-${id}`,
+    timestamp,
+    lat: 41.88,
+    lon: -87.63,
+    x: 0,
+    z: 0,
+    type: id % 2 === 0 ? 'THEFT' : 'BATTERY',
+    district: '001',
+    year: 2024,
+    iucr: '0000',
   };
 }
 
-// In store:
-if (worker) {
-  worker.onmessage = (e) => {
-    const { requestId, densityMap, burstinessMap, warpMap, countMap } = e.data;
-    // process results
-  };
-}
+// src/lib/evolution/evolution-flow.test.ts
+const buildSlice = (overrides: Partial<EvolutionFlowSliceInput> = {}): EvolutionFlowSliceInput => ({
+  id: overrides.id ?? 'slice-a',
+  label: overrides.label ?? overrides.id ?? 'slice-a',
+  type: overrides.type ?? 'point',
+  time: overrides.time ?? 10,
+  range: overrides.range,
+  isVisible: overrides.isVisible ?? true,
+});
+
+// src/lib/hotspot-evolution.test.ts
+function makeSurface(overrides: Partial<StkdeSurfaceResponse> = {}): StkdeSurfaceResponse { ... }
+
+// src/components/timeline/lib/burst-score-series.test.ts
+const buildGeometry = (overrides: Partial<BurstScoreGeometryInput> = {}): BurstScoreGeometryInput => ({ ... });
+
+// src/app/timeslicing-algos/lib/selection-detail-dataset.test.ts
+const buildCrimeRows = (count: number, start = 1_000_000) => Array.from(...);
 ```
-- Pure computation function exported separately for testability (e.g., `computeAdaptiveMaps`)
-- Worker wrapper is conditional on `self.postMessage` availability
-- `requestId` pattern for matching responses to requests
 
-## React Patterns
+**Rule of thumb:** in-file factory function named `build*` (or `make*`) that takes an `overrides` object defaulting to `{}`, returns a fully-typed object with sensible defaults, and uses object-spread so the caller only specifies what they need. The "package" pattern (`buildPackage` referenced in your prompt) is the same idea applied to higher-level composite fixtures.
 
-- **"use client"** directive at top of client components
-- Provider pattern: `QueryProvider` wraps children with `QueryClientProvider` in `src/providers/`
-- `useQuery` from TanStack Query for data fetching hooks
-- `useState` creates QueryClient once (not in render body)
-- `Suspense` with `fallback={null}` for lazy-loaded sections
-- Custom hooks for view logic extraction (e.g., `useDualTimelineViewModel`, `useViewportCrimeData`)
-- `useEffect` with dependency arrays for side effects
-- `useCallback` / `useMemo` for stable references
-- Data attributes on HTML elements: `data-phase="..."`, `data-slot="button"`
+## Module Patterns
+
+- **Barrel files** are used selectively. `src/lib/queries/index.ts` re-exports `types`, `sanitization`, `filters`, `aggregations`, `builders` so consumers can `import { ... } from './queries'` or `from '@/lib/queries'`.
+- **Side-effect-free modules** — pure functions live in `src/lib/`; side-effecting modules (state, fetch, route handlers) live in `src/store/`, `src/hooks/`, or `src/app/api/*`.
+- **Discriminated unions** for stateful domain types: `TimeSlice` has `type: 'point' | 'range'` with conditional `time` / `range` fields (`src/store/slice-domain/types.ts`).
+- **Hoisted mocks** in tests use `vi.hoisted(() => ({ ... }))` so the mocked references are available before `vi.mock(...)` factory closes over them (see `src/lib/queries.test.ts` and `src/app/api/crime/overview/route.test.ts`).
 
 ## Error Handling
 
-**Centralized logger:** `src/lib/logger.ts`
-- `LoggerService` class with singleton export `logger`
-- Methods: `log()`, `submit()`, `enqueue()`, `flush()`
-- Retry with linear backoff (4 attempts, 750ms base)
-- Uses `fetch` with `keepalive: true` for reliability
-- Falls back to `navigator.sendBeacon` on page unload
+### API route pattern (DuckDB → mock fallback)
 
-**API error handling:**
-- API routes catch errors and return mock data with `X-Data-Warning` header
-- DuckDB failures trigger mock data fallback
-- Fetch errors caught with try/catch and converted to typed errors with context
+Every API route under `src/app/api/crime/*` follows the same try/catch shape: a successful DuckDB read returns real data, while any failure (DB disabled, dataset missing, query error) returns a mock payload **with the `X-Data-Warning` response header** so the client can surface a banner.
 
-**Store error handling:**
-- `isLoading`, `isFetching`, `error` properties in hook results (TanStack Query pattern)
-- `SyncStatus` type (`'syncing' | 'synchronized' | 'partial'`) for cross-panel sync state
+Canonical example — `src/app/api/crime/overview/route.ts`:
 
-## Module Design
+```typescript
+export const dynamic = 'force-dynamic';
 
-**Exports:** Named exports preferred over default exports for utilities and hooks
-- Exception: Pages (`export default function Page`) and shadcn components (`function Button` with named export)
-- Exception: `QueryProvider` uses default export
+export async function GET(request: Request) {
+  try {
+    if (isMockDataEnabled()) {
+      return NextResponse.json(MOCK_OVERVIEW, {
+        status: 200,
+        headers: { 'X-Data-Warning': 'Using demo data - database disabled' },
+      });
+    }
+    if (!existsSync(getDataPath())) {
+      return NextResponse.json(MOCK_OVERVIEW, {
+        status: 200,
+        headers: { 'X-Data-Warning': 'Using demo data - dataset file not found' },
+      });
+    }
+    const metadata = await readDatasetMetadata();
+    const overviewBins = await readOverviewBins(maxPoints);
+    return NextResponse.json({ overviewBins, ... });
+  } catch (error) {
+    console.error('Error fetching overview timestamps:', error);
+    return NextResponse.json(MOCK_OVERVIEW, {
+      status: 200,
+      headers: { 'X-Data-Warning': 'Using demo data - database unavailable' },
+    });
+  }
+}
+```
 
-**Barrel Files:** Used for re-exports:
-- `src/store/useSliceDomainStore.ts` re-exports types and selectors from `src/store/slice-domain/`
-- `src/lib/queries` directory exports all query functions through index
+Routes using the same three-message `X-Data-Warning` taxonomy:
+`src/app/api/crime/overview/route.ts`, `src/app/api/crime/meta/route.ts`, `src/app/api/crime/stream/route.ts`, `src/app/api/crime/bins/route.ts`, `src/app/api/crime/facets/route.ts`, `src/app/api/crime/around/route.ts`, `src/app/api/crime/stats-summary/route.ts`, `src/app/api/crimes/range/route.ts`.
 
-## TanStack Query Conventions
+Tests assert the header content via `expect(response.headers.get('X-Data-Warning')).toContain('database unavailable')` (see `src/app/api/crime/overview/route.test.ts`).
 
-- `staleTime: 5 * 60 * 1000` (5 minutes) - data considered fresh
-- `gcTime: 10 * 60 * 1000` (10 minutes) - unused data cache
-- `refetchOnWindowFocus: false` - prevent unwanted refetches
-- `retry: 1` for queries, `retry: 0` for mutations
-- Query key stability: make sure equivalent options produce same key to avoid refetch
+### Validation pattern (Zod-like hand-rolled)
+
+`src/app/api/study/log/route.ts` validates the JSON body per `kind` and returns `400` with `{ ok: false, error }`. The test fixture declares one `baseSessionStart`, `baseSessionEnd`, `baseTrial`, etc. per study intent and asserts both accept and reject paths.
+
+### Logger batching (`LoggerService`)
+
+`src/lib/logger.ts` defines `class LoggerService` that batches study events and flushes them to `/api/study/log`. Important semantics:
+
+- `submit(intent)` is `async` and resolves only after the server returns `{ ok: true }`. Up to `MAX_ATTEMPTS = 4` retries with linear backoff (`RETRY_BACKOFF_MS = 750`).
+- `enqueue(intent)` is fire-and-forget; the queue is drained sequentially and requeues on failure.
+- A `beforeunload` handler calls `beaconDrain()` which uses `navigator.sendBeacon('/api/study/log', blob)` as a best-effort fallback (browser-only, gated by `typeof window !== 'undefined'` and `typeof navigator.sendBeacon === 'function'`).
+- A typed helper set (`submitSessionStart`, `submitSessionEnd`, `submitTrialComplete`, `submitQuestionnaireResponse`, `submitConditionToggle`, `submitWarpAdjustment`) wraps `logger.submit({ kind, ...payload })` and is the preferred call shape.
+
+`useLogger` (`src/hooks/useLogger.ts`) is a thin React wrapper around `logger.log` for component-level logging:
+
+```typescript
+export const useLogger = () => {
+  const log = useCallback((type: string, payload?: any) => {
+    logger.log(type, payload);
+  }, []);
+  return { log };
+};
+```
+
+### Query sanitization
+
+All SQL is built through the `src/lib/queries/` builders. Table names go through `sanitizeTableName` (allowlist: `crimes_sorted`, `adaptive_global_cache`); numeric inputs are clamped by `clampAdaptiveBinCount`, `clampKernelWidth`, `clampDensityResolution` (`src/lib/queries/sanitization.ts`). All user-supplied values are bound via `?` placeholders — never interpolated.
+
+## Logging
+
+- Client logging goes through `LoggerService` (`src/lib/logger.ts`) or `useLogger` (`src/hooks/useLogger.ts`).
+- Server-side ad-hoc logging uses `console.error` (e.g. `console.error('Error fetching overview timestamps:', error)` in `src/app/api/crime/overview/route.ts`) and `console.debug('[study-log]', ...)` in dev only.
+- There is no third-party log shipper; logs flow to the browser console and the `/api/study/log` endpoint.
+
+## Comments
+
+- **JSDoc** on every exported public function or interface (see `src/lib/synthetic/types.ts`, `src/lib/study/storage.ts`).
+- **Inline `// Pitfall N` / `// Phase XX`** notes at decision points — e.g. `src/lib/logger.ts` cites "Pitfall 4 in 80-RESEARCH.md" and "Phase 80 Evaluation Logger".
+- **Section banners** with ASCII dashes (the Python file uses `# ----` headings; the TS code uses block-comment headers). Example from `src/lib/queries/aggregations.ts`:
+
+```typescript
+// ---------------------------------------------------------------------------
+// Per-type alpha profile — matches TS logic
+// ---------------------------------------------------------------------------
+```
+
+## Function & Module Design
+
+- **Pure functions** for business logic (`src/lib/slice-utils.ts`, `src/lib/date-normalization.ts`, `src/lib/queries/aggregations.ts`). No `useState` / side effects.
+- **Builders** for complex composite types — `buildCrimesInRangeQuery`, `buildCrimeCountQuery`, `buildGlobalAdaptiveCacheQueries` in `src/lib/queries/` all return `{ sql, params }` fragments. Filter fragments are joined with `joinFragments()` in `filters.ts`.
+- **Discriminated unions** for state machines: `StudyIntentKind`, `BurstyGeneratorConfig['typeStrategy']`, `TimeSliceSource`.
+- **Reasonable module size** — small focused files (most lib files are < 200 lines; larger ones like `goh-barabasi.ts` and `queries.ts` are split deliberately).
+- **Re-exports** through `src/lib/queries/index.ts` and the `src/types/index.ts` barrel; `src/lib/queries.ts` is a thin facade re-exporting from `./queries` so legacy imports still resolve.
 
 ---
 
-*Convention analysis: 2026-06-25*
+*Convention analysis: 2026-06-27*
