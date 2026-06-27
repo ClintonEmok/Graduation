@@ -22,11 +22,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from db import load_crimes
+from metrics import goh_barabasi
 
 try:
-    from metrics import contextual, goh_barabasi
+    from metrics import contextual
 except ImportError:
-    contextual = goh_barabasi = None  # type: ignore[assignment]
+    contextual = None  # type: ignore[assignment]
 try:
     import compare, figures  # type: ignore[import-not-found]
 except ImportError:
@@ -64,6 +65,26 @@ def parse_args() -> argparse.Namespace:
     return ap.parse_args()
 
 
+def _summarize(values, label: str) -> str:
+    """Render n_windows / mean / std / min / max / cv / range for a series."""
+    import numpy as np
+
+    if values is None or len(values) == 0:
+        return f"  {label}: (no windows)"
+    arr = np.asarray(values, dtype=np.float64)
+    n = arr.size
+    mean = float(arr.mean())
+    std = float(arr.std())  # population std (ddof=0), mirrors burstiness_sweep.py
+    vmin = float(arr.min())
+    vmax = float(arr.max())
+    cv = std / abs(mean) if mean != 0 else float("inf")
+    rng = vmax - vmin
+    return (
+        f"  {label}: n={n:,}  mean={mean:+.4f}  std={std:.4f}  "
+        f"min={vmin:+.4f}  max={vmax:+.4f}  cv={cv:.4f}  range={rng:.4f}"
+    )
+
+
 def main() -> int:
     args = parse_args()
     print(f"Phase 83 — output directory: {args.output_dir.resolve()}")
@@ -82,14 +103,53 @@ def main() -> int:
     )
     print(f"Elapsed: {time.perf_counter() - t0:.1f}s")
     print(f"Output directory: {args.output_dir.resolve()}")
+    print()
 
-    # Plans 02-05 will replace this block with the metric pipeline.
-    if any(
-        x is None
-        for x in (contextual, goh_barabasi, compare, figures, decision_gate)
-    ):
-        print()
-        print("(Plan 01 skeleton — metric stages not yet implemented.)")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Plan 03 stage: Goh-Barabasi B (CBP-02) ─────────────────────
+    t1 = time.perf_counter()
+    timestamps = df["ts"].to_numpy()
+    full_gaps = None if timestamps.size < 2 else __import__("numpy").diff(
+        timestamps.astype("float64")
+    )
+    b_full = goh_barabasi.goh_barabasi_b(full_gaps) if full_gaps is not None else None
+    if b_full is not None:
+        print(f"Full-series Goh-Barabasi B (IEI): {b_full:.4f}  (expected ≈ 0.30)")
+        if not (0.20 <= b_full <= 0.40):
+            print(
+                "  WARNING: full-series B is outside expected range [0.20, 0.40]",
+                file=sys.stderr,
+            )
+    else:
+        print("Full-series Goh-Barabasi B (IEI): (degenerate)")
+
+    all_b = []
+    for window_sec in goh_barabasi.WINDOWS_SEC:
+        step = max(1, window_sec // 4)
+        b_series = goh_barabasi.compute_goh_barabasi_series(timestamps, window_sec, step)
+        b_series["window_sec"] = window_sec
+        all_b.append(b_series)
+        print(
+            _summarize(
+                b_series["B"].to_numpy() if len(b_series) else None,
+                goh_barabasi.WINDOW_LABELS[window_sec],
+            )
+        )
+    full_b = (
+        __import__("pandas").concat(all_b, ignore_index=True) if all_b else __import__("pandas").DataFrame()
+    )
+    goh_barabasi.write_goh_barabasi_parquet(
+        full_b, args.output_dir / "goh_barabasi_metric.parquet"
+    )
+    print(f"Goh-Barabasi metric: {time.perf_counter() - t1:.1f}s")
+    print()
+
+    # ── Future plans (02 contextual, 04 comparison, 05 decision) ────
+    if any(x is None for x in (contextual, compare, figures, decision_gate)):
+        print("(Phase 83 Plan 03 stage complete — B metric written. ")
+        print(" Plans 02 / 04 / 05 stages not yet implemented.)")
+
     return 0
 
 
