@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
+import { useSliceDomainStore } from '@/store/useSliceDomainStore';
 import { useIsEvaluationLocked } from '@/store/useEvaluationStudyStore';
 import { useFeatureFlagsStore } from '@/store/useFeatureFlagsStore';
 import { useAdaptiveStore } from '@/store/useAdaptiveStore';
@@ -57,6 +58,9 @@ export function GlobalWarpControls() {
   const cubeScopeMode = useDashboardDemoCoordinationStore((state) => state.cubeScopeMode);
   const setCubeScopeMode = useDashboardDemoCoordinationStore((state) => state.setCubeScopeMode);
   const brushRange = useDashboardDemoCoordinationStore((state) => state.brushRange);
+  const hasAppliedSlices = useSliceDomainStore((state) =>
+    state.slices.some((s) => s.source === 'generated-applied'),
+  );
 
   const volumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.volumeScaleSeconds);
   const setVolumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.setVolumeScaleSeconds);
@@ -249,7 +253,7 @@ export function GlobalWarpControls() {
         ) : null}
       </div>
 
-      {brushRange !== null ? (
+      {brushRange !== null || hasAppliedSlices ? (
         <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-2">
           <div className="flex items-center justify-between">
             <span className="text-foreground">Cube scope</span>
