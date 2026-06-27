@@ -29,6 +29,15 @@ Based on the recent hotspot-policing / visual-analytics research, this backlog i
 | P1 | Intervention tracking / before-after review | Important for evaluation, but dependent on stronger analysis context. |
 | P1 | Accessibility and 2D fallback for 3D views | Improves reach and resilience when 3D is not ideal. |
 
+## Deferred from v3.4 (removed 2026-06-27)
+
+| Old phase | Item | Reason deferred |
+|-----------|------|-----------------|
+| 83 | Burstiness Signal Contract + Density Fallback (TypeScript prototype integration) | Superseded by phase 86 contextual-burstiness comparison — proven analytically first, then prototype-wired if results support it |
+| 84 | Histogram Timeline Warping (bin spacing changes for bursty windows) | Depends on 83; deferred until new metric is validated |
+| 85 | Burst Onset + Ramp-Up Readability (onset/ramp-up UI cues) | Depends on 83, 84; deferred until new metric is validated |
+
+
 ## Research Alignment
 
 - Core tasks emphasized by the research: find, rank, validate, compare, brief, and re-evaluate hotspots.

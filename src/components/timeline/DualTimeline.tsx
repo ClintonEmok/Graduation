@@ -32,6 +32,7 @@ import { useBrushZoomSync } from './hooks/useBrushZoomSync';
 import { usePointSelection } from './hooks/usePointSelection';
 import { normalizeTimeRange, timeRangeOverlapsDomain } from '@/lib/time-range';
 import { sampleTimelinePoints, selectTimelinePointsInRange } from '@/lib/timeline-series';
+import { resolveAdaptiveDetailBinCount } from '@/components/timeline/lib/detail-bin-count';
 import {
   clampToRange,
   computeRangeUpdate,
@@ -150,7 +151,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   timestampSecondsOverride,
   detailPointsOverride,
   detailRenderMode = 'auto',
-  detailBinCount = 60,
+  detailBinCount,
   disableAutoBurstSlices = false,
   tickLabelStrategy = 'legacy',
 }) => {
@@ -332,15 +333,20 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     return detailRenderMode;
   }, [detailRenderMode, detailSpanDays]);
 
+  const effectiveDetailBinCount = useMemo(
+    () => resolveAdaptiveDetailBinCount(detailRangeSec[1] - detailRangeSec[0], detailBinCount),
+    [detailBinCount, detailRangeSec]
+  );
+
   const detailBins = useMemo(() => {
     if (resolvedDetailRenderMode !== 'bins') return [];
     if (!detailPoints.length) return [];
     const binner = bin<number, number>()
       .value((d) => d)
-      .domain([detailRangeSec[0], detailRangeSec[1]])
-      .thresholds(detailBinCount);
+      .domain([detailRangeSec[0] + 0.001, detailRangeSec[1] - 0.001])
+      .thresholds(effectiveDetailBinCount);
     return binner(detailPoints);
-  }, [detailBinCount, detailPoints, detailRangeSec, resolvedDetailRenderMode]);
+  }, [detailPoints, detailRangeSec, effectiveDetailBinCount, resolvedDetailRenderMode]);
 
   const detailMax = useMemo(
     () => (detailBins.length ? max(detailBins, (d) => d.length) || 1 : 1),
@@ -401,6 +407,8 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
   useBrushZoomSync({
     interactive,
     detailInnerWidth,
+    domainStart,
+    domainEnd,
     selectedTimeRange,
     overviewInnerWidth,
     overviewInteractionScale,
@@ -690,6 +698,7 @@ export const DualTimeline: React.FC<DualTimelineProps> = ({
     detailInnerWidth,
     isComputing,
     densityMap,
+    overviewInteractionScale,
     overviewScale,
     detailScale,
     overviewSvgRef,

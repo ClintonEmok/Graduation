@@ -18,6 +18,7 @@ describe('DemoDualTimeline refactor wiring', () => {
     expect(source).toMatch(/normalizeWarpBlend/);
     expect(source).toMatch(/useDashboardDemoCoordinationStore/);
     expect(source).toMatch(/overviewSliceBoxes/);
+    expect(source).toMatch(/overviewInteractionScale/);
     expect(source).toMatch(/detailInteractionScale/);
     expect(source).toMatch(/warpFactor: effectiveWarpBlend/);
     expect(source).toMatch(/return <DualTimelineSurface \{\.\.\.surfaceProps\} \/>;/);

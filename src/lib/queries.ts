@@ -1,5 +1,6 @@
 import { CHICAGO_BOUNDS, lonLatToNormalized } from './coordinate-normalization';
 import { ensureSortedCrimesTable, getDb, isMockDataEnabled } from './db';
+import { createSeededRandom, gaussianish, weightedPick } from './synthetic/prng';
 import type { AdaptiveBinningMode } from '@/types/adaptive';
 import {
   buildAdaptiveBurstQuery,
@@ -123,27 +124,6 @@ const findBoundaryBin = (value: number, boundaries: Float32Array) => {
   }
   return low;
 };
-
-const createSeededRandom = (seed: number) => {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 0x100000000;
-  };
-};
-
-const weightedPick = <T>(items: T[], weights: number[], rng: () => number): T => {
-  const total = weights.reduce((sum, value) => sum + value, 0);
-  if (total <= 0) return items[Math.floor(rng() * items.length)] ?? items[0];
-  let cursor = rng() * total;
-  for (let i = 0; i < items.length; i += 1) {
-    cursor -= weights[i] ?? 0;
-    if (cursor <= 0) return items[i];
-  }
-  return items[items.length - 1];
-};
-
-const gaussianish = (rng: () => number) => (rng() + rng() + rng() + rng() + rng() + rng()) - 3;
 
 const generateMockCrimeRecords = (
   startEpoch: number,

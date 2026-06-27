@@ -1,6 +1,6 @@
-# Evaluation Protocol: Adaptive Space-Time Cube
+# Evaluation Protocol: Burstiness-Driven Space-Time Cube
 
-**Study:** Adaptive Temporal Scaling in Space–Time Cubes for Bursty Spatio-Temporal Data
+**Study:** Burstiness-Driven Temporal Scaling in Space–Time Cubes for Bursty Spatio-Temporal Data
 **Researcher:** Clinton Emok — TU Eindhoven
 **Target N:** 5 participants (technically literate novices)
 **Estimated duration per session:** 45–60 min
@@ -11,11 +11,13 @@
 
 | ID | Objective | Evaluation Focus |
 |----|-----------|-----------------|
-| RO1 | Burst Pattern Interpretation | Can users identify and compare bursty temporal patterns better with adaptive scaling? |
-| RO2 | Scaled Time Understanding | Can users interpret the scaled temporal representation and relate it back to original time windows? |
+| RO1 | Burst Pattern Interpretation | Can users identify and compare bursty temporal patterns better with burstiness-driven scaling? |
+| RO2 | Scaled Time Understanding | Can users interpret the burstiness-scaled temporal representation and relate it back to original time windows? |
 | RO3 | Usability & Experience | What is the perceived cognitive load, clarity, and usability of the prototype across conditions? |
 
-This protocol follows the thesis Chapter 7 pilot framing. The user study evaluates `RQ2-RQ4`. `RQ1` (design of the density-aware scaling mechanism) is addressed by the methodology and prototype chapters rather than by this pilot study.
+This protocol follows the thesis Chapter 7 pilot framing. The user study evaluates `RQ2-RQ4`. `RQ1` (design of the burstiness-aware scaling mechanism) is addressed by the methodology and prototype chapters rather than by this pilot study.
+
+This is an exploratory pilot. The goal is not to prove a large performance gain, but to observe whether participants can make sense of burst slices, whether burstiness-driven scaling changes what they notice, and what strategies or confusions emerge when the workflow goes from burst detection to scaled inspection.
 
 ## 2. Experimental Design
 
@@ -24,7 +26,14 @@ This protocol follows the thesis Chapter 7 pilot framing. The user study evaluat
 | Condition | Label | Description |
 |-----------|-------|-------------|
 | A | **Uniform** (baseline) | Linear time axis, equal slice height |
-| B | **Adaptive** (treatment) | Density-driven non-uniform scaling |
+| B | **Burstiness-driven** (treatment) | Non-uniform scaling weighted by Goh-Barabási burstiness `B` |
+
+**Workflow inside each condition**
+
+1. Detect burst slices in the burst detection panel.
+2. Show the resulting burst slices in the timeline/cube context.
+3. Inspect the same data under the active time-scaling condition.
+4. Complete the short task set.
 
 **Order counterbalancing** to mitigate learning effects:
 
@@ -57,7 +66,7 @@ This protocol follows the thesis Chapter 7 pilot framing. The user study evaluat
 - **Software:** Local Next.js dev server at `http://localhost:3000/evaluation`
 - **Dataset:** Chicago Crime (subset: 1 year, ~300K records)
 - **Recording:** Screen capture (QuickTime) + study session logging through the evaluation interface
-- **Condition toggle:** Uniform/adaptive condition switch exposed in the evaluation interface
+- **Condition toggle:** Uniform/burstiness-driven condition switch exposed in the evaluation interface
 - **Data collection:** Study session logs + in-app questionnaires, with paper questionnaires as backup
 
 ### Key interface components for the evaluation
@@ -67,13 +76,28 @@ This protocol follows the thesis Chapter 7 pilot framing. The user study evaluat
 | 3D hotspot stack | Main STC view with vertical time axis |
 | 2D map | Coordinated spatial view |
 | `DemoDualTimeline` | Overview + detail brushing |
+| Burst detection panel | Detect burst slices before scaling is applied |
 | Evaluation header | Session start/stop, participant ID, researcher condition awareness |
 | Task card | Current task prompt + confidence capture |
 | Post-condition forms | NASA-RTLX + interpretability responses |
 
+### Window selection strategy
+
+The evaluation should not use the full shortlist of 14 windows directly. Use the burstiness scan to separate **hero burst windows** from **contrast windows**:
+
+| Role | Window | Why it is useful |
+|------|--------|-------------------|
+| Isolated burst context | `2023-12-11 -> 2023-12-25` | Best for the detect -> preview -> scale sequence because the burst sits inside quieter neighboring time |
+| Weekly burst hero | `2023-12-17 -> 2023-12-24` | Strongest weekly burst candidate (`B ≈ 0.583`) for showing a sharp burst |
+| Monthly burst hero | `2023-11-24 -> 2023-12-24` | Strong monthly burst candidate (`B ≈ 0.408`) for a month-scale example |
+| Density contrast | `2020-03-16 -> 2020-06-14` | Good foil for Chapter 3 because density and burstiness diverge here |
+| Burst contrast foil | `2024-02-12 -> 2024-03-13` | Burst-only winner from the cross-reference analysis; useful as a contrast window |
+
+Use the isolated burst context window for the evaluation walkthrough, the weekly hero window for the clearest burst illustration, the monthly hero window for a broader thesis figure, and one contrast window to show that density-picked and burst-picked windows are not the same.
+
 ## 5. Task Design
 
-The pilot uses one warm-up task plus four core tasks, following the thesis Chapter 7 reduction from the earlier 8-task inventory. The core tasks are kept short, concrete, and ordered from simple to complex within each condition.
+The pilot uses one warm-up task plus four core tasks, following the thesis Chapter 7 reduction from the earlier 8-task inventory. The core tasks are kept short, concrete, and ordered from simple to complex within each condition. For the evaluation walkthrough, participants should first discover and inspect burst slices, then continue into the time-scaling condition and task set. For the thesis figures and task stimuli, prefer the burst-heavy windows above rather than the full showcase set.
 
 ### Warm-up (W)
 *"Use the practice dataset to learn how to rotate, zoom, pan, read the time axis, and try the time-scale toggle."*
@@ -84,24 +108,28 @@ The pilot uses one warm-up task plus four core tasks, following the thesis Chapt
 ### Task T4 — Identify Most Active Region
 *"During the given time window, which neighbourhood or region has the highest concentration of incidents?"*
 - **Objective:** Spatial baseline / control task
+- **Time range:** `2023-12-11 -> 2023-12-25`
 - **Metrics:** Accuracy, completion time, confidence
 - **Condition relevance:** Both; little difference expected
 
 ### Task T1 — Identify Peak Activity Period
 *"Which one-hour time window has the highest number of incidents?"*
 - **Objective:** Peak-period identification under bursty temporal structure
+- **Time range:** `2023-12-17 -> 2023-12-24`
 - **Metrics:** Accuracy, completion time, confidence
-- **Condition relevance:** Both; adaptive expected to help
+- **Condition relevance:** Both; burstiness-driven expected to help
 
 ### Task T2 — Burst Detection
-*"Is there a burst in this sequence, and if so, in which bin does it begin?"*
+*"Use the burst detection panel and burst-slice preview to locate one bursty interval. Briefly describe what makes it bursty."*
 - **Objective:** Detect burst presence and onset
+- **Time range:** `2023-11-24 -> 2023-12-24`
 - **Metrics:** Accuracy, completion time, confidence
-- **Condition relevance:** Both; adaptive expected to help
+- **Condition relevance:** Both; burstiness-driven expected to help
 
 ### Task T3 — Compare Time Periods
 *"Which of the two specified intervals has higher activity?"*
 - **Objective:** Compare interval activity while preserving understanding of original time windows
+- **Time range:** compare `2020-03-16 -> 2020-06-14` against `2024-02-12 -> 2024-03-13`
 - **Metrics:** Accuracy, completion time, confidence
 - **Condition relevance:** Both; supports `RQ2` and `RQ3`
 
@@ -114,13 +142,13 @@ The pilot uses one warm-up task plus four core tasks, following the thesis Chapt
 
 ### Phase 2 — Training (10 min)
 - Guided walkthrough of the interface using a practice dataset
-- Explain: 3D cube axis, 2D map, timeline brushing, and the time-scale toggle
+- Explain: 3D cube axis, 2D map, timeline brushing, burst detection panel, burst-slice preview, and the time-scale toggle
 - Ensure participant can rotate the cube, brush the timeline, and switch conditions
 - Answer any questions
 
-### Phase 3 — Task Block (25 min)
+### Phase 3 — Burst Discovery & Task Block (25 min)
 For each condition (A then B, or B then A per counterbalancing):
-- 4 minutes exploration time
+- 4 minutes exploration time, starting with burst discovery and slice preview
 - Administer the four core tasks in fixed order: `T4 -> T1 -> T2 -> T3`
 - Record completion, accuracy, observations
 
@@ -131,6 +159,7 @@ After each condition, administer:
 | Dimension | Scale (1–20) |
 |-----------|--------------|
 | Mental Demand | 1 (Low) – 20 (High) |
+| Physical Demand | 1 (Low) – 20 (High) |
 | Temporal Demand | 1 (Low) – 20 (High) |
 | Performance | 1 (Perfect) – 20 (Failure) |
 | Effort | 1 (Low) – 20 (High) |
@@ -139,13 +168,14 @@ After each condition, administer:
 **Perceived Interpretability (5-point Likert)**
 - "I could clearly see where and when crime activity was concentrated."
 - "I could distinguish the order of events in dense time periods."
+- "I could identify bursty time intervals in the visualization."
 - "I trusted what the visualization showed me about temporal patterns."
 - "The time axis was easy to read and interpret."
 - "I could accurately compare durations across different time periods."
 
 ### Phase 5 — Comparative Interview (10 min)
 - Which condition did you prefer? Why?
-- Did the adaptive view ever feel misleading or confusing?
+- Did the burstiness-driven view ever feel misleading or confusing?
 - Were there times when the uniform view was clearer?
 - What would you change about the prototype?
 - Open-ended: any other observations?
@@ -158,8 +188,8 @@ After each condition, administer:
 | Task completion time | Screen recording / logs | All |
 | Task accuracy (binary with predefined ground truth/tolerance) | Scoring rubric | All core tasks |
 | Confidence (1–5) | Post-task prompt | All core tasks |
-| NASA-RTLX (5 dimensions × 1–20) | Questionnaire | Post-condition |
-| Likert ratings (5 items × 1–5) | Questionnaire | Post-condition |
+| NASA-RTLX (6 dimensions × 1–20) | Questionnaire | Post-condition |
+| Likert ratings (6 items × 1–5) | Questionnaire | Post-condition |
 | SUS | Questionnaire | End of study |
 | Condition preference | Final interview | Phase 5 |
 
@@ -173,7 +203,8 @@ After each condition, administer:
 
 ### Behavioral logs
 - Session ID / participant ID
-- Condition changes (uniform/adaptive)
+- Condition changes (uniform/burstiness-driven)
+- Burst-slice discovery and preview events
 - Warp factor changes when researcher-adjustable
 - Trial start/end timestamps
 
@@ -239,7 +270,7 @@ After each condition, administer:
 
 ## Appendix A — Informed Consent Template
 
-> **Study:** Adaptive Temporal Scaling in Space-Time Cubes
+> **Study:** Burstiness-Driven Temporal Scaling in Space-Time Cubes
 > **Researcher:** Clinton Emok, TU Eindhoven
 >
 > I confirm that:
@@ -263,13 +294,14 @@ After each condition, administer:
 
 ## Appendix C — Interview Guide (Phase 5)
 
-1. Which of the two views (uniform or adaptive) did you prefer overall? Why?
-2. Was there anything confusing about the adaptive time axis?
-3. Were there tasks that felt easier in one view vs the other?
-4. Did you feel you could trust what the adaptive view showed you?
-5. Did the adaptive view ever feel like it was distorting the data in a misleading way?
-6. What would you improve or change about the tool?
-7. Any other thoughts or observations?
+1. Which of the two views (uniform or burstiness-driven) did you prefer overall? Why?
+2. Did starting from burst slices help you understand the data?
+3. Was there anything confusing about the burstiness-scaled time axis?
+4. Were there tasks that felt easier in one view vs the other?
+5. Did you feel you could trust what the burstiness-driven view showed you?
+6. Did the burstiness-driven view ever feel like it was distorting the data in a misleading way?
+7. What would you improve or change about the tool?
+8. Any other thoughts or observations?
 
 ## Appendix D — Task Order Cards
 

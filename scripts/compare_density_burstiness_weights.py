@@ -7,6 +7,10 @@ as the burst influence moves from 0.0 (density only) to 1.0 (burstiness only).
 
 Outputs a CSV plus thesis-ready figures that compare ranking stability, highlight
 the windows picked by density vs burstiness, and show how the signals diverge.
+It also derives a combined burstiness + CV metric so the experiment can compare
+burstiness against within-window unevenness as a third signal.
+CV is carried through as a companion readout so the same windows can be read as
+burstiness + CV, not just burstiness + density.
 
 Examples:
   python scripts/compare_density_burstiness_weights.py
@@ -36,8 +40,11 @@ DEFAULT_WINDOWS_PATH = Path('scripts/output/showcase_windows.csv')
 DEFAULT_OUTPUT_PATH = Path('scripts/output/density_burstiness_weight_sweep.csv')
 DEFAULT_CROSSREF_PATH = Path('scripts/output/density_burstiness_cross_reference.csv')
 DEFAULT_FIGURE_DIR = Path('scripts/output/density_burstiness_weight_sweep')
+DEFAULT_ROLLING_METRICS_PATH = Path('scripts/output/spatial-burstiness-experiment/rolling_window_metrics.csv')
 DEFAULT_CHUNKSIZE = 250_000
 DEFAULT_KERNEL_WIDTH = 3
+DEFAULT_ISOLATION_NEIGHBORS = 2
+DEFAULT_CONTEXT_PADDING_DAYS = 14
 DEFAULT_WEIGHTS = [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
@@ -50,6 +57,53 @@ class WindowRow:
     cv: float
     peak_ratio: float
     total_events: int
+
+
+@dataclass(frozen=True)
+class RollingWindowRow:
+    grid_size: int
+    window_days: int
+    step_days: int
+    start: pd.Timestamp
+    end: pd.Timestamp
+    record_count: int
+    temporal_b: float
+    isolation_score: float = 0.0
+
+
+def load_rolling_metrics(path: Path, grid_size: int = 32) -> pd.DataFrame:
+    frame = pd.read_csv(path)
+    frame = frame[frame['grid_size'] == grid_size].copy()
+    frame['start'] = pd.to_datetime(frame['start'])
+    frame['end'] = pd.to_datetime(frame['end'])
+    frame = frame.sort_values('start').reset_index(drop=True)
+    return frame
+
+
+def select_isolated_rolling_window(frame: pd.DataFrame, neighbors: int = DEFAULT_ISOLATION_NEIGHBORS) -> tuple[pd.Series, pd.DataFrame, float]:
+    if frame.empty:
+        raise ValueError('Rolling metrics frame is empty')
+
+    scores: list[float] = []
+    for index in range(len(frame)):
+        lo = max(0, index - neighbors)
+        hi = min(len(frame), index + neighbors + 1)
+        neighborhood = frame.iloc[lo:hi]['temporal_b'].to_numpy(dtype=float)
+        current = float(frame.iloc[index]['temporal_b'])
+        if len(neighborhood) <= 1:
+            scores.append(current)
+            continue
+        surrounding = (float(neighborhood.sum()) - current) / (len(neighborhood) - 1)
+        scores.append(current - surrounding)
+
+    frame = frame.copy()
+    frame['isolation_score'] = scores
+    winner = frame.nlargest(1, 'isolation_score').iloc[0]
+    winner_index = int(winner.name)
+    lo = max(0, winner_index - neighbors)
+    hi = min(len(frame), winner_index + neighbors + 1)
+    neighborhood = frame.iloc[lo:hi].copy()
+    return winner, neighborhood, float(winner['isolation_score'])
 
 
 def parse_window_row(row: dict[str, str]) -> WindowRow:
@@ -287,6 +341,25 @@ def build_cross_reference_frame(rows: list[dict[str, str]]) -> pd.DataFrame:
     merged['rank_swap_ratio'] = merged['rank_delta'] / max(len(merged), 1)
     merged['density_vs_burst_gap'] = merged['density_peak_expansion_ratio'] - merged['burst_peak_expansion_ratio']
 
+    cv_min = float(merged['cv'].min()) if len(merged) else 0.0
+    cv_max = float(merged['cv'].max()) if len(merged) else 0.0
+    burst_min = float(merged['burst_peak_expansion_ratio'].min()) if len(merged) else 0.0
+    burst_max = float(merged['burst_peak_expansion_ratio'].max()) if len(merged) else 0.0
+
+    def normalize(value: float, low: float, high: float) -> float:
+        if not math.isfinite(value):
+            return 0.0
+        if high <= low:
+            return 0.0
+        return max(0.0, min(1.0, (value - low) / (high - low)))
+
+    merged['cv_norm'] = merged['cv'].map(lambda value: normalize(float(value), cv_min, cv_max))
+    merged['burst_strength_norm'] = merged['burst_peak_expansion_ratio'].map(
+        lambda value: normalize(float(value), burst_min, burst_max)
+    )
+    merged['burst_cv_combo'] = 0.5 * merged['cv_norm'] + 0.5 * merged['burst_strength_norm']
+    merged['burst_cv_rank'] = merged['burst_cv_combo'].rank(method='min', ascending=False).astype(int)
+
     return merged.sort_values(['rank_delta', 'density_rank', 'burst_rank'], ascending=[False, True, True]).reset_index(drop=True)
 
 
@@ -360,6 +433,98 @@ def plot_rank_scatter(crossref: pd.DataFrame, output_dir: Path) -> None:
     fig.colorbar(sc, ax=ax, label='Window length (days)')
     fig.tight_layout()
     fig.savefig(output_dir / 'density_vs_burst_rank_scatter.png', dpi=220, bbox_inches='tight')
+    plt.close(fig)
+
+
+def plot_burstiness_cv_figure(crossref: pd.DataFrame, output_dir: Path, top_k: int = 6) -> None:
+    top = crossref.nsmallest(top_k, 'burst_cv_rank').sort_values('burst_cv_combo', ascending=True)
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, 6.6))
+
+    y = np.arange(len(top))
+    bars = axes[0].barh(y, top['burst_cv_combo'], color='#0891b2', edgecolor='white', linewidth=0.5)
+    axes[0].set_yticks(y)
+    axes[0].set_yticklabels(top['window_label'])
+    axes[0].set_xlabel('Combined score')
+    axes[0].set_title('Top burstiness + CV windows')
+    axes[0].set_xlim(0, max(1.0, float(top['burst_cv_combo'].max()) * 1.18))
+    for i, bar in enumerate(bars):
+        row = top.iloc[i]
+        axes[0].text(
+            float(bar.get_width()) + 0.02,
+            bar.get_y() + bar.get_height() / 2,
+            f"CV={row['cv']:.3f} | burst={row['burst_strength_norm']:.3f}",
+            va='center',
+            ha='left',
+            fontsize=8,
+            color='#334155',
+        )
+    axes[0].grid(axis='x', color='#e2e8f0', linewidth=0.8)
+    axes[0].set_axisbelow(True)
+
+    sc = axes[1].scatter(
+        crossref['cv_norm'],
+        crossref['burst_strength_norm'],
+        c=crossref['burst_cv_combo'],
+        cmap='viridis',
+        s=70,
+        edgecolor='white',
+        linewidth=0.6,
+        alpha=0.92,
+    )
+    for _, row in top.iterrows():
+        axes[1].text(row['cv_norm'] + 0.015, row['burst_strength_norm'] + 0.015, row['window_label'], fontsize=8, color='#111827')
+    axes[1].set_xlabel('Normalized CV')
+    axes[1].set_ylabel('Normalized burstiness strength')
+    axes[1].set_title('Burstiness + CV combined metric')
+    axes[1].set_xlim(-0.02, 1.02)
+    axes[1].set_ylim(-0.02, 1.02)
+    fig.colorbar(sc, ax=axes[1], label='Combined score')
+
+    fig.tight_layout()
+    fig.savefig(output_dir / 'burstiness_cv_combined_metric.png', dpi=220, bbox_inches='tight')
+    plt.close(fig)
+
+
+def plot_cv_signal_scatter(crossref: pd.DataFrame, output_dir: Path) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, 6.2), sharex=True)
+    series_specs = [
+        (axes[0], 'density_peak_expansion_ratio', 'Density-only peak expansion', '#0f766e'),
+        (axes[1], 'burst_peak_expansion_ratio', 'Burstiness-only peak expansion', '#7c3aed'),
+    ]
+
+    for ax, value_col, title, color in series_specs:
+        sc = ax.scatter(
+            crossref['cv'],
+            crossref[value_col],
+            c=crossref['window_days'].astype(float),
+            cmap='viridis',
+            s=78,
+            edgecolor='white',
+            linewidth=0.6,
+            alpha=0.92,
+        )
+        top_cv = crossref.nlargest(5, 'cv')
+        for _, row in top_cv.iterrows():
+            ax.text(
+                row['cv'] + 0.01,
+                row[value_col] + 0.01,
+                row['window_label'],
+                fontsize=8,
+                color='#334155',
+            )
+        ax.set_title(title)
+        ax.set_xlabel('CV (hourly count unevenness)')
+        ax.set_ylabel('Peak expansion ratio')
+        ax.grid(axis='both', color='#e2e8f0', linewidth=0.8)
+        ax.set_axisbelow(True)
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0)
+        fig.colorbar(sc, ax=ax, label='Window length (days)')
+
+    fig.suptitle('Burstiness + CV readout across showcase windows', y=1.02, fontsize=14, fontweight='bold')
+    fig.tight_layout()
+    fig.savefig(output_dir / 'cv_vs_burstiness_signal_scatter.png', dpi=220, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -503,6 +668,55 @@ def plot_contrast_example(
     plt.close(fig)
 
 
+def plot_isolated_context_example(
+    hourly: pd.Series,
+    window: RollingWindowRow,
+    neighborhood: pd.DataFrame,
+    output_dir: Path,
+    context_padding_days: int = DEFAULT_CONTEXT_PADDING_DAYS,
+) -> None:
+    context_start = window.start - pd.Timedelta(days=context_padding_days)
+    context_end = window.end + pd.Timedelta(days=context_padding_days)
+    context = hourly[(hourly.index >= context_start) & (hourly.index < context_end)]
+    if context.empty:
+        return
+
+    selected = hourly[(hourly.index >= window.start) & (hourly.index < window.end)]
+    if selected.empty:
+        return
+
+    fig, (ax_counts, ax_burst) = plt.subplots(2, 1, figsize=(13.5, 7.8), gridspec_kw={'height_ratios': [1.15, 0.85]})
+
+    x = np.arange(len(context))
+    counts = context.to_numpy(dtype=float)
+    ax_counts.bar(x, counts, color='#cbd5e1', edgecolor='white', linewidth=0.18)
+
+    selected_start_idx = int((window.start - context.index[0]) / pd.Timedelta(hours=1))
+    selected_end_idx = int((window.end - context.index[0]) / pd.Timedelta(hours=1))
+    ax_counts.axvspan(selected_start_idx, selected_end_idx, color='#dc2626', alpha=0.22, label='Selected burst window')
+    ax_counts.set_title(
+        f"Isolated burst context: {window.start.date()} -> {window.end.date()} | temporal B={window.temporal_b:.3f} | isolation={window.isolation_score:.3f}"
+    )
+    ax_counts.set_ylabel('Hourly count')
+    ax_counts.legend(frameon=False, loc='upper right')
+    ax_counts.grid(axis='y', color='#e2e8f0', linewidth=0.8)
+    ax_counts.set_axisbelow(True)
+
+    ax_burst.plot(neighborhood['start'], neighborhood['temporal_b'], color='#7c3aed', marker='o', linewidth=2.2)
+    ax_burst.axvline(window.start, color='#dc2626', linestyle='--', linewidth=1.6)
+    ax_burst.scatter([window.start], [window.temporal_b], s=70, color='#dc2626', zorder=3)
+    ax_burst.set_title('Local burstiness neighborhood (rolling 14-day windows)')
+    ax_burst.set_xlabel('Window start')
+    ax_burst.set_ylabel('Temporal B')
+    ax_burst.grid(axis='y', color='#e2e8f0', linewidth=0.8)
+    ax_burst.set_axisbelow(True)
+
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(output_dir / 'isolated_burst_context.png', dpi=220, bbox_inches='tight')
+    plt.close(fig)
+
+
 def parse_weights(raw: str) -> list[float]:
     weights: list[float] = []
     for part in raw.split(','):
@@ -531,6 +745,9 @@ def main() -> None:
     parser.add_argument('--output', type=Path, default=DEFAULT_OUTPUT_PATH, help=f'Output CSV (default: {DEFAULT_OUTPUT_PATH})')
     parser.add_argument('--crossref-output', type=Path, default=DEFAULT_CROSSREF_PATH, help=f'Cross-reference CSV (default: {DEFAULT_CROSSREF_PATH})')
     parser.add_argument('--figure-dir', type=Path, default=DEFAULT_FIGURE_DIR, help=f'Output figure directory (default: {DEFAULT_FIGURE_DIR})')
+    parser.add_argument('--rolling-metrics', type=Path, default=DEFAULT_ROLLING_METRICS_PATH, help=f'Rolling metrics CSV (default: {DEFAULT_ROLLING_METRICS_PATH})')
+    parser.add_argument('--isolation-neighbors', type=int, default=DEFAULT_ISOLATION_NEIGHBORS, help=f'Neighbors on each side when scoring isolation (default: {DEFAULT_ISOLATION_NEIGHBORS})')
+    parser.add_argument('--context-padding-days', type=int, default=DEFAULT_CONTEXT_PADDING_DAYS, help=f'Padding around the burst window for the context figure (default: {DEFAULT_CONTEXT_PADDING_DAYS})')
     parser.add_argument('--weights', type=parse_weights, default=DEFAULT_WEIGHTS, help='Comma-separated burst influence weights, e.g. 0,0.25,0.5,0.75,1')
     parser.add_argument('--kernel-width', type=int, default=DEFAULT_KERNEL_WIDTH, help=f'Smoothing kernel width (default: {DEFAULT_KERNEL_WIDTH})')
     args = parser.parse_args()
@@ -595,6 +812,19 @@ def main() -> None:
     plot_heatmap_figure(rows, args.figure_dir)
 
     crossref = build_cross_reference_frame(rows)
+    numeric_columns = [
+        'window_days', 'rank', 'cv', 'peak_ratio', 'total_events',
+        'density_rank', 'burst_rank', 'rank_delta', 'rank_delta_signed', 'rank_swap_ratio',
+        'density_peak_expansion_ratio', 'burst_peak_expansion_ratio',
+        'density_count_share_corr', 'burst_count_share_corr',
+        'density_share_gini', 'burst_share_gini',
+        'density_top_share', 'burst_top_share',
+        'density_peak', 'burstiness_peak', 'density_vs_burst_gap',
+        'cv_norm', 'burst_strength_norm', 'burst_cv_combo', 'burst_cv_rank',
+    ]
+    for column in numeric_columns:
+        if column in crossref.columns:
+            crossref[column] = pd.to_numeric(crossref[column], errors='coerce')
     crossref_output = args.crossref_output
     crossref_output.parent.mkdir(parents=True, exist_ok=True)
     crossref_columns = [
@@ -605,10 +835,29 @@ def main() -> None:
         'density_share_gini', 'burst_share_gini',
         'density_top_share', 'burst_top_share',
         'density_peak', 'burstiness_peak', 'density_vs_burst_gap',
+        'cv_norm', 'burst_strength_norm', 'burst_cv_combo', 'burst_cv_rank',
     ]
     crossref.to_csv(crossref_output, index=False, columns=[c for c in crossref_columns if c in crossref.columns])
     plot_cross_reference_figure(crossref, args.figure_dir)
     plot_rank_scatter(crossref, args.figure_dir)
+    plot_cv_signal_scatter(crossref, args.figure_dir)
+    plot_burstiness_cv_figure(crossref, args.figure_dir)
+
+    if args.rolling_metrics.exists():
+        rolling_frame = load_rolling_metrics(args.rolling_metrics, grid_size=32)
+        if not rolling_frame.empty:
+            winner_row, neighborhood, isolation_score = select_isolated_rolling_window(rolling_frame, neighbors=args.isolation_neighbors)
+            isolated_window = RollingWindowRow(
+                grid_size=int(winner_row['grid_size']),
+                window_days=int(winner_row['window_days']),
+                step_days=int(winner_row['step_days']),
+                start=pd.Timestamp(winner_row['start']),
+                end=pd.Timestamp(winner_row['end']),
+                record_count=int(winner_row['record_count']),
+                temporal_b=float(winner_row['temporal_b']),
+                isolation_score=isolation_score,
+            )
+            plot_isolated_context_example(hourly, isolated_window, neighborhood, args.figure_dir, args.context_padding_days)
 
     # Pick the most contrasting window between density-only and burst-only.
     row_frame = pd.DataFrame(rows)
@@ -646,6 +895,22 @@ def main() -> None:
         f"  {burst_winner['window_label']} | burst score={burst_winner['burst_peak_expansion_ratio']:.3f} | "
         f"density score={burst_winner['density_peak_expansion_ratio']:.3f} | rank delta={int(burst_winner['rank_delta'])}"
     )
+    print('')
+
+    print('CV-heavy windows:')
+    for _, row in crossref.nlargest(3, 'cv').iterrows():
+        print(
+            f"  {row['window_label']} | CV={row['cv']:.3f} | density={row['density_peak_expansion_ratio']:.3f} | "
+            f"burst={row['burst_peak_expansion_ratio']:.3f}"
+        )
+    print('')
+
+    print('Burstiness + CV combined windows:')
+    for _, row in crossref.nsmallest(3, 'burst_cv_rank').iterrows():
+        print(
+            f"  {row['window_label']} | combo={row['burst_cv_combo']:.3f} | CV={row['cv']:.3f} | "
+            f"burst_norm={row['burst_strength_norm']:.3f}"
+        )
     print('')
 
     for weight in args.weights:

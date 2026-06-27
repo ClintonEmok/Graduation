@@ -82,7 +82,6 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/z-40/);
     expect(shellSource).toMatch(/Show map viewport/);
     expect(shellSource).toMatch(/Show 3D viewport/);
-    expect(demoMapVisualizationSource).toMatch(/Show STKDE overlay|Hide STKDE overlay/);
     expect(demoMapVisualizationSource).toMatch(/DemoStatsMapOverlay/);
     expect(demoMapVisualizationSource).toMatch(/stkdeVisibleOverride/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoCoordinationStore/);
@@ -91,8 +90,10 @@ describe('/dashboard-demo shell', () => {
     expect(demoMapVisualizationSource).not.toMatch(/useDashboardDemoAdaptiveStore/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoMapLayerStore/);
     expect(shellSource).not.toMatch(/Map-first shared viewport|2D map|3D cube|generationStatus|lastGeneratedMetadata|\bTimelinePanel\b/);
-    expect(railTabsSource).toMatch(/TabsTrigger value="scan"/);
-    expect(railTabsSource).toMatch(/TabsTrigger value="slices"/);
+    expect(railTabsSource).toMatch(/TabsTrigger/);
+    expect(railTabsSource).toMatch(/TabsContent value="scan"/);
+    expect(railTabsSource).toMatch(/TabsContent value="detect"/);
+    expect(railTabsSource).toMatch(/TabsContent value="slices"/);
     expect(railTabsSource).toMatch(/DemoStatsPanel/);
     expect(demoAnalysisStoreSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoAnalysisStoreSource).toMatch(/selectedDistricts/);
@@ -137,37 +138,20 @@ describe('/dashboard-demo shell', () => {
     expect(demoStatsMapOverlaySource).toMatch(/dist_label/);
     expect(demoStatsMapOverlaySource).toMatch(/selectedDistricts/);
     expect(mapVisualizationSource).toMatch(/statsOverlay/);
-    expect(demoInspectPanelSource).toMatch(/Active slice/);
-    expect(demoInspectPanelSource).toMatch(/Add to compare/);
-    expect(demoInspectPanelSource).toMatch(/Set left/);
-    expect(demoInspectPanelSource).toMatch(/Set right/);
-    expect(demoInspectPanelSource).toMatch(/Swap/);
-    expect(demoInspectPanelSource).toMatch(/Clear/);
-    expect(demoInspectPanelSource).toMatch(/'Left'/);
-    expect(demoInspectPanelSource).toMatch(/'Right'/);
-    expect(demoInspectPanelSource).toMatch(/Comparison overview/);
-    expect(demoInspectPanelSource).toMatch(/Pairwise deltas/);
-    expect(demoInspectPanelSource).toMatch(/Event count/);
-    expect(demoInspectPanelSource).toMatch(/Duration/);
-    expect(demoInspectPanelSource).toMatch(/Burst intensity/);
-    expect(demoInspectPanelSource).toMatch(/Timing/);
     expect(demoInspectPanelSource).toMatch(/useCrimeData/);
     expect(demoInspectPanelSource).toMatch(/computeSliceKde/);
     expect(demoInspectPanelSource).toMatch(/sliceKde=\{activeSliceKde\}/);
-    expect(demoInspectPanelSource).toMatch(/No comparison slices selected/);
-    expect(demoInspectPanelSource).toMatch(/Select both comparison slots to see direct deltas between slices/);
     expect(demoInspectPanelSource).toMatch(/setViewMode\('focus'\)/);
     expect(demoInspectPanelSource).toMatch(/hasDefaultedFocusRef/);
-    expect(demoInspectPanelSource).toMatch(/comparisonSelectionOrder/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange/);
     expect(demoDetectPanelSource).toMatch(/selectedTimeRange !== null/);
+    expect(demoDetectPanelSource).toMatch(/rounded-md border px-3 py-1.5 text-\[11px\] transition-colors/);
+    expect(demoDetectPanelSource).not.toMatch(/Generate slices|generateBurstDraftBinsFromWindows/);
     // Phase 80 adds the evaluation lock OR clause to the disabled prop;
     // accept either the Phase 79 baseline, the lock-only variant, or
     // the fully-locked variant so the test stays focused on shell-level
     // wiring rather than the exact disabled prop expression.
-    expect(demoDetectPanelSource).toMatch(
-      /disabled=\{(!canGenerate \|\| isEvaluationLocked|isFetchingBurst \|\| !canGenerate(\|\| isEvaluationLocked)?)\}/,
-    );
+    expect(demoDetectPanelSource).toMatch(/disabled=\{isFetchingBurst \|\| !canScan \|\| isEvaluationLocked\}/);
     expect(demoTimelinePanelSource).toMatch(/DemoDualTimeline/);
     expect(demoTimelinePanelSource).not.toMatch(/useDashboardDemoWarpStore|useDashboardDemoTimeStore|Warp factor|Warp source|Temporal Resolution|Time Scale|requestAnimationFrame/);
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);

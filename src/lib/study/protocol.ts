@@ -37,6 +37,10 @@ export interface StudyTaskDefinition {
   id: StudyTaskId;
   shortLabel: string;
   prompt: string;
+  /** Primary time range participants should use for this task. */
+  timeRange: string;
+  /** Optional second time range for comparison tasks. */
+  comparisonRange?: string;
   /** Which thesis research question this task primarily addresses. */
   researchQuestion: 'RQ2' | 'RQ3' | 'RQ4';
   /** Which slice is the participant asked to interact with for this task. */
@@ -49,6 +53,7 @@ export const STUDY_TASKS: Readonly<Record<StudyTaskId, StudyTaskDefinition>> = {
     shortLabel: 'Most Active Region',
     prompt:
       'Using the visualization, identify the spatial region with the highest crime activity for the current viewport. Describe where it is.',
+    timeRange: '2023-12-11 -> 2023-12-25',
     researchQuestion: 'RQ2',
     expectedVisualUse: 'map',
   },
@@ -57,6 +62,7 @@ export const STUDY_TASKS: Readonly<Record<StudyTaskId, StudyTaskDefinition>> = {
     shortLabel: 'Peak Activity',
     prompt:
       'Identify the time window with the highest activity in the space-time cube. Describe when it occurred and how confident you are.',
+    timeRange: '2023-12-17 -> 2023-12-24',
     researchQuestion: 'RQ2',
     expectedVisualUse: 'cube+timeline',
   },
@@ -65,6 +71,7 @@ export const STUDY_TASKS: Readonly<Record<StudyTaskId, StudyTaskDefinition>> = {
     shortLabel: 'Burst Detection',
     prompt:
       'Locate one bursty time interval using the burst detection panel. Briefly describe what makes it bursty.',
+    timeRange: '2023-11-24 -> 2023-12-24',
     researchQuestion: 'RQ2',
     expectedVisualUse: 'cube+timeline',
   },
@@ -73,6 +80,8 @@ export const STUDY_TASKS: Readonly<Record<StudyTaskId, StudyTaskDefinition>> = {
     shortLabel: 'Compare Time Periods',
     prompt:
       'Compare two time periods side by side using the comparison controls. Summarize how they differ.',
+    timeRange: '2020-03-16 -> 2020-06-14',
+    comparisonRange: '2024-02-12 -> 2024-03-13',
     researchQuestion: 'RQ3',
     expectedVisualUse: 'cube+timeline',
   },

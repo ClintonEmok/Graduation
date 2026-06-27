@@ -76,7 +76,10 @@ describe('study protocol: task order', () => {
       expect(def.id).toBe(id);
       expect(def.prompt.length).toBeGreaterThan(0);
       expect(def.shortLabel.length).toBeGreaterThan(0);
+      expect(def.timeRange.length).toBeGreaterThan(0);
     }
+    expect(STUDY_TASKS.T3.comparisonRange).toBeDefined();
+    expect(STUDY_TASKS.T3.comparisonRange?.length).toBeGreaterThan(0);
   });
 });
 

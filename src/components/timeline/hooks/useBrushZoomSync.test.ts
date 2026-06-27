@@ -72,6 +72,8 @@ describe('useBrushZoomSync', () => {
     const transform = applyBrushSelectionToRange({
       selection: [20, 80],
       invert: (value) => new Date(value * 1000),
+      domainStart: 0,
+      domainEnd: 100,
       overviewInnerWidth: 100,
       setBrushRange: contract.setBrushRange,
       applyRangeToStores: contract.applyRangeToStores,
@@ -85,13 +87,37 @@ describe('useBrushZoomSync', () => {
     expect(contract.setTime).not.toHaveBeenCalled();
   });
 
+  it('keeps brush preview updates out of the store commit path', () => {
+    const contract = buildStoreContract();
+
+    const transform = applyBrushSelectionToRange({
+      selection: [10, 30],
+      invert: (value) => new Date(value * 1000),
+      domainStart: 0,
+      domainEnd: 100,
+      overviewInnerWidth: 100,
+      setBrushRange: contract.setBrushRange,
+      applyRangeToStores: contract.applyRangeToStores,
+      commit: false,
+    });
+
+    expect(transform).toEqual({ scale: 5, translateX: -10 });
+    expect(contract.setBrushRange).toHaveBeenCalledWith([10, 30]);
+    expect(contract.setTimeRange).not.toHaveBeenCalled();
+    expect(contract.setRange).not.toHaveBeenCalled();
+    expect(contract.setViewport).not.toHaveBeenCalled();
+  });
+
   it('routes zoom domain updates through applyRangeToStores unified contract', () => {
     const contract = buildStoreContract();
 
     const brushSelection = applyZoomDomainToRange({
       domain: [new Date(25_000), new Date(75_000)],
+      domainStart: 0,
+      domainEnd: 100,
       overviewScale: (value) => value.getTime() / 1000,
       applyRangeToStores: contract.applyRangeToStores,
+      setBrushRange: contract.setBrushRange,
     });
 
     expect(brushSelection).toEqual([25, 75]);

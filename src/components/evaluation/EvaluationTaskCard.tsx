@@ -212,6 +212,19 @@ export function EvaluationTaskCard({ readOnly = false }: TaskCardProps) {
           </div>
           <p className="text-sm leading-relaxed text-slate-200">{task.prompt}</p>
 
+          <div className="rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2 text-[12px] text-slate-300">
+            <div className="flex items-center justify-between gap-3">
+              <span className="uppercase tracking-[0.18em] text-slate-500">Time range</span>
+              <span className="font-mono text-slate-100">{task.timeRange}</span>
+            </div>
+            {task.comparisonRange ? (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="uppercase tracking-[0.18em] text-slate-500">Compare against</span>
+                <span className="font-mono text-slate-100">{task.comparisonRange}</span>
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-2">
             <label
               htmlFor="eval-task-answer"

@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject, type RefObject } from 'react';
+import { useEffect, useRef, type MutableRefObject, type RefObject } from 'react';
 import { brushX } from 'd3-brush';
 import { select } from 'd3-selection';
 import type { ScaleTime } from 'd3-scale';
@@ -6,6 +6,7 @@ import { zoom, zoomIdentity } from 'd3-zoom';
 import {
   buildZoomTransformFromBrush,
   brushSelectionToEpochRange,
+  computeRangeUpdate,
   zoomDomainToEpochRange,
 } from '@/components/timeline/lib/interaction-guards';
 
@@ -14,6 +15,8 @@ export interface UseBrushZoomSyncParams {
   selectedTimeRange: [number, number] | null;
   detailInnerWidth: number;
   overviewInnerWidth: number;
+  domainStart: number;
+  domainEnd: number;
   overviewInteractionScale: ScaleTime<number, number>;
   isSyncingRef: MutableRefObject<boolean>;
   brushRef: RefObject<SVGGElement | null>;
@@ -74,15 +77,21 @@ export const withSyncGuard = (
 export const applyBrushSelectionToRange = ({
   selection,
   invert,
+  domainStart,
+  domainEnd,
   overviewInnerWidth,
   setBrushRange,
   applyRangeToStores,
+  commit = true,
 }: {
   selection: [number, number] | null;
   invert: (value: number) => Date;
+  domainStart: number;
+  domainEnd: number;
   overviewInnerWidth: number;
   setBrushRange: (range: [number, number] | null) => void;
   applyRangeToStores: (startSec: number, endSec: number) => void;
+  commit?: boolean;
 }): { scale: number; translateX: number } | null => {
   if (!selection) {
     setBrushRange(null);
@@ -90,22 +99,38 @@ export const applyBrushSelectionToRange = ({
   }
 
   const { startSec, endSec } = brushSelectionToEpochRange(selection, invert);
-  applyRangeToStores(startSec, endSec);
+  const { normalizedRange } = computeRangeUpdate(startSec, endSec, domainStart, domainEnd);
+  setBrushRange(normalizedRange);
+  if (commit) {
+    applyRangeToStores(startSec, endSec);
+  }
 
   return buildZoomTransformFromBrush(selection[0], selection[1], overviewInnerWidth);
 };
 
 export const applyZoomDomainToRange = ({
   domain,
+  domainStart,
+  domainEnd,
   overviewScale,
   applyRangeToStores,
+  setBrushRange,
+  commit = true,
 }: {
   domain: [Date, Date];
+  domainStart: number;
+  domainEnd: number;
   overviewScale: (value: Date) => number;
   applyRangeToStores: (startSec: number, endSec: number) => void;
+  setBrushRange: (range: [number, number]) => void;
+  commit?: boolean;
 }): [number, number] => {
   const { startSec, endSec } = zoomDomainToEpochRange(domain);
-  applyRangeToStores(startSec, endSec);
+  const { normalizedRange } = computeRangeUpdate(startSec, endSec, domainStart, domainEnd);
+  setBrushRange(normalizedRange);
+  if (commit) {
+    applyRangeToStores(startSec, endSec);
+  }
   return [overviewScale(domain[0]), overviewScale(domain[1])];
 };
 
@@ -126,6 +151,8 @@ export const useBrushZoomSync = ({
   selectedTimeRange,
   detailInnerWidth,
   overviewInnerWidth,
+  domainStart,
+  domainEnd,
   overviewInteractionScale,
   isSyncingRef,
   brushRef,
@@ -136,6 +163,12 @@ export const useBrushZoomSync = ({
   setViewport,
   applyRangeToStores,
 }: UseBrushZoomSyncParams): void => {
+  const applyRangeToStoresRef = useRef(applyRangeToStores);
+
+  useEffect(() => {
+    applyRangeToStoresRef.current = applyRangeToStores;
+  }, [applyRangeToStores]);
+
   useDebouncedViewportCommit({
     interactive,
     selectedTimeRange,
@@ -164,9 +197,12 @@ export const useBrushZoomSync = ({
         const transform = applyBrushSelectionToRange({
           selection: (event.selection as [number, number] | null) ?? null,
           invert: (value) => overviewInteractionScale.invert(value),
+          domainStart,
+          domainEnd,
           overviewInnerWidth,
           setBrushRange,
-          applyRangeToStores,
+          applyRangeToStores: applyRangeToStoresRef.current,
+          commit: event.type === 'end',
         });
         if (!transform) {
           return;
@@ -190,8 +226,30 @@ export const useBrushZoomSync = ({
         const newDomain = rescaled.domain() as [Date, Date];
         const brushSelectionNext = applyZoomDomainToRange({
           domain: newDomain,
+          domainStart,
+          domainEnd,
           overviewScale: (value) => overviewInteractionScale(value),
-          applyRangeToStores,
+          applyRangeToStores: applyRangeToStoresRef.current,
+          setBrushRange,
+          commit: false,
+        });
+
+        withSyncGuard(isSyncingRef, () => {
+          select(brushNode).call(brushBehavior.move, brushSelectionNext);
+        });
+      })
+      .on('end', (event) => {
+        if (isSyncingRef.current) return;
+        const rescaled = event.transform.rescaleX(overviewInteractionScale);
+        const newDomain = rescaled.domain() as [Date, Date];
+        const brushSelectionNext = applyZoomDomainToRange({
+          domain: newDomain,
+          domainStart,
+          domainEnd,
+          overviewScale: (value) => overviewInteractionScale(value),
+          applyRangeToStores: applyRangeToStoresRef.current,
+          setBrushRange,
+          commit: true,
         });
 
         withSyncGuard(isSyncingRef, () => {
@@ -209,10 +267,11 @@ export const useBrushZoomSync = ({
       select(zoomNode).on('.zoom', null);
     };
   }, [
-    applyRangeToStores,
     brushRef,
     detailInnerWidth,
     detailSvgRef,
+    domainEnd,
+    domainStart,
     interactive,
     isSyncingRef,
     overviewInnerWidth,

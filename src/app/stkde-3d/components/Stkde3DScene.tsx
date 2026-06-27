@@ -15,6 +15,7 @@ import { START_Y, resolveEpochFromWarpedY, resolveWarpedEpochY } from '../lib/ti
 import type { KdeCell, EvolvingSlice, MockCrimeEvent } from '../lib/types';
 import { AdaptiveWarpAxis } from './AdaptiveWarpAxis';
 import { HotspotTrajectoryOverlay } from './HotspotTrajectoryOverlay';
+import { StkdeIntensityLegend } from './StkdeIntensityLegend';
 import { StkdeSliceStack } from './StkdeSliceStack';
 import type { DurationVolumeProfileEntry } from '../lib/volume-encoding';
 import { CHICAGO_BOUNDS } from '../lib/chicago-bounds';
@@ -391,6 +392,9 @@ export function Stkde3DScene({
   return (
     <div className="relative h-full w-full overflow-hidden bg-transparent">
       <MapTileSource onTextureReady={setMapTexture} />
+      <div className="absolute left-4 top-4 z-20">
+        <StkdeIntensityLegend />
+      </div>
       <div className="absolute inset-0 z-10">
         <Canvas
           camera={{ position: CAMERA_POSITION, fov: 38 }}

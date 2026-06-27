@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Lock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { getCrimeTypeName } from '@/lib/category-maps';
-import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
 import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTimeslicingModeStore';
 import { useDashboardDemoFilterStore } from '@/store/useDashboardDemoFilterStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -23,23 +22,13 @@ import {
   type DemoSelectionGranularity,
 } from '@/components/dashboard-demo/lib/demo-burst-generation';
 import {
-  BURST_METRIC_OPTIONS,
-  SPATIAL_FORMULA_OPTIONS,
   allocateSlices,
   fetchBurstBins,
   resolveBurstMetricValue,
-  type SpatialFormula,
   type BurstMetric,
 } from '@/lib/burst-detection';
 import type { BurstBinResult } from '@/lib/burst-detection';
 import { cn } from '@/lib/utils';
-
-const GRANULARITY_OPTIONS = [
-  { value: 'hourly', label: 'Hourly' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-] as const;
 
 const GRANULARITY_ORDER: DemoSelectionGranularity[] = ['quarterly', 'monthly', 'weekly', 'daily', 'hourly'];
 const GRANULARITY_RANK = new Map<DemoSelectionGranularity, number>(
@@ -56,9 +45,7 @@ const coarsenGranularity = (
 };
 
 export function DemoDetectPanel() {
-  const generationStatus = useDashboardDemoTimeslicingModeStore((state) => state.generationStatus);
   const setGenerationInputs = useDashboardDemoTimeslicingModeStore((state) => state.setGenerationInputs);
-  const generateBurstDraftBinsFromWindows = useDashboardDemoTimeslicingModeStore((state) => state.generateBurstDraftBinsFromWindows);
   const generationInputs = useDashboardDemoTimeslicingModeStore((state) => state.generationInputs);
   const timelineColumns = useTimelineDataStore((state) => state.columns);
   const crimeTypes = useTimelineDataStore((state) => state.crimeTypes);
@@ -66,17 +53,12 @@ export function DemoDetectPanel() {
   const maxTimestampSec = useTimelineDataStore((state) => state.maxTimestampSec);
   const selectedTimeRange = useDashboardDemoFilterStore((state) => state.selectedTimeRange);
   const isEvaluationLocked = useIsEvaluationLocked();
-  const canGenerate =
-    generationStatus !== 'generating' &&
-    minTimestampSec !== null &&
-    maxTimestampSec !== null &&
-    selectedTimeRange !== null;
+  const canScan = minTimestampSec !== null && maxTimestampSec !== null && selectedTimeRange !== null;
 
   const [burstBins, setBurstBins] = useState<BurstBinResult[] | null>(null);
   const [burstTargetSliceCount, setBurstTargetSliceCount] = useState<number | null>(null);
   const [isFetchingBurst, setIsFetchingBurst] = useState(false);
-  const [burstMetric, setBurstMetric] = useState<BurstMetric>('combined');
-  const [spatialFormula, setSpatialFormula] = useState<SpatialFormula>('balanced');
+  const burstMetric: BurstMetric = 'temporal';
 
   const selectedWindowBounds = useMemo(() => {
     if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) return null;
@@ -99,16 +81,12 @@ export function DemoDetectPanel() {
     [generationInputs.granularity, selectedWindowBounds, suggestedGranularity],
   );
 
-  const suggestedGranularityLabel = GRANULARITY_OPTIONS.find(
-    (o) => o.value === suggestedGranularity,
-  )?.label ?? 'Daily';
-
-  const activeGranularityLabel = GRANULARITY_OPTIONS.find(
-    (o) => o.value === generationInputs.granularity,
-  )?.label ?? 'Daily';
-
-  const activeBurstMetricLabel = BURST_METRIC_OPTIONS.find((o) => o.value === burstMetric)?.label ?? 'Combined';
-  const activeSpatialFormulaLabel = SPATIAL_FORMULA_OPTIONS.find((o) => o.value === spatialFormula)?.label ?? 'Balanced';
+  useEffect(() => {
+    if (!selectedWindowBounds) return;
+    if (generationInputs.granularity !== suggestedGranularity) {
+      setGenerationInputs({ granularity: suggestedGranularity });
+    }
+  }, [generationInputs.granularity, selectedWindowBounds, setGenerationInputs, suggestedGranularity]);
 
   const availableCrimeTypes = useMemo(() => {
     if (crimeTypes.length > 0) return crimeTypes;
@@ -132,10 +110,7 @@ export function DemoDetectPanel() {
     const end = windowEndSec * 1000;
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
 
-    const partitions = partitionSelectionByGranularity(
-      [start, end],
-      scanGranularity,
-    );
+    const partitions = partitionSelectionByGranularity([start, end], scanGranularity);
 
     if (partitions.length === 0) {
       toast.error('No partitions to score', {
@@ -146,19 +121,18 @@ export function DemoDetectPanel() {
 
     setIsFetchingBurst(true);
     try {
-      const result = await fetchBurstBins({
-        partitions: partitions.map((partition) => ({
-          startEpoch: partition.startTime / 1000,
-          endEpoch: partition.endTime / 1000,
-        })),
-        granularity: scanGranularity,
-        spatialFormula,
-        crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : undefined,
-      });
+        const result = await fetchBurstBins({
+          partitions: partitions.map((partition) => ({
+            startEpoch: partition.startTime / 1000,
+            endEpoch: partition.endTime / 1000,
+          })),
+          granularity: scanGranularity,
+          crimeTypes: generationInputs.crimeTypes.length > 0 ? generationInputs.crimeTypes : undefined,
+        });
       setBurstBins(result.bins);
       setBurstTargetSliceCount(result.targetSliceCount);
       toast.success('Scan complete', {
-        description: `${result.bins.length} burst bins ready for generation.`,
+        description: `${result.bins.length} burst bins ready for review.`,
       });
     } catch {
       toast.error('Scan failed', {
@@ -166,33 +140,7 @@ export function DemoDetectPanel() {
       });
     }
     setIsFetchingBurst(false);
-  }, [generationInputs.crimeTypes, maxTimestampSec, minTimestampSec, scanGranularity, selectedTimeRange, spatialFormula]);
-
-  const handleGenerateBurstDrafts = async () => {
-    if (minTimestampSec === null || maxTimestampSec === null || selectedTimeRange === null) {
-      toast.error('Generation failed', {
-        description: 'Select or brush a time range before generating slices.',
-      });
-      return;
-    }
-    const [windowStartSec, windowEndSec] = selectedTimeRange;
-    // selectedTimeRange is canonical epoch seconds — multiply to ms.
-    const start = windowStartSec * 1000;
-    const end = windowEndSec * 1000;
-    setGenerationInputs({ timeWindow: { start, end } });
-    const generated = await generateBurstDraftBinsFromWindows();
-    const state = useDashboardDemoTimeslicingModeStore.getState();
-    if (generated && state.lastGeneratedMetadata) {
-      toast.success('Burst slices generated', {
-        description: state.lastGeneratedMetadata.warning ?? 'Slices ready for review in Slices.',
-      });
-      useDashboardDemoCoordinationStore.getState().setActiveRailTab('slices');
-      return;
-    }
-    toast.error('Generation failed', {
-      description: state.generationError ?? 'Could not generate slices.',
-    });
-  };
+  }, [generationInputs.crimeTypes, maxTimestampSec, minTimestampSec, scanGranularity, selectedTimeRange]);
 
   const allocations = useMemo(() => {
     if (!burstBins || burstBins.length === 0) return null;
@@ -215,120 +163,10 @@ export function DemoDetectPanel() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Detect</CardTitle>
           <CardDescription className="text-xs">
-            Scan the brushed range first, then generate candidate slices from the burst scores.
+            Scan the brushed range to inspect burst scores and preview candidate intervals.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="rounded-md border border-dashed border-slate-700/80 bg-slate-900/60 p-3 text-[11px] text-muted-foreground">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span>Prerequisite</span>
-              <span>{selectedWindowBounds ? 'Ready to scan' : 'Brush a range first'}</span>
-            </div>
-            <p className="mt-1.5 leading-5 text-slate-200">
-              {selectedWindowBounds
-                ? 'You have a brushed time range. Scan it to score burst bins, then generate slices from the result.'
-                : 'Select or brush a time range before Detect can run. The scan step uses that range to build candidate slices.'}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span>Granularity</span>
-              <span className="text-muted-foreground/70">Suggested: {suggestedGranularityLabel}</span>
-            </div>
-            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
-              {GRANULARITY_OPTIONS.map((option) => {
-                const isActive = generationInputs.granularity === option.value;
-                const isRecommended = option.value === suggestedGranularity;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setGenerationInputs({ granularity: option.value })}
-                    disabled={isEvaluationLocked}
-                    aria-disabled={isEvaluationLocked}
-                    tabIndex={isEvaluationLocked ? -1 : undefined}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
-                      isActive
-                        ? 'border-violet-300 bg-violet-500/20 text-violet-50'
-                        : isRecommended
-                          ? 'border-amber-300/60 bg-amber-500/10 text-amber-100 hover:border-amber-200'
-                          : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
-                    }`}
-                  >
-                    {option.label}
-                    {isRecommended && (
-                      <span className="ml-1 text-[9px] uppercase tracking-[0.18em] text-amber-200">Rec</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="text-[10px] text-muted-foreground">
-              Active: {activeGranularityLabel}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span>Burst metric</span>
-              <span className="text-muted-foreground/70">Active: {activeBurstMetricLabel}</span>
-            </div>
-            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
-              {BURST_METRIC_OPTIONS.map((option) => {
-                const isActive = burstMetric === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setBurstMetric(option.value)}
-                    disabled={isEvaluationLocked}
-                    aria-disabled={isEvaluationLocked}
-                    tabIndex={isEvaluationLocked ? -1 : undefined}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
-                      isActive
-                        ? 'border-violet-300 bg-violet-500/20 text-violet-50'
-                        : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
-                    }`}
-                    title={option.description}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span>Spatial formula</span>
-              <span className="text-muted-foreground/70">Active: {activeSpatialFormulaLabel}</span>
-            </div>
-            <div className={cn('flex flex-wrap gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}>
-              {SPATIAL_FORMULA_OPTIONS.map((option) => {
-                const isActive = spatialFormula === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSpatialFormula(option.value)}
-                    disabled={isEvaluationLocked}
-                    aria-disabled={isEvaluationLocked}
-                    tabIndex={isEvaluationLocked ? -1 : undefined}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
-                      isActive
-                        ? 'border-violet-300 bg-violet-500/20 text-violet-50'
-                        : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
-                    }`}
-                    title={option.description}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               <span>Crime types</span>
@@ -358,7 +196,7 @@ export function DemoDetectPanel() {
                     disabled={isEvaluationLocked}
                     aria-disabled={isEvaluationLocked}
                     tabIndex={isEvaluationLocked ? -1 : undefined}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                    className={`rounded-md border px-3 py-1.5 text-[11px] transition-colors ${
                       isActive
                         ? 'border-violet-300 bg-violet-500/20 text-violet-50'
                         : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
@@ -377,8 +215,8 @@ export function DemoDetectPanel() {
             <Button
               type="button"
               onClick={handleFetchBurstBins}
-              disabled={isFetchingBurst || !canGenerate || isEvaluationLocked}
-              aria-disabled={isEvaluationLocked || isFetchingBurst || !canGenerate}
+              disabled={isFetchingBurst || !canScan || isEvaluationLocked}
+              aria-disabled={isEvaluationLocked || isFetchingBurst || !canScan}
               tabIndex={isEvaluationLocked ? -1 : undefined}
               size="sm"
               variant="outline"
@@ -386,17 +224,6 @@ export function DemoDetectPanel() {
             >
               <Sparkles className="size-3.5" />
               {isFetchingBurst ? 'Scanning…' : 'Scan brushed range'}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleGenerateBurstDrafts}
-              disabled={!canGenerate || isEvaluationLocked}
-              aria-disabled={isEvaluationLocked || !canGenerate}
-              tabIndex={isEvaluationLocked ? -1 : undefined}
-              size="sm"
-              className={cn('gap-2', isEvaluationLocked && 'pointer-events-none opacity-40')}
-            >
-              {generationStatus === 'generating' ? 'Generating…' : 'Generate slices'}
             </Button>
           </div>
 
@@ -426,7 +253,7 @@ export function DemoDetectPanel() {
                         <div className="flex gap-3 text-[10px] text-muted-foreground">
                           <span>{bin.recordCount} events</span>
                           {alloc && <span>{alloc.slicesAllocated} slices</span>}
-                          <span>{activeBurstMetricLabel} {selectedScore.toFixed(2)}</span>
+                          <span>Score {selectedScore.toFixed(2)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">

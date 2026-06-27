@@ -93,14 +93,12 @@ export function DemoSlicePanel() {
   const clearSlices = useSliceDomainStore((state) => state.clearSlices);
 
   const clearPendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.clearPendingGeneratedBins);
-  const generationError = useDashboardDemoTimeslicingModeStore((state) => state.generationError);
   const pendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.pendingGeneratedBins);
   const mergePendingGeneratedBins = useDashboardDemoTimeslicingModeStore((state) => state.mergePendingGeneratedBins);
   const splitPendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.splitPendingGeneratedBin);
   const deletePendingGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.deletePendingGeneratedBin);
   const computeManualDraftBin = useDashboardDemoTimeslicingModeStore((state) => state.computeManualDraftBin);
   const applySingleGeneratedBin = useDashboardDemoTimeslicingModeStore((state) => state.applySingleGeneratedBin);
-  const lastGeneratedMetadata = useDashboardDemoTimeslicingModeStore((state) => state.lastGeneratedMetadata);
   const lastAppliedAt = useDashboardDemoTimeslicingModeStore((state) => state.lastAppliedAt);
   const addManualDraftRange = useDashboardDemoTimeslicingModeStore((state) => state.addManualDraftRange);
   const updatePendingBinRange = useDashboardDemoTimeslicingModeStore((state) => state.updatePendingBinRange);
@@ -343,7 +341,7 @@ export function DemoSlicePanel() {
       <CardHeader className="gap-1 px-4 pb-3 pt-4">
         <CardTitle className="text-sm font-semibold">Review & apply slices</CardTitle>
         <CardDescription className="text-xs">
-          Pending slices from Detect land here first, then applied slices stay below for review.
+          Manual drafts land here first, then applied slices stay below for review.
         </CardDescription>
         <div className="text-xs text-muted-foreground">
           {lastAppliedAt ? `Applied state carried forward ${new Date(lastAppliedAt).toLocaleTimeString()}` : 'No applied state yet'}
@@ -392,22 +390,10 @@ export function DemoSlicePanel() {
           </div>
         </div>
 
-        {generationError ? (
-          <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-100">
-            {generationError}
-          </div>
-        ) : null}
-
-        {lastGeneratedMetadata?.warning ? (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100">
-            {lastGeneratedMetadata.warning}
-          </div>
-        ) : null}
-
         <div className="space-y-3">
           {!hasItems ? (
             <div className="rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
-              No slices active. Generate slices from Detect, then review and apply them here.
+              No slices active. Add a range slice here, then review and apply it below.
             </div>
           ) : (
             <>
@@ -415,7 +401,7 @@ export function DemoSlicePanel() {
                 <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Pending drafts</div>
                 {pendingItems.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border bg-background px-3 py-3 text-sm text-muted-foreground">
-                    No pending drafts. Generate slices from Detect to review them here.
+                    No pending drafts. Add a range slice to review it here.
                   </div>
                 ) : (
                   pendingItems.map((bin, index) => {
@@ -716,75 +702,23 @@ export function DemoSlicePanel() {
               </div>
 
               <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst class</div>
-                <div className="mt-2 text-sm text-slate-100">{selectedDraft.burstClass ?? '—'}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  Coefficient {formatCoefficient(selectedDraft.burstinessCoefficient) ?? '—'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Warp / state</div>
-                <div className="mt-2 text-sm text-slate-100">Warp weight {(selectedDraft.warpWeight ?? 1).toFixed(2)}</div>
-                <div className="mt-1 text-xs text-slate-400">{selectedDraft.isNeutralPartition ? 'Fallback partition' : 'Expanded partition'}</div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Crime types</div>
-                <div className="mt-2 text-sm text-slate-100">
-                  {selectedDraft.crimeTypes.includes('all-crime-types') ? 'All crime types' : selectedDraft.crimeTypes.join(', ') || '—'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {selectedDraft.districts?.length ? selectedDraft.districts.join(', ') : 'No district scope'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Provenance / threshold</div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
-                  {selectedDraft.burstProvenance ?? '—'}
-                </div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">
-                  {selectedDraft.thresholdSource ?? '—'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Tie-break / neighborhood</div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-100">
-                  {selectedDraft.tieBreakReason ?? '—'}
-                </div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">
-                  {selectedDraft.neighborhoodSummary ?? '—'}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst score formula</div>
-                <div className="mt-2 font-mono text-sm text-slate-100">{selectedDraft.burstinessFormula ?? 'B = (σ - μ) / (σ + μ)'}</div>
-                <div className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-slate-400">
-                  {selectedDraft.burstinessCalculation ?? '—'}
-                </div>
-              </div>
-
-              {selectedDraft.burstinessByType?.length ? (
-                <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2 lg:col-span-3">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Type breakdown</div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedDraft.burstinessByType.map((item) => (
-                      <div key={item.type} className="rounded border border-slate-800 bg-slate-950/70 p-2">
-                        <div className="text-sm text-slate-100">{item.type}</div>
-                        <div className="mt-1 text-xs text-slate-400">
-                          Count {item.count} · B {item.coefficient?.toFixed(2) ?? '—'}
-                        </div>
-                        <div className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-slate-500">
-                          {item.calculation}
-                        </div>
-                      </div>
-                    ))}
+                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Summary</div>
+                <div className="mt-2 grid gap-2 text-sm text-slate-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-slate-400">Events</span>
+                    <span>{selectedDraft.count}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-slate-400">Density score</span>
+                    <span>{formatCoefficient(selectedDraft.burstScore) ?? '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-slate-400">Burstiness</span>
+                    <span>{formatCoefficient(selectedDraft.burstinessCoefficient) ?? '—'}</span>
                   </div>
                 </div>
-              ) : null}
+              </div>
+
             </div>
           ) : null}
         </DialogContent>

@@ -39,6 +39,7 @@ interface DualTimelineSurfaceProps {
   isComputing: boolean;
   densityMap: Float32Array | null;
   showAdaptiveDensityStrip: boolean;
+  overviewInteractionScale: (date: Date) => number;
   overviewScale: (date: Date) => number;
   detailScale: (date: Date) => number;
   overviewSvgRef: React.RefObject<SVGSVGElement | null>;
@@ -150,6 +151,7 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
     isComputing,
     densityMap,
     showAdaptiveDensityStrip,
+    overviewInteractionScale,
     overviewScale,
     detailScale,
     overviewSvgRef,
@@ -253,8 +255,8 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
               return <rect key={`overview-${index}`} x={x0} y={OVERVIEW_HEIGHT - barHeight} width={barWidth} height={barHeight} className="fill-primary/20" />;
             })}
             {userWarpOverlayBands.map((slice) => {
-              const x0 = overviewScale(new Date(slice.startSec * 1000));
-              const x1 = overviewScale(new Date(slice.endSec * 1000));
+              const x0 = overviewInteractionScale(new Date(slice.startSec * 1000));
+              const x1 = overviewInteractionScale(new Date(slice.endSec * 1000));
               const left = Math.min(x0, x1);
               const widthSpan = Math.max(1, Math.abs(x1 - x0));
               return <rect key={`overview-user-warp-${slice.id}`} x={left} y={0} width={widthSpan} height={OVERVIEW_HEIGHT} fill={slice.isDebugPreview ? 'rgba(56, 189, 248, 0.16)' : 'rgba(139, 92, 246, 0.15)'} stroke={slice.isDebugPreview ? 'rgba(34, 211, 238, 0.7)' : 'rgba(99, 102, 241, 0.55)'} strokeDasharray={slice.isDebugPreview ? '2 2' : '4 3'} strokeWidth={1} />;
@@ -312,7 +314,9 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
                     if (bucketStart === undefined || bucketEnd === undefined) return null;
                     const x0 = detailScale(new Date(bucketStart * 1000));
                     const x1 = detailScale(new Date(bucketEnd * 1000));
-                    const barWidth = Math.max(0, x1 - x0 - 1);
+                    const left = Math.max(0, Math.min(detailInnerWidth, Math.min(x0, x1)));
+                    const right = Math.max(0, Math.min(detailInnerWidth, Math.max(x0, x1)));
+                    const barWidth = Math.max(0, right - left - 1);
                     const barHeight = (bucket.length / detailMax) * DETAIL_HEIGHT;
                     const periodId = `detail-bin-${bucketStart}-${bucketEnd}-${bucket.length}-${index}`;
                     const isSelected = selectedDetailPeriodId === periodId;
@@ -331,7 +335,7 @@ export function DualTimelineSurface(props: DualTimelineSurfaceProps) {
                     return (
                       <rect
                         key={`detail-bin-${index}`}
-                        x={x0}
+                        x={left}
                         y={DETAIL_HEIGHT - barHeight}
                         width={barWidth}
                         height={barHeight}
