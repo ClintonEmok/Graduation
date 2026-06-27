@@ -1,5 +1,5 @@
 /* @vitest-environment node */
-import { describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 
 import { useAdaptiveStore } from './useAdaptiveStore';
 
@@ -24,5 +24,29 @@ describe('useAdaptiveStore warp control contract', () => {
 
     state.clearManualWarpWeightOverrides();
     expect(useAdaptiveStore.getState().manualWarpWeightOverrides).toEqual({});
+  });
+});
+
+describe('useAdaptiveStore public surface', () => {
+  beforeEach(() => {
+    useAdaptiveStore.setState({ activeSignalSource: 'burstiness' });
+  });
+
+  test('switching activeSignalSource does not add or remove any other state keys', () => {
+    const keysBefore = Object.keys(useAdaptiveStore.getState()).sort();
+    expect(keysBefore).toContain('activeSignalSource');
+    useAdaptiveStore.setState({ activeSignalSource: 'contextual' });
+    const keysAfter = Object.keys(useAdaptiveStore.getState()).sort();
+    expect(keysAfter).toEqual(keysBefore); // same keys, only the value changed
+    useAdaptiveStore.setState({ activeSignalSource: 'density' });
+    expect(Object.keys(useAdaptiveStore.getState()).sort()).toEqual(keysBefore);
+  });
+
+  test('setActiveSignalSource action is a function on the store', () => {
+    expect(typeof useAdaptiveStore.getState().setActiveSignalSource).toBe('function');
+  });
+
+  test('activeSignalSource defaults to burstiness', () => {
+    expect(useAdaptiveStore.getState().activeSignalSource).toBe('burstiness');
   });
 });
