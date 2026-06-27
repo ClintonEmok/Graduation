@@ -48,12 +48,14 @@ sys.path.insert(0, str(PHASE83_DIR))
 from metrics.contextual import (  # noqa: E402
     WINDOWS_SEC,
     WINDOW_LABELS,
-    compute_baseline,
     compute_contextual_z_series,
 )
 from metrics.goh_barabasi import compute_goh_barabasi_series  # noqa: E402
 from metrics.density import compute_density_series  # noqa: E402
 from metrics.cv import compute_cv_series  # noqa: E402
+from metrics import baseline as baseline_mod  # noqa: E402
+
+PHASE83_BASELINES_DIR = PHASE83_DIR / "baselines"
 
 # Reuse the chapter3 thesis palette.
 BG = "#ffffff"
@@ -163,34 +165,17 @@ def compute_all_metrics(
     }
 
 
-def load_full_baseline(db_path: Path) -> pd.DataFrame:
-    """Build the 168-cell baseline from the FULL 8.5M-record dataset.
+def load_full_baseline() -> tuple[pd.DataFrame, "baseline_mod.BaselineMeta"]:
+    """Load the precomputed baseline from disk.
 
-    This gives stable conditional rates (relative std ~1-4%). Using
-    only a single week would give a 168-cell baseline from ~10,000
-    events, where the cell counts are 0-200 and sigma is 14-141x
-    noisier.
+    The baseline is built once via ``scripts/build_baseline.py`` and
+    cached at ``.planning/.../baselines/baseline_168.parquet`` with
+    a sidecar JSON. Loading it is ~10000x faster than rebuilding
+    from DuckDB (which would re-scan 8.5M rows).
+
+    Raises FileNotFoundError if the baseline has not been built yet.
     """
-    con = duckdb.connect(str(db_path), read_only=True)
-    try:
-        df = con.execute(
-            """
-            SELECT
-                CAST(EPOCH("Date") AS BIGINT) AS ts,
-                CAST(EXTRACT(HOUR FROM "Date") AS TINYINT) AS hour,
-                CAST(((EXTRACT(DOW FROM "Date") + 1) % 7) AS TINYINT) AS dow,
-                CAST(EXTRACT(MONTH FROM "Date") - 1 AS TINYINT) AS month
-            FROM crimes_sorted
-            """
-        ).df()
-    finally:
-        con.close()
-    df = df.dropna(subset=["ts"]).reset_index(drop=True)
-    df["ts"] = df["ts"].astype("int64")
-    df["hour"] = df["hour"].astype("int8")
-    df["dow"] = df["dow"].astype("int8")
-    df["month"] = df["month"].astype("int8")
-    return compute_baseline(df)
+    return baseline_mod.load(PHASE83_BASELINES_DIR)
 
 
 def summarize(values: np.ndarray) -> dict[str, float]:
@@ -413,10 +398,12 @@ def main() -> int:
     df = load_week(args.db_path, week_start)
     print(f"  loaded {len(df):,} events  ts=[{df['ts'].min()} .. {df['ts'].max()}]")
 
-    print("Building 168-cell baseline from FULL dataset ...")
-    baseline = load_full_baseline(args.db_path)
+    print("Loading 168-cell baseline from disk ...")
+    baseline, baseline_meta = load_full_baseline()
     print(f"  baseline cells: {len(baseline)}  mu range: "
           f"{baseline['mean_per_sec'].min():.6f} to {baseline['mean_per_sec'].max():.6f}")
+    print(f"  fingerprint: {baseline_meta.fingerprint}  "
+          f"n_events: {baseline_meta.n_events:,}  built: {baseline_meta.built_at}")
 
     print("Computing 4 metrics at 1h windows ...")
     metrics = compute_all_metrics(df, baseline)

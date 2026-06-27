@@ -226,10 +226,20 @@ def main() -> int:
     if contextual is not None:
         t1 = time.perf_counter()
         print("=== contextual z (CBP-01) ===")
-        baseline = contextual.compute_baseline(df)
+        from metrics import baseline as baseline_mod
+        baseline_path = Path(__file__).parent / "baselines"
+        try:
+            baseline, baseline_meta = baseline_mod.load(baseline_path)
+            print(f"  baseline (cached): {len(baseline)} cells, "
+                  f"fingerprint {baseline_meta.fingerprint}, "
+                  f"n_events {baseline_meta.n_events:,}")
+        except FileNotFoundError:
+            print("  baseline cache not found, building from data ...")
+            baseline, baseline_meta = baseline_mod.build_from_dataframe(df)
+            baseline_mod.save(baseline, baseline_meta, baseline_path)
+        # Always also write a CSV copy to output/ for figures.py.
         baseline.to_csv(args.output_dir / "baseline_168.csv", index=False)
-        print(f"  baseline: {len(baseline)} cells, "
-              f"mu range {baseline['mean_per_sec'].min():.6f} to "
+        print(f"  mu range: {baseline['mean_per_sec'].min():.6f} to "
               f"{baseline['mean_per_sec'].max():.6f}")
         all_z: list[pd.DataFrame] = []
         for window_sec in contextual.WINDOWS_SEC:
