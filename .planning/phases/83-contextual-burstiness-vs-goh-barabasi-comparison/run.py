@@ -222,16 +222,74 @@ def main() -> int:
             f"CV {len(pd.read_parquet(args.output_dir / 'cv_metric.parquet')):,} windows total"
         )
 
-    # ── Future plans (02 contextual, 04 comparison, 05 decision) ────
-    if any(
-        x is None for x in (contextual, compare, figures, decision_gate)
-    ):
-        print()
-        print(
-            "(Phase 83 Plan 03 stage complete — B + density + CV metrics written. "
-            "Plans 02 / 04 / 05 stages not yet implemented.)"
+    # ── Plan 02 stage: contextual z-score (CBP-01) ────────────
+    if contextual is not None:
+        t1 = time.perf_counter()
+        print("=== contextual z (CBP-01) ===")
+        baseline = contextual.compute_baseline(df)
+        baseline.to_csv(args.output_dir / "baseline_168.csv", index=False)
+        print(f"  baseline: {len(baseline)} cells, "
+              f"mu range {baseline['mean_per_sec'].min():.6f} to "
+              f"{baseline['mean_per_sec'].max():.6f}")
+        all_z: list[pd.DataFrame] = []
+        for window_sec in contextual.WINDOWS_SEC:
+            step = max(1, window_sec // 4)
+            z_series = contextual.compute_contextual_z_series(
+                timestamps, baseline, window_sec, step
+            )
+            z_series["window_sec"] = window_sec
+            all_z.append(z_series)
+            z_vals = z_series["z"].to_numpy() if len(z_series) else None
+            print(_summarize(z_vals, contextual.WINDOW_LABELS[window_sec]))
+        full_z = pd.concat(all_z, ignore_index=True) if all_z else pd.DataFrame()
+        contextual.write_contextual_parquet(
+            full_z, args.output_dir / "contextual_metric.parquet"
         )
+        print(f"contextual metric: {time.perf_counter() - t1:.1f}s")
+        print()
 
+    # ── Plan 04 stage: comparison + figures ──────────────────────
+    if compare is not None and figures is not None:
+        t1 = time.perf_counter()
+        print("=== Plan 04: comparison + figures ===")
+        parquets = compare.load_parquets(args.output_dir)
+        table = compare.build_comparison_table(parquets)
+        compare.write_comparison_csv(
+            table, args.output_dir / "comparison_table.csv"
+        )
+        figures_dir = args.output_dir / "figures"
+        figures.render_heatmap(
+            args.output_dir / "baseline_168.csv",
+            figures_dir / "baseline_heatmap.png",
+        )
+        figures.render_time_series(
+            parquets["contextual"],
+            parquets["B"],
+            parquets["density"],
+            parquets["CV"],
+            figures_dir / "metric_timeseries.png",
+        )
+        figures.render_contrast_table(
+            table, figures_dir / "contrast_table.png"
+        )
+        print(f"comparison + figures: {time.perf_counter() - t1:.1f}s")
+        print()
+
+    # ── Plan 05 stage: decision gate ──────────────────────────────
+    if decision_gate is not None:
+        t1 = time.perf_counter()
+        print("=== Plan 05: decision gate ===")
+        table = pd.read_csv(args.output_dir / "comparison_table.csv")
+        gate = decision_gate.evaluate_gate(table)
+        decision_gate.render_decision_gate_md(
+            table, gate, len(df), args.output_dir / "DECISION-GATE.md"
+        )
+        print(f"VERDICT: {gate['verdict'].upper()}")
+        print(gate["rationale"])
+        print(f"decision gate: {time.perf_counter() - t1:.1f}s")
+        print()
+
+    print(f"Total elapsed: {time.perf_counter() - t0:.1f}s")
     return 0
 
 
