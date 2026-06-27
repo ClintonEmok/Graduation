@@ -216,6 +216,7 @@ export function Demo3dSpatialView() {
   }, [brushRange, fullTimeDomain, maxTimestampSec, minTimestampSec, selectedTimeRange]);
 
   const cubeTimeDomain = cubeScopeMode === 'brushed' ? brushedTimeDomain : fullTimeDomain;
+
   const mapWarpDomain = useMemo<[number, number]>(() => (
     mapDomain[1] > mapDomain[0] ? mapDomain : cubeTimeDomain
   ), [cubeTimeDomain, mapDomain]);
@@ -234,12 +235,13 @@ export function Demo3dSpatialView() {
   );
 
   const cubeSlices = useMemo(() => {
-    if (cubeScopeMode !== 'brushed') {
-      return countedSlices;
-    }
-
-    const [scopeStart, scopeEnd] = cubeTimeDomain;
-    return countedSlices.filter((slice) => slice.endEpoch >= scopeStart && slice.startEpoch <= scopeEnd);
+    const result = cubeScopeMode !== 'brushed'
+      ? countedSlices
+      : (() => {
+          const [scopeStart, scopeEnd] = cubeTimeDomain;
+          return countedSlices.filter((slice) => slice.endEpoch >= scopeStart && slice.startEpoch <= scopeEnd);
+        })();
+    return result;
   }, [countedSlices, cubeScopeMode, cubeTimeDomain]);
 
   const cubeSliceKdes = useMemo(() => {
@@ -259,12 +261,16 @@ export function Demo3dSpatialView() {
       return volumeProfile;
     }
 
-    const visibleIndexes = new Set(
-      cubeSlices.map((slice) => countedSlices.findIndex((candidate) => candidate.sourceSliceId === slice.sourceSliceId)),
-    );
-
-    return volumeProfile.filter((_, index) => visibleIndexes.has(index));
-  }, [countedSlices, cubeScopeMode, cubeSlices, volumeProfile]);
+    return buildDurationVolumeProfile(cubeSlices, {
+      scaleSeconds: volumeScaleSeconds,
+      exaggeration: volumeExaggeration,
+      normalizationMode: volumeNormalizationMode,
+      timeScaleMode,
+      warpBlend: normalizeWarpBlend(warpFactor),
+      warpMap,
+      warpDomain: cubeTimeDomain,
+    });
+  }, [cubeSlices, cubeScopeMode, cubeTimeDomain, volumeScaleSeconds, volumeExaggeration, volumeNormalizationMode, timeScaleMode, warpFactor, warpMap, volumeProfile]);
 
   const cubeActiveIndex = useMemo(() => {
     if (cubeSlices.length === 0) {
