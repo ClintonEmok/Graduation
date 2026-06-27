@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Sliders } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sliders, Maximize2, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -53,6 +53,10 @@ export function GlobalWarpControls() {
 
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
   const setWarpFactor = useDashboardDemoCoordinationStore((state) => state.setWarpFactor);
+
+  const cubeScopeMode = useDashboardDemoCoordinationStore((state) => state.cubeScopeMode);
+  const setCubeScopeMode = useDashboardDemoCoordinationStore((state) => state.setCubeScopeMode);
+  const brushRange = useDashboardDemoCoordinationStore((state) => state.brushRange);
 
   const volumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.volumeScaleSeconds);
   const setVolumeScaleSeconds = useDashboardDemoCoordinationStore((state) => state.setVolumeScaleSeconds);
@@ -244,6 +248,38 @@ export function GlobalWarpControls() {
           </>
         ) : null}
       </div>
+
+      {brushRange !== null ? (
+        <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-2">
+          <div className="flex items-center justify-between">
+            <span className="text-foreground">Cube scope</span>
+            <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border/70 bg-muted/40 p-0.5">
+              <Button
+                type="button"
+                variant={cubeScopeMode === 'full' ? 'secondary' : 'ghost'}
+                size="icon-xs"
+                className="size-5 rounded-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setCubeScopeMode('full')}
+                aria-label="Overview mode — show full time range"
+                disabled={isEvaluationLocked}
+              >
+                <Maximize2 className="size-3" />
+              </Button>
+              <Button
+                type="button"
+                variant={cubeScopeMode === 'brushed' ? 'secondary' : 'ghost'}
+                size="icon-xs"
+                className="size-5 rounded-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setCubeScopeMode('brushed')}
+                aria-label="Detail mode — zoom to brushed range"
+                disabled={isEvaluationLocked}
+              >
+                <ZoomIn className="size-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

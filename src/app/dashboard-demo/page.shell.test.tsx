@@ -82,8 +82,6 @@ describe('/dashboard-demo shell', () => {
     expect(shellSource).toMatch(/z-40/);
     expect(shellSource).toMatch(/Show map viewport/);
     expect(shellSource).toMatch(/Show 3D viewport/);
-    expect(shellSource).toMatch(/cubeScopeMode|setCubeScopeMode/);
-    expect(shellSource).toMatch(/Overview mode|Detail mode/);
     expect(demoMapVisualizationSource).toMatch(/DemoStatsMapOverlay/);
     expect(demoMapVisualizationSource).toMatch(/stkdeVisibleOverride/);
     expect(demoMapVisualizationSource).toMatch(/useDashboardDemoCoordinationStore/);
@@ -142,6 +140,8 @@ describe('/dashboard-demo shell', () => {
     // The Select is rendered conditionally on both `timeScaleMode === 'adaptive'`
     // AND the feature flag (the `showSignalSource` doubly-gated variable).
     expect(globalWarpControlsSource).toMatch(/showSignalSource/);
+    expect(globalWarpControlsSource).toMatch(/cubeScopeMode|setCubeScopeMode/);
+    expect(globalWarpControlsSource).toMatch(/Overview mode|Detail mode/);
     expect(demoStatsMapOverlaySource).toMatch(/heatmap/);
     expect(demoStatsMapOverlaySource).toMatch(/demo-stats-districts/);
     expect(demoStatsMapOverlaySource).toMatch(/chicago-police-districts\.geojson/);
