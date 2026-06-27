@@ -105,9 +105,6 @@ Plans:
 | 80. Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4 | v3.3 | In progress | 8 | 3 |
 | 81. Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads | v3.3 | Planned | TBD | 3 |
 | 82. add poi to 2d map on dashboard demo | v3.3 | Planned | TBD | 0 |
-| 83. Burstiness Signal Contract + Density Fallback | v3.4 | Planned | 3 | 4 |
-| 84. Histogram Timeline Warping | v3.4 | Planned | 3 | 4 |
-| 85. Burst Onset + Ramp-Up Readability | v3.4 | Planned | 4 | 4 |
 
 ### Phase 80: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 
@@ -146,59 +143,48 @@ Plans:
 
 - [ ] TBD (run /gsd-plan-phase 82 to break down)
 
-### Phase 83: Burstiness Signal Contract + Density Fallback
+### Phase 83: Contextual Burstiness vs Goh-Barabasi Comparison
 
-**Goal:** Adaptive scaling is burstiness-first under the hood, but density remains selectable as a toggleable/parameterized fallback without breaking the existing adaptive pipeline.
-**Depends on**: Existing adaptive store/warp pipeline and burst taxonomy outputs
+**Goal:** Produce a thesis-grade analytical comparison showing that a contextual (deviation-from-baseline) burstiness metric carries more signal than the Goh-Barabasi inter-event-time burstiness measure on the 8.5M-record crime dataset, with reproducible Python notebooks, comparison figures, and a decision gate for whether the new metric is worth wiring into the dashboard-demo prototype.
+**Requirements**: CBP-01, CBP-02, CBP-03, CBP-04, CBP-05, CBP-06
+**Depends on:** Phase 82
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] 83-01-PLAN.md — Scaffold Python project (venv, db.py loader, run.py skeleton)
+- [ ] 83-02-PLAN.md — Build contextual baseline (hour×dayOfWeek expected rate + sigma) and z-score metric
+- [ ] 83-03-PLAN.md — Implement Goh-Barabasi baseline (B = (σ-μ)/(σ+μ) on inter-event times) over the same windows
+- [ ] 83-04-PLAN.md — Side-by-side CV/dynamic-range comparison + thesis-ready figures
+- [ ] 83-05-PLAN.md — Decision gate (go / not yet / no) for prototype integration
+
+**Success Criteria**:
+
+  1. The contextual metric is defined as a deviation-from-baseline z-score (observed - expected[hour,dayOfWeek]) / sigma, with both expected-rate and sigma profiles derived from the same dataset and clearly documented.
+  2. The contextual metric shows materially higher per-window dynamic range than Goh-Barabasi across the 1h/6h/1d/1w window sweep on the 8.5M-record dataset, measured by CV and range.
+  3. The comparison is reproducible end-to-end from a single Python script/notebook that re-derives both metrics from the same DuckDB source.
+  4. Thesis-ready figures are produced: a z-score heatmap by hour×dayOfWeek, a side-by-side per-window B-vs-z time series, and a contrast table summarising CV/range for both metrics.
+  5. A written decision gate records whether (and where) the new metric should be wired into the dashboard-demo adaptive timeline, with thresholds for "yes / not yet / no".
+
+### Phase 84: Burstiness Signal Contract + Density Fallback (Deferred, gated on Phase 83)
+
+**Goal:** Introduce a shared, parameterized burstiness-vs-density signal contract on the dashboard-demo adaptive timeline, with burstiness as the default driver and density preserved as an explicit fallback, so future analyst sessions can choose either signal without rewiring the timeline.
 **Requirements**: BFT-01, BFT-02, BFT-03
-**Plans**: 2 plans
-
-Success criteria:
-
-1. Users can switch the adaptive driver between burstiness and density without changing the surrounding timeline workflow.
-2. Density mode remains available as an explicit fallback/compare option, not removed or hardwired away.
-3. The overview frame stays visually stable when adaptive settings change.
-4. The active signal source is visible/inspectable so analysts know what is driving spacing.
+**Depends on:** Phase 83 (CBP-05 decision gate must pass)
+**Plans:** 0 plans
 
 Plans:
 
-- [ ] 83-01-PLAN.md — Define the burstiness/density adaptive signal contract (BFT-01, BFT-02)
-- [ ] 83-02-PLAN.md — Wire the parameterized fallback into the shared warp pipeline (BFT-03)
+- [ ] 84-01-PLAN.md — Parameterize the adaptive warp contract so burstiness and density share one signal interface (BFT-01)
+- [ ] 84-02-PLAN.md — Wire contextual burstiness as the default adaptive driver, keep density as the explicit fallback (BFT-02)
+- [ ] 84-03-PLAN.md — Preserve the existing density-derived implementation behind the new contract (BFT-03)
 
-### Phase 84: Histogram Timeline Warping
+**Success Criteria**:
 
-**Goal:** The detail timeline continues to read as a histogram, with adaptive time expressed through spacing and aggregation changes.
-**Depends on**: Phase 83
-**Requirements**: BFT-04, BFT-05, BFT-06
-**Plans**: 2 plans
+  1. The adaptive warp is driven by one parameterized signal contract that can be switched between contextual burstiness and density at runtime.
+  2. Contextual burstiness is the default driver, with density available as an explicit fallback or comparison mode exposed in the dashboard-demo timeline.
+  3. The existing density-derived implementation is preserved behind the contract and continues to work as a supported mode.
+  4. A guard test confirms that flipping the contract between burstiness and density does not change the public timeline API.
+  5. The work is only started after the Phase 83 CBP-05 decision gate records "go".
 
-Success criteria:
-
-1. The detail timeline still renders as bins/bars in both linear and adaptive modes.
-2. Adaptive mode changes the spacing/width of bins rather than switching the view into a point-cloud or scatter style.
-3. Bursty intervals become more legible through redistribution of horizontal space, not through a different visualization type.
-4. Users can compare event concentration before and after warping without losing histogram structure.
-
-Plans:
-
-- [ ] 84-01-PLAN.md — Keep detail rendering histogram-based in both modes (BFT-04, BFT-05)
-- [ ] 84-02-PLAN.md — Tune bin spacing and aggregation behavior for bursty windows (BFT-06)
-
-### Phase 85: Burst Onset + Ramp-Up Readability
-
-**Goal:** Analysts can answer “when did it start?” by reading onset and ramp-up cues directly in the detail view.
-**Depends on**: Phase 84
-**Requirements**: BFT-07, BFT-08, BFT-09, BFT-10, BFT-11, BFT-12
-**Plans**: 2 plans
-
-Success criteria:
-
-1. The detail view highlights burst starts clearly enough to identify onset without switching panels.
-2. Ramp-up cues make it obvious whether activity is building, peaking, or fading.
-3. The overview remains a stable reference frame while the detail view carries the adaptive emphasis.
-4. Selecting a burst keeps its temporal context visible across the synchronized timeline views.
-
-Plans:
-
-- [ ] 85-01-PLAN.md — Add onset and ramp-up cues to the detail timeline (BFT-07, BFT-08, BFT-09)
-- [ ] 85-02-PLAN.md — Add toggle/compare controls and validation coverage for burstiness vs density (BFT-10, BFT-11, BFT-12)
+- [ ] TBD (run /gsd-plan-phase 84 to break down)
