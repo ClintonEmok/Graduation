@@ -50,20 +50,29 @@ const interpolateColor = (t: number): THREE.Color => {
   return new THREE.Color(r / 255, g / 255, b / 255);
 };
 
-export function AdaptiveWarpAxis({ displayDomain: displayDomainProp }: { displayDomain?: [number, number] } = {}) {
+export function AdaptiveWarpAxis({
+  displayDomain: displayDomainProp,
+  overrideWarpMap,
+  overrideWarpDomain,
+}: {
+  displayDomain?: [number, number];
+  overrideWarpMap?: Float32Array | null;
+  overrideWarpDomain?: [number, number];
+} = {}) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const densityMap = useDashboardDemoCoordinationStore((state) => state.densityMap);
-  const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
+  const storeWarpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
   const warpBlend = useMemo(() => normalizeWarpBlend(warpFactor), [warpFactor]);
-  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
+  const storeMapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
   const viewportStart = useViewportStore((state) => state.startDate);
   const viewportEnd = useViewportStore((state) => state.endDate);
   const hasViewport = Number.isFinite(viewportStart) && Number.isFinite(viewportEnd) && viewportEnd > viewportStart;
   const viewportDomain: [number, number] = hasViewport ? [viewportStart, viewportEnd] : [0, 1];
   const displayDomain = displayDomainProp ?? viewportDomain;
-  const warpDomain: [number, number] = mapDomain[1] > mapDomain[0] ? mapDomain : displayDomain;
+  const warpMap = overrideWarpMap ?? storeWarpMap;
+  const warpDomain: [number, number] = overrideWarpDomain ?? (storeMapDomain[1] > storeMapDomain[0] ? storeMapDomain : displayDomain);
   const bins = useMemo(() => {
     const domain: [number, number] = displayDomain;
     const domainSpan = Math.max(1e-9, domain[1] - domain[0]);

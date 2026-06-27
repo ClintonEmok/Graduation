@@ -150,6 +150,8 @@ interface StkdeSliceStackProps {
   sliceOpacity?: number;
   yOffset?: number;
   heightScale?: number;
+  overrideWarpMap?: Float32Array | null;
+  overrideWarpDomain?: [number, number];
 }
 
 type ResizeHandle = 'start' | 'end';
@@ -216,14 +218,16 @@ export function StkdeSliceStack({
   sliceOpacity = 1,
   yOffset = 0,
   heightScale = 1,
+  overrideWarpMap,
+  overrideWarpDomain,
 }: StkdeSliceStackProps) {
   const isPlaying = useDashboardDemoCoordinationStore((state) => state.inspectIsPlaying);
   const isInterpolated = useDashboardDemoCoordinationStore((state) => state.inspectInterpolation);
   const timeScaleMode = useDashboardDemoCoordinationStore((state) => state.timeScaleMode);
-  const warpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
+  const storeWarpMap = useDashboardDemoCoordinationStore((state) => state.warpMap);
   const warpFactor = useDashboardDemoCoordinationStore((state) => state.warpFactor);
   const warpBlend = useMemo(() => normalizeWarpBlend(warpFactor), [warpFactor]);
-  const mapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
+  const storeMapDomain = useDashboardDemoCoordinationStore((state) => state.mapDomain);
   const setActiveSliceIndex = useDashboardDemoCoordinationStore((state) => state.setActiveSliceIndex);
   const updateSlice = useSliceDomainStore((state) => state.updateSlice);
   const setActiveSlice = useSliceDomainStore((state) => state.setActiveSlice);
@@ -248,10 +252,10 @@ export function StkdeSliceStack({
     return [viewportStart, viewportEnd];
   }, [viewportEnd, viewportStart]);
   const displayDomain = displayDomainProp ?? viewportDomain;
-  console.log('[SliceStack] displayDomain:', displayDomain, 'slices.length:', slices.length, 'volumeProfile.length:', volumeProfile?.length);
+  const warpMap = overrideWarpMap ?? storeWarpMap;
   const warpDomain = useMemo<[number, number]>(() => (
-    mapDomain[1] > mapDomain[0] ? mapDomain : displayDomain
-  ), [displayDomain, mapDomain]);
+    overrideWarpDomain ?? (storeMapDomain[1] > storeMapDomain[0] ? storeMapDomain : displayDomain)
+  ), [displayDomain, overrideWarpDomain, storeMapDomain]);
   const resolveSliceY = useMemo(
     () => (slice: EvolvingSlice): number => {
       return resolveWarpedEpochY(slice.startEpoch, START_Y, {

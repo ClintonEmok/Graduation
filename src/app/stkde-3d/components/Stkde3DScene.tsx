@@ -138,6 +138,8 @@ interface Stkde3DSceneProps {
   showRawEvents?: boolean;
   sliceOpacity?: number;
   timeDomain?: [number, number];
+  overrideWarpMap?: Float32Array | null;
+  overrideWarpDomain?: [number, number];
   onCreateDraftAtPoint?: (payload: { y: number; clientX: number; clientY: number }) => void;
   yOffset?: number;
   heightScale?: number;
@@ -204,6 +206,8 @@ function SceneContent({
   showRawEvents = false,
   sliceOpacity = 1,
   timeDomain,
+  overrideWarpMap,
+  overrideWarpDomain,
   onCreateDraftAtPoint,
   resolveSliceY,
   yOffset = 0,
@@ -255,7 +259,7 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      <AdaptiveWarpAxis displayDomain={timeDomain} />
+      <AdaptiveWarpAxis displayDomain={timeDomain} overrideWarpMap={overrideWarpMap} overrideWarpDomain={overrideWarpDomain} />
 
       <StkdeSliceStack
         slices={viewMode === 'focus' ? focusedSlices : slices}
@@ -267,6 +271,8 @@ function SceneContent({
         sliceOpacity={sliceOpacity}
         yOffset={yOffset}
         heightScale={heightScale}
+        overrideWarpMap={overrideWarpMap}
+        overrideWarpDomain={overrideWarpDomain}
       />
 
       <HotspotTrajectoryOverlay
@@ -308,6 +314,8 @@ export function Stkde3DScene({
   showRawEvents = false,
   sliceOpacity = 1,
   timeDomain,
+  overrideWarpMap,
+  overrideWarpDomain,
   yOffset = 0,
   heightScale = 1,
 }: Stkde3DSceneProps) {
@@ -414,6 +422,8 @@ export function Stkde3DScene({
             showRawEvents={showRawEvents}
             sliceOpacity={sliceOpacity}
             timeDomain={displayDomain}
+            overrideWarpMap={overrideWarpMap}
+            overrideWarpDomain={overrideWarpDomain}
             resolveSliceY={resolveSliceY}
             onCreateDraftAtPoint={handleCreateDraftAtPoint}
             yOffset={yOffset}

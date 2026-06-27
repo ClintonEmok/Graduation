@@ -22,6 +22,7 @@ import { useDashboardDemoTimeslicingModeStore } from '@/store/useDashboardDemoTi
 import { resolvePointByIndex } from '@/lib/selection';
 import { useViewportStore } from '@/lib/stores/viewportStore';
 import { buildDemoSliceAuthoredWarpMap } from '@/components/dashboard-demo/lib/demo-warp-map';
+import { buildDensityWarpMap } from '@/lib/adaptive-warp-utils';
 import { ADAPTIVE_BIN_COUNT, ADAPTIVE_KERNEL_WIDTH } from '@/lib/adaptive-utils';
 import { sampleTimelinePoints, selectTimelinePointsInRange } from '@/lib/timeline-series';
 import {
@@ -51,55 +52,6 @@ const DETAIL_MARGIN = { top: 8, right: 12, bottom: 12, left: 12 };
 const clamp = clampToRange;
 
 const normalizeWarpBlend = (value: number) => Math.min(1, Math.max(0, value / 3));
-
-const buildDensityWarpMap = (
-  densityMap: Float32Array | null,
-  domain: [number, number]
-): Float32Array | null => {
-  if (!densityMap || densityMap.length < 2) {
-    return null;
-  }
-
-  const [start, end] = domain;
-  const span = end - start;
-  if (!Number.isFinite(span) || span <= 0) {
-    return null;
-  }
-
-  let maxDensity = 0;
-  for (let i = 0; i < densityMap.length; i += 1) {
-    const value = densityMap[i] ?? 0;
-    if (Number.isFinite(value) && value > maxDensity) {
-      maxDensity = value;
-    }
-  }
-  if (maxDensity <= 0) {
-    maxDensity = 1;
-  }
-
-  const weights = new Float32Array(densityMap.length);
-  let totalWeight = 0;
-  for (let i = 0; i < densityMap.length; i += 1) {
-    const normalized = (densityMap[i] ?? 0) / maxDensity;
-    const safeNormalized = Number.isFinite(normalized) ? normalized : 0;
-    const weight = 1 + safeNormalized * 5;
-    weights[i] = weight;
-    totalWeight += weight;
-  }
-
-  if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
-    return null;
-  }
-
-  const warpMap = new Float32Array(densityMap.length);
-  let accumulated = 0;
-  for (let i = 0; i < densityMap.length; i += 1) {
-    warpMap[i] = start + (accumulated / totalWeight) * span;
-    accumulated += weights[i] ?? 1;
-  }
-
-  return warpMap;
-};
 
 interface ApplyRangeToStoresContractParams {
   interactive: boolean;
@@ -220,8 +172,6 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
   const activeSliceUpdatedAt = useStore(useSliceDomainStore, selectActiveSliceUpdatedAt);
   const getSliceOverlapCounts = useStore(useSliceDomainStore, select((state) => state.getOverlapCounts));
   const pendingGeneratedBins = useStore(useDashboardDemoTimeslicingModeStore, (state) => state.pendingGeneratedBins);
-
-  console.log('[Timeline] slices:', slices.length, 'pendingGeneratedBins:', pendingGeneratedBins.length, 'slices:', slices.map(s => ({ id: s.id?.slice(0, 8), range: s.range, source: s.source })));
 
   const warpDomain = useMemo<[number, number]>(() => {
     if (minTimestampSec !== null && maxTimestampSec !== null && maxTimestampSec > minTimestampSec) {
