@@ -211,11 +211,28 @@ export function Demo3dSpatialView() {
       }
     }
 
+    if (slices.length > 0) {
+      const appliedSlices = slices.filter((s) => s.source === 'generated-applied' && s.isVisible);
+      if (appliedSlices.length > 0) {
+        let minStart = Infinity;
+        let maxEnd = -Infinity;
+        for (const s of appliedSlices) {
+          const [startSec, endSec] = resolveSliceEpochRange(s, minTimestampSec ?? 0, maxTimestampSec ?? 0);
+          if (Number.isFinite(startSec) && startSec < minStart) minStart = startSec;
+          if (Number.isFinite(endSec) && endSec > maxEnd) maxEnd = endSec;
+        }
+        if (Number.isFinite(minStart) && Number.isFinite(maxEnd) && maxEnd > minStart) {
+          return [minStart, maxEnd];
+        }
+      }
+    }
+
     const normalized = normalizeTimeRange(selectedTimeRange);
     return normalized && normalized[1] > normalized[0] ? normalized : fullTimeDomain;
-  }, [brushRange, fullTimeDomain, maxTimestampSec, minTimestampSec, selectedTimeRange]);
+  }, [brushRange, fullTimeDomain, maxTimestampSec, minTimestampSec, selectedTimeRange, slices]);
 
   const cubeTimeDomain = cubeScopeMode === 'brushed' ? brushedTimeDomain : fullTimeDomain;
+  console.log('[CubeScope] cubeScopeMode:', cubeScopeMode, 'cubeTimeDomain:', cubeTimeDomain, 'brushedTimeDomain:', brushedTimeDomain, 'fullTimeDomain:', fullTimeDomain);
 
   const mapWarpDomain = useMemo<[number, number]>(() => (
     mapDomain[1] > mapDomain[0] ? mapDomain : cubeTimeDomain
@@ -241,6 +258,7 @@ export function Demo3dSpatialView() {
           const [scopeStart, scopeEnd] = cubeTimeDomain;
           return countedSlices.filter((slice) => slice.endEpoch >= scopeStart && slice.startEpoch <= scopeEnd);
         })();
+    console.log('[CubeScope] cubeSlices:', result.length, 'countedSlices:', countedSlices.length, 'mode:', cubeScopeMode);
     return result;
   }, [countedSlices, cubeScopeMode, cubeTimeDomain]);
 
@@ -258,10 +276,11 @@ export function Demo3dSpatialView() {
 
   const cubeVolumeProfile = useMemo(() => {
     if (cubeScopeMode !== 'brushed') {
+      console.log('[CubeScope] cubeVolumeProfile: full mode, using volumeProfile with', volumeProfile.length, 'entries');
       return volumeProfile;
     }
 
-    return buildDurationVolumeProfile(cubeSlices, {
+    const result = buildDurationVolumeProfile(cubeSlices, {
       scaleSeconds: volumeScaleSeconds,
       exaggeration: volumeExaggeration,
       normalizationMode: volumeNormalizationMode,
@@ -270,6 +289,8 @@ export function Demo3dSpatialView() {
       warpMap,
       warpDomain: cubeTimeDomain,
     });
+    console.log('[CubeScope] cubeVolumeProfile: brushed mode, recomputed with cubeTimeDomain:', cubeTimeDomain, 'entries:', result.length);
+    return result;
   }, [cubeSlices, cubeScopeMode, cubeTimeDomain, volumeScaleSeconds, volumeExaggeration, volumeNormalizationMode, timeScaleMode, warpFactor, warpMap, volumeProfile]);
 
   const cubeActiveIndex = useMemo(() => {
@@ -399,6 +420,8 @@ export function Demo3dSpatialView() {
       </div>
     );
   }
+
+  console.log('[CubeScope] rendering Stkde3DScene — slices:', cubeSlices.length, 'volumeProfile:', cubeVolumeProfile.length, 'timeDomain:', cubeTimeDomain, 'activeIndex:', cubeActiveIndex);
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[inherit]">

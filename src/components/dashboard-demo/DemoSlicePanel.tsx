@@ -229,6 +229,7 @@ export function DemoSlicePanel() {
     const [windowStart, windowEnd] = timeRange;
     const domainStartMs = normalizedToEpochSeconds(windowStart, minTimestampSec, maxTimestampSec) * 1000;
     const domainEndMs = normalizedToEpochSeconds(windowEnd, minTimestampSec, maxTimestampSec) * 1000;
+    console.log('[SlicePanel] handleApplySingleDraft — binId:', binId, 'domain:', [domainStartMs, domainEndMs], 'timeRange:', timeRange);
     const applied = applySingleGeneratedBin(binId, [domainStartMs, domainEndMs]);
     if (applied) {
       toast.success('Slice applied', { description: 'Slice activated from Detect.' });

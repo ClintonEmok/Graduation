@@ -248,6 +248,7 @@ export function StkdeSliceStack({
     return [viewportStart, viewportEnd];
   }, [viewportEnd, viewportStart]);
   const displayDomain = displayDomainProp ?? viewportDomain;
+  console.log('[SliceStack] displayDomain:', displayDomain, 'slices.length:', slices.length, 'volumeProfile.length:', volumeProfile?.length);
   const warpDomain = useMemo<[number, number]>(() => (
     mapDomain[1] > mapDomain[0] ? mapDomain : displayDomain
   ), [displayDomain, mapDomain]);
