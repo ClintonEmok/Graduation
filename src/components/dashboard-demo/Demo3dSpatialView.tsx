@@ -281,16 +281,24 @@ export function Demo3dSpatialView() {
 
   const cubeVolumeProfile = useMemo(() => {
     if (cubeScopeMode !== 'brushed') return volumeProfile;
-    return buildDurationVolumeProfile(cubeSlices, {
-      scaleSeconds: volumeScaleSeconds,
-      exaggeration: volumeExaggeration,
-      normalizationMode: volumeNormalizationMode,
-      timeScaleMode,
-      warpBlend: normalizeWarpBlend(warpFactor),
-      warpMap: activeWarpMap,
-      warpDomain: activeWarpDomain,
+
+    const [domainStart, domainEnd] = cubeTimeDomain;
+    const domainDuration = Math.max(1, domainEnd - domainStart);
+
+    return cubeSlices.map((slice) => {
+      const sliceDuration = Math.max(0, slice.endEpoch - slice.startEpoch);
+      const percentage = sliceDuration / domainDuration;
+      const thickness = Math.max(0.6, percentage * 100);
+      return {
+        index: slice.index,
+        durationSeconds: sliceDuration,
+        normalizedDuration: Math.min(1, percentage),
+        thickness,
+        opacity: 0.2,
+        falloff: 0.15,
+      };
     });
-  }, [cubeSlices, cubeScopeMode, activeWarpDomain, activeWarpMap, volumeScaleSeconds, volumeExaggeration, volumeNormalizationMode, timeScaleMode, warpFactor, volumeProfile]);
+  }, [cubeSlices, cubeScopeMode, cubeTimeDomain, volumeProfile]);
 
   const cubeActiveIndex = useMemo(() => {
     if (cubeSlices.length === 0) {
@@ -305,6 +313,21 @@ export function Demo3dSpatialView() {
     const nextIndex = cubeSlices.findIndex((slice) => slice.sourceSliceId === activeSliceId);
     return nextIndex;
   }, [activeIndex, countedSlices, cubeSlices]);
+
+  const detailChip = useMemo(() => {
+    if (cubeScopeMode !== 'brushed') return null;
+    const [dStart, dEnd] = cubeTimeDomain;
+    const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const domainLabel = `${fmt.format(new Date(dStart * 1000))} – ${fmt.format(new Date(dEnd * 1000))}`;
+    const domainDurationDays = (dEnd - dStart) / 86400;
+
+    const active = cubeSlices[cubeActiveIndex];
+    if (!active) return { domainLabel, domainDurationDays, sliceLabel: null, sliceDurationDays: 0, percentage: 0 };
+    const sliceDurationDays = (active.endEpoch - active.startEpoch) / 86400;
+    const percentage = ((active.endEpoch - active.startEpoch) / (dEnd - dStart)) * 100;
+    const sliceLabel = `${fmt.format(new Date(active.startEpoch * 1000))} – ${fmt.format(new Date(active.endEpoch * 1000))}`;
+    return { domainLabel, domainDurationDays, sliceLabel, sliceDurationDays, percentage };
+  }, [cubeScopeMode, cubeTimeDomain, cubeSlices, cubeActiveIndex]);
 
   useEffect(() => {
     if (crimesBySlice.length === 0 || orderedSlices.length === 0) {
@@ -425,6 +448,19 @@ export function Demo3dSpatialView() {
       {crimesError && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60">
           <p className="text-xs text-destructive">Error: {crimesError}</p>
+        </div>
+      )}
+
+      {detailChip && (
+        <div className="absolute bottom-3 left-3 z-20 rounded-md border border-border/50 bg-background/90 px-3 py-2 text-[11px] leading-relaxed shadow-md backdrop-blur-sm">
+          <div className="font-medium text-foreground/80">Detail domain: {detailChip.domainLabel}</div>
+          <div className="text-muted-foreground">{detailChip.domainDurationDays.toFixed(0)} days</div>
+          {detailChip.sliceLabel && (
+            <>
+              <div className="mt-1 font-medium text-foreground/80">Active slice: {detailChip.sliceLabel}</div>
+              <div className="text-muted-foreground">{detailChip.sliceDurationDays.toFixed(0)} days ({detailChip.percentage.toFixed(1)}%)</div>
+            </>
+          )}
         </div>
       )}
 
