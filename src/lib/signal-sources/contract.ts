@@ -28,6 +28,10 @@ export type AdaptiveSignalSource = 'burstiness' | 'density' | 'contextual';
  * Per-cell, non-winsorized baseline shape produced by Plan 84-02's
  * parquet-to-JSON export script. Mirrors the six fields the Python
  * pipeline writes to `baselines/baseline_168.parquet`.
+ *
+ * `builtAt` is optional (omitted on the 84-01 contract surface; the
+ * static JSON produced by `scripts/export_baseline_168.py` and the
+ * DuckDB API route both include it for provenance tracking).
  */
 export interface Baseline168 {
   header: {
@@ -36,6 +40,7 @@ export interface Baseline168 {
     tsMax: number;
     totalWeeks: number;
     fingerprint: string;
+    builtAt?: string;
   };
   cells: Array<{
     h: number;
@@ -59,6 +64,7 @@ export interface Baseline168Winsorized {
     tsMax: number;
     totalWeeks: number;
     fingerprint: string;
+    builtAt?: string;
   };
   cells: Array<{
     h: number;

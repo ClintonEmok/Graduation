@@ -63,9 +63,9 @@ async function queryCrimeCount(startEpoch: number, endEpoch: number, crimeTypes?
   const { sql, params } = buildCrimeCountQuery(tableName, startEpoch, endEpoch, crimeTypes ? { crimeTypes } : undefined);
 
   return new Promise((resolve, reject) => {
-    db.all(sql, ...params, (err: Error | null, rows: Array<{ count: number }>) => {
+    db.all(sql, ...params, (err: Error | null, rows: unknown[]) => {
       if (err) reject(err);
-      else resolve(Number(rows?.[0]?.count ?? 0));
+      else resolve(Number((rows as Array<{ count: number }>)?.[0]?.count ?? 0));
     });
   });
 }
@@ -86,9 +86,9 @@ async function queryCrimePoints(
   });
 
   return new Promise((resolve, reject) => {
-    db.all(sql, ...params, (err: Error | null, rows: Point[]) => {
+    db.all(sql, ...params, (err: Error | null, rows: unknown[]) => {
       if (err) reject(err);
-      else resolve(rows ?? []);
+      else resolve((rows ?? []) as Point[]);
     });
   });
 }

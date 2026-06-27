@@ -3,7 +3,10 @@ import { dirname, isAbsolute, join, resolve } from 'path';
 
 type DuckDbInstance = {
   exec: (sql: string, callback: (err: Error | null) => void) => void;
-  all: (sql: string, callback: (err: Error | null, rows: unknown[]) => void) => void;
+  all: (
+    sql: string,
+    ...args: [...unknown[], (err: Error | null, rows: unknown[]) => void] | []
+  ) => void;
   run: (sql: string, callback: (err: Error | null) => void) => void;
 };
 

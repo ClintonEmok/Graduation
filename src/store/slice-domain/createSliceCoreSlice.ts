@@ -2,7 +2,11 @@ import { useAdaptiveStore } from '../useAdaptiveStore';
 import { useTimelineDataStore } from '../useTimelineDataStore';
 import { calculateRangeTolerance, rangesMatch } from '../../lib/slice-utils';
 import { epochSecondsToNormalized, normalizedToEpochSeconds, toEpochSeconds } from '../../lib/time-domain';
-import { dispatchWarpWeight } from '@/lib/signal-sources';
+import {
+  dispatchWarpWeight,
+  getBaseline168Sync,
+  getBaseline168WinsorizedSync,
+} from '@/lib/signal-sources';
 import type { TimeBin } from '@/lib/binning/types';
 import type { SliceCoreState, SliceDomainStateCreator, TimeSlice } from './types';
 
@@ -351,7 +355,12 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
       ? (burstTaxonomyPresent
         ? (bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25))
         : 1)
-      : dispatchWarpWeight(source, bin, null, null);
+      : dispatchWarpWeight(
+        source,
+        bin,
+        getBaseline168Sync(),
+        getBaseline168WinsorizedSync(),
+      );
 
     let slice: TimeSlice;
 
@@ -425,7 +434,12 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
           ? (burstTaxonomyPresent
             ? (bin.warpWeight ?? (bin.isNeutralPartition ? 1 : 1.25))
             : 1)
-          : dispatchWarpWeight(source, bin, null, null);
+          : dispatchWarpWeight(
+            source,
+            bin,
+            getBaseline168Sync(),
+            getBaseline168WinsorizedSync(),
+          );
 
         if (burstTaxonomyPresent) {
           return {

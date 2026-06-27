@@ -17,6 +17,7 @@ export * from './contract';
 export * from './burstiness';
 export * from './density';
 export * from './contextual';
+export * from './baseline-loader';
 
 /**
  * Single dispatch entry point used by `addSliceFromBin` and
