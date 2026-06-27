@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { useSliceStore } from './useSliceStore';
+import { useTimelineDataStore } from './useTimelineDataStore';
 
 beforeEach(() => {
   useSliceStore.getState().clearSlices();
+  useTimelineDataStore.setState({ minTimestampSec: null, maxTimestampSec: null });
 });
 
 describe('slice store actions', () => {
@@ -42,6 +44,25 @@ describe('slice store actions', () => {
 
     store.removeSlice(id);
     expect(useSliceStore.getState().slices.length).toBe(1);
+  });
+
+  test('re-materializes range slices from timestamps when edited', () => {
+    useTimelineDataStore.setState({ minTimestampSec: 0, maxTimestampSec: 100 });
+
+    const store = useSliceStore.getState();
+    store.addSlice({ type: 'range', range: [20, 40] });
+
+    const rangeSlice = useSliceStore.getState().slices.find((slice) => slice.type === 'range');
+    expect(rangeSlice).toBeDefined();
+
+    store.updateSlice(rangeSlice!.id, {
+      startDateTimeMs: 30_000,
+      endDateTimeMs: 50_000,
+    });
+
+    const updated = useSliceStore.getState().slices.find((slice) => slice.id === rangeSlice!.id);
+    expect(updated?.range).toEqual([30, 50]);
+    expect(updated?.time).toBe(40);
   });
 });
 

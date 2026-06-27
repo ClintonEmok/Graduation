@@ -125,6 +125,41 @@ const toDateTimeMs = (normalizedValue: number): number | null => {
   return normalizedToEpochSeconds(normalizedValue, minTimestampSec, maxTimestampSec) * 1000;
 };
 
+const toNormalizedFromTimestampMs = (timestampMs: number | null | undefined): number | null => {
+  const { minTimestampSec, maxTimestampSec } = useTimelineDataStore.getState();
+  if (timestampMs === null || timestampMs === undefined || minTimestampSec === null || maxTimestampSec === null || maxTimestampSec <= minTimestampSec) {
+    return null;
+  }
+
+  const epochSeconds = timestampMs / 1000;
+  return epochSecondsToNormalized(epochSeconds, minTimestampSec, maxTimestampSec);
+};
+
+const hydrateRangeSlice = (slice: TimeSlice): TimeSlice => {
+  if (slice.type !== 'range') {
+    return slice;
+  }
+
+  const existingRange = slice.range ? normalizeRange(slice.range[0], slice.range[1]) : [clampNormalized(slice.time), clampNormalized(slice.time)] as [number, number];
+  const startDateTimeMs = slice.startDateTimeMs ?? toDateTimeMs(existingRange[0]);
+  const endDateTimeMs = slice.endDateTimeMs ?? toDateTimeMs(existingRange[1]);
+  const normalizedStart = toNormalizedFromTimestampMs(startDateTimeMs);
+  const normalizedEnd = toNormalizedFromTimestampMs(endDateTimeMs);
+
+  const range = normalizedStart !== null && normalizedEnd !== null
+    ? normalizeRange(clampNormalized(normalizedStart), clampNormalized(normalizedEnd))
+    : existingRange;
+
+  return {
+    ...slice,
+    type: 'range',
+    range,
+    time: (range[0] + range[1]) / 2,
+    startDateTimeMs,
+    endDateTimeMs,
+  };
+};
+
 const withDateTimeFields = (
   slice: TimeSlice,
   startNormalized: number,
@@ -320,7 +355,9 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
   },
   updateSlice: (id, updates) =>
     set((state) => ({
-      slices: sortSlices(state.slices.map((slice) => (slice.id === id ? { ...slice, ...updates } : slice))),
+      slices: sortSlices(
+        state.slices.map((slice) => (slice.id === id ? hydrateRangeSlice({ ...slice, ...updates }) : slice))
+      ),
     })),
   toggleLock: (id) =>
     set((state) => ({
@@ -365,7 +402,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
     let slice: TimeSlice;
 
     if (burstTaxonomyPresent) {
-      slice = {
+      slice = hydrateRangeSlice({
         id: crypto.randomUUID(),
         name: `Burst ${get().slices.filter((s) => s.isBurst).length + 1}`,
         source: 'generated-applied' as const,
@@ -390,9 +427,9 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         isVisible: true,
         startDateTimeMs: bin.startTime,
         endDateTimeMs: bin.endTime,
-      };
+      });
     } else {
-      slice = {
+      slice = hydrateRangeSlice({
         id: crypto.randomUUID(),
         name: `Slice ${get().slices.filter((s) => !s.isBurst).length + 1}`,
         source: 'generated-applied' as const,
@@ -406,7 +443,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
         isVisible: true,
         startDateTimeMs: bin.startTime,
         endDateTimeMs: bin.endTime,
-      };
+      });
     }
 
     set((state) => ({
@@ -442,7 +479,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
           );
 
         if (burstTaxonomyPresent) {
-          return {
+          return hydrateRangeSlice({
             id: crypto.randomUUID(),
             name: `Burst ${index + 1}`,
             source: 'generated-applied' as const,
@@ -467,10 +504,10 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
             isVisible: true,
             startDateTimeMs: bin.startTime,
             endDateTimeMs: bin.endTime,
-          };
+          });
         }
 
-        return {
+        return hydrateRangeSlice({
           id: crypto.randomUUID(),
           name: `Slice ${index + 1}`,
           source: 'generated-applied' as const,
@@ -484,7 +521,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
           isVisible: true,
           startDateTimeMs: bin.startTime,
           endDateTimeMs: bin.endTime,
-        };
+        });
       })
       .filter((slice): slice is TimeSlice => slice !== null);
 
