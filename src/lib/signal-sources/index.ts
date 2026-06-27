@@ -17,6 +17,7 @@ export * from './contract';
 export * from './burstiness';
 export * from './density';
 export * from './contextual';
+export * from './winsorize';
 export * from './baseline-loader';
 
 /**
