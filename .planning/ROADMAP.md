@@ -170,25 +170,24 @@ Plans:
   4. Thesis-ready figures are produced: a z-score heatmap by hour×dayOfWeek, a side-by-side per-window B-vs-z time series, and a contrast table summarising CV/range for both metrics.
   5. A written decision gate records whether (and where) the new metric should be wired into the dashboard-demo adaptive timeline, with thresholds for "yes / not yet / no".
 
-### Phase 84: Burstiness Signal Contract + Density Fallback (Deferred, gated on Phase 83)
+### Phase 84: Burstiness Signal Contract + Density Fallback + Contextual z (Unblocked — Phase 83 GO)
 
-**Goal:** Introduce a shared, parameterized burstiness-vs-density signal contract on the dashboard-demo adaptive timeline, with burstiness as the default driver and density preserved as an explicit fallback, so future analyst sessions can choose either signal without rewiring the timeline.
-**Requirements**: BFT-01, BFT-02, BFT-03
-**Depends on:** Phase 83 (CBP-05 decision gate must pass)
-**Plans:** 0 plans
+**Goal:** Introduce a shared, parameterized signal contract on the dashboard-demo adaptive timeline with three runtime-selectable sources — burstiness (Goh-Barabasi B, default), density (observed-vs-expected count ratio), and contextual (winsorized Pearson residual against a 168-cell baseline, ported from Phase 83). Switching between sources at runtime does not change the public timeline API; burstiness remains the default to preserve pre-Phase-84 behavior.
+**Requirements**: BFT-01, BFT-02, BFT-03, BFT-10
+**Depends on:** Phase 83 CBP-05 verdict GO (satisfied — committed c0a06b4)
+**Plans:** 3 plans in 3 waves (sequential)
 
 Plans:
 
-- [ ] 84-01-PLAN.md — Parameterize the adaptive warp contract so burstiness and density share one signal interface (BFT-01)
-- [ ] 84-02-PLAN.md — Wire contextual burstiness as the default adaptive driver, keep density as the explicit fallback (BFT-02)
-- [ ] 84-03-PLAN.md — Preserve the existing density-derived implementation behind the new contract (BFT-03)
+- [x] 84-01-PLAN.md — Define `AdaptiveSignalSource` contract (`burstiness | density | contextual`); add `activeSignalSource` field to `useAdaptiveStore` with persist middleware; refactor `addSliceFromBin` / `replaceSlicesFromBins` to dispatch on source; parity + guard tests (BFT-01, BFT-02 burstiness default, BFT-12)
+- [x] 84-02-PLAN.md — Build static JSON baseline from Phase 83 parquet + DuckDB fallback API route; implement real `densityWarpWeight` formula using the 168-cell baseline (BFT-02 density, BFT-03 preserve density-derived, BFT-11)
+- [x] 84-03-PLAN.md — Port contextual z (winsorized Pearson residual) to TS via `d3-array.quantile`; pre-flight sensitivity check confirms winsorized CV within 30% of standard z; add 3-way `<Select>` to `GlobalWarpControls.tsx` gated on `timeScaleMode === 'adaptive'` and `useFeatureFlagsStore.isEnabled('adaptiveSignalSource')` (BFT-02 contextual, BFT-10)
 
 **Success Criteria**:
 
-  1. The adaptive warp is driven by one parameterized signal contract that can be switched between contextual burstiness and density at runtime.
-  2. Contextual burstiness is the default driver, with density available as an explicit fallback or comparison mode exposed in the dashboard-demo timeline.
-  3. The existing density-derived implementation is preserved behind the contract and continues to work as a supported mode.
-  4. A guard test confirms that flipping the contract between burstiness and density does not change the public timeline API.
-  5. The work is only started after the Phase 83 CBP-05 decision gate records "go".
-
-- [ ] TBD (run /gsd-plan-phase 84 to break down)
+  1. The adaptive warp is driven by one parameterized signal contract with three runtime-switchable sources (`burstiness | density | contextual`); default is `burstiness`.
+  2. Burstiness is the default driver, with density and contextual available as explicit fallback or comparison modes exposed in the dashboard-demo timeline.
+  3. The existing density-derived implementation is preserved behind the contract and continues to work as a supported mode (the pre-Phase-84 `warpWeight: 1.0` / `bin.warpWeight ?? 1.25` path is reproduced exactly under the `burstiness` source).
+  4. A guard test confirms that flipping the contract between burstiness, density, and contextual does not change the public `TimeSlice` shape or `useAdaptiveStore` public surface (excluding the new field).
+  5. The work is only started after the Phase 83 CBP-05 decision gate records "go" — **satisfied** (committed c0a06b4, DECISION-GATE.md verdict GO).
+  6. Contextual z is ported to TypeScript as winsorized Pearson residual; pre-flight sensitivity check confirms winsorized CV is within 30% of standard z CV at 1d windows.

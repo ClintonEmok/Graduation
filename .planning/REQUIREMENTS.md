@@ -42,26 +42,26 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| BFT-01 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-02 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-03 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-04 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-05 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-06 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-07 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-08 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-09 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-10 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-11 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| BFT-12 | 84 | Deferred (pending Phase 83 CBP-05 decision) |
-| CBP-01 | 83 | Planned |
-| CBP-02 | 83 | Planned |
-| CBP-07 | 83 | Planned |
-| CBP-08 | 83 | Planned |
-| CBP-03 | 83 | Planned |
-| CBP-04 | 83 | Planned |
-| CBP-05 | 83 | Planned |
-| CBP-06 | 83 | Planned |
+| BFT-01 | 84 | Planned (84-01) |
+| BFT-02 | 84 | Planned (84-01, 84-02, 84-03) |
+| BFT-03 | 84 | Planned (84-02) |
+| BFT-04 | 84 | Already satisfied (existing histogram implementation) |
+| BFT-05 | 84 | Already satisfied (bin spacing/aggregation) |
+| BFT-06 | 84 | Already satisfied (stable overview) |
+| BFT-07 | 84 | Already satisfied (burstClass taxonomy) |
+| BFT-08 | 84 | Already satisfied (burstClass taxonomy) |
+| BFT-09 | 84 | Already satisfied (coordination store) |
+| BFT-10 | 84 | Planned (84-03) |
+| BFT-11 | 84 | Planned (84-02) |
+| BFT-12 | 84 | Planned (84-01) |
+| CBP-01 | 83 | Complete |
+| CBP-02 | 83 | Complete |
+| CBP-07 | 83 | Complete |
+| CBP-08 | 83 | Complete |
+| CBP-03 | 83 | Complete |
+| CBP-04 | 83 | Complete |
+| CBP-05 | 83 | Complete (verdict GO) |
+| CBP-06 | 83 | Complete (Phase 84 unblocked) |
 
 **Coverage:**
 - Active requirements: 12 (BFT, deferred) + 8 (CBP, in progress) = 20
