@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
-status: planning
-stopped_at: Milestone v3.4 started
-last_updated: "2026-06-27T09:30:00Z"
-last_activity: 2026-06-27 -- Completed quick task 260627-fmr: move floating crime types legend card to side panel
+status: Defining requirements
+stopped_at: Completed 83-01-PLAN.md
+last_updated: "2026-06-27T12:57:20Z"
+last_activity: 2026-06-27 -- Completed 83-01-PLAN.md (Python scaffold + 168-cell baseline + z-preview, verdict PASS)
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 8
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 7
+  percent: 27
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: `.planning/PROJECT.md`
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-26 -- Milestone v3.4 started
+Phase: 83 of 8 (Contextual Burstiness vs Goh-Barabasi Comparison)
+Plan: 83-01 of 5 (Python scaffold + 168-cell baseline + z-preview)
+Status: In progress
+Last activity: 2026-06-27 -- Completed 83-01-PLAN.md (verdict PASS)
 
 ### 80-03 Pending Handoff
 
@@ -53,9 +53,9 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 
 **Velocity:**
 
-- Total plans completed (v3.2 + v3.3): 9 + 5 = 14
+- Total plans completed (v3.2 + v3.3 + v3.4): 9 + 5 + 1 = 15
 - Average duration: ~30m
-- Total execution time: ~3h 30m (incl. 80 partial)
+- Total execution time: ~3h 40m (incl. 80 partial, 83-01)
 
 **By Phase:**
 
@@ -66,11 +66,12 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 | 78 Temporal Evolution | 2 | 2 | ~30m |
 | 79 Adaptive 3D | 3 | 3 | ~6m |
 | 80 Evaluation Readiness | 3 | 2.6/3 | ~12m (80-03 partial — pilot deferred) |
+| 83 Contextual Burstiness | 1 | 0.2/5 | ~10m (83-01 complete; 02-05 pending) |
 
 **Recent Trend:**
 
-- Last 5 plans: 80-02, 80-01, 79-03, 79-02, 79-01
-- Trend: Phase 80 implementation work landed; pilot verification deferred to after Phase 81 memory upgrade.
+- Last 5 plans: 83-01, 80-02, 80-01, 79-03, 79-02
+- Trend: Phase 83 Plan 01 (Python scaffold + 168-cell baseline + z-preview) complete; verdict PASS. 4 more plans in Phase 83 to ship the full comparison pipeline.
 
 ## Accumulated Context
 
@@ -78,6 +79,13 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 
 Recent decisions affecting current work:
 
+- [Phase 83]: DUCKDB_PATH defaults to project-root-relative path 'data/cache/crime.duckdb' (matches Next.js src/lib/db.ts:15); executor sets DUCKDB_PATH env var when running from the phase directory.
+- [Phase 83]: Month column is zero-indexed (0-11) by subtracting 1 from `EXTRACT(MONTH FROM "Date")` in DuckDB — SQL standard returns 1-12, acceptance requires 0-11.
+- [Phase 83]: Per-cell sigma uses Poisson-style `sqrt(mean_per_sec)` as null-model rate estimate for the Plan 01 sanity check. Real sigma from weekly bucket counts is Plan 02 work.
+- [Phase 83]: z-preview uses dominant-cell approximation (cell containing window midpoint) for speed. Full linearised form is Plan 03 work.
+- [Phase 83]: Venv bootstrapped via `uv venv --python 3.11` (miniconda Python 3.11.5) — homebrew Python 3.11/3.13/3.14 all have broken libexpat link on this host.
+- [Phase 83]: Added `!output/figures/.gitkeep` exception to .gitignore so figures dir structure persists in git while generated PNGs stay untracked.
+- [Phase 83]: 168-cell exploration verdict is **PASS** (n_degenerate=0, z_cv=0.445, z_max=1315.464). Peak cell hour=0 (Sun 00:00) count=76,519; trough cell hour=5 (Tue 05:00) count=14,569.
 - [Phase 80]: Study task order is fixed T4 → T1 → T2 → T3 (not natural ordering).
 - [Phase 80]: Researcher flow is fixed 8-step: Welcome → Training → Tasks-A → Questionnaire-A → Tasks-B → Questionnaire-B → Interview → Done.
 - [Phase 80]: Questionnaire is 6 NASA-RTLX + 6 interpretability items (overrides the 12 NASA-RTLX draft in `EVALUATION_PROTOCOL.md`).
@@ -135,6 +143,14 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-19T08:28:11Z
-Stopped at: Completed 79-03-PLAN.md
+Last session: 2026-06-27T12:57:20Z
+Stopped at: Completed 83-01-PLAN.md (Python scaffold + 168-cell baseline + z-preview, verdict PASS)
 Resume file: None
+
+### 83 Phase Roadmap
+
+- **83-01** ✓ COMPLETE — Python scaffold + 168-cell baseline + 1d z-score preview (verdict PASS)
+- **83-02** — Implement Goh-Barabasi B port + 1h/6h/1d/1w sweep
+- **83-03** — Compute contextual z-series + populate comparison_table.csv (4 metrics: contextual, B, density, CV)
+- **83-04** — Generate 3 thesis-ready figures (z_heatmap, per_window_timeseries, contrast_table)
+- **83-05** — Decision gate, single-run entry point, DECISION-GATE.md (go/not_yet/no)
