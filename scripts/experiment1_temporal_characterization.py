@@ -37,10 +37,34 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_OUTPUT = SCRIPT_DIR / 'output' / 'experiment1'
-DPI = 200
+DPI = 300
 FIGSIZE_WIDE = (12, 5)
 FIGSIZE_SQUARE = (7, 6)
-PALETTE = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+PALETTE = ['#1f3a5f', '#c0392b', '#2c7a3d', '#b8860b', '#5b3a8a',
+           '#a83279', '#0e7c7b', '#c25e0e']
+
+# Publication-style matplotlib defaults: small, clean, sans-serif.
+plt.rcParams.update({
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans'],
+    'font.size': 8,
+    'axes.titlesize': 9,
+    'axes.labelsize': 8,
+    'xtick.labelsize': 7,
+    'ytick.labelsize': 7,
+    'legend.fontsize': 7,
+    'axes.spines.top': False,
+    'axes.spines.right': False,
+    'axes.linewidth': 0.6,
+    'xtick.major.width': 0.6,
+    'ytick.major.width': 0.6,
+    'xtick.major.size': 3,
+    'ytick.major.size': 3,
+    'lines.linewidth': 0.9,
+    'savefig.bbox': 'tight',
+    'savefig.pad_inches': 0.05,
+    'figure.dpi': DPI,
+})
 
 
 # ── Format detection ──────────────────────────────────────────────────
@@ -342,13 +366,12 @@ def step1_timestamp_quality(csv_path: str, fmt: dict, anchors: dict,
           f'median={int(np.median(counts_dist))}, max={max_per_ts}')
 
     # Figure: histogram of events per timestamp (capped)
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(3.5, 2.2))
     cap = min(max_per_ts, 20)
     plotted = [c for c in counts_dist if c <= cap]
     ax.hist(plotted, bins=min(cap, 50), color=PALETTE[0], alpha=0.85, edgecolor='white')
-    ax.set_xlabel('Events sharing the same timestamp')
-    ax.set_ylabel('Number of timestamps')
-    ax.set_title('Timestamp Duplication (first 1M rows)')
+    ax.set_xlabel('Events per timestamp')
+    ax.set_ylabel('Unique timestamps')
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{int(x):,}'))
     fig.tight_layout()
     fig.savefig(output_dir / 'step1_timestamp_quality.png', dpi=DPI)
@@ -404,6 +427,37 @@ def step3_interevent_analysis(subsets: dict[str, np.ndarray], output_dir: Path):
         print(f'  {label:60s} {ne:>10,d} {mu:>13.1f} {med:>11.1f} '
               f'{std:>13.1f} {cv:>8.3f} {b:>8.3f}')
 
+    # Short labels for plots
+    short = {
+        'Entire dataset': 'Full',
+        'Single year (2025)': 'Year',
+        'Single month (2025-07)': 'Month',
+        'Single day (2025-07-31)': 'Day',
+        'Single district (012)': 'District',
+        'Single beat (1834)': 'Beat',
+        'Single type (Theft)': 'Type',
+        'Beat (1834) + Type (Theft)': 'Beat+Type',
+    }
+    # Fallback: derive from label
+    def _short(lbl: str) -> str:
+        if lbl in short:
+            return short[lbl]
+        if lbl.startswith('Single year'):
+            return 'Year'
+        if lbl.startswith('Single month'):
+            return 'Month'
+        if lbl.startswith('Single day'):
+            return 'Day'
+        if lbl.startswith('Single district'):
+            return 'District'
+        if lbl.startswith('Single beat'):
+            return 'Beat'
+        if lbl.startswith('Single type'):
+            return 'Type'
+        if '+' in lbl:
+            return 'Beat+Type'
+        return lbl
+
     # Figure: histograms of inter-event times (log x) for key subsets
     key_labels = [
         'Entire dataset',
@@ -412,37 +466,35 @@ def step3_interevent_analysis(subsets: dict[str, np.ndarray], output_dir: Path):
         next((l for l in subsets if l.startswith('Single district')), None),
     ]
     key_labels = [k for k in key_labels if k]
-    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
-    for ax, label in zip(axes.flatten(), key_labels):
+    fig, axes = plt.subplots(1, 4, figsize=(10, 2.4))
+    for ax, label in zip(axes, key_labels):
         gaps = gap_data[label]
         log_gaps = np.log10(gaps[gaps > 0])
-        ax.hist(log_gaps, bins=100, color=PALETTE[0], alpha=0.85, edgecolor='none')
-        ax.set_title(label, fontsize=10)
-        ax.set_xlabel('log₁₀(inter-event time / seconds)')
-        ax.set_ylabel('Frequency')
+        ax.hist(log_gaps, bins=80, color=PALETTE[0], alpha=0.85, edgecolor='none')
+        ax.set_title(_short(label))
+        ax.set_xlabel('log10 gap (s)')
+        if ax is axes[0]:
+            ax.set_ylabel('Frequency')
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{int(x):,}'))
-    fig.suptitle('Inter-event Time Distributions (log scale)', fontsize=13)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout()
     fig.savefig(output_dir / 'step3_interevent_histograms.png', dpi=DPI)
     plt.close(fig)
 
     # Figure: boxplot across subsets
-    fig, ax = plt.subplots(figsize=(14, 6))
     plot_labels, plot_data = [], []
     for label, gaps in gap_data.items():
         if len(gaps) < 3:
             continue
-        plot_labels.append(label)
+        plot_labels.append(_short(label))
         plot_data.append(np.log10(gaps[gaps > 0]))
-    bp = ax.boxplot(plot_data, vert=False, patch_artist=True, widths=0.6,
-                    labels=plot_labels)
+    fig, ax = plt.subplots(figsize=(3.5, 2.6))
+    bp = ax.boxplot(plot_data, vert=True, patch_artist=True, widths=0.6)
+    ax.set_xticklabels(plot_labels, rotation=30)
     for patch, color in zip(bp['boxes'], PALETTE[:len(plot_labels)]):
         patch.set_facecolor(color)
         patch.set_alpha(0.5)
-    ax.set_xlabel('log₁₀(inter-event time / seconds)')
-    ax.set_title('Inter-event Time Distributions Across Subsets')
-    ax.tick_params(axis='y', labelsize=8)
-    ax.grid(True, axis='x', alpha=0.3)
+    ax.set_ylabel('log10 gap (s)')
+    ax.grid(True, axis='y', alpha=0.3)
     fig.tight_layout()
     fig.savefig(output_dir / 'step3_interevent_boxplot.png', dpi=DPI)
     plt.close(fig)
@@ -484,38 +536,37 @@ def step4_density_analysis(subsets: dict[str, np.ndarray], output_dir: Path):
     if len(full_ts) >= 2:
         t0, t1 = float(full_ts[0]), float(full_ts[-1])
 
-        # Time series per bin size
-        fig, axes = plt.subplots(4, 1, figsize=(15, 10), sharex=True)
+        # Time series per bin size (single column, 4 stacked rows)
+        fig, axes = plt.subplots(4, 1, figsize=(5.5, 5.5), sharex=True)
         for ax, bin_h, bin_lbl in zip(axes, bin_sizes_hours, bin_labels):
             counts = bin_counts(full_ts, bin_h, t0, t1)
             bin_edges = np.arange(t0, t1 + 3600 * bin_h, 3600 * bin_h)
             centers = (bin_edges[:-1] + bin_edges[1:]) / 2
             ax.fill_between(centers, counts, alpha=0.4, color=PALETTE[0])
             ax.plot(centers, counts, color=PALETTE[0], linewidth=0.5)
-            ax.set_ylabel(f'Counts\n({bin_lbl})')
+            ax.set_ylabel(f'Counts / {bin_lbl}', fontsize=7)
         axes[-1].set_xlabel('Time')
-        fig.suptitle('Event Density Time Series — Entire Dataset', fontsize=13)
-        fig.tight_layout(rect=[0, 0, 1, 0.97])
+        fig.tight_layout()
         fig.savefig(output_dir / 'step4_timeseries_fulldataset.png', dpi=DPI)
         plt.close(fig)
 
-        # Density histograms per bin size
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        for ax, bin_h, bin_lbl in zip(axes.flatten(), bin_sizes_hours, bin_labels):
+        # Density histograms per bin size (1x4 row)
+        fig, axes = plt.subplots(1, 4, figsize=(10, 2.4))
+        for ax, bin_h, bin_lbl in zip(axes, bin_sizes_hours, bin_labels):
             counts = bin_counts(full_ts, bin_h, t0, t1)
-            ax.hist(counts, bins=min(80, len(np.unique(counts))),
+            ax.hist(counts, bins=min(60, len(np.unique(counts))),
                     color=PALETTE[0], alpha=0.85, edgecolor='none')
-            ax.set_title(f'{bin_lbl} bins', fontsize=10)
-            ax.set_xlabel('Events per bin')
-            ax.set_ylabel('Number of bins')
+            ax.set_title(bin_lbl)
+            ax.set_xlabel('Events / bin', fontsize=7)
+            if ax is axes[0]:
+                ax.set_ylabel('Bins')
             ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{int(x):,}'))
-        fig.suptitle('Event Density Distributions — Entire Dataset', fontsize=13)
-        fig.tight_layout(rect=[0, 0, 1, 0.96])
+        fig.tight_layout()
         fig.savefig(output_dir / 'step4_density_histograms_fulldataset.png', dpi=DPI)
         plt.close(fig)
 
         # Lorenz curves
-        fig, ax = plt.subplots(figsize=(7, 7))
+        fig, ax = plt.subplots(figsize=(3.5, 3.2))
         for bin_h, bin_lbl, color in zip(bin_sizes_hours, bin_labels, PALETTE):
             counts = bin_counts(full_ts, bin_h, t0, t1)
             if np.sum(counts) == 0:
@@ -525,13 +576,13 @@ def step4_density_analysis(subsets: dict[str, np.ndarray], output_dir: Path):
             pop_share = np.arange(1, len(cum_share) + 1) / len(cum_share)
             gini = density_metrics(counts)['gini']
             ax.plot(pop_share, cum_share,
-                    label=f'{bin_lbl} (Gini={gini:.3f})',
-                    color=color, linewidth=1.5)
-        ax.plot([0, 1], [0, 1], 'k--', alpha=0.5, label='Perfect equality')
-        ax.set_xlabel('Cumulative share of bins')
-        ax.set_ylabel('Cumulative share of events')
-        ax.set_title('Lorenz Curves — Entire Dataset')
-        ax.legend(fontsize=9)
+                    label=f'{bin_lbl} (G={gini:.2f})',
+                    color=color, linewidth=1.0)
+        ax.plot([0, 1], [0, 1], 'k--', alpha=0.4, linewidth=0.6, label='Equal')
+        ax.set_xlabel('Bin share')
+        ax.set_ylabel('Event share')
+        ax.legend(loc='lower right')
+        ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
         fig.savefig(output_dir / 'step4_lorenz_curves.png', dpi=DPI)
