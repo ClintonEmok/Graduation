@@ -507,14 +507,14 @@ def plot_timelines(
     """Three-row bin-width comparison for the three weighting functions.
 
     The visual emphasis is the WIDTH of each bin (its allocated share
-    of the 168-hour window) — all bins share the same neutral grey
-    fill. A single representative bin is shaded darker in every row
-    so the reader can see how the same hour expands or contracts
-    across the three weightings. The function labels themselves are
-    intentionally omitted here (a separate figure is responsible for
-    naming them).
+    of the full window) — all bins share the same neutral grey fill.
+    A single representative bin is shaded darker in every row so the
+    reader can see how the same hour expands or contracts across the
+    three weightings. The function labels themselves are intentionally
+    omitted here (a separate figure is responsible for naming them).
     """
-    total_seconds = float(counts.size * 3600)
+    total_seconds = float(results[0].edges[-1])
+    total_hours = total_seconds / 3600.0
     fig = plt.figure(figsize=(13.0, 4.0))
 
     fig.text(
@@ -544,7 +544,8 @@ def plot_timelines(
         last_ax = ax
         draw_neutral_timeline(ax, edges, total_seconds, rep_bin)
         if i == 2:
-            xticks = np.linspace(0, total_seconds, 8)
+            n_ticks = max(2, int(round(total_hours / 24.0)) + 1)
+            xticks = np.linspace(0, total_seconds, n_ticks)
             xtick_labels = [f'{int(round(t / 3600)):d}h' for t in xticks]
             ax.set_xticks(xticks)
             ax.set_xticklabels(xtick_labels, fontsize=9, color='#1f1f1f')
