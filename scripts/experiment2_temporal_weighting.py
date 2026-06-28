@@ -500,20 +500,7 @@ def plot_timelines(
     results: list[WeightingResult],
 ) -> None:
     total_seconds = float(counts.size * 3600)
-    fig = plt.figure(figsize=(13.0, 9.0))
-
-    fig.suptitle(
-        'Comparison of temporal weighting strategies',
-        fontsize=13, fontweight='bold', y=0.975,
-    )
-
-    fig.text(
-        0.5, 0.945,
-        f'Window: {window.window_days}d #{window.rank} ({window.start} → {window.end})  |  '
-        f'CV={window.cv:.2f}  |  peak/mean={window.peak_ratio:.2f}  |  '
-        f'N={window.total_events:,} events  |  Bins: {counts.size} × 1h',
-        ha='center', va='top', fontsize=9, color='#555555',
-    )
+    fig = plt.figure(figsize=(13.0, 7.4))
 
     caption = (
         'All four timelines represent the same 14-day event sequence. '
@@ -524,7 +511,7 @@ def plot_timelines(
         'despite the presence of temporally clustered events.'
     )
     fig.text(
-        0.5, 0.915,
+        0.5, 0.965,
         caption,
         ha='center', va='top',
         fontsize=8.5, style='italic', color='#333333',
@@ -533,7 +520,7 @@ def plot_timelines(
 
     grid = fig.add_gridspec(
         5, 1, height_ratios=[1.0, 1.0, 1.0, 1.0, 1.4],
-        hspace=0.55, top=0.85, bottom=0.07, left=0.07, right=0.98,
+        hspace=0.55, top=0.88, bottom=0.07, left=0.07, right=0.98,
     )
 
     timeline_specs = [
