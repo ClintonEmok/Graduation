@@ -427,39 +427,43 @@ def sparkbar(values: np.ndarray, width_chars: int = 32) -> str:
     return ''.join(out)
 
 
-def draw_timeline(
+def draw_neutral_timeline(
     ax,
     edges: np.ndarray,
     total_seconds: float,
-    color: str,
-    label: str,
-    counts: np.ndarray,
+    highlight_bin: int,
 ) -> None:
+    """Draw a timeline whose visual emphasis is bin WIDTH, not color.
+
+    All bins are the same neutral grey; a single representative bin
+    (`highlight_bin`) is shaded darker so the reader can compare how
+    the same hour expands or contracts across weightings.
+    """
     n = edges.size - 1
     bin_widths = np.diff(edges)
     if n == 0:
         return
-    # Draw each bin as a coloured rectangle whose width is its allocated share.
+    fill = '#d8d8d8'
+    edge = '#1f1f1f'
+    highlight = '#525252'
+    highlight_edge = '#000000'
     for i in range(n):
+        is_hi = (i == highlight_bin)
         ax.add_patch(plt.Rectangle(
             (edges[i], 0.0),
             bin_widths[i],
             1.0,
-            facecolor=color,
-            edgecolor='white',
-            linewidth=0.6,
-            alpha=0.85,
+            facecolor=highlight if is_hi else fill,
+            edgecolor=highlight_edge if is_hi else edge,
+            linewidth=1.4 if is_hi else 0.9,
         ))
     ax.set_xlim(0, total_seconds)
     ax.set_ylim(0, 1)
     ax.set_yticks([])
     ax.set_xticks([])
-    # Top label
-    ax.text(0.0, 1.05, label, ha='left', va='bottom', fontsize=9, fontweight='bold', color=PALETTE['text'])
-    # Show bin count and a small inline count profile
-    if counts is not None and counts.size == n:
-        profile = sparkbar(counts, width_chars=min(48, n))
-        ax.text(1.0, 1.05, profile, ha='right', va='bottom', fontsize=8, color=PALETTE['muted'], family='monospace')
+    for spine in ('top', 'right', 'left'):
+        ax.spines[spine].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
 
 
 def draw_weighting_comparison(
@@ -500,54 +504,53 @@ def plot_timelines(
     uniform: np.ndarray,
     results: list[WeightingResult],
 ) -> None:
-    total_seconds = float(counts.size * 3600)
-    fig = plt.figure(figsize=(13.0, 7.4))
+    """Three-row bin-width comparison for the three weighting functions.
 
-    caption = (
-        'All four timelines represent the same 14-day event sequence. '
-        'Raw density allocates visual space proportional to local event concentration, '
-        'improving readability while preserving temporal context. '
-        'Z-score overemphasizes a small number of intervals, '
-        'whereas Goh’s burstiness produces only limited redistribution '
-        'despite the presence of temporally clustered events.'
-    )
+    The visual emphasis is the WIDTH of each bin (its allocated share
+    of the 168-hour window) — all bins share the same neutral grey
+    fill. A single representative bin is shaded darker in every row
+    so the reader can see how the same hour expands or contracts
+    across the three weightings. The function labels themselves are
+    intentionally omitted here (a separate figure is responsible for
+    naming them).
+    """
+    total_seconds = float(counts.size * 3600)
+    fig = plt.figure(figsize=(13.0, 4.0))
+
     fig.text(
-        0.5, 0.965,
-        caption,
+        0.5, 0.93,
+        'Comparison of temporal allocations produced by alternative weighting functions.',
         ha='center', va='top',
-        fontsize=8.5, style='italic', color='#333333',
-        wrap=True,
+        fontsize=11, style='italic', color='#1f1f1f',
     )
 
     grid = fig.add_gridspec(
-        5, 1, height_ratios=[1.0, 1.0, 1.0, 1.0, 1.4],
-        hspace=0.55, top=0.88, bottom=0.07, left=0.07, right=0.98,
+        3, 1, height_ratios=[1.0, 1.0, 1.0],
+        hspace=0.18, top=0.84, bottom=0.14, left=0.03, right=0.995,
     )
 
-    timeline_specs = [
-        ('1. Uniform timeline (baseline)', uniform, PALETTE['uniform'], counts),
-        ('2. Density-weighted timeline',   results[0].edges, PALETTE['density'], counts),
-        ('3. Z-score-weighted timeline',   results[1].edges, PALETTE['zscore'], counts),
-        ('4. Burstiness-weighted timeline', results[2].edges, PALETTE['burstiness'], counts),
-    ]
-    for i, (label, edges, color, c) in enumerate(timeline_specs):
-        ax = fig.add_subplot(grid[i])
-        draw_timeline(ax, edges, total_seconds, color, label, c)
-        # Bottom time axis only on the last timeline
-        if i == len(timeline_specs) - 1:
-            xticks = np.linspace(0, total_seconds, 8)
-            xtick_labels = [f'{int(t / 3600):d}h' for t in xticks]
-            ax.set_xticks(xticks)
-            ax.set_xticklabels(xtick_labels, fontsize=8, color=PALETTE['muted'])
-            ax.tick_params(axis='x', colors=PALETTE['muted'], length=0)
+    # Use the z-score row's widest bin as the representative interval —
+    # the same hour (same bin index) is shaded across all three rows.
+    z_weight = results[1].weight
+    if z_weight.size and z_weight.max() > 0:
+        rep_bin = int(np.argmax(z_weight))
+    else:
+        rep_bin = 0
 
-    # Weighting comparison
-    ax_w = fig.add_subplot(grid[4])
-    draw_weighting_comparison(ax_w, results, counts)
-    ax_w.set_xlabel('Bin index', fontsize=9, color=PALETTE['muted'])
-    ax_w.tick_params(axis='x', colors=PALETTE['muted'], length=0)
-    ax_w.set_xticks(np.linspace(0, counts.size, 9))
-    ax_w.set_xticklabels([f'{int(v)}' for v in np.linspace(0, counts.size, 9)], fontsize=8)
+    last_ax = None
+    for i, edges in enumerate([results[0].edges, results[1].edges, results[2].edges]):
+        sharex = last_ax if last_ax is not None else None
+        ax = fig.add_subplot(grid[i], sharex=sharex)
+        last_ax = ax
+        draw_neutral_timeline(ax, edges, total_seconds, rep_bin)
+        if i == 2:
+            xticks = np.linspace(0, total_seconds, 8)
+            xtick_labels = [f'{int(round(t / 3600)):d}h' for t in xticks]
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xtick_labels, fontsize=9, color='#1f1f1f')
+            ax.tick_params(axis='x', colors='#1f1f1f', length=0)
+        else:
+            ax.tick_params(axis='x', labelbottom=False)
 
     fig.savefig(out_path, dpi=DPI, bbox_inches='tight', facecolor='white')
     plt.close(fig)
