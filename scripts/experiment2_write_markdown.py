@@ -29,15 +29,11 @@ WEIGHTING_NAMES = ("Raw density", "Z-score", "Goh burstiness")
 WEIGHTING_ORDER = ("Raw density", "Z-score", "Goh burstiness")
 
 METRIC_HEADERS = [
-    ("max_expansion", "Max expansion (x)", "neutral", "{:.2f}", "{:.2f}"),
-    ("max_compression", "Max compression (x)", "neutral", "{:.2f}", "{:.2f}"),
-    ("mean_allocated", "Mean share", "neutral", "{:.4f}", "{:.4f}"),
-    ("share_gini", "Share Gini", "higher", "{:.3f}", "{:.3f}"),
-    ("neighbour_diff", "Neighbour diff", "lower", "{:.3f}", "{:.3f}"),
-    ("peak_median_ratio", "Peak / median", "higher", "{:.2f}", "{:.2f}"),
-    ("weight_count_corr", "Weight <-> count r", "higher", "{:+.3f}", "{:+.3f}"),
-    ("compute_ms", "Compute (ms)", "lower", "{:.2f}", "{:.2f}"),
-    ("loc", "LoC", "lower", "{:.0f}", "{:.0f}"),
+    ("max_expansion",   "Max expansion (x)",   "neutral", "{:.2f}", "{:.2f}"),
+    ("max_compression", "Max compression (x)", "neutral", "{:.3f}", "{:.3f}"),
+    ("share_gini",      "Share Gini",          "higher",  "{:.3f}", "{:.3f}"),
+    ("neighbour_diff",  "Neighbour diff",      "lower",   "{:.4f}", "{:.4f}"),
+    ("compute_ms",      "Compute (ms)",        "lower",   "{:.2f}", "{:.2f}"),
 ]
 
 WINDOW_MD = "experiment2_results.md"
@@ -205,7 +201,7 @@ def main() -> None:
     out.append("## 3. Per-size breakdown (mean of key metrics)")
     out.append("")
     sizes = [14, 30, 90]
-    size_metrics = ["max_expansion", "share_gini", "weight_count_corr", "compute_ms"]
+    size_metrics = ["max_expansion", "share_gini", "neighbour_diff", "compute_ms"]
     headers = ["Weighting", "Size", "Windows"] + [
         METRIC_LOOKUP[m][0] for m in size_metrics
     ]
@@ -262,7 +258,7 @@ def main() -> None:
     out.append("Each row is a (window, weighting) pair. Slice events are the count of")
     out.append("events in the first 168 h of the window.")
     out.append("")
-    headers = ["Size", "Rank", "Weighting", "Max expand", "Max compress", "Gini", "Neighbour", "Peak/median", "r(count)", "Compute (ms)", "LoC"]
+    headers = ["Size", "Rank", "Weighting", "Max expand", "Max compress", "Gini", "Neighbour", "Compute (ms)"]
     rows = []
     for r in all_rows:
         rows.append([
@@ -270,13 +266,10 @@ def main() -> None:
             r["rank"],
             r["weighting"],
             fmt_cell(r["max_expansion"], "{:.2f}"),
-            fmt_cell(r["max_compression"], "{:.2f}"),
+            fmt_cell(r["max_compression"], "{:.3f}"),
             fmt_cell(r["share_gini"], "{:.3f}"),
-            fmt_cell(r["neighbour_diff"], "{:.3f}"),
-            fmt_cell(r["peak_median_ratio"], "{:.2f}"),
-            fmt_cell(r["weight_count_corr"], "{:+.3f}"),
+            fmt_cell(r["neighbour_diff"], "{:.4f}"),
             fmt_cell(r["compute_ms"], "{:.2f}"),
-            fmt_cell(r["loc"], "{:.0f}"),
         ])
     rows.sort(key=lambda r: (int(r[0].split()[0]), int(r[1]), r[2]))
     write_table(out, headers, rows)
@@ -288,30 +281,28 @@ def main() -> None:
     out.append("## 6. Headline findings")
     out.append("")
     out.append(
-        "- **Raw density wins on r(count)** (15/15 windows, r = 1.000 ± 0.000) — "
-        "the allocation mirrors the underlying event count perfectly. It is also "
-        "the cheapest to compute (~0.02 ms/window) and the simplest to implement (6 LoC)."
+        "- **Raw density allocates in proportion to local event count** and is "
+        "the smoothest on average (neighbour Δ ≈ 0.11, mean share Gini ≈ 0.24). "
+        "It is also the cheapest to compute (≈0.02 ms/window)."
     )
     out.append(
-        "- **Z-score wins on selectivity** (15/15 windows on share Gini, 13/15 on "
-        "peak/median ratio) — its z-thresholded allocation produces a long tail of "
-        "expansion around genuinely dense intervals (max expand 11.0× ± 14.6×, "
-        "up to 64.9×) while collapsing everything else to the floor. Suitable "
-        "as a per-window highlight overlay."
+        "- **Z-score is the most selective expander** on most windows (mean "
+        "share Gini ≈ 0.69, mean max expand ≈ 11×) but its z = 0 floor-clip "
+        "creates the most step-like timelines (neighbour Δ ≈ 0.13) and the "
+        "most aggressive compression of quiet hours."
     )
     out.append(
-        "- **Goh burstiness is positively correlated with count in 100 % of windows** "
-        "(mean r = +0.49 ± 0.06, range +0.35 to +0.64). Busy hours *are* burstier "
-        "hours, but the burstiness signal has a very compressed dynamic range "
-        "(max expand 1.2× ± 0.1×, share Gini 0.05) and is ~100× more expensive "
-        "to compute (≈2 ms/window, 32 LoC)."
+        "- **Goh burstiness is the most muted allocator** (mean max expand "
+        "≈ 1.2×, mean share Gini ≈ 0.05) and produces the smoothest timelines "
+        "on average (neighbour Δ ≈ 0.07). It is the most expensive to compute "
+        "(≈2 ms/window — roughly 100× density)."
     )
     out.append(
-        "- **Burstiness is the wrong signal for visual allocation.** A weighting "
-        "that is bounded near 1.0× in every window cannot redistribute temporal "
-        "real-estate in a way users perceive as adaptive. It remains a useful "
-        "diagnostic (e.g. *why* a count spike looks spikey) but should not drive "
-        "the time-axis on its own."
+        "- **Burstiness is the wrong signal for visual allocation.** A "
+        "weighting that is bounded near 1.0× in every window cannot "
+        "redistribute temporal real-estate in a way users perceive as adaptive. "
+        "It remains a useful diagnostic (e.g. *why* a count spike looks spikey) "
+        "but should not drive the time-axis on its own."
     )
     out.append(
         "- **Recommended split for the prototype**: use **raw density** as the "

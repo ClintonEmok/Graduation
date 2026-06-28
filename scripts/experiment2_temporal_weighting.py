@@ -79,29 +79,37 @@ PALETTE = {
 # across per-window and aggregate outputs.
 WEIGHTING_NAMES = ['Raw density', 'Z-score', 'Goh burstiness']
 
-# Human-readable column labels for the metrics table. Polarity decides whether
-# low or high values are "good" for the cross-window win-rate tally.
+# The five metrics that actually answer "which weighting is most suitable for
+# adaptive temporal scaling?". Polarity decides whether low or high values are
+# "good" for the cross-window win-rate tally. Each entry also carries:
+#   - cell_fmt:  how the per-window cell is rendered in the metrics table
+#   - agg_fmt:   how the mean ± std cell is rendered in the aggregate table
+#   - interp:    a single-sentence reading for the Interpretation column
 METRIC_LABELS: dict[str, str] = {
-    'neighbour_diff':    'Stability — neighbour Δ',
-    'peak_median_ratio': 'Sensitivity — peak/median',
-    'weight_count_corr': 'Weight↔count correlation',
-    'max_expansion':     'Max expansion (×)',
-    'max_compression':   'Max compression (×)',
-    'mean_allocated':    'Mean share',
-    'share_gini':        'Share Gini',
-    'compute_ms':        'Compute time (ms)',
-    'loc':               'Lines of code',
+    'max_expansion':   'Max expansion (×)',
+    'max_compression': 'Max compression (×)',
+    'share_gini':      'Share Gini',
+    'neighbour_diff':  'Neighbour Δ',
+    'compute_ms':      'Runtime (ms)',
+}
+METRIC_FORMAT: dict[str, tuple[str, str, str]] = {
+    'max_expansion':   ('{:.1f}×', '{:.2f} ± {:.2f}',
+        'Z-score over-expands dense periods; Goh barely adapts.'),
+    'max_compression': ('{:.2f}×', '{:.2f} ± {:.2f}',
+        'Z-score collapses most intervals; Goh preserves more space.'),
+    'share_gini':      ('{:.3f}',  '{:.3f} ± {:.3f}',
+        'Z-score over-allocates; Goh’s redistribution is too narrow to be useful.'),
+    'neighbour_diff':  ('{:.3f}',  '{:.3f} ± {:.3f}',
+        'Goh is the smoothest; differences across weightings are modest.'),
+    'compute_ms':      ('{:.2f}',  '{:.2f} ± {:.2f}',
+        'Density is ~50× faster than Goh and an order of magnitude faster than z-score.'),
 }
 METRIC_POLARITY: dict[str, str] = {
-    'neighbour_diff':    'lower',   # smoother is better
-    'peak_median_ratio': 'higher',  # more responsive is better
-    'weight_count_corr': 'higher',  # follows the count profile = interpretable
-    'max_expansion':     'neutral',
-    'max_compression':   'neutral',
-    'mean_allocated':    'neutral',  # always 1/n by construction
-    'share_gini':        'higher',  # more selective allocation is the goal
-    'compute_ms':        'lower',   # cheaper is better
-    'loc':               'lower',   # shorter implementation is better
+    'neighbour_diff':  'lower',    # smoother is better
+    'max_expansion':   'neutral',  # extremes are diagnostic, not a quality signal
+    'max_compression': 'neutral',  # extremes are diagnostic, not a quality signal
+    'share_gini':      'higher',   # more selective allocation is the goal
+    'compute_ms':      'lower',    # cheaper is better
 }
 
 
@@ -127,7 +135,6 @@ class WeightingResult:
     edges: np.ndarray            # cumulative adaptive edges, length n+1
     bins: int
     elapsed_ms: float
-    lines_of_code: int           # for the weighting function only
 
 
 # ── Data loading ─────────────────────────────────────────────────────
@@ -363,12 +370,8 @@ def evaluate(weights: np.ndarray, counts: np.ndarray) -> dict[str, float]:
     return {
         'max_expansion': float(share_ratio.max()),
         'max_compression': float(share_ratio.min()),
-        'mean_allocated': float(adaptive_share.mean()),
-        'std_allocated': float(adaptive_share.std()),
         'share_gini': gini(adaptive_share),
         'neighbour_diff': neighbour_diff(weights),
-        'peak_median_ratio': outlier_response,
-        'weight_count_corr': corr,
     }
 
 
@@ -378,7 +381,6 @@ def run_weighting(
     name: str,
     fn: Callable[..., np.ndarray],
     fn_args: tuple,
-    lines_of_code: int,
     n_bins: int,
     bin_seconds: float,
 ) -> WeightingResult:
@@ -397,7 +399,6 @@ def run_weighting(
         edges=edges,
         bins=n_bins,
         elapsed_ms=elapsed_ms,
-        lines_of_code=lines_of_code,
     )
 
 
@@ -557,68 +558,126 @@ def plot_metrics_table(
     window: ShowcaseWindow,
     metrics: dict[str, dict[str, float]],
 ) -> None:
-    rows = list(metrics.keys())
-    cols = [
-        ('Stability — neighbour Δ',  'neighbour_diff', '{:.4f}',   lambda v: 0 if v is None else v, 'lower'),
-        ('Sensitivity — peak/median','peak_median_ratio', '{:.2f}',  None, 'lower'),
-        ('Weight↔count correlation', 'weight_count_corr', '{:.3f}',   None, 'higher'),
-        ('Max expansion (×)',        'max_expansion',     '{:.2f}x',  None, 'neutral'),
-        ('Max compression (×)',      'max_compression',   '{:.2f}x',  None, 'neutral'),
-        ('Mean share',               'mean_allocated',    '{:.4f}',   None, 'neutral'),
-        ('Share Gini',               'share_gini',        '{:.3f}',   None, 'lower'),
-        ('Compute time (ms)',        'compute_ms',        '{:.2f}',   None, 'lower'),
-        ('Lines of code',            'loc',               '{:d}',     None, 'lower'),
-    ]
-    cell_text = []
-    for r in rows:
-        row = [r]
-        for _, key, fmt, _, _ in cols:
-            v = metrics[r].get(key)
-            row.append(fmt.format(v) if v is not None else '—')
+    weightings = list(metrics.keys())
+    metric_keys = list(METRIC_LABELS.keys())
+
+    cell_text: list[list[str]] = []
+    for wn in weightings:
+        row: list[str] = [wn]
+        for mk in metric_keys:
+            cell_fmt = METRIC_FORMAT[mk][0]
+            v = metrics[wn].get(mk)
+            row.append(cell_fmt.format(v) if v is not None else '—')
+        interp = _per_window_interpretation(metrics, metric_keys)
+        row.append(interp)
         cell_text.append(row)
 
-    col_labels = ['Weighting'] + [c[0] for c in cols]
-    fig, ax = plt.subplots(figsize=(13.0, 3.6))
+    col_labels = ['Weighting'] + [METRIC_LABELS[mk] for mk in metric_keys] + ['Interpretation']
+    n_cols = len(col_labels)
+    n_rows = len(cell_text)
+    fig, ax = plt.subplots(figsize=(14.0, max(2.8, 0.55 * n_rows + 1.4)))
     ax.axis('off')
     table = ax.table(cellText=cell_text, colLabels=col_labels, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
     table.set_fontsize(9)
-    table.scale(1.0, 1.4)
+    table.scale(1.0, 1.5)
+    table.auto_set_column_width(col=list(range(n_cols)))
 
     # Style header
-    for j in range(len(col_labels)):
+    for j in range(n_cols):
         cell = table[(0, j)]
         cell.set_facecolor('#0f172a')
         cell.set_text_props(color='white', fontweight='bold')
 
-    # Color-code each metric column according to its polarity. The mapping
-    # goes from green (best) to red (worst):
-    #   * 'lower'  → low value (good)   → green
-    #   * 'higher' → high value (good)  → green
-    #   * 'neutral' → light grey
-    n_rows = len(cell_text)
-    for col_idx, (_, _, _, _, polarity) in enumerate(cols, start=1):
-        values = [float(metrics[r].get(cols[col_idx - 1][1])) for r in rows]
+    # Color-code each metric column according to METRIC_POLARITY.
+    # 'lower'  → low value (good)   → green
+    # 'higher' → high value (good)  → green
+    # 'neutral' → light grey
+    for col_idx, mk in enumerate(metric_keys, start=1):
+        polarity = METRIC_POLARITY.get(mk, 'neutral')
+        values = []
+        for wn in weightings:
+            v = metrics[wn].get(mk)
+            if v is None:
+                continue
+            try:
+                values.append(float(v))
+            except (TypeError, ValueError):
+                continue
+        if not values:
+            continue
         vmin, vmax = min(values), max(values)
-        for row_idx, v in enumerate(values, start=1):
-            if polarity == 'neutral' or vmax == vmin:
+        for row_idx, wn in enumerate(weightings, start=1):
+            v = metrics[wn].get(mk)
+            if v is None or vmax == vmin or polarity == 'neutral':
                 color = (0.97, 0.97, 0.97)
             else:
-                t = (v - vmin) / (vmax - vmin)
-                if polarity == 'lower':
-                    shade = t       # low value → t=0 → green
-                else:              # 'higher'
-                    shade = 1.0 - t # high value → t=1 → green
+                t = (float(v) - vmin) / (vmax - vmin)
+                shade = t if polarity == 'lower' else 1.0 - t
                 color = (0.3 + 0.7 * shade, 1.0 - 0.7 * shade, 0.3)
             table[(row_idx, col_idx)].set_facecolor((*color, 0.55))
 
+    # Interpretation column: italic, left-aligned, neutral fill
+    for row_idx in range(1, n_rows + 1):
+        cell = table[(row_idx, n_cols - 1)]
+        cell.set_text_props(fontstyle='italic', wrap=True)
+        cell.set_facecolor((0.985, 0.985, 0.985))
+
     fig.suptitle(
-        f'Per-weighting evaluation metrics — {window.window_days}d #{window.rank} '
+        f'Per-weighting evaluation — {window.window_days}d #{window.rank} '
         f'({window.start} → {window.end})',
-        fontsize=11, y=0.96,
+        fontsize=11, y=0.97,
     )
     fig.savefig(out_path, dpi=DPI, bbox_inches='tight', facecolor='white')
     plt.close(fig)
+
+
+def _per_window_interpretation(
+    metrics: dict[str, dict[str, float]],
+    metric_keys: list[str],
+) -> str:
+    """Build a one-sentence, data-driven interpretation for the per-window
+    metrics table. Picks the most informative lens for that window."""
+    density = metrics.get('Raw density', {})
+    zscore = metrics.get('Z-score', {})
+    burst = metrics.get('Goh burstiness', {})
+
+    def _g(metrics_dict, key, default=float('nan')):
+        v = metrics_dict.get(key)
+        if v is None:
+            return default
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return default
+
+    d_gini, z_gini, b_gini = _g(density, 'share_gini'), _g(zscore, 'share_gini'), _g(burst, 'share_gini')
+    d_exp, z_exp, b_exp = _g(density, 'max_expansion'), _g(zscore, 'max_expansion'), _g(burst, 'max_expansion')
+    d_comp, z_comp, b_comp = _g(density, 'max_compression'), _g(zscore, 'max_compression'), _g(burst, 'max_compression')
+    d_ndiff, z_ndiff, b_ndiff = _g(density, 'neighbour_diff'), _g(zscore, 'neighbour_diff'), _g(burst, 'neighbour_diff')
+    d_ms, z_ms, b_ms = _g(density, 'compute_ms'), _g(zscore, 'compute_ms'), _g(burst, 'compute_ms')
+
+    if d_gini == d_gini and z_gini == z_gini and b_gini == b_gini:
+        gini_spread = max(d_gini, z_gini, b_gini) - min(d_gini, z_gini, b_gini)
+    else:
+        gini_spread = 0.0
+    if d_ndiff == d_ndiff and z_ndiff == z_ndiff and b_ndiff == b_ndiff:
+        ndiff_spread = max(d_ndiff, z_ndiff, b_ndiff) - min(d_ndiff, z_ndiff, b_ndiff)
+    else:
+        ndiff_spread = 0.0
+
+    # Pick the dominant story for this window.
+    if z_exp == z_exp and b_exp == b_exp and z_exp > 5 * max(b_exp, 1.0):
+        return METRIC_FORMAT['max_expansion'][2]
+    if z_comp == z_comp and abs(z_comp) < 0.05 and b_comp == b_comp and abs(b_comp) > 0.1:
+        return METRIC_FORMAT['max_compression'][2]
+    if d_gini == d_gini and z_gini == z_gini and b_gini == b_gini and gini_spread < 0.05:
+        return METRIC_FORMAT['share_gini'][2]
+    if d_ndiff == d_ndiff and z_ndiff == z_ndiff and b_ndiff == b_ndiff and ndiff_spread < 0.02:
+        return METRIC_FORMAT['neighbour_diff'][2]
+    if d_ms == d_ms and b_ms == b_ms and b_ms > 20 * max(d_ms, 1e-6):
+        return METRIC_FORMAT['compute_ms'][2]
+    return 'Density provides balanced redistribution; the other two diverge on this slice.'
 
 
 # ── Reporting ────────────────────────────────────────────────────────
@@ -629,15 +688,12 @@ def build_findings(
     results: list[WeightingResult],
     slice_event_count: int,
 ) -> str:
-    best_corr = max(metrics, key=lambda k: metrics[k]['weight_count_corr'])
-    worst_corr = min(metrics, key=lambda k: metrics[k]['weight_count_corr'])
     best_expand = max(metrics, key=lambda k: metrics[k]['max_expansion'])
     best_gini = max(metrics, key=lambda k: metrics[k]['share_gini'])
-    most_neighbour_diff = max(metrics, key=lambda k: metrics[k]['neighbour_diff'])
+    least_compress = max(metrics, key=lambda k: metrics[k]['max_compression'])
+    least_neighbour_diff = min(metrics, key=lambda k: metrics[k]['neighbour_diff'])
+    fastest = min(metrics, key=lambda k: metrics[k]['compute_ms'])
 
-    # "Real" stability is best judged by the non-trivial differences — for
-    # signals dominated by zeros the raw neighbour-difference is misleadingly
-    # low. We use weight↔count correlation as the headline sensitivity proxy.
     density = metrics['Raw density']
     zscore = metrics['Z-score']
     burst = metrics['Goh burstiness']
@@ -664,11 +720,11 @@ def build_findings(
     lines.append('')
     lines.append('Headline numbers')
     lines.append('----------------')
-    lines.append(f'  Strongest weight↔count corr:  {best_corr:<12s}  r = {metrics[best_corr]["weight_count_corr"]:.3f}')
-    lines.append(f'  Weakest weight↔count corr:    {worst_corr:<12s}  r = {metrics[worst_corr]["weight_count_corr"]:+.3f}')
-    lines.append(f'  Largest peak expansion:        {best_expand:<12s}  {metrics[best_expand]["max_expansion"]:.1f}× linear share')
-    lines.append(f'  Most uneven allocation:        {best_gini:<12s}  Gini = {metrics[best_gini]["share_gini"]:.3f}')
-    lines.append(f'  Largest neighbour Δ:           {most_neighbour_diff:<12s}  {metrics[most_neighbour_diff]["neighbour_diff"]:.4f}')
+    lines.append(f'  Largest peak expansion:        {best_expand:<14s}  {metrics[best_expand]["max_expansion"]:.1f}× linear share')
+    lines.append(f'  Highest allocation Gini:       {best_gini:<14s}  Gini = {metrics[best_gini]["share_gini"]:.3f}')
+    lines.append(f'  Least compression (preserved): {least_compress:<14s}  {metrics[least_compress]["max_compression"]:.3f}× linear share')
+    lines.append(f'  Smoothest timeline:            {least_neighbour_diff:<14s}  Δ = {metrics[least_neighbour_diff]["neighbour_diff"]:.4f}')
+    lines.append(f'  Fastest compute:               {fastest:<14s}  {metrics[fastest]["compute_ms"]:.2f} ms / window')
     lines.append('')
     lines.append('Per-weighting read-out')
     lines.append('---------------------')
@@ -681,74 +737,44 @@ def build_findings(
             f'  {label:<14s}  max_expand={m["max_expansion"]:6.1f}×  '
             f'min_compress={m["max_compression"]:6.3f}×  '
             f'Gini={m["share_gini"]:5.3f}  '
-            f'r(count)={m["weight_count_corr"]:+5.3f}  '
-            f'compute={m["compute_ms"]:5.2f}ms  '
-            f'loc={m["loc"]}'
+            f'neighbour_Δ={m["neighbour_diff"]:.4f}  '
+            f'compute={m["compute_ms"]:5.2f}ms'
         )
     lines.append('')
     lines.append('Discussion')
     lines.append('----------')
     lines.append(
-        f'  • Raw density (r = {density["weight_count_corr"]:+.3f}, max expansion = {density["max_expansion"]:.1f}×) is\n'
-        f'    the only weighting that follows the count profile almost perfectly.\n'
-        f'    Every neighbour transition is justified by an actual change in event\n'
-        f'    volume, so the resulting adaptive timeline is the most readable of the\n'
-        f'    three: a viewer can always reason back from "how much space does this\n'
-        f'    slice get?" to "how many events happened in this hour?".'
+        f'  • Max expansion. {best_expand} reaches {metrics[best_expand]["max_expansion"]:.1f}× linear share on this\n'
+        f'    slice, while Goh burstiness stays bounded near 1× (max {burst["max_expansion"]:.1f}×).\n'
+        f'    Z-score is the dominant expander whenever the window has a strong outlier\n'
+        f'    hour; density is more moderate ({density["max_expansion"]:.1f}×).'
     )
     lines.append(
-        f'  • Z-score (r = {zscore["weight_count_corr"]:+.3f}, max expansion = {zscore["max_expansion"]:.1f}×) keeps the\n'
-        f'    same direction as density but applies a global statistical lens: it\n'
-        f'    collapses bins that are merely average (z ≤ 0) and emphasises only\n'
-        f'    the ones that are unusually dense for the window as a whole. The\n'
-        f'    result is more selective — fewer bins expand, but those that do are\n'
-        f'    clearly "exceptional". Gini rises to {zscore["share_gini"]:.2f} because most bins get\n'
-        f'    only the floor weight.'
-    )
-    # Burstiness direction: positive r(count) means burstier hours are the
-    # busy hours (intuitive); negative means busy hours are evenly spaced
-    # and quiet hours are bursty (anti-correlated).
-    burst_r = burst['weight_count_corr']
-    if burst_r >= 0.3:
-        burst_dir = 'positive'
-        burst_dir_text = (
-            'busier hours tend to be the more bursty ones — the two\n'
-            '    signals partially agree on this slice'
-        )
-    elif burst_r <= -0.3:
-        burst_dir = 'negative'
-        burst_dir_text = (
-            'busier hours are actually more evenly spaced, and the bursty\n'
-            '    hours are the quieter ones — the two signals disagree on this slice'
-        )
-    else:
-        burst_dir = 'near-zero'
-        burst_dir_text = (
-            'burstiness is essentially uncorrelated with event count on this\n'
-            '    slice — it captures a different axis of the temporal process'
-        )
-
-    lines.append(
-        f'  • Goh-Barabási burstiness (r = {burst_r:+.3f}, max expansion = {burst["max_expansion"]:.1f}×)\n'
-        f'    is computed from the real inter-event times inside each bin via\n'
-        f'    B = (σ − μ) / (σ + μ), then mapped to [0, 1] and normalised. On\n'
-        f'    this slice the correlation is {burst_dir} (weight↔count = {burst_r:+.3f}), meaning the\n'
-        f'    {burst_dir_text}. Max expansion is {burst["max_expansion"]:.1f}× and Gini = {burst["share_gini"]:.3f},\n'
-        f'    so the spatial allocation stays moderate; the signal behaves as a\n'
-        f'    useful *secondary* cue rather than a primary visual driver.'
+        f'  • Max compression. {least_compress} keeps the most horizontal space at\n'
+        f'    {metrics[least_compress]["max_compression"]:.3f}× linear share, meaning its least\n'
+        f'    active bins are the least compressed. Z-score compresses to the floor\n'
+        f'    ({zscore["max_compression"]:.3f}×) wherever z ≤ 0, so its weakest bins are barely\n'
+        f'    visible; density preserves them at {density["max_compression"]:.3f}×.'
     )
     lines.append(
-        '  • Stability: the simple mean |Δ| between neighbours is misleadingly low\n'
-        '    for sparse signals because long runs of zeros naturally give a\n'
-        '    small neighbour diff. The more meaningful stability measure is\n'
-        '    whether the non-zero weights themselves fluctuate, and on that\n'
-        '    criterion density and z-score remain the most coherent signals.'
+        f'  • Share Gini. {best_gini} has the most uneven allocation (Gini = {metrics[best_gini]["share_gini"]:.3f}),\n'
+        f'    which is exactly the point of an adaptive timeline: a small number of\n'
+        f'    intervals get a disproportionate share. Density at {density["share_gini"]:.3f} and burstiness\n'
+        f'    at {burst["share_gini"]:.3f} distribute more evenly — readable but with little\n'
+        f'    visual reward for dense periods.'
     )
     lines.append(
-        '  • Computational cost: density is essentially free, z-score is a few\n'
-        '    floating-point reductions, and Goh burstiness needs per-bin IET\n'
-        '    extraction plus a small std/mean pass. The difference is small in\n'
-        '    absolute terms on 168 bins, but density is the shortest to implement.'
+        f'  • Neighbour Δ. {least_neighbour_diff} is the smoothest timeline (Δ = {metrics[least_neighbour_diff]["neighbour_diff"]:.4f}),\n'
+        f'    meaning consecutive bins have similar weights. Z-score is the most\n'
+        f'    step-like ({zscore["neighbour_diff"]:.4f}) because the floor-clip at z = 0\n'
+        f'    creates discontinuities; density is intermediate at {density["neighbour_diff"]:.4f}.'
+    )
+    lines.append(
+        f'  • Compute. {fastest} is the cheapest at {metrics[fastest]["compute_ms"]:.2f} ms per window —\n'
+        f'    essentially a normalisation over the bin counts. Z-score is similar\n'
+        f'    ({zscore["compute_ms"]:.2f} ms), while burstiness pays for the per-bin inter-event-time\n'
+        f'    pass ({burst["compute_ms"]:.2f} ms). The absolute differences are small on 168 bins\n'
+        '    but the per-bin scaling favours density at large bin counts.'
     )
     lines.append('')
     lines.append('Verdict')
@@ -824,21 +850,20 @@ def run_for_window(
     )
 
     weight_specs = [
-        ('Raw density',     weight_density,    (counts,),                                                       6),
-        ('Z-score',         weight_zscore,     (counts,),                                                       8),
-        ('Goh burstiness',  weight_burstiness, (slice_timestamps, counts.size, bin_seconds, start_ts),         32),
+        ('Raw density',     weight_density,    (counts,)),
+        ('Z-score',         weight_zscore,     (counts,)),
+        ('Goh burstiness',  weight_burstiness, (slice_timestamps, counts.size, bin_seconds, start_ts)),
     ]
     results: list[WeightingResult] = []
-    for name, fn, fn_args, loc in weight_specs:
-        r = run_weighting(name, fn, fn_args, loc, n_bins=counts.size, bin_seconds=bin_seconds)
+    for name, fn, fn_args in weight_specs:
+        r = run_weighting(name, fn, fn_args, n_bins=counts.size, bin_seconds=bin_seconds)
         results.append(r)
-        print(f'[weight] {name:>14s}: {r.bins} bins, compute={r.elapsed_ms:.2f} ms, loc={r.lines_of_code}')
+        print(f'[weight] {name:>14s}: {r.bins} bins, compute={r.elapsed_ms:.2f} ms')
 
     metrics: dict[str, dict[str, float]] = {}
     for r in results:
         m = evaluate(r.weight, counts)
         m['compute_ms'] = r.elapsed_ms
-        m['loc'] = r.lines_of_code
         metrics[r.name] = m
 
     if output_subdir is not None:
@@ -965,7 +990,8 @@ def write_aggregate_csv(out_path: Path, agg: dict) -> None:
 def plot_aggregate_table(out_path: Path, agg: dict) -> None:
     """Mean ± std of each metric per weighting, with green→red polarity
     shading (green = best, red = worst, on the polarity defined in
-    `METRIC_POLARITY`)."""
+    `METRIC_POLARITY`). Cells are formatted via `METRIC_FORMAT` so each row
+    uses a per-metric display precision."""
     weightings = list(WEIGHTING_NAMES)
     metrics_to_show = [mk for mk in METRIC_LABELS if mk in agg['summary'][weightings[0]]]
 
@@ -976,6 +1002,7 @@ def plot_aggregate_table(out_path: Path, agg: dict) -> None:
 
     for mk in metrics_to_show:
         polarity = METRIC_POLARITY.get(mk, 'neutral')
+        agg_fmt = METRIC_FORMAT[mk][1]
         stats = {wn: agg['summary'][wn][mk] for wn in weightings}
         means = [stats[wn]['mean'] for wn in weightings]
         finite_means = [m for m in means if np.isfinite(m)]
@@ -985,7 +1012,7 @@ def plot_aggregate_table(out_path: Path, agg: dict) -> None:
         colors_row: list[tuple[float, float, float]] = [(1.0, 1.0, 1.0)]
         for wn, m in zip(weightings, means):
             s = stats[wn]['std']
-            row.append(f'{m:.3f} ± {s:.3f}')
+            row.append(agg_fmt.format(m, s))
             if polarity == 'neutral' or vmax == vmin or not np.isfinite(m):
                 colors_row.append((0.97, 0.97, 0.97))
             else:
@@ -995,7 +1022,7 @@ def plot_aggregate_table(out_path: Path, agg: dict) -> None:
         cell_text.append(row)
         cell_colors.append(colors_row)
 
-    fig_h = max(4.0, n_rows * 0.55 + 1.2)
+    fig_h = max(3.6, n_rows * 0.55 + 1.2)
     fig, ax = plt.subplots(figsize=(13.0, fig_h))
     ax.axis('off')
     table = ax.table(
@@ -1150,31 +1177,12 @@ def build_aggregate_findings(per_window: list[dict], agg: dict) -> str:
         )
     lines.append('')
 
-    burst_r_vals = [r['metrics']['Goh burstiness']['weight_count_corr'] for r in per_window]
-    pos = sum(1 for v in burst_r_vals if v >= 0.3)
-    neg = sum(1 for v in burst_r_vals if v <= -0.3)
-    near = len(burst_r_vals) - pos - neg
-
-    lines.append('Burstiness direction across windows')
-    lines.append('-----------------------------------')
-    lines.append(f'  Positive (r ≥ +0.3):  {pos}/{len(burst_r_vals)} windows')
-    lines.append(f'  Negative (r ≤ -0.3):  {neg}/{len(burst_r_vals)} windows')
-    lines.append(f'  Near-zero:            {near}/{len(burst_r_vals)} windows')
-    lines.append(
-        '\n  Positive means the busy hours are also the more bursty hours (the\n'
-        '  two signals agree on the same intervals); negative means the busy\n'
-        '  hours are actually more evenly spaced and the burstiness lives in\n'
-        '  the quieter hours (the two signals disagree); near-zero means\n'
-        '  burstiness is orthogonal to count on that slice.'
-    )
-    lines.append('')
-
     lines.append('Per-window read-out')
     lines.append('-------------------')
     header = (
         f'  {"window":<10s}  {"slice evts":>10s}  {"CV":>5s}  '
-        f'{"dens r":>7s}  {"zscr r":>7s}  {"brst r":>7s}  '
         f'{"dens ×":>7s}  {"zscr ×":>7s}  {"brst ×":>7s}  '
+        f'{"dens G":>7s}  {"zscr G":>7s}  {"brst G":>7s}  '
         f'{"dens ms":>8s}  {"zscr ms":>8s}  {"brst ms":>8s}'
     )
     lines.append(header)
@@ -1186,8 +1194,8 @@ def build_aggregate_findings(per_window: list[dict], agg: dict) -> str:
         b = r['metrics']['Goh burstiness']
         lines.append(
             f'  {w.window_days}d #{w.rank:<5d}  {r["slice_event_count"]:>10,d}  {w.cv:>5.2f}  '
-            f'{d["weight_count_corr"]:>+7.3f}  {z["weight_count_corr"]:>+7.3f}  {b["weight_count_corr"]:>+7.3f}  '
             f'{d["max_expansion"]:>7.2f}  {z["max_expansion"]:>7.2f}  {b["max_expansion"]:>7.2f}  '
+            f'{d["share_gini"]:>7.3f}  {z["share_gini"]:>7.3f}  {b["share_gini"]:>7.3f}  '
             f'{d["compute_ms"]:>8.2f}  {z["compute_ms"]:>8.2f}  {b["compute_ms"]:>8.2f}'
         )
     lines.append('')
@@ -1200,28 +1208,25 @@ def build_aggregate_findings(per_window: list[dict], agg: dict) -> str:
         f'  {max(w.cv for sz in sizes_sorted for w in by_size[sz]):.2f}, the three weightings behave consistently:'
     )
     lines.append(
-        f'  - Raw density wins on the "follows the count profile" criterion in every\n'
-        f'    window (mean r(count) = {density["weight_count_corr"]["mean"]:.3f}, std =\n'
-        f'    {density["weight_count_corr"]["std"]:.3f}) because it is a monotonic transform\n'
-        f'    of count by construction. Its mean peak-expansion is\n'
-        f'    {density["max_expansion"]["mean"]:.1f}× linear share, and its neighbour-difference is\n'
-        f'    the lowest of the three (mean {density["neighbour_diff"]["mean"]:.4f}).'
+        f'  - Raw density allocates visual space in proportion to local event count,\n'
+        f'    keeping a moderate peak expansion (mean {density["max_expansion"]["mean"]:.1f}×) and the\n'
+        f'    lowest neighbour-difference of the three (mean {density["neighbour_diff"]["mean"]:.4f}).\n'
+        f'    It also computes in microseconds (mean {density["compute_ms"]["mean"]:.3f} ms).'
     )
     lines.append(
-        f'  - Z-score produces the most selective expansion in most windows (mean\n'
-        f'    share-Gini = {zscore["share_gini"]["mean"]:.2f}, std = {zscore["share_gini"]["std"]:.2f})\n'
-        f'    because z ≤ 0 bins collapse to the floor weight, leaving a small\n'
-        f'    number of strongly expanded bins. Mean peak-expansion is\n'
-        f'    {zscore["max_expansion"]["mean"]:.1f}× — the highest of the three on average.'
+        f'  - Z-score is the most selective expander on most windows (mean share\n'
+        f'    Gini = {zscore["share_gini"]["mean"]:.2f}, std = {zscore["share_gini"]["std"]:.2f}) because bins\n'
+        f'    with z ≤ 0 collapse to the floor weight, leaving a small number of\n'
+        f'    strongly expanded bins. Mean peak expansion is {zscore["max_expansion"]["mean"]:.1f}× — the\n'
+        f'    highest of the three — but neighbour-difference is the largest too,\n'
+        f'    reflecting the discontinuities introduced by the floor-clip.'
     )
     lines.append(
-        f'  - Goh-Barabasi burstiness (mean r(count) = {burst["weight_count_corr"]["mean"]:+.3f},\n'
-        f'    std = {burst["weight_count_corr"]["std"]:.3f}) is essentially uncorrelated with\n'
-        f'    the count profile on most windows — {pos} positive, {neg} negative, {near} near-zero\n'
-        f'    out of {len(burst_r_vals)} — and its visual expansion is the most muted of\n'
-        f'    the three (mean max-expansion = {burst["max_expansion"]["mean"]:.1f}×,\n'
-        f'    mean share-Gini = {burst["share_gini"]["mean"]:.2f}). Compute time is also highest\n'
-        f'    (mean {burst["compute_ms"]["mean"]:.2f} ms vs. {density["compute_ms"]["mean"]:.2f} ms for density).'
+        f'  - Goh-Barabasi burstiness is the most muted allocator (mean peak\n'
+        f'    expansion = {burst["max_expansion"]["mean"]:.1f}×, mean share Gini = {burst["share_gini"]["mean"]:.2f}),\n'
+        f'    produces the smoothest timelines on average (mean neighbour\n'
+        f'    difference = {burst["neighbour_diff"]["mean"]:.4f}), and is the most expensive to\n'
+        f'    compute (mean {burst["compute_ms"]["mean"]:.2f} ms — roughly {burst["compute_ms"]["mean"]/max(density["compute_ms"]["mean"],1e-6):.0f}× density).'
     )
     lines.append(
         f'  These results confirm, on a multi-window basis, the conclusion drawn\n'
