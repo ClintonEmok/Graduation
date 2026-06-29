@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v3.4
 milestone_name: Burstiness-First Adaptive Timeline
-status: Phase 84 complete (3 of 3 plans); 84-AUDIT ready
-stopped_at: Completed 84-03 (Contextual z port + 3-way Select + feature flag)
-last_updated: "2026-06-27T16:37:14Z"
-last_activity: 2026-06-27 -- Phase 84-03 complete: 3 commits (sensitivity check + contextual port + UI Select). Sensitivity verdict PASS (CV ratio 1.0113x, well within 30% threshold). 16 new unit tests (5 winsorize + 11 contextual) all pass; 102/102 signal-sources + store tests pass; 6 pre-existing failures (stkde/cube/viz) unchanged. BFT-02 finalised (all 3 sources wired in runtime + UI), BFT-10 satisfied (3-way Select in GlobalWarpControls), BFT-12 invariant preserved (7/7 burstiness parity + contract tests still pass). Phase 84 fully complete; ready for 84-AUDIT.
+current_phase: 86
+current_phase_name: wire up demopresetselect
+status: complete
+stopped_at: Completed 86-01 (wire up demopresetselect)
+last_updated: "2026-06-29T16:42:30.000Z"
+last_activity: 2026-06-29
+last_activity_desc: Phase 86-01 complete — DemoPresetSelect wired through applyDemoPreset helper
 progress:
-  total_phases: 8
-  completed_phases: 3
-  total_plans: 17
-  completed_plans: 15
-  percent: 47
+  total_phases: 10
+  completed_phases: 5
+  total_plans: 19
+  completed_plans: 12
+  percent: 36
 ---
 
 # Project State
@@ -21,13 +24,13 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Help users understand dense vs sparse spatiotemporal crime patterns through a synchronized tool-first exploration environment.
-**Current focus:** Not started (defining requirements)
+**Current focus:** Phase 86 — wire up demopresetselect (COMPLETE)
 
 ## Current Position
 
-Phase: 84 of 8 (Burstiness Signal Contract + Density Fallback) — **COMPLETE**
-Status: 84-01 (Wave 1) + 84-02 (Wave 2) + 84-03 (Wave 3) all complete. Phase 84 fully shipped. Ready for 84-AUDIT.
-Last activity: 2026-06-27 -- 84-03 SUMMARY shipped: contextual z port (winsorized Pearson residual) implemented with sensitivity check (PASS at 1d, CV ratio 1.0113x — winsorized form is the production choice per 84-CONTEXT.md §2); baseline-loader.ts exposes loadBaseline168Winsorized() + getBaseline168WinsorizedSync() (real impl, replaces 84-02 stub); 3-way Radix <Select> added to GlobalWarpControls.tsx (Burstiness / Density / Contextual), doubly-gated on timeScaleMode==='adaptive' && useFeatureFlagsStore.isEnabled('adaptiveSignalSource'); adaptiveSignalSource feature flag added (default: true); 6 new page.shell test assertions. 3 commits, 16 new unit tests (5 winsorize + 11 contextual) all pass; 102/102 signal-sources + store tests pass; 6 pre-existing failures (stkde/cube/viz) unchanged. BFT-02 finalised (all 3 sources wired in runtime + UI), BFT-10 satisfied (UI toggle for signal source), BFT-12 invariant preserved.
+Phase: 86 (wire up demopresetselect) — COMPLETE
+Status: Phase 86 complete
+Last activity: 2026-06-29 — Phase 86-01 complete (3 atomic commits: helper + tests, component wiring, shell test)
 
 ### 80-03 Pending Handoff
 
@@ -52,9 +55,9 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 
 **Velocity:**
 
-- Total plans completed (v3.2 + v3.3 + v3.4): 9 + 5 + 1 = 15
+- Total plans completed (v3.2 + v3.3 + v3.4): 9 + 5 + 1 + 1 = 16
 - Average duration: ~30m
-- Total execution time: ~3h 40m (incl. 80 partial, 83-01)
+- Total execution time: ~3h 48m (incl. 80 partial, 83-01, 86-01)
 
 **By Phase:**
 
@@ -67,11 +70,12 @@ Pilot verification auto-evidence (Tasks 1+2): typecheck ✓, lint ✓, 4/4 page.
 | 80 Evaluation Readiness | 3 | 2.6/3 | ~12m (80-03 partial — pilot deferred) |
 | 83 Contextual Burstiness | 5 | 5/5 | ~25m (all plans complete; verdict GO) |
 | 84 Burstiness Signal Contract | 3 | 3/3 | ~13m (all 3 plans complete; sensitivity check PASS) |
+| 86 Wire up demopresetselect | 1 | 1/1 | ~8m (helper + component + shell test in 3 atomic commits) |
 
 **Recent Trend:**
 
-- Last 5 plans: 84-03, 84-02, 84-01, 83-05, 83-04
-- Trend: Phase 84 fully complete in 3 atomic waves (~37 min total). All three signal sources (burstiness default + density + contextual) wired in runtime and UI; sensitivity check confirms winsorized Pearson residual is structurally equivalent to standard z (CV ratio 1.0113x at 1d, 36,537 windows). Phase 84 ready for AUDIT.
+- Last 5 plans: 86-01, 84-03, 84-02, 84-01, 83-05
+- Trend: Phase 86 complete in 1 atomic wave (~8 min). `applyDemoPreset` action-bag helper + 12 unit tests + component wiring + shell test, all 3 commits landed. The dropdown now drives the filter / brush / demo time / scale mode surfaces in one atomic action. Phase 84 fully complete in 3 atomic waves (~37 min total). All three signal sources (burstiness default + density + contextual) wired in runtime and UI; sensitivity check confirms winsorized Pearson residual is structurally equivalent to standard z (CV ratio 1.0113x at 1d, 36,537 windows). Phase 84 ready for AUDIT.
 
 ## Accumulated Context
 
@@ -124,6 +128,9 @@ Recent decisions affecting current work:
 - [Phase 84]: Winsorized Pearson residual is the production choice for the contextual z mapper (per 84-CONTEXT.md §2). Sensitivity check at 1d reports CV ratio 1.0113x (winsorized 9.2886 / standard 9.1849), well within the 30% threshold. The 1,305-week per-cell distribution is not stored in `baseline_168.parquet`; we ship the 168-cell shortcut (winsorize the 168 per-cell mu/sig at 5/95 percentiles via `d3.quantile` R-7 linear interpolation). The 1,305-week path is documented as deferred in thesis note Section 5.
 - [Phase 84]: Sensitivity script reads from pre-built Phase 83 artifacts (`output/baseline_168.csv` + `output/contextual_metric.parquet`) rather than re-running the full pipeline via `load_crimes()`. The dev server holds a DuckDB write lock; reading the pre-built artifacts avoids the lock conflict and is faster (~5s vs ~30s for the CSV re-read path). The script's primary purpose is the audit trail, not data generation, so this trade-off is acceptable.
 - [Phase 84]: `getBaseline168WinsorizedSync()` lazily derives the winsorized form on first access if the standard baseline is loaded. Avoids requiring an explicit `loadBaseline168Winsorized()` call from the dashboard mount; the dispatch hot path in `createSliceCoreSlice.ts` reads it via the sync accessor and lazy derivation is transparent.
+- [Phase 86]: `useDashboardDemoTimeStore.setRange` receives the **normalized 0-100 range**, not the epoch-second range. This matches the production `applyRangeToStoresContract` in `DemoDualTimeline.tsx:92` and the existing `DemoStatsPanel.SelectedDetailPeriodCard.handleFocusRange` path. The Phase 86 plan's "epoch-second range" wording for the time store is a misstatement; passing epoch would break the `currentTime` clamp logic (it would jump `currentTime` to the start of the epoch range instead of clamping). Filter store stays epoch-seconds per its docstring; brush range stays normalized 0-100.
+- [Phase 86]: The `applyDemoPreset` action bag is a flat 6-setter interface (`setFilterTimeRange`, `setBrushRange`, `setDemoTimeRange`, `setDemoTime`, `setTimeScaleMode`, `setWarpFactor`) — no slice / compare / rail / map / viewport / stkde setters. The helper's blast radius is provably bounded; a missing setter in the bag means the helper cannot reach that surface. The isolation test pins `Object.keys(actions).sort()` to exactly those 6 keys to prevent silent growth.
+- [Phase 86]: The `applyDemoPreset` helper is a pure function (no React, no zustand) that takes `currentTime` and `warpFactor` as input values (not getters) and returns a discriminated `{ ok: true }` | `{ ok: false, reason: 'no-data-bounds' | 'unparseable-dates' }` result. The caller maps the failure reason to a specific toast without try/catch. Same action-bag pattern as `applyRangeToStoresContract` and `applyBrushSelectionToRange`, just centralised for the preset use-case.
 - [Phase 84]: 3-way Select is doubly-gated: `timeScaleMode === 'adaptive'` AND `useFeatureFlagsStore.isEnabled('adaptiveSignalSource')` AND NOT `isEvaluationLocked()`. The `showSignalSource` variable combines the three conditions. The feature flag default is `true` so the Select appears by default in dev; the evaluation lock prevents modification during studies; the adaptive-mode gate keeps the Select out of the linear-mode UI where it has no effect.
 - [Phase 84]: `handleSourceChange` callback warms the baseline caches on first source switch (best-effort: `loadBaseline168` for density, `loadBaseline168` + `loadBaseline168Winsorized` for contextual). Failures are silent (`.catch(() => undefined)`) because the dispatch falls back to 1.0 if the baseline isn't loaded.
 - [Phase 84]: `d3.quantile` (R-7) and `numpy.percentile(method='linear')` are mathematically equivalent for N >= 5. The 168-cell baseline has 168 floats so the cross-language parity is exact within 1e-6 (verified by `winsorize.test.ts` 5-test cross-language parity suite).
@@ -140,6 +147,7 @@ Recent decisions affecting current work:
 - Phase 80 added: Evaluation readiness — prepare dashboard-demo prototype for user study to answer RQ1-RQ4
 - Phase 81 added: Reduce dashboard memory pressure by separating overview/detail loading, shrinking hot-path queries, and replacing CSV-heavy overview scans with pre-aggregated or columnar reads
 - Phase 82 added: add poi to 2d map on dashboard demo
+- Phase 86 added: wire up demopresetselect
 
 ### Blockers/Concerns
 
