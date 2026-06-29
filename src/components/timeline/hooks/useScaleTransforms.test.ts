@@ -33,4 +33,12 @@ describe('useScaleTransforms', () => {
     expect(displaySec).toBeCloseTo(linearSec, 6);
     expect(recoveredLinear).toBeCloseTo(linearSec, 3);
   });
+
+  it('returns the linear scale unchanged when no warp is applied (the overview case)', () => {
+    // Mirrors the overview branch: applyAdaptiveWarping with no warp inputs
+    // is a no-op, so the overview is always linear regardless of mode.
+    const linearSec = 42;
+    const displaySec = toDisplaySeconds(linearSec, 0, shiftedWarpMap, warpDomain);
+    expect(displaySec).toBe(linearSec);
+  });
 });

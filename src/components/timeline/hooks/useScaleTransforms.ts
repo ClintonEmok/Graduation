@@ -153,16 +153,8 @@ export const useScaleTransforms = ({
   );
 
   const overviewScale = useMemo(
-    () =>
-      applyAdaptiveWarping(
-        overviewInteractionScale.copy(),
-        timeScaleMode,
-        warpFactor,
-        warpMap,
-        overviewInnerWidth,
-        warpDomain
-      ),
-    [overviewInteractionScale, timeScaleMode, warpFactor, warpMap, overviewInnerWidth, warpDomain]
+    () => overviewInteractionScale.copy(),
+    [overviewInteractionScale]
   );
 
   const detailScale = useMemo(
