@@ -63,3 +63,4 @@ __pycache__/
 
 # thesis figure generation outputs
 /scripts/output/
+/output/
