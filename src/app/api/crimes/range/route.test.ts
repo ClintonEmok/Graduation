@@ -7,12 +7,16 @@ const {
   isMockDataEnabledMock,
   getDataPathMock,
   existsSyncMock,
+  queryCrimeCountMock,
+  queryCrimesInRangeMock,
 } = vi.hoisted(() => ({
   getDbMock: vi.fn(),
   ensureSortedCrimesTableMock: vi.fn(),
   isMockDataEnabledMock: vi.fn(),
   getDataPathMock: vi.fn(),
   existsSyncMock: vi.fn(),
+  queryCrimeCountMock: vi.fn(),
+  queryCrimesInRangeMock: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -20,6 +24,11 @@ vi.mock('@/lib/db', () => ({
   ensureSortedCrimesTable: ensureSortedCrimesTableMock,
   isMockDataEnabled: isMockDataEnabledMock,
   getDataPath: getDataPathMock,
+}));
+
+vi.mock('@/lib/queries', () => ({
+  queryCrimeCount: queryCrimeCountMock,
+  queryCrimesInRange: queryCrimesInRangeMock,
 }));
 
 vi.mock('fs', () => ({
@@ -38,6 +47,8 @@ describe('/api/crimes/range GET', () => {
     isMockDataEnabledMock.mockReset();
     getDataPathMock.mockReset();
     existsSyncMock.mockReset();
+    queryCrimeCountMock.mockReset();
+    queryCrimesInRangeMock.mockReset();
 
     isMockDataEnabledMock.mockReturnValue(false);
     ensureSortedCrimesTableMock.mockResolvedValue('crimes_sorted');
@@ -136,14 +147,37 @@ describe('/api/crimes/range GET', () => {
     expect(body.meta.nextCursor).toBe('1500:1');
   });
 
-  it('prompts narrowing for over-broad exact ranges', async () => {
+  it('returns sampled rows and prompts narrowing for over-broad exact ranges', async () => {
+    queryCrimeCountMock.mockResolvedValue(100);
+    queryCrimesInRangeMock.mockResolvedValue([
+      { timestamp: 1500, type: 'THEFT', lat: 41.8, lon: -87.6, x: 25, z: -10, iucr: '0820', district: '1', year: 2001 },
+      { timestamp: 1600, type: 'ASSAULT', lat: 41.81, lon: -87.61, x: 24, z: -9, iucr: '1310', district: '2', year: 2001 },
+    ]);
+
     const response = await GET(makeRequest('startEpoch=1000&endEpoch=40000000&pageSize=10'));
 
     expect(response.status).toBe(200);
+    expect(queryCrimeCountMock).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      expect.objectContaining({ crimeTypes: undefined, districts: undefined })
+    );
+    expect(queryCrimesInRangeMock).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      expect.objectContaining({ sampleStride: 10, limit: 10 })
+    );
+
     const body = await response.json();
-    expect(body.meta.requiresNarrowing).toBe(true);
-    expect(body.data).toEqual([]);
-    expect(ensureSortedCrimesTableMock).not.toHaveBeenCalled();
+    expect(body.meta).toMatchObject({
+      requiresNarrowing: true,
+      sampled: true,
+      sampleStride: 10,
+      totalMatches: 100,
+      returned: 2,
+      hasMore: false,
+    });
+    expect(body.data).toHaveLength(2);
   });
 
   it('returns mock responses with coordinate parity', async () => {

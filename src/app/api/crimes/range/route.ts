@@ -4,6 +4,7 @@ import { buildCrimeCoordinateSelectColumns } from '@/lib/queries/builders';
 import { buildCrimeRangeFilters } from '@/lib/queries/filters';
 import { clampPositiveInt } from '@/lib/queries/sanitization';
 import { ensureSortedCrimesTable, getDb, isMockDataEnabled } from '@/lib/db';
+import { queryCrimeCount, queryCrimesInRange } from '@/lib/queries';
 import type { CrimeDataMeta, CrimeRecord } from '@/types/crime';
 
 /**
@@ -179,25 +180,41 @@ export async function GET(request: Request) {
     }
 
     if (!cursor && bufferedEnd - bufferedStart > MAX_EXACT_RANGE_SECONDS) {
+      const totalMatches = await queryCrimeCount(bufferedStart, bufferedEnd, { crimeTypes, districts });
+      const sampleStride = Math.max(1, Math.ceil(totalMatches / pageSize));
+      const sampledRecords = await queryCrimesInRange(bufferedStart, bufferedEnd, {
+        sampleStride,
+        limit: pageSize,
+        crimeTypes,
+        districts,
+      });
+
       return NextResponse.json(
         {
-          data: [],
+          data: sampledRecords,
           meta: {
             viewport: { start, end },
             buffer: { days: bufferDays, applied: { start: bufferedStart, end: bufferedEnd } },
-            returned: 0,
+            returned: sampledRecords.length,
             limit: pageSize,
             pageSize,
             target,
             hasMore: false,
             nextCursor: null,
             requiresNarrowing: true,
-            sampled: false,
-            sampleStride: 1,
+            sampled: true,
+            sampleStride,
+            totalMatches,
             suggestedWindowDays: 30,
-          },
+          } satisfies CrimeDataMeta & { hasMore: boolean; nextCursor: string | null; requiresNarrowing: boolean; pageSize: number; target: string },
         },
-        { status: 200, headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'X-Content-Type-Options': 'nosniff' } }
+        {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        }
       );
     }
 
