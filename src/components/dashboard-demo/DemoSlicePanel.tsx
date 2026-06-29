@@ -349,11 +349,11 @@ export function DemoSlicePanel() {
         </div>
         {isEvaluationLocked ? (
           <div
-            className="mt-2 flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+            className="mt-2 flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
             role="note"
             aria-label="setup locked during evaluation"
           >
-            <Lock className="size-3.5 text-slate-400" aria-hidden />
+            <Lock className="size-3.5 text-muted-foreground" aria-hidden />
             Setup locked during evaluation.
           </div>
         ) : null}
@@ -574,37 +574,35 @@ export function DemoSlicePanel() {
           }
         }}
       >
-        <DialogContent className="max-w-3xl border-slate-800 bg-slate-950 text-slate-100">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Slice details</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-muted-foreground">
               {selectedSliceLabel}
             </DialogDescription>
           </DialogHeader>
 
           {selectedSlice ? (
             <div className="space-y-3 pt-2">
-              <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Boundary editor</div>
+              <div className="rounded-md border border-border bg-muted/60 p-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Boundary editor</div>
                 <div className="mt-3 flex gap-2">
-                  <label className="min-w-0 flex-1 space-y-1 text-[11px] text-slate-400">
+                  <label className="min-w-0 flex-1 space-y-1 text-[11px] text-muted-foreground">
                     <span>{selectedSlice.type === 'range' ? 'Start datetime' : 'Datetime'}</span>
                     <Input
                       type="datetime-local"
                       value={toDateTimeLocalValue(selectedSlice.startDateTimeMs ?? null)}
                       onChange={(event) => handleSelectedSliceStartChange(event.target.value)}
-                      className="border-slate-700 bg-slate-950 text-slate-100"
                     />
                   </label>
 
                   {selectedSlice.type === 'range' ? (
-                    <label className="min-w-0 flex-1 space-y-1 text-[11px] text-slate-400">
+                    <label className="min-w-0 flex-1 space-y-1 text-[11px] text-muted-foreground">
                       <span>End datetime</span>
                       <Input
                         type="datetime-local"
                         value={toDateTimeLocalValue(selectedSlice.endDateTimeMs ?? null)}
                         onChange={(event) => handleSelectedSliceEndChange(event.target.value)}
-                        className="border-slate-700 bg-slate-950 text-slate-100"
                       />
                     </label>
                   ) : null}
@@ -612,30 +610,30 @@ export function DemoSlicePanel() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Slice summary</div>
-                  <div className="mt-2 text-sm text-slate-100">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
-                  <div className="mt-1 text-xs text-slate-400">
+                <div className="rounded-md border border-border bg-muted/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Slice summary</div>
+                  <div className="mt-2 text-sm text-foreground">{selectedSlice.name?.trim() || 'Unnamed slice'}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
                     {formatDateTime(selectedSlice.startDateTimeMs)}{selectedSlice.type === 'range' ? ` → ${formatDateTime(selectedSlice.endDateTimeMs)}` : ''}
                   </div>
                 </div>
 
-                <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Burst / warp</div>
-                  <div className="mt-2 text-sm text-slate-100">{selectedSlice.burstClass ?? '—'}</div>
-                  <div className="mt-1 text-xs text-slate-400">
+                <div className="rounded-md border border-border bg-muted/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Burst / warp</div>
+                  <div className="mt-2 text-sm text-foreground">{selectedSlice.burstClass ?? '—'}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
                     Coefficient {formatCoefficient(selectedSlice.burstinessCoefficient ?? selectedSlice.burstScore) ?? '—'}
                   </div>
-                  <div className="mt-1 text-xs text-slate-400">
+                  <div className="mt-1 text-xs text-muted-foreground">
                     Warp {(selectedSlice.warpEnabled ?? true) ? 'enabled' : 'disabled'} · Strength {(selectedSlice.warpWeight ?? 1).toFixed(2)}
                   </div>
                 </div>
 
                 {(selectedSlice.burstProvenance || selectedSlice.tieBreakReason || selectedSlice.thresholdSource) ? (
-                  <div className="rounded-md border border-slate-800 bg-slate-900/60 p-3 sm:col-span-2">
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Method notes</div>
+                  <div className="rounded-md border border-border bg-muted/60 p-3 sm:col-span-2">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Method notes</div>
                     {selectedSlice.burstProvenance ? (
-                      <div className="mt-2 text-sm text-slate-100 whitespace-pre-wrap break-words">
+                      <div className="mt-2 text-sm text-foreground whitespace-pre-wrap break-words">
                         {selectedSlice.burstProvenance}
                       </div>
                     ) : null}

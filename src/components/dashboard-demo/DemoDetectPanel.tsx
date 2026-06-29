@@ -96,11 +96,11 @@ export function DemoDetectPanel() {
     <div className="space-y-3">
       {isEvaluationLocked ? (
         <div
-          className="flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+          className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
           role="note"
           aria-label="setup locked during evaluation"
         >
-          <Lock className="size-3.5 text-slate-400" aria-hidden />
+          <Lock className="size-3.5 text-muted-foreground" aria-hidden />
           Setup locked during evaluation.
         </div>
       ) : null}

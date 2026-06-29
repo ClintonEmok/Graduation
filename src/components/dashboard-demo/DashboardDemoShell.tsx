@@ -77,13 +77,13 @@ export function DashboardDemoShell() {
 
   return (
     <main
-      className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100"
+      className="relative h-screen w-screen overflow-hidden bg-background text-foreground"
       aria-label="dashboard demo workspace"
     >
       <DemoStkdeTrigger />
       <div className={`flex h-full min-w-0 flex-col transition-[padding] duration-200 ${railCollapsed ? 'pr-12' : 'pr-80'}`}>
-        <section className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" aria-label="dashboard demo shared viewport">
-          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-700/70 bg-slate-900/60 p-1 shadow-sm backdrop-blur">
+        <section className="relative min-h-0 flex-1 overflow-hidden bg-background" aria-label="dashboard demo shared viewport">
+          <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-border bg-muted/60 p-1 shadow-sm backdrop-blur">
             <Button
               type="button"
               onClick={() => setActiveViewport('map')}

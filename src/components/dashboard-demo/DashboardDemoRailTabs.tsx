@@ -73,7 +73,7 @@ function CollapsedRail({
     <TooltipProvider delayDuration={200}>
       <aside
         aria-label="dashboard demo sidebar (collapsed)"
-        className="fixed right-0 top-0 z-20 flex h-full w-12 flex-col items-center gap-1 border-l border-slate-800 bg-slate-950/95 py-2 shadow-2xl backdrop-blur"
+        className="fixed right-0 top-0 z-20 flex h-full w-12 flex-col items-center gap-1 border-l border-border bg-card/95 py-2 shadow-2xl backdrop-blur"
       >
         <Tooltip>
           <TooltipTrigger asChild>
@@ -83,7 +83,7 @@ function CollapsedRail({
               size="icon-sm"
               onClick={onExpand}
               aria-label="Expand sidebar"
-              className="mb-2 rounded-md text-slate-400 hover:text-slate-100"
+              className="mb-2 rounded-md text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="size-3.5" />
             </Button>
@@ -91,7 +91,7 @@ function CollapsedRail({
           <TooltipContent side="left">Expand sidebar</TooltipContent>
         </Tooltip>
 
-        <div className="h-px w-6 bg-slate-800" />
+        <div className="h-px w-6 bg-border" />
 
         {TAB_SPECS.map((spec) => {
           const Icon = spec.icon;
@@ -106,8 +106,8 @@ function CollapsedRail({
                   aria-pressed={isActive}
                   className={`flex h-9 w-9 items-center justify-center rounded-md transition ${
                     isActive
-                      ? 'bg-sky-500/20 text-sky-100'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
                   }`}
                 >
                   <Icon className="size-4" />
@@ -136,20 +136,20 @@ function ExpandedRail({
   return (
     <aside
       aria-label="dashboard demo sidebar"
-      className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur"
+      className="fixed right-0 top-0 z-20 h-full w-80 overflow-y-auto border-l border-border bg-card/95 shadow-2xl backdrop-blur"
     >
       {isEvaluationLocked ? (
         <div
-          className="mx-2 mt-2 flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300"
+          className="mx-2 mt-2 flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
           role="note"
           aria-label="setup locked during evaluation"
         >
-          <Lock className="size-3.5 text-slate-400" aria-hidden />
+          <Lock className="size-3.5 text-muted-foreground" aria-hidden />
           Setup locked during evaluation.
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/60 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-border bg-muted/60 px-3 py-2">
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -159,7 +159,7 @@ function ExpandedRail({
                 size="icon-sm"
                 onClick={onCollapse}
                 aria-label="Collapse sidebar"
-                className="rounded-md text-slate-400 hover:text-slate-100"
+                className="rounded-md text-muted-foreground hover:text-foreground"
               >
                 <ChevronRight className="size-3.5" />
               </Button>
@@ -171,7 +171,7 @@ function ExpandedRail({
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <div className="px-2 pt-2">
-          <TabsList className="grid h-auto w-full grid-cols-5 rounded-md bg-slate-800 p-0.5">
+          <TabsList className="grid h-auto w-full grid-cols-5 rounded-md bg-muted p-0.5">
             {TAB_SPECS.map((spec) => {
               const Icon = spec.icon;
               return (
