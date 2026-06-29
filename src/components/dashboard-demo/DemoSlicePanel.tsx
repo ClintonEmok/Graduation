@@ -360,7 +360,7 @@ export function DemoSlicePanel() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3 px-4 pb-4">
-        <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2">
+        <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -399,7 +399,7 @@ export function DemoSlicePanel() {
           ) : (
             <>
               <section className="space-y-2">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Pending drafts</div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Pending drafts</div>
                 {pendingItems.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border bg-background px-3 py-3 text-sm text-muted-foreground">
                     No pending drafts. Add a range slice to review it here.
@@ -413,17 +413,17 @@ export function DemoSlicePanel() {
                     return (
                       <div
                         key={bin.id}
-                        className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs hover:border-slate-700"
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs hover:border-ring/40"
                       >
-                        <span className="font-medium text-sky-100">{label}</span>
+                        <span className="font-medium text-foreground">{label}</span>
 
                         {!isManualDraft && burstScore && (
-                          <Badge variant="outline" className="rounded-full border-sky-400/20 bg-sky-500/10 px-2 py-0 text-[10px] text-sky-100">
+                          <Badge variant="outline" className="rounded-full border-chart-1/30 bg-chart-1/10 px-2 py-0 text-[10px] text-chart-1">
                             {burstScore}
                           </Badge>
                         )}
 
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-muted-foreground">
                           {formatCompactDate(bin.startTime)} → {formatCompactDate(bin.endTime)}
                         </span>
 
@@ -436,7 +436,7 @@ export function DemoSlicePanel() {
                             disabled={isEvaluationLocked}
                             aria-disabled={isEvaluationLocked}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 gap-1 bg-emerald-600 text-[10px] text-emerald-50 hover:bg-emerald-500"
+                            className="h-6 gap-1"
                           >
                             <Check className="h-3 w-3" />
                             Apply
@@ -449,7 +449,7 @@ export function DemoSlicePanel() {
                             disabled={isEvaluationLocked}
                             aria-disabled={isEvaluationLocked}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
+                            className="h-6 text-[10px]"
                           >
                             Details
                           </Button>
@@ -461,7 +461,7 @@ export function DemoSlicePanel() {
                             disabled={pendingItems.length <= 1 || isEvaluationLocked}
                             aria-disabled={isEvaluationLocked || pendingItems.length <= 1}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
+                            className="h-6 text-[10px] text-muted-foreground"
                           >
                             Merge
                           </Button>
@@ -473,7 +473,7 @@ export function DemoSlicePanel() {
                             disabled={bin.endTime <= bin.startTime || isEvaluationLocked}
                             aria-disabled={isEvaluationLocked || bin.endTime <= bin.startTime}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 border-slate-700 text-[10px] text-slate-400 hover:bg-slate-800"
+                            className="h-6 text-[10px] text-muted-foreground"
                           >
                             Split
                           </Button>
@@ -485,7 +485,7 @@ export function DemoSlicePanel() {
                             disabled={isEvaluationLocked}
                             aria-disabled={isEvaluationLocked}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
+                            className="h-6 border-destructive/30 text-[10px] text-destructive hover:border-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -497,7 +497,7 @@ export function DemoSlicePanel() {
               </section>
 
               <section className="space-y-2">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Applied slices</div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Applied slices</div>
                 {appliedItems.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border bg-background px-3 py-3 text-sm text-muted-foreground">
                     Applied slices will appear here after you apply a draft.
@@ -515,18 +515,18 @@ export function DemoSlicePanel() {
                         key={slice.id}
                         className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs hover:border-border"
                       >
-                        <span className="font-medium text-slate-100">{label}</span>
+                        <span className="font-medium text-foreground">{label}</span>
 
-                        <Badge variant="outline" className="rounded-full border-emerald-400/20 bg-emerald-500/10 px-2 py-0 text-[10px] text-emerald-100">
+                        <Badge variant="outline" className="rounded-full border-chart-2/30 bg-chart-2/10 px-2 py-0 text-[10px] text-chart-2">
                           {warpLabel}
                         </Badge>
 
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-muted-foreground">
                           {formatCompactDate(slice.startDateTimeMs)} → {formatCompactDate(slice.endDateTimeMs)}
                         </span>
 
                         {slice.isBurst && typeof slice.burstinessCoefficient === 'number' && (
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-muted-foreground">
                             {formatCoefficient(slice.burstinessCoefficient)}
                           </span>
                         )}
@@ -540,7 +540,7 @@ export function DemoSlicePanel() {
                             disabled={isEvaluationLocked}
                             aria-disabled={isEvaluationLocked}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 border-slate-700 text-[10px] text-slate-300 hover:bg-slate-800"
+                            className="h-6 text-[10px]"
                           >
                             Details
                           </Button>
@@ -552,7 +552,7 @@ export function DemoSlicePanel() {
                             disabled={isEvaluationLocked}
                             aria-disabled={isEvaluationLocked}
                             tabIndex={isEvaluationLocked ? -1 : undefined}
-                            className="h-6 border-rose-500/30 text-[10px] text-rose-300 hover:border-rose-400 hover:bg-rose-500/10"
+                            className="h-6 border-destructive/30 text-[10px] text-destructive hover:border-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
