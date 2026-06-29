@@ -94,9 +94,9 @@ describe('useAdaptiveStore computeMaps contract', () => {
     expect(firstArg.config.binningMode).toBe('uniform-events');
   });
 
-  test('defaults burst metric to burstiness', async () => {
+  test('defaults burst metric to density', async () => {
     const { useAdaptiveStore } = await import('./useAdaptiveStore');
 
-    expect(useAdaptiveStore.getState().burstMetric).toBe('burstiness');
+    expect(useAdaptiveStore.getState().burstMetric).toBe('density');
   });
 });

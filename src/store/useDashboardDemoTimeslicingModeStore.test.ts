@@ -3,6 +3,7 @@ import { useDashboardDemoTimeslicingModeStore } from './useDashboardDemoTimeslic
 import { useDashboardDemoCoordinationStore } from './useDashboardDemoCoordinationStore';
 import { useSliceDomainStore } from './useSliceDomainStore';
 import { useTimelineDataStore } from './useTimelineDataStore';
+import { useAdaptiveStore } from './useAdaptiveStore';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -304,6 +305,7 @@ describe('useDashboardDemoTimeslicingModeStore', () => {
   });
 
   test('replaces the active slice set when applying pending burst drafts', () => {
+    useAdaptiveStore.setState({ activeSignalSource: 'burstiness' });
     useSliceDomainStore.getState().addSlice({
       type: 'point',
       time: 5,

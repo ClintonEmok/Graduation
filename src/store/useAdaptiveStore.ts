@@ -28,9 +28,8 @@ interface AdaptiveState {
   /**
    * Phase 84 (BFT-01 / BFT-02): runtime-mutable signal source used to
    * compute `warpWeight` for newly created TimeSlices. Defaults to
-   * `'burstiness'` to preserve pre-Phase-84 behavior. Persisted in
-   * localStorage under key `adaptive-signal-source-v1` so the user's
-   * choice survives page reloads.
+   * `'density'`. Persisted in localStorage under key
+   * `adaptive-signal-source-v1` so the user's choice survives page reloads.
    */
   activeSignalSource: AdaptiveSignalSource;
 
@@ -139,10 +138,10 @@ export const useAdaptiveStore = create<AdaptiveState>()(
       countMap: null,
       warpMap: null,
       isComputing: false,
-      burstMetric: 'burstiness',
+      burstMetric: 'density',
       burstThreshold: 0.7,
       mapDomain: [0, 100],
-      activeSignalSource: 'burstiness' as AdaptiveSignalSource,
+      activeSignalSource: 'density' as AdaptiveSignalSource,
 
       setWarpFactor: (v) => set({ warpFactor: v }),
       setWarpSource: (source) => set({ warpSource: source }),
@@ -178,9 +177,9 @@ export const useAdaptiveStore = create<AdaptiveState>()(
             peerRelativeWarping: true,
             manualWarpWeightOverrides: {},
             densityScope: 'viewport',
-            burstMetric: 'burstiness',
+            burstMetric: 'density',
             burstThreshold: nextThreshold,
-            activeSignalSource: 'burstiness' as AdaptiveSignalSource,
+            activeSignalSource: 'density' as AdaptiveSignalSource,
           };
         }),
 

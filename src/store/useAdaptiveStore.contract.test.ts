@@ -29,7 +29,7 @@ describe('useAdaptiveStore warp control contract', () => {
 
 describe('useAdaptiveStore public surface', () => {
   beforeEach(() => {
-    useAdaptiveStore.setState({ activeSignalSource: 'burstiness' });
+    useAdaptiveStore.setState({ activeSignalSource: 'density' });
   });
 
   test('switching activeSignalSource does not add or remove any other state keys', () => {
@@ -46,7 +46,7 @@ describe('useAdaptiveStore public surface', () => {
     expect(typeof useAdaptiveStore.getState().setActiveSignalSource).toBe('function');
   });
 
-  test('activeSignalSource defaults to burstiness', () => {
-    expect(useAdaptiveStore.getState().activeSignalSource).toBe('burstiness');
+  test('activeSignalSource defaults to density', () => {
+    expect(useAdaptiveStore.getState().activeSignalSource).toBe('density');
   });
 });
