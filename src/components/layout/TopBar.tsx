@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical, PanelRightOpen } from 'lucide-react';
 import { AdaptiveControls } from '@/components/timeline/AdaptiveControls';
+import { DemoPresetSelect } from '@/components/demo/DemoPresetSelect';
 import { FloatingToolbar } from '@/components/viz/FloatingToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { useDraggable } from '@/hooks/useDraggable';
 import { useCoordinationStore } from '@/store/useCoordinationStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -109,6 +111,8 @@ export function TopBar() {
             Regen mock
           </button>
         )}
+        <DemoPresetSelect />
+        <Separator orientation="vertical" className="mx-1 h-6" />
         <Popover open={adaptiveOpen} onOpenChange={setAdaptiveOpen}>
           <PopoverTrigger asChild>
             <button
