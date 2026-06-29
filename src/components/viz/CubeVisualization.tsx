@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { RefreshCcw } from 'lucide-react';
+import { Loader2, RefreshCcw } from 'lucide-react';
 import { useStore } from 'zustand';
 import { useUIStore } from '@/store/ui';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
@@ -38,7 +38,7 @@ export default function CubeVisualization({
   sliceStoreOverride,
 }: CubeVisualizationProps) {
   const { triggerReset } = useUIStore();
-  const { loadRealData, isLoading, columns } = useTimelineDataStore();
+  const { loadRealData, isLoading, isMock, dataCount, columns } = useTimelineDataStore();
   const filterStore = (filterStoreOverride ?? useFilterStore) as typeof useFilterStore;
   const coordinationStore = (coordinationStoreOverride ?? useCoordinationStore) as typeof useCoordinationStore;
   const adaptiveStore = (adaptiveStoreOverride ?? useAdaptiveStore) as typeof useAdaptiveStore;
@@ -138,7 +138,38 @@ export default function CubeVisualization({
           sliceStoreOverride={sliceStore}
         />
 
-        <div className="absolute top-4 left-4 z-10 rounded-md border border-slate-500/50 bg-slate-950/75 px-3 py-2 text-[10px] text-slate-100 shadow-sm backdrop-blur">
+        {isLoading && (
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm pointer-events-none"
+            role="status"
+            aria-live="polite"
+            aria-label="Loading crime records"
+          >
+            <div className="flex flex-col items-center gap-3 px-6 text-center">
+              <Loader2 className="size-8 animate-spin text-slate-200" />
+              <p className="text-sm font-medium text-slate-100">Loading crime records</p>
+              <p className="text-[11px] text-slate-300">
+                Streaming 8.5M+ incidents from DuckDB…
+              </p>
+              {dataCount !== null && dataCount > 0 && (
+                <p className="text-[11px] text-slate-400">
+                  {dataCount.toLocaleString()} records loaded
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isMock && !isLoading && (
+          <div className="absolute top-4 left-4 z-30 max-w-md rounded-md border border-red-500/40 bg-red-950/85 px-3 py-2 text-[11px] text-red-100 shadow-sm backdrop-blur">
+            <p className="text-xs font-semibold">⚠️ Using demo data (mock)</p>
+            <p className="mt-1 text-red-200">
+              Real DuckDB connection failed. Showing 1,000 mock points at y=0. Check the server console.
+            </p>
+          </div>
+        )}
+
+        <div className="absolute top-4 right-4 z-10 rounded-md border border-slate-500/50 bg-slate-950/60 px-3 py-2 text-[10px] text-slate-100 shadow-sm backdrop-blur">
           <p>Relational mode: {warpSource} · warp {effectiveWarpFactor.toFixed(2)}</p>
           <p>Active structure: {activeConstraintLabel}</p>
           <p>Linked selection: {selectedInterval?.label ?? appliedIntervalLabel}</p>
@@ -173,7 +204,7 @@ export default function CubeVisualization({
         <div className="absolute bottom-4 left-4 z-10">
           <SimpleCrimeLegend />
         </div>
-        {slices.length === 0 && clusters.length === 0 && (
+        {!isLoading && slices.length === 0 && clusters.length === 0 && (
           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
             <div className="rounded-md border border-dashed border-slate-300/30 bg-slate-950/60 backdrop-blur px-4 py-3 text-xs text-slate-300 text-center">
               <p className="font-medium text-slate-200">No slices active</p>
