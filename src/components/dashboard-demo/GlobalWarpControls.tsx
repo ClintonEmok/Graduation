@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Sliders, Maximize2, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useDashboardDemoCoordinationStore } from '@/store/useDashboardDemoCoordinationStore';
@@ -94,11 +94,6 @@ export function GlobalWarpControls() {
       )}
       aria-label="global adaptive warp controls"
     >
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        <Sliders className="size-3" aria-hidden />
-        Adaptive warp
-      </div>
-
       <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-2">
         <div className="flex items-center justify-between">
           <span className="text-foreground">Temporal resolution</span>
