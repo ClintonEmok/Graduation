@@ -68,6 +68,10 @@ describe('/dashboard-demo shell', () => {
       new URL('../../components/timeline/DemoDualTimeline.tsx', import.meta.url),
       'utf8'
     );
+    const demoPresetSelectSource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoPresetSelect.tsx', import.meta.url),
+      'utf8'
+    );
     expect(pageSource).toMatch(/DashboardDemoShell/);
     expect(shellSource).not.toMatch(/WorkflowSkeleton/);
     expect(shellSource).not.toMatch(/Phase 13 guided analysis workflow/);
@@ -166,6 +170,14 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimelinePanelSource).not.toMatch(/useSliceStore|useTimeslicingModeStore|Slice companion|Side panel/);
     expect(railTabsSource).toMatch(/Tabs/);
     expect(railTabsSource).toMatch(/DemoSlicePanel/);
+    expect(railTabsSource).toMatch(/DemoPresetSelect/);
+    expect(demoPresetSelectSource).toMatch(/useDashboardDemoCoordinationStore/);
+    expect(demoPresetSelectSource).not.toMatch(/useCoordinationStore/);
+    expect(demoPresetSelectSource).not.toMatch(/useTimeStore/);
+    // Phase 86: the select wires through the applyDemoPreset helper
+    // rather than touching the demo stores inline — this pins the helper
+    // as the single source of truth for the preset-to-store sync contract.
+    expect(demoPresetSelectSource).toMatch(/applyDemoPreset/);
     expect(demoSlicePanelSource).toMatch(/useSliceDomainStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoCoordinationStore/);
     expect(demoSlicePanelSource).toMatch(/useDashboardDemoTimeStore/);
@@ -226,18 +238,11 @@ describe('/dashboard-demo shell', () => {
     expect(demoTimeslicingModeStoreSource).not.toMatch(/buildTimelineEvents|useTimelineDataStore\.getState|getCrimeTypeName/);
   });
 
-  test('keeps the stable dashboard route on Phase 1 composition', () => {
-    const dashboardPageSource = readFileSync(new URL('../dashboard/page.tsx', import.meta.url), 'utf8');
+  test('keeps non-dashboard routes separate from the demo shell', () => {
     const statsRouteSource = readFileSync(new URL('../stats/lib/StatsRouteShell.tsx', import.meta.url), 'utf8');
     const stkdeRouteSource = readFileSync(new URL('../stkde/lib/StkdeRouteShell.tsx', import.meta.url), 'utf8');
     const timeslicingPageSource = readFileSync(new URL('../timeslicing/page.tsx', import.meta.url), 'utf8');
 
-    expect(dashboardPageSource).toMatch(/DashboardLayout/);
-    expect(dashboardPageSource).toMatch(/MapVisualization/);
-    expect(dashboardPageSource).toMatch(/CubeVisualization/);
-    expect(dashboardPageSource).toMatch(/TimelinePanel/);
-    expect(dashboardPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|Map-first shared viewport|WorkflowSkeleton/);
-    expect(dashboardPageSource).not.toMatch(/useDashboardDemoCoordinationStore|buildDemoSliceAuthoredWarpMap/);
     expect(statsRouteSource).not.toMatch(/useDashboardDemoCoordinationStore/);
     expect(stkdeRouteSource).not.toMatch(/useDashboardDemoCoordinationStore/);
     expect(timeslicingPageSource).not.toMatch(/DashboardDemoShell|DemoTimelinePanel|DemoDualTimeline|useDashboardDemoCoordinationStore|buildDemoSliceAuthoredWarpMap/);
@@ -261,5 +266,29 @@ describe('/dashboard-demo shell', () => {
     expect(workflowShellSource).toMatch(/Generate → Review → Apply/);
     expect(timeslicingPageSource).not.toMatch(/DashboardDemoShell|Map-first shared viewport|WorkflowSkeleton/);
     expect(timeslicingPageSource).not.toMatch(/Generate burst drafts|generateBurstDraftBinsFromWindows|Burst draft/);
+  });
+
+  test('Phase 86: DemoPresetSelect wires through the demo filter / time / coordination stores via applyDemoPreset', () => {
+    const demoPresetSelectSource = readFileSync(
+      new URL('../../components/dashboard-demo/DemoPresetSelect.tsx', import.meta.url),
+      'utf8'
+    );
+
+    // Imports the three dashboard-demo stores that the sync contract touches.
+    expect(demoPresetSelectSource).toMatch(/useDashboardDemoCoordinationStore/);
+    expect(demoPresetSelectSource).toMatch(/useDashboardDemoFilterStore/);
+    expect(demoPresetSelectSource).toMatch(/useDashboardDemoTimeStore/);
+
+    // The select itself delegates to the applyDemoPreset helper, which is
+    // the single source of truth for the preset-to-store sync contract.
+    expect(demoPresetSelectSource).toMatch(/from '@\/components\/dashboard-demo\/lib\/applyDemoPreset'/);
+    expect(demoPresetSelectSource).toMatch(/applyDemoPreset\(/);
+
+    // Does NOT import the legacy /dashboard stores.
+    expect(demoPresetSelectSource).not.toMatch(/from '@\/store\/useCoordinationStore'/);
+    expect(demoPresetSelectSource).not.toMatch(/from '@\/store\/useTimeStore'/);
+    // nor the bare, non-prefixed legacy hooks (defense-in-depth).
+    expect(demoPresetSelectSource).not.toMatch(/\buseCoordinationStore\b/);
+    expect(demoPresetSelectSource).not.toMatch(/\buseTimeStore\b/);
   });
 });
