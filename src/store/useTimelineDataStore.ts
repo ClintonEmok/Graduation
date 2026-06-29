@@ -210,7 +210,9 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
         // );
       }
 
-      const streamUrl = new URL('/api/crime/stream', 'http://localhost');
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+        || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+      const streamUrl = new URL('/api/crime/stream', baseUrl);
       if (maxRows !== null) {
         streamUrl.searchParams.set('maxRows', String(maxRows));
       }
