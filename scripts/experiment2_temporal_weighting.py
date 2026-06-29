@@ -548,6 +548,8 @@ def plot_timelines(
     total_hours = total_seconds / 3600.0
     fig = plt.figure(figsize=(13.0, 4.0))
 
+    is_daily_axis = window.window_days > 1
+
     fig.text(
         0.5, 0.93,
         'Comparison of temporal allocations produced by alternative weighting functions.',
@@ -575,9 +577,17 @@ def plot_timelines(
         last_ax = ax
         draw_neutral_timeline(ax, edges, total_seconds, rep_bin)
         if i == 2:
-            n_ticks = max(2, int(round(total_hours / 24.0)) + 1)
-            xticks = np.linspace(0, total_seconds, n_ticks)
-            xtick_labels = [f'{int(round(t / 3600)):d}h' for t in xticks]
+            if is_daily_axis:
+                step_days = max(1, int(np.ceil(window.window_days / 10)))
+                tick_days = list(range(0, window.window_days + 1, step_days))
+                if tick_days[-1] != window.window_days:
+                    tick_days.append(window.window_days)
+                xticks = np.array(tick_days, dtype=float) * 24.0 * 3600.0
+                xtick_labels = [f'{d}d' for d in tick_days]
+            else:
+                n_ticks = max(2, int(round(total_hours / 4.0)) + 1)
+                xticks = np.linspace(0, total_seconds, n_ticks)
+                xtick_labels = [f'{int(round(t / 3600)):d}h' for t in xticks]
             ax.set_xticks(xticks)
             ax.set_xticklabels(xtick_labels, fontsize=9, color='#1f1f1f')
             ax.tick_params(axis='x', colors='#1f1f1f', length=0)
