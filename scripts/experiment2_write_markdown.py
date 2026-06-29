@@ -37,7 +37,6 @@ METRIC_HEADERS = [
 ]
 
 WINDOW_MD = "experiment2_results.md"
-N_WINDOWS = 15
 
 
 METRIC_LOOKUP = {key: (label, polarity, win_fmt, val_fmt) for key, label, polarity, win_fmt, val_fmt in METRIC_HEADERS}
@@ -93,6 +92,11 @@ def main() -> None:
         {(r["window_days"], r["rank"]) for r in all_rows},
         key=lambda k: (int(k[0]), int(k[1])),
     )
+    n_windows = len(window_keys)
+    sizes = sorted({int(r["window_days"]) for r in all_rows})
+    size_labels = ", ".join(f"{s} d" for s in sizes)
+    cvs = [float(r["cv"]) for r in all_rows if r.get("cv") not in (None, "")]
+    cv_range = f"{min(cvs):.3f}–{max(cvs):.3f}" if cvs else "—"
     for window_days, rank in window_keys:
         candidates = [
             r for r in all_rows
@@ -132,24 +136,24 @@ def main() -> None:
     out.append("  computed on real inter-event times within each hour, then binned.")
     out.append("")
     out.append(
-        f"All metrics computed on **{N_WINDOWS} windows** drawn from the showcase set "
-        "(5 ranks × 3 sizes: 14 d, 30 d, 90 d). Each window uses 168 hourly bins, "
-        "sliced to the first 168 h of the window for a fair comparison."
+        f"All metrics computed on **{n_windows} windows** drawn from the showcase set "
+        f"({size_labels}). Windows are binned at the scale appropriate to their span: "
+        "1-day windows use 24 hourly bins; longer windows use one daily bin per day."
     )
     out.append("")
     out.append("| | |")
     out.append("|---|---|")
     out.append("| Dataset | Chicago Crimes 2001–2026 (full corpus) |")
     out.append("| Source CSV | `data/sources/Crimes_-_2001_to_Present_20260114.csv` |")
-    out.append(f"| Windows | {N_WINDOWS} (CV range 0.334–0.993) |")
-    out.append("| Bin size | 1 h × 168 bins (7-day slice per window) |")
+    out.append(f"| Windows | {n_windows} (CV range {cv_range}) |")
+    out.append("| Bin size | 1d windows: 24 × 1 h; 14/30/90d windows: 1 × 24 h per day |")
     out.append("| Cleaning | drop NaT, drop duplicate `ID` (per-chunk) |")
     out.append("")
 
     # ------------------------------------------------------------------
     # Section 1: aggregate metrics
     # ------------------------------------------------------------------
-    out.append("## 1. Aggregate metrics (mean ± std across 15 windows)")
+    out.append(f"## 1. Aggregate metrics (mean ± std across {n_windows} windows)")
     out.append("")
     headers = ["Weighting"] + [_label for _key, _label, _p, _wf, _vf in METRIC_HEADERS]
     rows: list[list[str]] = []
@@ -174,7 +178,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Section 2: win rates
     # ------------------------------------------------------------------
-    out.append("## 2. Win rates (out of 15 windows)")
+    out.append(f"## 2. Win rates (out of {n_windows} windows)")
     out.append("")
     headers = ["Weighting"] + [_label for _key, _label, _p, _wf, _vf in METRIC_HEADERS]
     rows = []
@@ -184,12 +188,12 @@ def main() -> None:
             if _p == "neutral":
                 row.append("—")
             else:
-                row.append(f"{win_counts.get((w, metric_key), 0)}/{len(window_keys)}")
+                row.append(f"{win_counts.get((w, metric_key), 0)}/{n_windows}")
         rows.append(row)
     write_table(out, headers, rows)
     out.append(
         "For each (window, metric) we pick the best weighting in the metric's "
-        "preferred direction. A count of `15/15` means the weighting was the "
+        f"preferred direction. A count of `{n_windows}/{n_windows}` means the weighting was the "
         "best on that metric for every single window in the cohort. "
         "Neutral metrics have no winner and are marked `—`."
     )
@@ -200,7 +204,6 @@ def main() -> None:
     # ------------------------------------------------------------------
     out.append("## 3. Per-size breakdown (mean of key metrics)")
     out.append("")
-    sizes = [14, 30, 90]
     size_metrics = ["max_expansion", "share_gini", "neighbour_diff", "compute_ms"]
     headers = ["Weighting", "Size", "Windows"] + [
         METRIC_LOOKUP[m][0] for m in size_metrics
@@ -228,7 +231,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     out.append("## 4. Window roster")
     out.append("")
-    headers = ["Size", "Rank", "Start", "End", "CV", "Peak ratio", "Total events", "Slice events"]
+    headers = ["Size", "Rank", "Start", "End", "CV", "Peak ratio", "Total events", "Analysed events"]
     rows = []
     seen = set()
     for r in all_rows:
@@ -255,8 +258,8 @@ def main() -> None:
     # ------------------------------------------------------------------
     out.append("## 5. Per-window per-weighting results")
     out.append("")
-    out.append("Each row is a (window, weighting) pair. Slice events are the count of")
-    out.append("events in the first 168 h of the window.")
+    out.append("Each row is a (window, weighting) pair. Analysed events are the count of")
+    out.append("events inside the analysed window at its native binning scale.")
     out.append("")
     headers = ["Size", "Rank", "Weighting", "Max expand", "Max compress", "Gini", "Neighbour", "Compute (ms)"]
     rows = []
@@ -281,21 +284,24 @@ def main() -> None:
     out.append("## 6. Headline findings")
     out.append("")
     out.append(
-        "- **Raw density allocates in proportion to local event count** and is "
-        "the smoothest on average (neighbour Δ ≈ 0.11, mean share Gini ≈ 0.24). "
-        "It is also the cheapest to compute (≈0.02 ms/window)."
+        "- **Raw density provides the most balanced redistribution**: modest "
+        "expansion (mean max expand ≈ 1.9×), usable compression (mean max "
+        "compress ≈ 0.76×), low share concentration (mean Gini ≈ 0.08), and "
+        "low roughness (neighbour Δ ≈ 0.06). It is also the cheapest to compute "
+        "(≈0.006 ms/window)."
     )
     out.append(
-        "- **Z-score is the most selective expander** on most windows (mean "
-        "share Gini ≈ 0.69, mean max expand ≈ 11×) but its z = 0 floor-clip "
-        "creates the most step-like timelines (neighbour Δ ≈ 0.13) and the "
-        "most aggressive compression of quiet hours."
+        "- **Z-score is the strongest redistributor** on every window: mean "
+        "max expand ≈ 10.1×, mean max compress = 0.00×, and mean share Gini "
+        "≈ 0.74. That selectivity comes at the cost of the roughest timelines "
+        "(neighbour Δ ≈ 0.18) because the z ≤ 0 floor-clip creates sharp day-" 
+        "to-day discontinuities."
     )
     out.append(
-        "- **Goh burstiness is the most muted allocator** (mean max expand "
-        "≈ 1.2×, mean share Gini ≈ 0.05) and produces the smoothest timelines "
-        "on average (neighbour Δ ≈ 0.07). It is the most expensive to compute "
-        "(≈2 ms/window — roughly 100× density)."
+        "- **Goh burstiness barely adapts the axis at all**: mean max expand "
+        "≈ 1.08×, mean max compress ≈ 0.95×, and mean share Gini ≈ 0.015. "
+        "It is the smoothest option (neighbour Δ ≈ 0.026) but also the slowest "
+        "to compute (≈1.8 ms/window — roughly 300× density)."
     )
     out.append(
         "- **Burstiness is the wrong signal for visual allocation.** A "

@@ -4,8 +4,8 @@
 The script scans the source CSV in chunks, aggregates events to hourly counts,
 then ranks rolling windows by temporal variability (CV) and peak ratio.
 
-Default output: five non-overlapping windows for each of 14-day, 30-day,
-and 90-day spans.
+Default output: one 1-day showcase window plus five non-overlapping windows
+for each of 14-day, 30-day, and 90-day spans.
 """
 
 from __future__ import annotations
@@ -138,7 +138,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='Select multiple showcase windows from the full dataset.')
     parser.add_argument('--csv-path', type=Path, default=DEFAULT_CSV, help=f'Input CSV (default: {DEFAULT_CSV})')
     parser.add_argument('--output', type=Path, default=DEFAULT_OUTPUT, help=f'Output CSV (default: {DEFAULT_OUTPUT})')
-    parser.add_argument('--window-days', type=int, nargs='+', default=[14, 30, 90], help='Window lengths in days')
+    parser.add_argument('--window-days', type=int, nargs='+', default=[1, 14, 30, 90], help='Window lengths in days')
     parser.add_argument('--count', type=int, default=5, help='Number of windows to keep per length')
     parser.add_argument('--step-days', type=int, default=7, help='Rolling step in days')
     args = parser.parse_args()

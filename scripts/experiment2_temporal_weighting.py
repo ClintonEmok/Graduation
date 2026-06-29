@@ -24,14 +24,15 @@ following criteria:
 
 Outputs (under scripts/output/experiment2_temporal_weighting/):
 
-    experiment2_timelines.png        - 4 timelines + weighting comparison
+    experiment2_timelines.png        - bin-width comparison figure
     experiment2_metrics.csv          - per-weighting metric summary
     experiment2_metrics_table.png    - rendered metrics table
     experiment2_findings.txt         - narrative summary of findings
 
 Usage:
     python3 scripts/experiment2_temporal_weighting.py
-    python3 scripts/experiment2_temporal_weighting.py --bin-hours 1 --bin-count 168
+    python3 scripts/experiment2_temporal_weighting.py --window-days 1 --window-rank 1
+    python3 scripts/experiment2_temporal_weighting.py --bin-hours 24 --bin-count 14
 """
 
 from __future__ import annotations
@@ -155,6 +156,36 @@ def load_showcase_windows(path: Path) -> list[ShowcaseWindow]:
                 )
             )
     return windows
+
+
+def infer_window_bin_spec(window: ShowcaseWindow, args: argparse.Namespace) -> tuple[int, int, str]:
+    """Return `(bin_count, bin_hours, mode_label)` for this showcase window.
+
+    Default behavior is window-aware:
+      * 1-day windows   -> 24 hourly bins
+      * 14/30/90-day windows -> one daily bin per day
+
+    `--bin-hours` and `--bin-count` remain available as an explicit legacy
+    override, but they must be provided together.
+    """
+    if (args.bin_hours is None) != (args.bin_count is None):
+        raise SystemExit('[error] --bin-hours and --bin-count must be provided together when overriding window-aware defaults')
+    if args.bin_hours is not None and args.bin_count is not None:
+        return int(args.bin_count), int(args.bin_hours), 'manual override'
+    if window.window_days <= 1:
+        return 24, 1, 'hourly'
+    return int(window.window_days), 24, 'daily'
+
+
+def aggregate_hourly_counts(hourly: np.ndarray, bin_count: int, bin_hours: int) -> np.ndarray:
+    """Aggregate an hourly series into `bin_count` bins of width `bin_hours` hours."""
+    hours_needed = int(bin_count * bin_hours)
+    if hourly.size < hours_needed:
+        return np.empty(0, dtype=float)
+    trimmed = hourly[:hours_needed].astype(float)
+    if bin_hours == 1:
+        return trimmed
+    return trimmed.reshape(bin_count, bin_hours).sum(axis=1)
 
 
 def build_hourly_counts(csv_path: Path, start: str, end: str) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
@@ -691,6 +722,7 @@ def build_findings(
     metrics: dict[str, dict[str, float]],
     results: list[WeightingResult],
     slice_event_count: int,
+    bin_count: int,
 ) -> str:
     best_expand = max(metrics, key=lambda k: metrics[k]['max_expansion'])
     best_gini = max(metrics, key=lambda k: metrics[k]['share_gini'])
@@ -718,7 +750,7 @@ def build_findings(
     lines.append('Dataset')
     lines.append('-------')
     lines.append(f'  Window:     {window.window_days}d #{window.rank} ({window.start} → {window.end})')
-    lines.append(f'  Events:     {slice_event_count:,} (in analysed slice; {window.total_events:,} in full {window.window_days}d window)')
+    lines.append(f'  Events:     {slice_event_count:,} (in analysed window; {window.total_events:,} in full {window.window_days}d window)')
     lines.append(f'  CV:         {window.cv:.3f} (coefficient of variation of hourly counts)')
     lines.append(f'  Peak/mean:  {window.peak_ratio:.2f}x')
     lines.append('')
@@ -777,7 +809,7 @@ def build_findings(
         f'  • Compute. {fastest} is the cheapest at {metrics[fastest]["compute_ms"]:.2f} ms per window —\n'
         f'    essentially a normalisation over the bin counts. Z-score is similar\n'
         f'    ({zscore["compute_ms"]:.2f} ms), while burstiness pays for the per-bin inter-event-time\n'
-        f'    pass ({burst["compute_ms"]:.2f} ms). The absolute differences are small on 168 bins\n'
+        f'    pass ({burst["compute_ms"]:.2f} ms). The absolute differences are small on {bin_count} bins\n'
         '    but the per-bin scaling favours density at large bin counts.'
     )
     lines.append('')
@@ -824,30 +856,33 @@ def run_for_window(
     timelines image, and metrics table image to that directory.
 
     Returns a result dict with the per-window data, or `None` if the window
-    was skipped because it contained fewer hours than `bin_count`.
+    was skipped because it contained fewer hours than the chosen bin layout
+    requires.
     """
     raw_hourly, raw_timestamps, audit = build_hourly_counts(args.csv_path, window.start, window.end)
     print(
         f'[clean] rows read={audit["rows_read"]:,}  parsed={audit["rows_parsed"]:,}  '
         f'NaT dropped={audit["rows_nat"]:,}  duplicate IDs dropped={audit["rows_duplicates"]:,}'
     )
-    if raw_hourly.size < args.bin_count:
+    bin_count, bin_hours, bin_mode = infer_window_bin_spec(window, args)
+    hours_needed = int(bin_count * bin_hours)
+    if raw_hourly.size < hours_needed:
         print(
             f'[skip] {window.window_days}d #{window.rank}: only {raw_hourly.size} hours of data, '
-            f'need at least {args.bin_count}.'
+            f'need at least {hours_needed}.'
         )
         return None
 
-    counts = raw_hourly[: args.bin_count].astype(float)
+    counts = aggregate_hourly_counts(raw_hourly, bin_count=bin_count, bin_hours=bin_hours)
     start_ts = np.datetime64(f'{window.start}T00:00:00')
-    slice_end_ts = start_ts + np.timedelta64(int(args.bin_count * args.bin_hours), 'h')
+    slice_end_ts = start_ts + np.timedelta64(hours_needed, 'h')
     slice_timestamps = raw_timestamps[raw_timestamps < slice_end_ts]
-    bin_seconds = float(args.bin_hours * 3600)
+    bin_seconds = float(bin_hours * 3600)
     total_seconds = float(counts.size * bin_seconds)
     uniform = uniform_edges(counts.size, total_seconds)
 
     print(
-        f'[slice] {counts.size} bins × {args.bin_hours}h covering '
+        f'[slice] {counts.size} bins × {bin_hours}h ({bin_mode}) covering '
         f'{window.start} → {str(slice_end_ts)[:10]}  '
         f'(events in slice = {int(slice_timestamps.size):,}, '
         f'events in full window = {int(raw_timestamps.size):,})'
@@ -890,6 +925,8 @@ def run_for_window(
         'results': results,
         'metrics': metrics,
         'slice_event_count': int(slice_timestamps.size),
+        'bin_count': int(bin_count),
+        'bin_hours': int(bin_hours),
         'audit': audit,
     }
 
@@ -1123,7 +1160,7 @@ def build_aggregate_findings(per_window: list[dict], agg: dict) -> str:
     lines.append(
         'This run repeats the per-weighting evaluation on every window in the\n'
         'showcase set so the findings do not rest on a single cherry-picked\n'
-        'slice. The same three weightings are evaluated on identical bins and\n'
+        'window. The same three weightings are evaluated on identical bins and\n'
         'the per-window metrics are aggregated as mean ± std.'
     )
     lines.append('')
@@ -1259,8 +1296,10 @@ def main() -> None:
     parser.add_argument('--csv-path', type=Path, default=DEFAULT_CSV_PATH, help='Crime CSV path')
     parser.add_argument('--windows-path', type=Path, default=DEFAULT_WINDOWS_PATH, help='Showcase windows CSV')
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR, help='Output directory')
-    parser.add_argument('--bin-hours', type=int, default=1, help='Bin width in hours (default 1)')
-    parser.add_argument('--bin-count', type=int, default=168, help='Number of bins to evaluate (default 168 = 1 week)')
+    parser.add_argument('--bin-hours', type=int, default=None,
+                        help='Legacy override: bin width in hours (must be passed with --bin-count)')
+    parser.add_argument('--bin-count', type=int, default=None,
+                        help='Legacy override: number of bins to evaluate (must be passed with --bin-hours)')
     parser.add_argument('--multi-window', action='store_true',
                         help='Run on every window in the showcase set and aggregate results')
     parser.add_argument('--sizes', type=str, default=None,
@@ -1277,9 +1316,14 @@ def main() -> None:
     print(
         f'[setup] CSV = {args.csv_path}\n'
         f'[setup] windows file = {args.windows_path}  ({len(windows)} windows)\n'
-        f'[setup] bin = {args.bin_hours}h × {args.bin_count} bins '
-        f'({args.bin_hours * args.bin_count}h = {args.bin_hours * args.bin_count / 24:.0f}d)'
+        '[setup] default binning = window-aware '
+        '(1d -> 24 hourly bins; 14/30/90d -> one daily bin per day)'
     )
+    if args.bin_hours is not None and args.bin_count is not None:
+        print(
+            f'[setup] manual override = {args.bin_hours}h × {args.bin_count} bins '
+            f'({args.bin_hours * args.bin_count}h = {args.bin_hours * args.bin_count / 24:.0f}d)'
+        )
 
     if not args.multi_window:
         # ── Single-window mode (original behavior) ──
@@ -1296,6 +1340,7 @@ def main() -> None:
         findings = build_findings(
             target, result['metrics'], result['results'],
             slice_event_count=result['slice_event_count'],
+            bin_count=result['bin_count'],
         )
         findings_txt = args.output_dir / 'experiment2_findings.txt'
         findings_txt.write_text(findings)
