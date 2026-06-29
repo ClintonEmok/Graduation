@@ -5,8 +5,8 @@ Produces anonymized, two-row comparison figures for use as expert-interview
 stimuli. Each figure shows the same window of events rendered with two
 visualization strategies:
 
-    A. Uniform       (linear time, equal-width bins)
-    B. Raw density   (adaptive time, bin width ∝ event count)
+    A. One strategy   (uniform or adaptive time, possibly different warp strength)
+    B. One strategy   (uniform or adaptive time, possibly different warp strength)
 
 The mapping between A/B and the underlying strategy is randomized per window
 (with a fixed seed for reproducibility) and written to a private `mapping.txt`
@@ -26,7 +26,7 @@ Outputs (under scripts/output/experiment2_expert_stimuli/):
     window_NN_<size>d_rank<R>/
         test_figure.png       # participant-facing stimulus
         events_rug.png        # moderator reference
-        mapping.txt           # private key (A → uniform/density, B → …)
+    mapping.txt           # private key (A → strategy, B → …)
         metadata.txt          # window facts
     index_sheet.png           # 2×3 grid of all six test figures
     session_protocol.md       # the question prompts for the expert
@@ -87,10 +87,37 @@ SELECTED_WINDOWS: list[tuple[int, int]] = [
     (90, 2),   # 2001-10-15 → 2002-01-13 — competing hotspots
 ]
 
-STRATEGY_NAMES: tuple[str, str] = ('uniform', 'raw_density')
+STRATEGY_SPECS: dict[str, dict[str, float | str | None]] = {
+    'uniform': {
+        'label': 'Uniform',
+        'weight_gain': None,
+    },
+    'raw_density': {
+        'label': 'Raw density',
+        'weight_gain': 5.0,
+    },
+    'density_mild': {
+        'label': 'Raw density (mild)',
+        'weight_gain': 2.0,
+    },
+    'density_firm': {
+        'label': 'Raw density (firm)',
+        'weight_gain': 10.0,
+    },
+}
+
 STRATEGY_LABELS: dict[str, str] = {
-    'uniform':     'Uniform',
-    'raw_density': 'Raw density',
+    name: str(spec['label'])
+    for name, spec in STRATEGY_SPECS.items()
+}
+
+WINDOW_STRATEGIES: dict[tuple[int, int], tuple[str, str]] = {
+    (14, 1): ('uniform', 'raw_density'),
+    (30, 1): ('uniform', 'density_mild'),
+    (30, 5): ('density_mild', 'raw_density'),
+    (1, 5): ('uniform', 'density_firm'),
+    (90, 3): ('density_mild', 'density_firm'),
+    (90, 2): ('raw_density', 'density_firm'),
 }
 
 
@@ -227,6 +254,18 @@ def density_edges(counts: np.ndarray, total_seconds: float,
     return build_adaptive_edges(visual, total_seconds)
 
 
+def build_edges_for_strategy(
+    strategy_name: str,
+    counts: np.ndarray,
+    total_seconds: float,
+) -> np.ndarray:
+    if strategy_name == 'uniform':
+        return uniform_edges(counts.size, total_seconds)
+    spec = STRATEGY_SPECS[strategy_name]
+    weight_gain = float(spec['weight_gain'])
+    return density_edges(counts, total_seconds, weight_gain=weight_gain)
+
+
 # ── Event rug (subsampled to a target tick count) ────────────────────
 
 def subsample_rug_seconds(timestamps: np.ndarray, start_ts: np.datetime64,
@@ -274,15 +313,15 @@ def render_stimulus(
     fig_path: Path,
     window: ShowcaseWindow,
     counts: np.ndarray,
-    uniform: np.ndarray,
-    density: np.ndarray,
+    edges_a: np.ndarray,
+    edges_b: np.ndarray,
     total_seconds: float,
-    rug_uniform: np.ndarray,
-    rug_density: np.ndarray,
-    label_uniform: str,
-    label_density: str,
-    n_events_uniform: int,
-    n_events_density: int,
+    rug_a: np.ndarray,
+    rug_b: np.ndarray,
+    label_a: str,
+    label_b: str,
+    n_events_a: int,
+    n_events_b: int,
 ) -> None:
     """Two-row test figure with one shared event rug above both allocations."""
     total_hours = total_seconds / 3600.0
@@ -309,7 +348,7 @@ def render_stimulus(
     )
 
     rug_ax = fig.add_subplot(grid[0])
-    draw_rug(rug_ax, rug_uniform, y_baseline=0.15, height=0.70)
+    draw_rug(rug_ax, rug_a, y_baseline=0.15, height=0.70)
     rug_ax.set_xlim(0, total_seconds)
     rug_ax.set_ylim(0, 1.0)
     rug_ax.set_yticks([])
@@ -324,15 +363,15 @@ def render_stimulus(
         fontsize=11, fontweight='bold', color=TEXT_COLOR,
     )
     rug_ax.text(
-        1.012, 0.20, f'{n_events_uniform:,} events',
+        1.012, 0.20, f'{n_events_a:,} events',
         transform=rug_ax.transAxes,
         ha='left', va='center',
         fontsize=8, color=MUTED_COLOR, style='italic',
     )
 
     rows = [
-        (label_uniform, uniform),
-        (label_density, density),
+        (label_a, edges_a),
+        (label_b, edges_b),
     ]
 
     for i, (label, edges) in enumerate(rows, start=1):
@@ -444,21 +483,21 @@ def run_for_window(
     bin_seconds = float(bin_hours * 3600)
     total_seconds = float(counts.size * bin_seconds)
 
-    uniform = uniform_edges(counts.size, total_seconds)
-    density = density_edges(counts, total_seconds)
+    strategy_pair = WINDOW_STRATEGIES[(window.window_days, window.rank)]
+    strategy_a, strategy_b = rng.sample(strategy_pair, k=2)
+
+    edges_a = build_edges_for_strategy(strategy_a, counts, total_seconds)
+    edges_b = build_edges_for_strategy(strategy_b, counts, total_seconds)
 
     # Event rug on the LINEAR time axis (same for both visualisations).
     start_ts = np.datetime64(f'{window.start}T00:00:00')
     rug_linear = subsample_rug_seconds(timestamps, start_ts, total_seconds, RUG_TARGET_TICKS)
 
-    # Randomised A/B order
-    order = list(STRATEGY_NAMES)
-    rng.shuffle(order)
     label_a, label_b = 'Visualization A', 'Visualization B'
 
     rows = {
-        label_a: order[0],
-        label_b: order[1],
+        label_a: strategy_a,
+        label_b: strategy_b,
     }
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -466,8 +505,8 @@ def run_for_window(
     render_stimulus(
         out_dir / 'test_figure.png',
         window, counts,
-        uniform if rows[label_a] == 'uniform' else density,
-        density if rows[label_b] == 'raw_density' else uniform,
+        edges_a,
+        edges_b,
         total_seconds,
         rug_linear,
         rug_linear,
@@ -545,7 +584,7 @@ Six figures, each comparing two visualizations of the same time window:
   bin gets under that visualization.
 
 Show one figure at a time. Do not name the visualizations or hint at
-which is "adaptive" or "uniform".
+which is more or less warped.
 
 ## Per-figure questions
 
