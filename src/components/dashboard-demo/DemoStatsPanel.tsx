@@ -490,7 +490,6 @@ export function DemoStatsPanel() {
     timeRange,
     toggleDistrict,
     setSelectedDistricts,
-    timelineSummary,
   } = useDemoStatsSummary();
 
   const topTypes = useMemo(() => stats?.byType.slice(0, 4) ?? [], [stats]);
@@ -503,8 +502,6 @@ export function DemoStatsPanel() {
       <CardHeader className="gap-1.5 px-2.5 pb-1.5 pt-2.5">
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           {showDistrictSelection ? <Badge variant="outline">{selectedDistrictLabels.join(', ')}</Badge> : null}
-          {timelineSummary.selectedWindowLabel ? <Badge variant="outline">Window: {timelineSummary.selectedWindowLabel}</Badge> : null}
-          <Badge variant="outline">Overview: {timelineSummary.overviewRangeLabel}</Badge>
         </div>
       </CardHeader>
 
