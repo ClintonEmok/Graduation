@@ -19,6 +19,21 @@ import { useAdaptiveStore } from '@/store/useAdaptiveStore';
 import { useTimelineDataStore } from '@/store/useTimelineDataStore';
 import { normalizedToEpochSeconds, resolutionToNormalizedStep } from '@/lib/time-domain';
 
+const RESOLUTION_OPTIONS = [
+  { value: 'seconds', label: 'sec' },
+  { value: 'minutes', label: 'min' },
+  { value: 'hours', label: 'hr' },
+  { value: 'days', label: 'day' },
+  { value: 'weeks', label: 'wk' },
+  { value: 'months', label: 'mo' },
+  { value: 'years', label: 'yr' },
+] as const;
+
+const findResolutionIndex = (resolution: string) => {
+  const idx = RESOLUTION_OPTIONS.findIndex((opt) => opt.value === resolution);
+  return idx >= 0 ? idx : 3;
+};
+
 export function TimelinePanel() {
   const {
     currentTime,
@@ -58,13 +73,19 @@ export function TimelinePanel() {
 
   const handleResolutionChange = useCallback(
     (value: number[]) => {
-      const options: typeof timeResolution[] = ['seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years'];
-      const next = options[Math.round(value[0])] ?? 'days';
+      const idx = Math.round(value[0]);
+      const next = RESOLUTION_OPTIONS[idx]?.value ?? 'days';
       if (next === timeResolution) return;
       setTimeResolution(next);
       log('time_resolution_changed', { resolution: next });
     },
     [setTimeResolution, timeResolution, log]
+  );
+
+  const resolutionIndex = useMemo(() => findResolutionIndex(timeResolution), [timeResolution]);
+  const resolutionLabel = useMemo(
+    () => RESOLUTION_OPTIONS[resolutionIndex]?.label ?? 'day',
+    [resolutionIndex]
   );
 
   const handleSpeedChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -208,14 +229,14 @@ export function TimelinePanel() {
           <div className="flex-1 max-w-lg">
             <Slider
               min={0}
-              max={6}
+              max={RESOLUTION_OPTIONS.length - 1}
               step={1}
-              value={[['seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years'].indexOf(timeResolution)]}
+              value={[resolutionIndex]}
               onValueChange={handleResolutionChange}
             />
           </div>
-          <div className="w-12 text-right font-mono">
-            {timeResolution}
+          <div className="w-10 text-right font-mono tabular-nums">
+            {resolutionLabel}
           </div>
         </div>
       </div>
