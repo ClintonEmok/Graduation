@@ -26,7 +26,7 @@ export function TopBar() {
   const totalMatches = viewportMeta?.totalMatches ?? null;
   const isSampled = Boolean(viewportMeta?.sampled);
   
-  console.log('[TopBar] viewportData:', viewportData, 'viewportLoadedCount:', viewportLoadedCount);
+  // console.log('[TopBar] viewportData:', viewportData, 'viewportLoadedCount:', viewportLoadedCount);
 
   // Format count for display
   const formatCount = (count: number | null) => {

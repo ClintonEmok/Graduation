@@ -571,7 +571,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
           };
         })
         .filter((slice) => Number.isFinite(slice.startSec) && Number.isFinite(slice.endSec) && slice.endSec > slice.startSec);
-      console.log('[Timeline] overviewSliceBoxes:', boxes.length, 'domainStart:', domainStart, 'domainEnd:', domainEnd);
+      // console.log('[Timeline] overviewSliceBoxes:', boxes.length, 'domainStart:', domainStart, 'domainEnd:', domainEnd);
       return boxes;
     },
     [activeSliceId, domainEnd, domainStart, slices]
@@ -682,7 +682,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
     return geometries;
   }, [activeSliceId, detailInnerWidth, detailInteractionScale, detailScale, domainEnd, domainStart, sliceOverlapCounts, slices]);
 
-  console.log('[Timeline] sliceGeometries:', sliceGeometries.length, 'sliceGeometries:', sliceGeometries.map(g => ({ id: g.id?.slice(0, 8), left: g.left, width: g.width, source: g.isGeneratedApplied ? 'applied' : g.isGeneratedDraft ? 'draft' : 'other' })));
+  // console.log('[Timeline] sliceGeometries:', sliceGeometries.length, 'sliceGeometries:', sliceGeometries.map(g => ({ id: g.id?.slice(0, 8), left: g.left, width: g.width, source: g.isGeneratedApplied ? 'applied' : g.isGeneratedDraft ? 'draft' : 'other' })));
 
   const maxSliceOverlap = useMemo(
     () =>
@@ -749,7 +749,7 @@ export const DemoDualTimeline: React.FC<DemoDualTimelineProps> = ({
       .filter((geometry): geometry is TimelineSliceGeometry => geometry !== null);
   }, [detailInnerWidth, detailScale, pendingGeneratedBins]);
 
-  console.log('[Timeline] pendingGeneratedGeometries:', pendingGeneratedGeometries.length, 'pendingGeneratedBins:', pendingGeneratedBins.length);
+  // console.log('[Timeline] pendingGeneratedGeometries:', pendingGeneratedGeometries.length, 'pendingGeneratedBins:', pendingGeneratedBins.length);
 
 
   const isTimelineLoading = isDataLoading;

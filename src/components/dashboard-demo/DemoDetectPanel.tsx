@@ -76,11 +76,11 @@ export function DemoDetectPanel() {
     const start = toEpochSeconds(windowStartSec) * 1000;
     const end = toEpochSeconds(windowEndSec) * 1000;
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
-    console.log('[Detect] generate clicked — timeWindow:', { start, end, granularity: generationInputs.granularity, crimeTypes: generationInputs.crimeTypes.length, neighbourhood: generationInputs.neighbourhood });
+    // console.log('[Detect] generate clicked — timeWindow:', { start, end, granularity: generationInputs.granularity, crimeTypes: generationInputs.crimeTypes.length, neighbourhood: generationInputs.neighbourhood });
     setGenerationInputs({ timeWindow: { start, end } });
     const generated = await generateBurstDraftBinsFromWindows();
     const state = useDashboardDemoTimeslicingModeStore.getState();
-    console.log('[Detect] generate result:', { generated, binCount: state.pendingGeneratedBins.length, status: state.generationStatus, error: state.generationError });
+    // console.log('[Detect] generate result:', { generated, binCount: state.pendingGeneratedBins.length, status: state.generationStatus, error: state.generationError });
     if (generated && state.lastGeneratedMetadata) {
       toast.success('Slices generated', {
         description: state.lastGeneratedMetadata.warning ?? 'Slices ready for review in Slices.',

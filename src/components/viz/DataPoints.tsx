@@ -541,17 +541,17 @@ useEffect(() => {
         
         if (dx > dragThreshold || dy > dragThreshold) {
           // This was a drag, not a click
-          console.log('[Raycast] Drag detected, not a click');
+          // console.log('[Raycast] Drag detected, not a click');
           return;
         }
       }
       
       if (typeof event.instanceId !== 'number') {
-        console.log('[Raycast] No instanceId on click event');
+        // console.log('[Raycast] No instanceId on click event');
         return;
       }
-      
-      console.log('[Raycast] Click hit instance:', event.instanceId, 'at point:', event.point);
+
+      // console.log('[Raycast] Click hit instance:', event.instanceId, 'at point:', event.point);
       
       // Show raycast line from camera to click point
       if (event.point && camera) {
@@ -606,7 +606,7 @@ useEffect(() => {
   const handlePointerMissed = useCallback(
     (event: { type: string }) => {
       if (event.type === 'pointerdown' || event.type === 'click') {
-        console.log('[Raycast] Click missed - clearing selection');
+        // console.log('[Raycast] Click missed - clearing selection');
         clearSelection();
       }
     },
@@ -619,11 +619,11 @@ useEffect(() => {
     if (!mesh) return;
 
     // Log raycasting setup info
-    console.log('[Raycast] InstancedMesh setup:', {
-      count: mesh.count,
-      frustumCulled: mesh.frustumCulled,
-      geometryRadius: (mesh.geometry as THREE.SphereGeometry)?.parameters?.radius
-    });
+    // console.log('[Raycast] InstancedMesh setup:', {
+    //   count: mesh.count,
+    //   frustumCulled: mesh.frustumCulled,
+    //   geometryRadius: (mesh.geometry as THREE.SphereGeometry)?.parameters?.radius
+    // });
   }, []);
 
 

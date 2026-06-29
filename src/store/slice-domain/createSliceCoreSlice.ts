@@ -104,7 +104,7 @@ const toNormalizedBinRange = (bin: TimeBin, domain: [number, number]): [number, 
   const start = ((bin.startTime - domainStart) / span) * 100;
   const end = ((bin.endTime - domainStart) / span) * 100;
   const result = normalizeRange(clampNormalized(start), clampNormalized(end));
-  console.log('[SliceCore:toNormalizedBinRange] bin:', bin.startTime, '-', bin.endTime, 'domain:', domainStart, '-', domainEnd, 'result:', result);
+  // console.log('[SliceCore:toNormalizedBinRange] bin:', bin.startTime, '-', bin.endTime, 'domain:', domainStart, '-', domainEnd, 'result:', result);
   return result;
 };
 
@@ -152,7 +152,7 @@ const hydrateRangeSlice = (slice: TimeSlice): TimeSlice => {
     ? normalizeRange(clampNormalized(normalizedStart), clampNormalized(normalizedEnd))
     : existingRange;
 
-  console.log('[SliceCore:hydrate] sliceId:', slice.id?.slice(0, 8), 'existingRange:', existingRange, 'startDateTimeMs:', startDateTimeMs, 'endDateTimeMs:', endDateTimeMs, 'normalizedStart:', normalizedStart, 'normalizedEnd:', normalizedEnd, 'finalRange:', range);
+  // console.log('[SliceCore:hydrate] sliceId:', slice.id?.slice(0, 8), 'existingRange:', existingRange, 'startDateTimeMs:', startDateTimeMs, 'endDateTimeMs:', endDateTimeMs, 'normalizedStart:', normalizedStart, 'normalizedEnd:', normalizedEnd, 'finalRange:', range);
 
   return {
     ...slice,
@@ -376,10 +376,10 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
       ),
     })),
   addSliceFromBin: (bin, domain) => {
-    console.log('[SliceCore:addSliceFromBin] binId:', bin.id, 'bin.startTime:', bin.startTime, 'bin.endTime:', bin.endTime, 'domain:', domain);
+    // console.log('[SliceCore:addSliceFromBin] binId:', bin.id, 'bin.startTime:', bin.startTime, 'bin.endTime:', bin.endTime, 'domain:', domain);
     const [start, end] = toNormalizedBinRange(bin, domain);
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-      console.log('[SliceCore:addSliceFromBin] invalid range, returning null');
+      // console.log('[SliceCore:addSliceFromBin] invalid range, returning null');
       return null;
     }
 
@@ -461,7 +461,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
     return slice.id;
   },
   replaceSlicesFromBins: (bins, domain) => {
-    console.log('[SliceCore:replaceSlicesFromBins] bins:', bins.length, 'domain:', domain);
+    // console.log('[SliceCore:replaceSlicesFromBins] bins:', bins.length, 'domain:', domain);
     const nextSlices = bins
       .map<TimeSlice | null>((bin, index) => {
         const [start, end] = toNormalizedBinRange(bin, domain);
@@ -532,7 +532,7 @@ export const createSliceCoreSlice: SliceDomainStateCreator<SliceCoreState> = (se
       })
       .filter((slice): slice is TimeSlice => slice !== null);
 
-    console.log('[SliceCore:replaceSlicesFromBins] filtered slices:', nextSlices.length, 'normalized ranges:', nextSlices.map(s => s.range));
+    // console.log('[SliceCore:replaceSlicesFromBins] filtered slices:', nextSlices.length, 'normalized ranges:', nextSlices.map(s => s.range));
     set({
       slices: sortSlices(nextSlices),
       activeSliceId: nextSlices[0]?.id ?? null,

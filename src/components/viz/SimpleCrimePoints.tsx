@@ -213,7 +213,7 @@ export function SimpleCrimePoints({
     limit: 50000,
   });
 
-  console.log('[SimpleCrimePoints] viewportStart:', viewportStart, 'viewportEnd:', viewportEnd, 'crimeRecords:', crimeRecords?.length, 'isLoading:', isLoading);
+  // console.log('[SimpleCrimePoints] viewportStart:', viewportStart, 'viewportEnd:', viewportEnd, 'crimeRecords:', crimeRecords?.length, 'isLoading:', isLoading);
 
   // Convert CrimeRecord[] to format needed for rendering
   const data = crimeRecords || [];
@@ -286,7 +286,7 @@ export function SimpleCrimePoints({
     const yRange = maxYData - minYData || 1;
     const zRange = maxZData - minZData || 1;
 
-    console.log('[SimpleCrimePoints] data range: minXData:', minXData, 'maxXData:', maxXData, 'xRange:', xRange, 'data.length:', data.length);
+    // console.log('[SimpleCrimePoints] data range: minXData:', minXData, 'maxXData:', maxXData, 'xRange:', xRange, 'data.length:', data.length);
 
     const sampleWarp = (inputT: number) => {
       if (!effectiveWarpMap || effectiveWarpMap.length === 0) return inputT;

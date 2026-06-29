@@ -153,9 +153,9 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       }
 
       if (minTimeSec !== null && maxTimeSec !== null) {
-        console.log(
-          `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta?.count}, isMock: ${meta?.isMock === true}`
-        );
+        // console.log(
+        //   `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta?.count}, isMock: ${meta?.isMock === true}`
+        // );
       }
 
       set({
@@ -205,9 +205,9 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       }
 
       if (minTimeSec !== null && maxTimeSec !== null) {
-        console.log(
-          `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta?.count}, isMock: ${meta?.isMock === true}`
-        );
+        // console.log(
+        //   `Metadata: ${new Date(minTimeSec * 1000).toISOString()} to ${new Date(maxTimeSec * 1000).toISOString()}, Count: ${meta?.count}, isMock: ${meta?.isMock === true}`
+        // );
       }
 
       const streamUrl = new URL('/api/crime/stream', 'http://localhost');
@@ -227,7 +227,7 @@ export const useTimelineDataStore = create<TimelineDataState>((set, get) => ({
       const table = new Table(batches);
       const count = table.numRows;
 
-      console.log(`Loaded ${count} rows`);
+      // console.log(`Loaded ${count} rows`);
 
       const typeCol = table.getChild('primary_type') || table.getChild('type');
       const districtCol = table.getChild('district');

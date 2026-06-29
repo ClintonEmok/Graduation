@@ -346,7 +346,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
 
       const { timeWindow } = generationInputs;
       if (!hasValidTimeWindow(timeWindow.start) || !hasValidTimeWindow(timeWindow.end)) {
-        console.log('[Store:Generate] invalid time window:', timeWindow);
+        // console.log('[Store:Generate] invalid time window:', timeWindow);
         set({
           pendingGeneratedBins: [],
           generationStatus: 'error',
@@ -356,13 +356,13 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       }
 
       set({ generationStatus: 'generating', generationError: null });
-      console.log('[Store:Generate] starting — timeWindow:', timeWindow, 'granularity:', generationInputs.granularity);
+      // console.log('[Store:Generate] starting — timeWindow:', timeWindow, 'granularity:', generationInputs.granularity);
 
       try {
         const activeStart = timeWindow.start;
         const activeEnd = timeWindow.end;
         const partitions = partitionSelectionByGranularity([activeStart, activeEnd], generationInputs.granularity);
-        console.log('[Store:Generate] partitions:', partitions.length, partitions.map(p => ({ s: p.startTime, e: p.endTime })));
+        // console.log('[Store:Generate] partitions:', partitions.length, partitions.map(p => ({ s: p.startTime, e: p.endTime })));
         const fetchResults = await Promise.all(
           partitions.map((partition) =>
             fetchCrimeRecordsForRange(generationInputs, partition.startTime, partition.endTime, 50000)
@@ -370,14 +370,14 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
         );
         const crimeRecords = fetchResults.flatMap((result) => result.records);
         const sampled = fetchResults.some((result) => result.sampled);
-        console.log('[Store:Generate] crime records fetched:', crimeRecords.length, 'sampled:', sampled);
+        // console.log('[Store:Generate] crime records fetched:', crimeRecords.length, 'sampled:', sampled);
         const generated = buildNonUniformDraftBinsFromSelection({
           ...generationInputs,
           eventTimestamps: crimeRecords.map((crime) => crime.timestamp * 1000),
           eventTypes: crimeRecords.map((crime) => crime.type),
         });
 
-        console.log('[Store:Generate] bins generated:', generated.bins.length, 'eventCount:', generated.eventCount, 'warning:', generated.warning);
+        // console.log('[Store:Generate] bins generated:', generated.bins.length, 'eventCount:', generated.eventCount, 'warning:', generated.warning);
 
         if (generated.bins.length === 0) {
           set({
@@ -388,7 +388,7 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           return false;
         }
 
-        console.log('[Store:Generate] setting pendingGeneratedBins:', generated.bins.length, 'bins');
+        // console.log('[Store:Generate] setting pendingGeneratedBins:', generated.bins.length, 'bins');
         get().setPendingGeneratedBins(generated.bins, {
           binCount: generated.bins.length,
           eventCount: generated.eventCount,
@@ -398,8 +398,8 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
           inputs: generationInputs,
         });
 
-        const postSetState = get();
-        console.log('[Store:Generate] after set — pendingGeneratedBins:', postSetState.pendingGeneratedBins.length, 'status:', postSetState.generationStatus);
+        // const postSetState = get();
+        // console.log('[Store:Generate] after set — pendingGeneratedBins:', postSetState.pendingGeneratedBins.length, 'status:', postSetState.generationStatus);
         return true;
       } catch (error) {
         console.error('[Store:Generate] error:', error);
@@ -425,18 +425,18 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
     applyGeneratedBins: (domain) => {
       const { pendingGeneratedBins } = get();
 
-      console.log('[Store:Apply] applyGeneratedBins — bins:', pendingGeneratedBins.length, 'domain:', domain);
+      // console.log('[Store:Apply] applyGeneratedBins — bins:', pendingGeneratedBins.length, 'domain:', domain);
 
       if (!pendingGeneratedBins.length) {
-        console.log('[Store:Apply] no pending bins, returning false');
+        // console.log('[Store:Apply] no pending bins, returning false');
         return false;
       }
 
       useSliceDomainStore.getState().replaceSlicesFromBins(pendingGeneratedBins, domain);
       useDashboardDemoCoordinationStore.getState().setWarpSource('density');
 
-      const postSliceCount = useSliceDomainStore.getState().slices.length;
-      console.log('[Store:Apply] applied — total slices now:', postSliceCount);
+      // const postSliceCount = useSliceDomainStore.getState().slices.length;
+      // console.log('[Store:Apply] applied — total slices now:', postSliceCount);
 
       set({
         lastAppliedAt: Date.now(),
@@ -450,21 +450,21 @@ export const useDashboardDemoTimeslicingModeStore = create<DashboardDemoTimeslic
       const { pendingGeneratedBins } = get();
       const bin = pendingGeneratedBins.find((b) => b.id === binId);
       if (!bin) {
-        console.log('[Store:Apply] single bin not found:', binId);
+        // console.log('[Store:Apply] single bin not found:', binId);
         return false;
       }
 
-      console.log('[Store:Apply] applySingleGeneratedBin — bin:', binId, 'domain:', domain, 'binStart:', bin.startTime, 'binEnd:', bin.endTime);
+      // console.log('[Store:Apply] applySingleGeneratedBin — bin:', binId, 'domain:', domain, 'binStart:', bin.startTime, 'binEnd:', bin.endTime);
       const sliceId = useSliceDomainStore.getState().addSliceFromBin(bin, domain);
       if (sliceId === null) {
-        console.log('[Store:Apply] addSliceFromBin returned null');
+        // console.log('[Store:Apply] addSliceFromBin returned null');
         return false;
       }
 
       useDashboardDemoCoordinationStore.getState().setWarpSource('density');
 
-      const postSliceCount = useSliceDomainStore.getState().slices.length;
-      console.log('[Store:Apply] single applied — sliceId:', sliceId, 'total slices now:', postSliceCount);
+      // const postSliceCount = useSliceDomainStore.getState().slices.length;
+      // console.log('[Store:Apply] single applied — sliceId:', sliceId, 'total slices now:', postSliceCount);
 
       set({
         lastAppliedAt: Date.now(),

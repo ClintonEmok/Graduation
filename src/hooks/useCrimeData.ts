@@ -169,7 +169,7 @@ export function useCrimeData(
     districts
   ];
   
-  console.log('[useCrimeData] queryKey (visible range):', queryKey);
+  // console.log('[useCrimeData] queryKey (visible range):', queryKey);
   
   const query = useQuery({
     queryKey,

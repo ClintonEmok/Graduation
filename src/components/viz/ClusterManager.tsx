@@ -62,7 +62,7 @@ export const ClusterManager: React.FC = () => {
     const analysis = analyzeClusters(pointsToCluster, sensitivity);
     const clusters = analysis.clusters;
 
-    console.log(`[ClusterManager] Detected ${clusters.length} clusters`);
+    // console.log(`[ClusterManager] Detected ${clusters.length} clusters`);
     setClusters(clusters);
   }, [
     columns, data, minTimestampSec, maxTimestampSec,

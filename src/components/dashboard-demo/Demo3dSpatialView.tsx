@@ -149,9 +149,9 @@ export function Demo3dSpatialView() {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const result = (await res.json()) as { data?: CrimeRecord[] };
           const crimeBatch = result.data ?? [];
-          console.debug(`[3DFetch] slice ${slice.label}: fetched ${crimeBatch.length} crimes`);
+          // console.debug(`[3DFetch] slice ${slice.label}: fetched ${crimeBatch.length} crimes`);
           if (crimeBatch.length > 0) {
-            console.debug(`[3DFetch]  first crime x=${crimeBatch[0]!.x.toFixed(2)} z=${crimeBatch[0]!.z.toFixed(2)}`);
+            // console.debug(`[3DFetch]  first crime x=${crimeBatch[0]!.x.toFixed(2)} z=${crimeBatch[0]!.z.toFixed(2)}`);
           }
           results.push(crimeBatch);
 
