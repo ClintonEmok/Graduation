@@ -418,7 +418,7 @@ export function DemoSlicePanel() {
                         <span className="font-medium text-foreground">{label}</span>
 
                         {!isManualDraft && burstScore && (
-                          <Badge variant="outline" className="rounded-full border-chart-1/30 bg-chart-1/10 px-2 py-0 text-[10px] text-chart-1">
+                          <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px]">
                             {burstScore}
                           </Badge>
                         )}
