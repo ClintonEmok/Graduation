@@ -150,9 +150,6 @@ function ExpandedRail({
       ) : null}
 
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/60 px-3 py-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          Rail
-        </span>
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
