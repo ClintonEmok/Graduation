@@ -9,9 +9,9 @@ export interface ComparisonDeltaBarProps {
   higherIsBetter?: boolean;
 }
 
-const BLUE = 'rgba(96, 165, 250, 0.85)';
-const ORANGE = 'rgba(251, 146, 60, 0.85)';
-const MUTED = 'rgba(71, 85, 105, 0.4)';
+const HIGHLIGHT_LEFT = 'bg-chart-1';
+const HIGHLIGHT_RIGHT = 'bg-chart-2';
+const DIM = 'bg-muted-foreground/40';
 
 export function ComparisonDeltaBar({
   label,
@@ -39,19 +39,19 @@ export function ComparisonDeltaBar({
 
   const leftHighlight = winner === 'left';
   const rightHighlight = winner === 'right';
-  const leftFill = leftHighlight ? BLUE : MUTED;
-  const rightFill = rightHighlight ? ORANGE : MUTED;
+  const leftFill = leftHighlight ? HIGHLIGHT_LEFT : DIM;
+  const rightFill = rightHighlight ? HIGHLIGHT_RIGHT : DIM;
 
   return (
-    <div className="rounded-lg border border-border/70 bg-slate-950/40 p-2">
+    <div className="rounded-lg border border-border bg-muted/50 p-2">
       <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px]">
-        <span className="font-medium uppercase tracking-[0.18em] text-slate-400">{label}</span>
+        <span className="font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
         {noDelta ? (
-          <span className="tabular-nums text-slate-500">Equal</span>
+          <span className="tabular-nums text-muted-foreground">Equal</span>
         ) : (
           <span
             className={`tabular-nums ${
-              rightHighlight ? 'text-orange-300' : leftHighlight ? 'text-sky-300' : 'text-slate-400'
+              rightHighlight ? 'text-chart-2' : leftHighlight ? 'text-chart-1' : 'text-muted-foreground'
             }`}
           >
             {delta > 0 ? '▲' : '▼'} {Math.abs(delta).toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -61,25 +61,25 @@ export function ComparisonDeltaBar({
 
       <div className="space-y-1.5">
         <div className="grid grid-cols-[4.5rem_1fr_3.5rem] items-center gap-2 text-[10px]">
-          <span className="text-slate-500">Left</span>
-          <div className="relative h-2 rounded-full bg-slate-800/50">
+          <span className="text-muted-foreground">Left</span>
+          <div className="relative h-2 rounded-full bg-muted">
             <div
-              className="absolute left-0 top-0 h-2 rounded-full transition-all"
-              style={{ width: `${leftWidth}%`, backgroundColor: leftFill }}
+              className={`absolute left-0 top-0 h-2 rounded-full transition-all ${leftFill}`}
+              style={{ width: `${leftWidth}%` }}
             />
           </div>
-          <span className="tabular-nums text-slate-200">{leftFormatted}</span>
+          <span className="tabular-nums text-foreground">{leftFormatted}</span>
         </div>
 
         <div className="grid grid-cols-[4.5rem_1fr_3.5rem] items-center gap-2 text-[10px]">
-          <span className="text-slate-500">Right</span>
-          <div className="relative h-2 rounded-full bg-slate-800/50">
+          <span className="text-muted-foreground">Right</span>
+          <div className="relative h-2 rounded-full bg-muted">
             <div
-              className="absolute left-0 top-0 h-2 rounded-full transition-all"
-              style={{ width: `${rightWidth}%`, backgroundColor: rightFill }}
+              className={`absolute left-0 top-0 h-2 rounded-full transition-all ${rightFill}`}
+              style={{ width: `${rightWidth}%` }}
             />
           </div>
-          <span className="tabular-nums text-slate-200">{rightFormatted}</span>
+          <span className="tabular-nums text-foreground">{rightFormatted}</span>
         </div>
       </div>
     </div>

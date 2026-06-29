@@ -28,12 +28,12 @@ function epochToPercent(epoch: number, min: number, max: number): number {
   return Math.max(0, Math.min(100, ((epoch - min) / (max - min)) * 100));
 }
 
-const COLOR_MAP = {
-  blue: { fill: 'rgba(96, 165, 250, 0.45)', stroke: '#60a5fa' },
-  orange: { fill: 'rgba(251, 146, 60, 0.45)', stroke: '#fb923c' },
+const COLOR_CLASS_MAP: Record<'blue' | 'orange', string> = {
+  blue: 'bg-chart-1/45 border-chart-1',
+  orange: 'bg-chart-2/45 border-chart-2',
 };
 
-const OVERLAP_FILL = 'rgba(244, 114, 182, 0.45)';
+const OVERLAP_CLASS = 'bg-chart-3/45 border-chart-3';
 
 export function ComparisonTimelineBar({
   left,
@@ -42,7 +42,7 @@ export function ComparisonTimelineBar({
 }: ComparisonTimelineBarProps) {
   if (!left && !right) {
     return (
-      <div className="rounded-lg border border-border/70 bg-slate-950/40 p-2 text-[10px] text-slate-500">
+      <div className="rounded-lg border border-border bg-muted/50 p-2 text-[10px] text-muted-foreground">
         Select two slices to compare
       </div>
     );
@@ -62,62 +62,62 @@ export function ComparisonTimelineBar({
   const overlapExists = overlapStart !== null && overlapEnd !== null && overlapEnd > overlapStart;
 
   return (
-    <div className="rounded-lg border border-border/70 bg-slate-950/40 p-2">
-      <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
+    <div className="rounded-lg border border-border bg-muted/50 p-2">
+      <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
         Timeline overlap
       </div>
 
       <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 text-[10px]">
         {left ? (
           <>
-            <span className="truncate text-slate-300">{left.label}</span>
+            <span className="truncate text-foreground">{left.label}</span>
             <Bar
               startPct={epochToPercent(left.startEpoch, min, max)}
               endPct={epochToPercent(left.endEpoch, min, max)}
-              color={COLOR_MAP[left.color]}
+              barClassName={COLOR_CLASS_MAP[left.color]}
             />
           </>
         ) : (
           <>
-            <span className="text-slate-500">—</span>
-            <div className="h-2 rounded-full bg-slate-800/40" />
+            <span className="text-muted-foreground">—</span>
+            <div className="h-2 rounded-full bg-muted" />
           </>
         )}
 
         {right ? (
           <>
-            <span className="truncate text-slate-300">{right.label}</span>
+            <span className="truncate text-foreground">{right.label}</span>
             <Bar
               startPct={epochToPercent(right.startEpoch, min, max)}
               endPct={epochToPercent(right.endEpoch, min, max)}
-              color={COLOR_MAP[right.color]}
+              barClassName={COLOR_CLASS_MAP[right.color]}
             />
           </>
         ) : (
           <>
-            <span className="text-slate-500">—</span>
-            <div className="h-2 rounded-full bg-slate-800/40" />
+            <span className="text-muted-foreground">—</span>
+            <div className="h-2 rounded-full bg-muted" />
           </>
         )}
 
         {overlapExists && overlapStart !== null && overlapEnd !== null ? (
           <>
-            <span className="text-pink-300">Overlap</span>
+            <span className="text-muted-foreground">Overlap</span>
             <Bar
               startPct={epochToPercent(overlapStart, min, max)}
               endPct={epochToPercent(overlapEnd, min, max)}
-              color={{ fill: OVERLAP_FILL, stroke: '#f472b6' }}
+              barClassName={OVERLAP_CLASS}
             />
           </>
         ) : (
           <>
-            <span className="text-slate-500">Overlap</span>
-            <div className="h-2 rounded-full bg-slate-800/30" />
+            <span className="text-muted-foreground">Overlap</span>
+            <div className="h-2 rounded-full bg-muted/50" />
           </>
         )}
       </div>
 
-      <div className="mt-2 flex justify-between text-[9px] text-slate-500 tabular-nums">
+      <div className="mt-2 flex justify-between text-[9px] text-muted-foreground tabular-nums">
         <span>{formatDate(min)}</span>
         <span>{formatDate(max)}</span>
       </div>
@@ -128,24 +128,21 @@ export function ComparisonTimelineBar({
 function Bar({
   startPct,
   endPct,
-  color,
+  barClassName,
 }: {
   startPct: number;
   endPct: number;
-  color: { fill: string; stroke: string };
+  barClassName: string;
 }) {
   const left = Math.min(startPct, endPct);
   const width = Math.max(0, endPct - startPct);
   return (
-    <div className="relative h-2 rounded-full bg-slate-800/40">
+    <div className="relative h-2 rounded-full bg-muted">
       <div
-        className="absolute top-0 h-2 rounded-full"
+        className={`absolute top-0 h-2 rounded-full border-y ${barClassName}`}
         style={{
           left: `${left}%`,
           width: `${width}%`,
-          backgroundColor: color.fill,
-          borderTop: `1px solid ${color.stroke}`,
-          borderBottom: `1px solid ${color.stroke}`,
         }}
       />
     </div>

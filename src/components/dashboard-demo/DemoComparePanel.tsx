@@ -61,12 +61,12 @@ export function DemoComparePanel() {
 
   return (
     <div className="space-y-2">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Compare slices
           </div>
-          <p className="mt-0.5 text-[10px] text-slate-400">
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
             Pick two slices. Heatmaps render in the main viewport.
           </p>
         </div>
@@ -164,19 +164,17 @@ function SlotPicker({
   onChange: (id: string | null) => void;
   activeSlice: DemoComparableSlice | null;
 }) {
-  const palette = slot === 'left'
-    ? { border: 'border-sky-400/40', bg: 'bg-sky-500/10', text: 'text-sky-200', label: 'Left' }
-    : { border: 'border-orange-400/40', bg: 'bg-orange-500/10', text: 'text-orange-200', label: 'Right' };
+  const label = slot === 'left' ? 'Left slot' : 'Right slot';
 
   return (
-    <div className={`flex flex-col gap-1.5 rounded-md border ${palette.border} ${palette.bg} p-2`}>
-      <span className={`text-[9px] font-semibold uppercase tracking-[0.22em] ${palette.text}`}>
-        {palette.label} slot
+    <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
+      <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
       </span>
       <select
         value={value ?? ''}
         onChange={(event) => onChange(event.target.value || null)}
-        className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1.5 text-[11px] text-slate-100 outline-none transition focus:border-sky-400/60"
+        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[11px] text-foreground outline-none transition focus:border-ring"
       >
         <option value="">— Pick a slice —</option>
         {slices.map((slice) => (
@@ -186,13 +184,13 @@ function SlotPicker({
         ))}
       </select>
       {activeSlice ? (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-slate-400">
-          <span className="text-slate-200">{activeSlice.crimeCount.toLocaleString()} events</span>
-          <span className="text-slate-500">·</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
+          <span className="text-foreground">{activeSlice.crimeCount.toLocaleString()} events</span>
+          <span>·</span>
           <span>{formatComparisonSpan(activeSlice.endEpoch - activeSlice.startEpoch)}</span>
         </div>
       ) : (
-        <p className="text-[10px] text-slate-500">No slice selected.</p>
+        <p className="text-[10px] text-muted-foreground">No slice selected.</p>
       )}
     </div>
   );
