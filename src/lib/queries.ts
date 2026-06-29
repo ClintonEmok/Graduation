@@ -216,8 +216,8 @@ const executeAll = <T>(
   params: unknown[]
 ): Promise<T[]> =>
   new Promise((resolve, reject) => {
-    const all = db.all as unknown as (sql: string, ...args: unknown[]) => void;
-    all(sql, ...params, (err: Error | null, rows: unknown[]) => {
+    const all = db.all as unknown as (this: Pick<DbLike, 'all'>, sql: string, ...args: unknown[]) => void;
+    all.call(db, sql, ...params, (err: Error | null, rows: unknown[]) => {
       if (err) {
         reject(err);
         return;
@@ -228,8 +228,8 @@ const executeAll = <T>(
 
 const executeRun = (db: Pick<DbLike, 'run'>, sql: string, params: unknown[] = []): Promise<void> =>
   new Promise((resolve, reject) => {
-    const run = db.run as unknown as (sql: string, ...args: unknown[]) => void;
-    run(sql, ...params, (err: Error | null) => {
+    const run = db.run as unknown as (this: Pick<DbLike, 'run'>, sql: string, ...args: unknown[]) => void;
+    run.call(db, sql, ...params, (err: Error | null) => {
       if (err) {
         reject(err);
         return;
